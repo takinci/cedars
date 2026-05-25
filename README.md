@@ -1,54 +1,114 @@
+
 # EcoRad
 
-EcoRad is a deployable radiology sustainability intelligence web tool. It estimates, tracks, visualizes, and explains environmental impact from imaging operations, infrastructure, consumables, waste, patient workflow assumptions, and AI workloads.
+![EcoRad Logo](./logo-ecorad.png)
 
-## What is included
+## Sustainable Intelligence for Radiology
 
-- FastAPI backend with SQLite by default and PostgreSQL-ready `DATABASE_URL`
-- React + Vite frontend with Chart.js visualizations
-- Seed data for MRI, CT, X-ray, ultrasound, PACS/RIS, workstations, servers, consumables, waste, scenarios, and AI workload examples
-- Editable regional carbon-intensity assumptions
-- CSV and PDF export endpoints
-- Docker production build serving frontend and API from one container
-- Development Docker Compose for API and Vite hot reload
-- Unit tests for calculation logic
-- `sources.md` with grouped scientific and policy references
+EcoRad is a radiology sustainability intelligence platform designed to help imaging departments estimate, visualize and reduce the environmental impact of imaging operations, AI workloads and healthcare infrastructure.
 
-## Repository structure
+---
+
+## Goal of the Tool
+
+EcoRad helps hospitals and radiology organizations:
+- estimate energy consumption
+- calculate carbon emissions
+- analyze AI sustainability impact
+- optimize imaging workflows
+- compare sustainability interventions
+- generate ESG-style sustainability reports
+
+The platform translates complex sustainability metrics into understandable operational insights for:
+- radiologists
+- sustainability officers
+- medical physicists
+- healthcare executives
+- AI governance teams
+- academic institutions
+
+---
+
+## Main Capabilities
+
+### Radiology Sustainability Dashboard
+- MRI, CT, X-ray and ultrasound tracking
+- Active vs idle energy analysis
+- Scope 1, 2 and 3 emissions
+- Department KPI monitoring
+- Modality comparison
+
+### AI Sustainability Dashboard
+- AI training footprint
+- AI inference energy
+- GPU and cloud analysis
+- Net AI impact estimation
+- Sustainability optimization
+
+### Scenario Analysis
+- Overnight shutdown policies
+- Standby optimization
+- Reduced repeat scans
+- Renewable electricity scenarios
+- Efficient AI model analysis
+
+### Reporting
+- CSV export
+- PDF report generation
+- Scenario comparison
+- Assumption documentation
+
+---
+
+## Technology Stack
+
+### Backend
+- FastAPI
+- Python
+- SQLAlchemy
+- SQLite
+- PostgreSQL-ready schema
+
+### Frontend
+- React
+- JavaScript
+- Chart.js
+- HTML/CSS
+
+### Deployment
+- Docker
+- Docker Compose
+- GitHub Pages support
+
+---
+
+## Folder Structure
 
 ```text
-ecorad/
-  backend/app/
-    calculations.py
-    config.py
-    database.py
-    main.py
-    models.py
-    seed.py
-  frontend/
-    public/
-    src/
-    index.html
-    package.json
-  tests/
-  .github/workflows/ci.yml
-  Dockerfile
-  docker-compose.yml
-  docker-compose.dev.yml
-  requirements.txt
-  sources.md
+backend/
+frontend/
+tests/
+docs/
+docker/
+index.html
+README.md
+sources.md
+logo-ecorad.png
 ```
 
-## Run locally without Docker
+---
+
+## How to Run Locally
+
+### Backend
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+cd backend
 pip install -r requirements.txt
-uvicorn backend.app.main:app --reload
+uvicorn app.main:app --reload
 ```
 
-In another terminal:
+### Frontend
 
 ```bash
 cd frontend
@@ -56,52 +116,46 @@ npm install
 npm run dev
 ```
 
-Open the frontend at `http://localhost:5173`. The API runs at `http://localhost:8000`.
+---
 
-## Run production container
-
-```bash
-docker compose up --build
-```
-
-Open `http://localhost:8000`. The FastAPI app serves the compiled React app and the `/api/*` endpoints.
-
-## API endpoints
-
-- `GET /api/health`
-- `GET /api/meta`
-- `GET /api/departments`
-- `POST /api/departments`
-- `GET /api/equipment/{department_id}`
-- `GET /api/dashboard/{department_id}`
-- `GET /api/ai/{department_id}`
-- `POST /api/activity/{department_id}`
-- `POST /api/emission-factors`
-- `GET /api/scenarios/{department_id}`
-- `POST /api/scenarios/{department_id}`
-- `GET /api/export/{department_id}.csv`
-- `GET /api/export/{department_id}.pdf`
-
-## PostgreSQL deployment
-
-Set `DATABASE_URL` before starting the backend:
+## Docker Deployment
 
 ```bash
-DATABASE_URL=postgresql+psycopg://user:password@host:5432/ecorad
+docker-compose up --build
 ```
 
-Install the relevant PostgreSQL driver if needed, for example `psycopg[binary]`.
+---
 
-## Important implementation notes
+## GitHub Pages Deployment
 
-The default values are intentionally editable assumptions, not fixed scientific claims. For formal ESG or regulatory reporting, replace assumptions with measured local metering, procurement, waste, cloud, and travel data. Each seeded assumption includes a citation field or source note.
+This repository contains a root `index.html` file compatible with GitHub Pages deployment.
 
-## Tests
+Deployment steps:
+1. Push repository to GitHub
+2. Open repository settings
+3. Enable GitHub Pages
+4. Select root deployment
+5. Save
 
-```bash
-pytest
-```
+---
 
-## GitHub Actions
+## Scientific Basis
 
-The included workflow installs Python dependencies and runs tests on every push or pull request.
+EcoRad uses editable assumptions and references from:
+- radiology sustainability literature
+- AI sustainability publications
+- healthcare ESG methodologies
+- carbon accounting frameworks
+- electricity carbon intensity datasets
+
+See `sources.md` for detailed references.
+
+---
+
+## Branding
+
+EcoRad branding combines:
+- radiology imaging geometry
+- sustainability-inspired forms
+- AI and digital health aesthetics
+- enterprise healthcare design
