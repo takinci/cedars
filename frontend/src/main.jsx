@@ -308,7 +308,7 @@ function App() {
           <div className="inputSummary">
             <p>Carbon intensity for <strong>{settings.region}</strong>: <strong>{(CARBON_INTENSITY[settings.region]??0.25)} kgCO₂e/kWh</strong> <span className="note">— Our World in Data, 2022–2023 national average. Replace with local utility data for higher accuracy.</span></p>
             <p>Showing <strong>{settings.timePeriod.toLowerCase()}</strong> figures — multiplier ×{TIME_MULT[settings.timePeriod]}</p>
-            <p className="note">Equipment power defaults: MRI 30 kW active (Heye et al., JMRI 2023 · DOI 10.1002/jmri.28994); CT 60 kW active (Acra 2024 · DOI 10.1016/j.acra.2024.05.004). See <a href="https://github.com/tugbaakinci/EcoRad/blob/main/sources.md" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">sources.md</a> for all citations.</p>
+            <p className="note">Equipment power defaults: MRI 30 kW active (Heye et al., JMRI 2023 · DOI 10.1002/jmri.28994); CT 60 kW active (Acra 2024 · DOI 10.1016/j.acra.2024.05.004). See <a href="https://github.com/takinci/EcoRad/blob/main/sources.md" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">sources.md</a> for all citations.</p>
             <button onClick={()=>setPage('dashboard')} style={{marginTop:16}}>View dashboard →</button>
           </div>
         </main>
@@ -414,7 +414,7 @@ function App() {
             <p className="note">CT active power 60 kW: Acra 2024 · DOI 10.1016/j.acra.2024.05.004; CJRS 2022 · DOI 10.1177/08465371221133074.</p>
             <p className="note">AI footprint methodology: Doo et al. Radiology 2024 · DOI 10.1148/radiol.232030.</p>
             <p className="note">Intervention savings: McKee et al. Radiology 2024 · DOI 10.1148/radiol.240219; ESR Position Paper 2025.</p>
-            <p className="note">Full reference list: <a href="https://github.com/tugbaakinci/EcoRad/blob/main/sources.md" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">sources.md on GitHub</a>. All numbers are defaults — replace with locally measured values for publication-quality reporting.</p>
+            <p className="note">Full reference list: <a href="https://github.com/takinci/EcoRad/blob/main/sources.md" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">sources.md on GitHub</a>. All numbers are defaults — replace with locally measured values for publication-quality reporting.</p>
           </section>
         </main>
       )}
