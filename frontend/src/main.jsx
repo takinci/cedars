@@ -183,14 +183,7 @@ function computeAI(cloudProvider, region) {
 function Logo({dark = false}) {
   return (
     <div className="brand">
-      <svg width="46" height="46" viewBox="0 0 64 64" role="img">
-        <circle cx="32" cy="32" r="27" fill="none" stroke={dark ? '#A5D6A7' : '#2E7D32'} strokeWidth="3"/>
-        <path d="M14 34c11-13 25-14 36-5" fill="none" stroke="#26A69A" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M22 42c8-9 20-10 30-4" fill="none" stroke="#A5D6A7" strokeWidth="3" strokeLinecap="round"/>
-        <path d="M33 17c8 8 8 18 0 27-8-9-8-19 0-27Z" fill="#2E7D32"/>
-        <circle cx="33" cy="32" r="3" fill="#fff"/>
-        <path d="M43 17l4-4M48 23h5M43 49l4 4" stroke="#26A69A" strokeWidth="2" strokeLinecap="round"/>
-      </svg>
+      <img src="./logo.png" alt="EcoRad logo" style={{width:46, height:46, objectFit:'contain', filter: dark ? 'brightness(1.8)' : 'none'}}/>
       <div><strong>EcoRad</strong><span>Sustainable Intelligence for Radiology</span></div>
     </div>
   );
