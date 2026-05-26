@@ -2,7 +2,7 @@ import React, {useState, useMemo} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Bar, Doughnut} from 'react-chartjs-2';
 import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend} from 'chart.js';
-import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory} from 'lucide-react';
+import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3} from 'lucide-react';
 import './styles.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -86,6 +86,32 @@ const CLOUD = {
   "Google Cloud":  {pue: 1.10, ci: 0.12}, // Google 2023 Environmental Report (lowest industry PUE)
 };
 
+// ── AI model library ─────────────────────────────────────────────────────────
+// GPU power, inference latency, and training energy from LLM-Energy PDF and Doo 2024.
+// Clinical benefit estimates from sources: scan time reduction (Radiol 2023 10.1148/radiol.230441),
+// low-value imaging reduction McKee 2024 (10.1148/radiol.240219), ESR PP 2025.
+// Embodied GPU CO₂ from ESR PP 2025 / Clinical-AI PDF.
+const AI_MODELS = {
+  "Small (< 100M params)": {
+    gpuKw: 0.08, inferSec: 2.5,  trainMwh: 0.5,  accuracy: 0.88,
+    scanTimeReductPct: 30, lowValueReductPct: 10, embCo2Kg: 50,
+  },
+  "Medium (100M–1B params)": {
+    gpuKw: 0.15, inferSec: 5,    trainMwh: 5,    accuracy: 0.93,
+    scanTimeReductPct: 60, lowValueReductPct: 15, embCo2Kg: 80,
+  },
+  "Large (> 1B params)": {
+    gpuKw: 0.25, inferSec: 10,   trainMwh: 50,   accuracy: 0.96,
+    scanTimeReductPct: 75, lowValueReductPct: 20, embCo2Kg: 150,
+  },
+};
+// Automatic Mixed Precision (AMP) reduces inference energy ~40% (float32→float16)
+// Source: LLM-Energy PDF; Clinical-AI PDF
+const PRECISION_FACTOR = {
+  "float32 (standard)":   1.0,
+  "float16 / AMP":        0.6,
+};
+
 // ── Resource & scope constants ────────────────────────────────────────────────
 
 // Cooling water: L per kWh. Google 2023 Env Report 0.45 L/kWh; typical data centre 1.5–2.5 L/kWh (ASHRAE)
@@ -104,14 +130,16 @@ const PAPER_G_PER_ENC  = 25;   // g paper per encounter in digital workflow (ESR
 const HAZ_WASTE_G_SCAN = 50;   // g hazardous waste per imaging scan — contrast media disposal estimate
 
 const META = {
-  profiles:     ["Hospital radiology", "Outpatient imaging center", "Research imaging lab", "Teleradiology / informatics-heavy workflow"],
-  intendedUses: ["Estimate annual footprint", "Compare modalities", "Track monthly sustainability KPIs", "Evaluate AI tool impact", "Estimate savings from an intervention"],
-  regions:      Object.keys(CARBON_INTENSITY),
-  metricTypes:  ["Energy", "Carbon", "Water", "AI net impact"],
-  timePeriods:  Object.keys(TIME_MULT),
-  interventions:Object.keys(INTERVENTIONS),
+  profiles:      ["Hospital radiology", "Outpatient imaging center", "Research imaging lab", "Teleradiology / informatics-heavy workflow"],
+  intendedUses:  ["Estimate annual footprint", "Compare modalities", "Track monthly sustainability KPIs", "Evaluate AI tool impact", "Estimate savings from an intervention"],
+  regions:       Object.keys(CARBON_INTENSITY),
+  metricTypes:   ["Energy", "Carbon", "Water", "AI net impact"],
+  timePeriods:   Object.keys(TIME_MULT),
+  interventions: Object.keys(INTERVENTIONS),
   cloudProviders:Object.keys(CLOUD),
-  scannerStates:["Active", "Idle", "Standby", "Off"],
+  scannerStates: ["Active", "Idle", "Standby", "Off"],
+  modelSizes:    Object.keys(AI_MODELS),
+  precisions:    Object.keys(PRECISION_FACTOR),
 };
 
 // ── Calculation functions ─────────────────────────────────────────────────────
@@ -209,23 +237,63 @@ function computeScenario(intervention, region, timePeriod) {
   };
 }
 
-function computeAI(cloudProvider, region) {
-  const cf = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
-  const ci = CARBON_INTENSITY[region] ?? 0.25;
-  // Inference energy: 0.08 kW GPU load × (2.5 s / 3600) per inference × 1800 studies/month × PUE
-  // GPU load and per-study latency from Doo 2024 (10.1148/radiol.232030) and LLM-Energy PDF defaults.
-  // Operational savings (12 kgCO₂e/month) estimated from avoided repeat scans (Radiol 2023, 10.1148/radiol.230441).
-  const inferenceKwh  = rnd(0.08 * (2.5 / 3600) * 1800 * cf.pue, 3);
-  const grossKgCo2e   = rnd(inferenceKwh * ci, 3);
-  const savingsKgCo2e = 12;
+function computeAI(cloudProvider, region, modelSize, precision) {
+  const cf    = CLOUD[cloudProvider]    ?? CLOUD["Local compute"];
+  const ci    = CARBON_INTENSITY[region] ?? 0.25;
+  const model = AI_MODELS[modelSize]    ?? AI_MODELS["Small (< 100M params)"];
+  const ampF  = PRECISION_FACTOR[precision] ?? 1.0;
+  const STUDIES = 1800; // imaging studies per month (matches EQUIPMENT_BASE)
+  const AVG_SCAN_KWH = 0.5; // kWh per imaging study (mid-range from CT/MRI defaults)
+
+  // ── 1. Operational energy ────────────────────────────────────────────────
+  // Inference energy per study and monthly total, including PUE and AMP factor
+  // Source: Doo 2024 (10.1148/radiol.232030); LLM-Energy PDF
+  const inferKwhPerStudy  = rnd(model.gpuKw * (model.inferSec / 3600) * cf.pue * ampF, 6);
+  const inferenceKwh      = rnd(inferKwhPerStudy * STUDIES, 3);
+  // Training energy amortised over 3-year (36-month) deployment lifespan
+  const trainKwhTotal     = model.trainMwh * 1000;
+  const trainKwhAmortised = rnd(trainKwhTotal / 36, 2);
+  const totalKwh          = rnd(inferenceKwh + trainKwhAmortised, 3);
+  const ampSavingPct      = rnd((1 - ampF) * 100, 0);
+
+  // ── 2. Carbon emissions ──────────────────────────────────────────────────
+  // AI operational carbon uses cloud provider CI; clinical savings use local grid CI
+  const grossKgCo2e  = rnd(totalKwh * cf.ci, 3);
+  // Embodied GPU carbon amortised over 3-year lifespan (ESR PP 2025, Clinical-AI PDF)
+  const embGpuKgCo2e = rnd(model.embCo2Kg / 36, 2);
+
+  // ── 4. Clinical co-benefits (needed for net carbon) ──────────────────────
+  // Scan time reduction → direct scanner energy savings
+  // Radiol 2023 (10.1148/radiol.230441): AI reconstruction can cut scan time 45–89%
+  const scanEnergySaved  = rnd(STUDIES * AVG_SCAN_KWH * (model.scanTimeReductPct / 100), 1);
+  // Low-value imaging reduction → avoided scans
+  // McKee 2024 (10.1148/radiol.240219): up to 20% unnecessary imaging reduction
+  const scansAvoided     = Math.round(STUDIES * (model.lowValueReductPct / 100));
+  const scanCo2Saved     = rnd((scanEnergySaved + scansAvoided * AVG_SCAN_KWH) * ci, 2);
+  const savingsKgCo2e    = scanCo2Saved;
+  const netKgCo2e        = rnd(grossKgCo2e + embGpuKgCo2e - savingsKgCo2e, 3);
+
+  // ── 3. Infrastructure & efficiency ───────────────────────────────────────
+  const waterLitres      = rnd(totalKwh * WATER_PER_KWH, 1);
+  // Efficiency ratio: model accuracy % per kWh of monthly inference
+  // Captures diminishing accuracy returns of larger models vs energy cost (Green AI concept)
+  const efficiencyRatio  = inferenceKwh > 0 ? rnd((model.accuracy * 100) / inferenceKwh, 1) : 0;
+  // Rebound risk: rapid throughput gains may induce more scan orders, negating savings
+  const reboundRisk      = model.scanTimeReductPct > 60 ? "High" : model.scanTimeReductPct > 30 ? "Moderate" : "Low";
+
   return {
-    name: "Chest CT triage AI",
-    deployment: cloudProvider,
-    inferenceKwh,
-    grossKgCo2e,
-    savingsKgCo2e,
-    netKgCo2e: rnd(grossKgCo2e - savingsKgCo2e, 3),
-    whatThisMeans: `On ${cloudProvider} (PUE ${cf.pue}, ${cf.ci} kgCO₂e/kWh at ${region}). Net impact = AI footprint minus operational savings from fewer repeats and shorter protocols.`,
+    // meta
+    name: "Chest CT triage AI", deployment: cloudProvider, modelSize, precision,
+    // 1. operational energy
+    inferKwhPerStudy, inferenceKwh, trainKwhAmortised, totalKwh, ampSavingPct,
+    // 2. carbon
+    grossKgCo2e, embGpuKgCo2e, savingsKgCo2e, netKgCo2e, cloudCi: cf.ci,
+    // 3. infrastructure
+    pue: cf.pue, waterLitres, efficiencyRatio, accuracy: model.accuracy,
+    // 4. clinical
+    scanTimeReductPct: model.scanTimeReductPct,
+    lowValueReductPct: model.lowValueReductPct,
+    scansAvoided, scanEnergySaved, reboundRisk,
   };
 }
 
@@ -287,6 +355,8 @@ function App() {
     intervention: "Turn MRI/CT scanners off overnight",
     cloudProvider: "Local compute",
     scannerState: "Standby",
+    modelSize: "Small (< 100M params)",
+    precision: "float32 (standard)",
   });
 
   const set = (key, val) => setSettings(s => ({...s, [key]: val}));
@@ -295,7 +365,7 @@ function App() {
   // Recalculate whenever settings change
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod), [settings.region, settings.timePeriod]);
   const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod), [scen.intervention, settings.region, settings.timePeriod]);
-  const ai       = useMemo(() => computeAI(scen.cloudProvider, settings.region), [scen.cloudProvider, settings.region]);
+  const ai       = useMemo(() => computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision), [scen.cloudProvider, settings.region, scen.modelSize, scen.precision]);
 
   const chartEnergy = {
     labels: dash.byEquipment.map(x => x.modality),
@@ -451,19 +521,62 @@ function App() {
       {/* ── AI ── */}
       {page==='ai' && (
         <main>
-          <h1>AI impact dashboard</h1>
+          <h1>AI sustainability dashboard <span className="badge">{settings.region}</span></h1>
           <div className="grid" style={{marginBottom:24}}>
-            <Sel label="Cloud provider" value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
+            <Sel label="Cloud / deployment"  value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
+            <Sel label="Model size"          value={scen.modelSize}     options={META.modelSizes}     onChange={v=>setS('modelSize',v)}/>
+            <Sel label="Precision / AMP"     value={scen.precision}     options={META.precisions}     onChange={v=>setS('precision',v)}/>
           </div>
-          <section className="card wide">
-            <div className="cardHead"><Brain/><span>{ai.name} — {ai.deployment}</span></div>
-            <div className="aiGrid">
-              <p><b>{ai.inferenceKwh}</b><br/>Inference kWh{dash.totals.label}</p>
-              <p><b>{ai.grossKgCo2e}</b><br/>Gross kgCO₂e</p>
-              <p><b>{ai.savingsKgCo2e}</b><br/>Estimated savings kgCO₂e</p>
-              <p><b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e}</b><br/>Net AI impact kgCO₂e</p>
+
+          {/* ── 1. Operational energy ── */}
+          <section style={{background:'none',boxShadow:'none',padding:0}}>
+            <h2 style={{marginBottom:12}}>1. Operational energy and computation</h2>
+            <p className="note" style={{marginBottom:12}}>Training is a one-time cost amortised over 36 months. Inference scales with every study — the dominant lifetime cost. (LLM-Energy PDF; Doo 2024)</p>
+            <div className="cards">
+              <Card icon={<Zap/>}         title="Total energy/month"         value={`${ai.totalKwh} kWh`}             sub="Inference + amortised training. Primary driver of AI environmental footprint."/>
+              <Card icon={<Activity/>}    title="Inference per study"        value={`${ai.inferKwhPerStudy} kWh`}     sub={`${ai.inferenceKwh} kWh/month across 1 800 studies. Scales with every request.`}/>
+              <Card icon={<Brain/>}       title="Training (amortised)"       value={`${ai.trainKwhAmortised} kWh/mo`} sub={`One-time training divided over 36-month deployment. ${AI_MODELS[scen.modelSize].trainMwh * 1000} kWh total training cost.`}/>
+              <Card icon={<Gauge/>}       title="AMP energy saving"          value={ai.ampSavingPct > 0 ? `−${ai.ampSavingPct}%` : "None"}  sub="float16 / AMP reduces inference energy ~40% with minimal accuracy loss. (LLM-Energy PDF)"/>
             </div>
-            <p className="note" style={{marginTop:12}}>{ai.whatThisMeans}</p>
+          </section>
+
+          {/* ── 2. Carbon emissions ── */}
+          <section style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>2. Carbon emissions and intensity</h2>
+            <p className="note" style={{marginBottom:12}}>AI operational carbon uses the cloud provider's grid CI. Clinical savings use the local grid CI ({settings.region}: {CARBON_INTENSITY[settings.region]} kgCO₂e/kWh).</p>
+            <div className="cards">
+              <Card icon={<Leaf/>}        title="Gross CO₂e/month"           value={`${ai.grossKgCo2e} kgCO₂e`}      sub={`${ai.deployment} grid: ${ai.cloudCi} kgCO₂e/kWh. Includes amortised training.`}/>
+              <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}  sub={`GPU manufacturing amortised over 36 months. Total: ${AI_MODELS[scen.modelSize].embCo2Kg} kgCO₂e. (ESR PP 2025)`}/>
+              <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`} sub="Scanner time + avoided scans at local grid CI. Replace with measured before/after data."/>
+              <section className="card">
+                <div className="cardHead"><BarChart3/><span>Net AI impact</span></div>
+                <b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e} kgCO₂e/mo</b>
+                <p>{ai.netKgCo2e < 0 ? "Net positive — clinical savings outweigh AI footprint." : "Net negative — AI costs exceed measured savings."}</p>
+              </section>
+            </div>
+          </section>
+
+          {/* ── 3. Infrastructure & efficiency ── */}
+          <section style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>3. Infrastructure and efficiency ratios</h2>
+            <div className="cards">
+              <Card icon={<Gauge/>}       title="PUE"                        value={ai.pue}                           sub={`${ai.deployment} data centre Power Usage Effectiveness. 1.0 = perfect; higher = more cooling overhead.`}/>
+              <Card icon={<Droplets/>}    title="Water footprint/month"      value={`${ai.waterLitres} L`}            sub={`${WATER_PER_KWH} L/kWh cooling estimate. Google Cloud ~0.45 L/kWh; local servers ~2 L/kWh.`}/>
+              <Card icon={<Target/>}      title="Model accuracy"             value={`${rnd(ai.accuracy * 100, 0)}%`}  sub={`${scen.modelSize}. Larger models gain marginal accuracy at disproportionate energy cost.`}/>
+              <Card icon={<BarChart3/>}   title="Efficiency ratio"           value={`${ai.efficiencyRatio}`}          sub="Accuracy % per kWh of monthly inference. Captures diminishing returns of larger models. (Green AI concept)"/>
+            </div>
+          </section>
+
+          {/* ── 4. Clinical co-benefits ── */}
+          <section style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>4. Clinical sustainability co-benefits</h2>
+            <p className="note" style={{marginBottom:12}}>AI acts as an assistive sustainability tool when it reduces unnecessary imaging and scan duration. (McKee 2024; Radiol 2023)</p>
+            <div className="cards">
+              <Card icon={<TrendingDown/>} title="Scan time reduction"       value={`${ai.scanTimeReductPct}%`}        sub={`AI reconstruction / denoising shortens scan duration. ${ai.scanEnergySaved} kWh/month scanner energy saved. (Radiol 2023: 45–89% range)`}/>
+              <Card icon={<Leaf/>}         title="Low-value imaging avoided" value={`${ai.lowValueReductPct}%`}        sub={`~${ai.scansAvoided} scans/month avoided via clinical decision support. (McKee 2024: up to 20%)`}/>
+              <Card icon={<Activity/>}     title="Total clinical energy saved" value={`${ai.scanEnergySaved} kWh/mo`} sub="Direct scanner energy saved from shorter protocols and avoided studies."/>
+              <Card icon={<AlertTriangle/>} title="Rebound effect risk"      value={ai.reboundRisk}                   sub="Risk that faster reads induce more scan orders, cancelling efficiency gains. Monitor scan volumes after deployment."/>
+            </div>
           </section>
         </main>
       )}
