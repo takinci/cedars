@@ -506,9 +506,11 @@ function App() {
     <>
       <header>
         <Logo onClick={() => {
+          const defaultSettings = {profile:"Hospital radiology", intendedUse:"Estimate annual footprint", region:"Switzerland", metricType:"Energy", timePeriod:"Monthly"};
           setPage('landing');
-          setSettings({profile:"Hospital radiology", intendedUse:"Estimate annual footprint", region:"Switzerland", metricType:"Energy", timePeriod:"Monthly"});
+          setSettings(defaultSettings);
           setScen({intervention:"Turn MRI/CT scanners off overnight", cloudProvider:"Local compute", scannerState:"Standby", modelSize:"Small (< 100M params)", precision:"float32 (standard)", architecture:"CNN / ResNet"});
+          history.replaceState(null, '', window.location.pathname + window.location.search);
         }}/>
         <nav>
           {pages.map(p => (
