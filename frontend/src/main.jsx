@@ -276,22 +276,73 @@ function computeDashboard(region, timePeriod, profile = "Hospital radiology", cu
   };
 }
 
-function computeScenario(intervention, region, timePeriod, profile, customCi) {
-  const ci   = getCI(region, customCi);
-  const mult = TIME_MULT[timePeriod] ?? 1;
-  const eff  = INTERVENTIONS[intervention] ?? {kwh: 0};
-  const base = computeDashboard(region, timePeriod, profile, customCi);
+// Which interventions are driven by which extra control
+const SCANNER_STATE_INTERVENTIONS = new Set([
+  'Turn MRI/CT scanners off overnight',
+  'Use standby mode during inactive periods',
+]);
+const CLOUD_INTERVENTIONS = new Set([
+  'Move computation to lower-carbon regions',
+  'Consolidate servers',
+  'Use renewable electricity',
+]);
 
-  const kwhSaved  = rnd((eff.kwh ?? 0) * mult);
-  const co2PctOff = (eff.co2Pct ?? 0) / 100;
+function computeScenario(intervention, region, timePeriod, profile, customCi, cloudProvider, scannerState) {
+  const ci    = getCI(region, customCi);
+  const mult  = TIME_MULT[timePeriod] ?? 1;
+  const eff   = INTERVENTIONS[intervention] ?? {kwh: 0};
+  const base  = computeDashboard(region, timePeriod, profile, customCi);
+  const fleet = EQUIPMENT_PROFILES[profile] ?? EQUIPMENT_BASE;
+  const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
+
+  // Map scanner state label to the equipment power field
+  const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};
+  const targetField = STATE_FIELD[scannerState] ?? 'standby_kw';
+
+  let kwhSaved = 0;
+  let co2PctOff = 0;
+
+  if (intervention === 'Turn MRI/CT scanners off overnight') {
+    // Dynamic: MRI + CT idle → target state during avoidable idle hours
+    kwhSaved = rnd(fleet
+      .filter(eq => ['MRI','CT'].includes(eq.modality))
+      .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
+
+  } else if (intervention === 'Use standby mode during inactive periods') {
+    // Dynamic: all equipment idle → target state during avoidable idle hours
+    kwhSaved = rnd(fleet
+      .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
+
+  } else if (intervention === 'Move computation to lower-carbon regions') {
+    // CO₂ savings from switching compute to cloud provider's lower-CI grid
+    co2PctOff = ci > cf.ci ? rnd((ci - cf.ci) / ci * 100, 1) : 0;
+
+  } else if (intervention === 'Consolidate servers') {
+    // Energy savings from improved PUE: compute workload moves to cloud
+    const localPue = CLOUD["Local compute"].pue;
+    const computeKwh = fleet
+      .filter(eq => ['PACS/RIS','Workstation'].includes(eq.modality))
+      .reduce((s, eq) => s + (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult, 0);
+    kwhSaved = rnd(computeKwh * Math.max(0, 1 - cf.pue / localPue));
+
+  } else {
+    // All other interventions: use pre-defined table values
+    kwhSaved  = rnd((eff.kwh ?? 0) * mult);
+    co2PctOff = eff.co2Pct ?? 0;
+  }
+
+  const co2Fraction   = co2PctOff / 100;
   const projectedKwh  = rnd(base.totals.kwh - kwhSaved);
   const baseCo2kg     = rnd(base.totals.tonnesCo2e * 1000, 1);
-  const projectedCo2  = rnd(baseCo2kg * (1 - co2PctOff) - kwhSaved * ci, 1);
+  const projectedCo2  = rnd(baseCo2kg * (1 - co2Fraction) - kwhSaved * ci, 1);
   const co2Saved      = rnd(baseCo2kg - projectedCo2, 1);
   const pctEnergy     = base.totals.kwh > 0 ? rnd((kwhSaved / base.totals.kwh) * 100, 1) : 0;
+  const usesScanner   = SCANNER_STATE_INTERVENTIONS.has(intervention);
+  const usesCloud     = CLOUD_INTERVENTIONS.has(intervention);
 
   return {
     intervention, timePeriod, note: eff.note ?? "",
+    usesScanner, usesCloud,
     baseline:  {kwh: base.totals.kwh, co2: baseCo2kg},
     projected: {kwh: projectedKwh,    co2: projectedCo2},
     savings:   {kwh: kwhSaved, co2: co2Saved, pctEnergy},
@@ -466,7 +517,7 @@ function App() {
 
   // Recalculate whenever settings change
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.profile, settings.customCi), [settings.region, settings.timePeriod, settings.profile, settings.customCi]);
-  const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod, settings.profile, settings.customCi), [scen.intervention, settings.region, settings.timePeriod, settings.profile, settings.customCi]);
+  const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod, settings.profile, settings.customCi, scen.cloudProvider, scen.scannerState), [scen.intervention, settings.region, settings.timePeriod, settings.profile, settings.customCi, scen.cloudProvider, scen.scannerState]);
   const ai       = useMemo(() => computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi), [scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi]);
 
   const chartEnergy = {
@@ -775,12 +826,18 @@ function App() {
       {page==='scenario' && (
         <main>
           <h1>Scenario comparison</h1>
-          <div className="grid" style={{marginBottom:24}}>
-            <Sel label="Intervention"   value={scen.intervention}  options={META.interventions}   onChange={v=>setS('intervention',v)}/>
-            <Sel label="Cloud provider" value={scen.cloudProvider} options={META.cloudProviders}  onChange={v=>setS('cloudProvider',v)}/>
-            <Sel label="Scanner state target" value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
+          <div className="grid" style={{marginBottom:8}}>
+            <Sel label="Intervention"         value={scen.intervention}  options={META.interventions}  onChange={v=>setS('intervention',v)}/>
+            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
+                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
+            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
+                 value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
           </div>
-          <p className="note" style={{marginBottom:16}}>{scenario.note}</p>
+          <p className="note" style={{marginBottom:16}}>
+            {scenario.note}
+            {scenario.usesScanner && <> · Scanner state target changes how deep the power-down goes (Standby saves less than Off).</>}
+            {scenario.usesCloud   && <> · Cloud provider changes the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
+          </p>
           <div className="scenarioGrid">
             <section className="card">
               <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
