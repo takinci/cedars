@@ -679,10 +679,7 @@ function App() {
       {/* ── Dashboard ── */}
       {page==='dashboard' && (
         <main>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:20}}>
-            <h1 style={{margin:0}}>{settings.profile} <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
-            <button className="download" onClick={()=>window.print()}><Download/>Print / Save as PDF</button>
-          </div>
+          <h1>{settings.profile} <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
           {settings.metricType !== 'Energy' && (
             <p className="note" style={{marginBottom:16}}>
               Showing all metrics — <strong>{settings.metricType}</strong> sections highlighted.{' '}
