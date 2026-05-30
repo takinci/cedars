@@ -529,6 +529,31 @@ function App() {
   // Persist settings to URL hash so links are shareable
   useEffect(() => { writeHash(settings); }, [settings]);
 
+  // Convert Chart.js canvases to static PNG images before printing so they
+  // appear in PDF output (canvas elements are often blank in print renderers).
+  useEffect(() => {
+    const beforePrint = () => {
+      document.querySelectorAll('canvas').forEach((canvas, i) => {
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        img.style.cssText = 'width:100%;display:block';
+        img.dataset.chartProxy = i;
+        canvas.insertAdjacentElement('afterend', img);
+        canvas.style.display = 'none';
+      });
+    };
+    const afterPrint = () => {
+      document.querySelectorAll('img[data-chart-proxy]').forEach(img => img.remove());
+      document.querySelectorAll('canvas').forEach(canvas => { canvas.style.display = ''; });
+    };
+    window.addEventListener('beforeprint', beforePrint);
+    window.addEventListener('afterprint', afterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', beforePrint);
+      window.removeEventListener('afterprint', afterPrint);
+    };
+  }, []);
+
   // Recalculate whenever settings change
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.profile, settings.customCi), [settings.region, settings.timePeriod, settings.profile, settings.customCi]);
   const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod, settings.profile, settings.customCi, scen.cloudProvider, scen.scannerState), [scen.intervention, settings.region, settings.timePeriod, settings.profile, settings.customCi, scen.cloudProvider, scen.scannerState]);
@@ -654,7 +679,10 @@ function App() {
       {/* ── Dashboard ── */}
       {page==='dashboard' && (
         <main>
-          <h1>{settings.profile} <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:20}}>
+            <h1 style={{margin:0}}>{settings.profile} <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
+            <button className="download" onClick={()=>window.print()}><Download/>Print / Save as PDF</button>
+          </div>
           {settings.metricType !== 'Energy' && (
             <p className="note" style={{marginBottom:16}}>
               Showing all metrics — <strong>{settings.metricType}</strong> sections highlighted.{' '}
