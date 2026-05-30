@@ -535,7 +535,7 @@ function App() {
   const ai       = useMemo(() => computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.profile), [scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.profile]);
 
   const chartEnergy = {
-    labels: dash.byEquipment.map(x => x.modality),
+    labels: dash.byEquipment.map(x => x.equipment),
     datasets: [{
       label:`kWh${dash.totals.label}`,
       data: dash.byEquipment.map(x => x.kwh),
@@ -665,13 +665,11 @@ function App() {
           <section style={{background:'none',boxShadow:'none',padding:0}}>
             <h2 style={{marginBottom:12,color: settings.metricType==='Energy' ? '#1b5e20' : undefined}}>1. Energy consumption {settings.metricType==='Energy' && <span className="badge">viewing</span>}</h2>
             <div className="cards">
-              <Card icon={<Gauge/>}       title={`Total electricity ${dash.totals.label}`}    value={fmtKwh(dash.totals.kwh)}                  sub="All scanners, PACS, workstations, and servers." style={{gridColumn:'span 2'}}/>
+              <Card icon={<Gauge/>}       title={`Total electricity ${dash.totals.label}`}    value={fmtKwh(dash.totals.kwh)}                  sub="All scanners, PACS, workstations, and servers."/>
               <Card icon={<Activity/>}    title={`Active scanning ${dash.totals.label}`}      value={fmtKwh(dash.totals.activeKwh)}            sub={`${dash.totals.activePct}% of total — energy during actual scan acquisition.`}/>
               <Card icon={<TrendingDown/>} title={`Idle + standby ${dash.totals.label}`}      value={fmtKwh(dash.totals.idleKwh)}              sub={`${dash.totals.idlePct}% of total — between scans and overnight. Primary optimisation target.`}/>
               <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}      value={fmtKwh(dash.totals.idleWasteKwh)}         sub="Recoverable by standby / power-off policies."/>
-            </div>
-            <div className="cards" style={{marginTop:12}}>
-              <Card icon={<Activity/>}    title="Energy per imaging scan"                     value={`${dash.totals.energyPerScan} kWh`}       sub="Total ÷ all scans. Use for modality benchmarking and protocol optimisation."/>
+              <Card icon={<Activity/>}    title="Energy per imaging scan"                     value={`${dash.totals.energyPerScan} kWh`}       sub="Total ÷ all scans. Use for modality benchmarking and protocol optimisation." style={{gridColumn:'span 4'}}/>
             </div>
           </section>
 
