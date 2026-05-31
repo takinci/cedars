@@ -440,7 +440,7 @@ function computeAI(cloudProvider, region, modelSize, precision, architecture, cu
 function Logo({onClick}) {
   return (
     <div className="brand" onClick={onClick} style={onClick ? {cursor:'pointer'} : undefined}>
-      <img src="./logo.svg" alt="EcoRad logo" style={{width:68, height:68, objectFit:'contain'}}/>
+      <img src="./logo-only.png" alt="EcoRad logo" style={{width:68, height:68, objectFit:'contain'}}/>
       <div><strong>EcoRad</strong><span>Sustainable Intelligence for Radiology</span></div>
     </div>
   );
