@@ -857,113 +857,102 @@ function App() {
             </div>
             <div className="aiTabs">
               {[['model','Model'],['training','Training'],['testing','Testing'],['inference','Inference'],['carbon','Carbon'],['clinical','Clinical'],['benchmarks','Benchmarks']].map(([id,label])=>(
-                <button key={id} className={aiTab===id?'on':''} onClick={()=>setAiTab(id)}>{label}</button>
+                <button key={id} className={aiTab===id?'on':''} onClick={()=>{
+                  setAiTab(id);
+                  document.getElementById('ai-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
+                }}>{label}</button>
               ))}
             </div>
           </div>
 
           {/* ── Model details ── */}
-          {aiTab==='model' && (
-            <section style={{background:'none',boxShadow:'none',padding:0}}>
-              <h2 style={{marginBottom:12}}>Model details</h2>
-              <div className="cards">
-                <Card icon={<Brain/>}      title="Architecture"         value={scen.architecture}                         sub={ai.archDesc}/>
-                <Card icon={<Cpu/>}        title="Model size"           value={scen.modelSize}                            sub={`~${AI_MODELS[scen.modelSize].trainMwh * 1000} kWh to train. Accuracy: ${rnd(ai.accuracy*100,0)}%.`}/>
-                <Card icon={<Target/>}     title="Accuracy"             value={`${rnd(ai.accuracy*100,0)}%`}              sub="Diagnostic accuracy on hold-out test set. Larger models gain marginally at high energy cost."/>
-                <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub="Accuracy % per monthly inference kWh. Use to compare architectures and model sizes. (Green AI metric)"/>
-              </div>
-            </section>
-          )}
+          <section id="ai-model" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
+            <h2 style={{marginBottom:12}}>Model details</h2>
+            <div className="cards">
+              <Card icon={<Brain/>}      title="Architecture"         value={scen.architecture}                         sub={ai.archDesc}/>
+              <Card icon={<Cpu/>}        title="Model size"           value={scen.modelSize}                            sub={`~${AI_MODELS[scen.modelSize].trainMwh * 1000} kWh to train. Accuracy: ${rnd(ai.accuracy*100,0)}%.`}/>
+              <Card icon={<Target/>}     title="Accuracy"             value={`${rnd(ai.accuracy*100,0)}%`}              sub="Diagnostic accuracy on hold-out test set. Larger models gain marginally at high energy cost."/>
+              <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub="Accuracy % per monthly inference kWh. Use to compare architectures and model sizes. (Green AI metric)"/>
+            </div>
+          </section>
 
           {/* ── Phase 1: Training ── */}
-          {aiTab==='training' && (
-            <section style={{background:'none',boxShadow:'none',padding:0}}>
-              <h2 style={{marginBottom:12}}>Phase 1 — Training the model</h2>
-              <p className="note" style={{marginBottom:12}}>One-time energy cost. Track with CodeCarbon, EcoLogits, or Carbontracker. (Implementation Guide §4 · Metric 1)</p>
-              <div className="cards">
-                <Card icon={<Zap/>}        title="Total training energy"    value={`${ai.training.kwhTotal.toLocaleString()} kWh`}  sub={`One-time. Scaled by architecture (${scen.architecture}) and model size. (LLM-Energy PDF)`}/>
-                <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
-                <Card icon={<Gauge/>}      title="Estimated GPU compute"    value={`~${ai.training.gpuHours.toLocaleString()} h`}  sub="Estimated GPU hours at model GPU power draw. Actual depends on parallelism and hardware."/>
-                <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
-              </div>
-            </section>
-          )}
+          <section id="ai-training" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>Phase 1 — Training the model</h2>
+            <p className="note" style={{marginBottom:12}}>One-time energy cost. Track with CodeCarbon, EcoLogits, or Carbontracker. (Implementation Guide §4 · Metric 1)</p>
+            <div className="cards">
+              <Card icon={<Zap/>}        title="Total training energy"    value={`${ai.training.kwhTotal.toLocaleString()} kWh`}  sub={`One-time. Scaled by architecture (${scen.architecture}) and model size. (LLM-Energy PDF)`}/>
+              <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
+              <Card icon={<Gauge/>}      title="Estimated GPU compute"    value={`~${ai.training.gpuHours.toLocaleString()} h`}  sub="Estimated GPU hours at model GPU power draw. Actual depends on parallelism and hardware."/>
+              <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
+            </div>
+          </section>
 
           {/* ── Phase 2: Testing ── */}
-          {aiTab==='testing' && (
-            <section style={{background:'none',boxShadow:'none',padding:0}}>
-              <h2 style={{marginBottom:12}}>Phase 2 — Testing and validation</h2>
-              <p className="note" style={{marginBottom:12}}>One-time hold-out inference run. Proxy: DLP / CTDIvol correlate with net scan energy R²=0.87–0.92 (Schoen et al.), enabling energy inference from dose reports.</p>
-              <div className="cards">
-                <Card icon={<Zap/>}        title="Test set energy"          value={`${ai.testing.kwhTotal} kWh`}                   sub={`${ai.testing.studies} studies. One-time cost; small fraction of training energy.`}/>
-                <Card icon={<Leaf/>}       title="Test set CO₂e"            value={`${ai.testing.kgCo2e} kgCO₂e`}                 sub={`At ${ai.cloudCi} kgCO₂e/kWh. Include in model carbon disclosure.`}/>
-                <Card icon={<Target/>}     title="Test set size"            value={`${ai.testing.studies} studies`}               sub="Default hold-out set. Larger sets improve accuracy estimates but increase energy cost."/>
-                <Card icon={<BarChart3/>}  title="Precision mode"           value={scen.precision}                                 sub={`AMP (float16) saves ${ai.ampSavingPct}% inference energy with minimal accuracy loss. Apply to both test and inference.`}/>
-              </div>
-            </section>
-          )}
+          <section id="ai-testing" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>Phase 2 — Testing and validation</h2>
+            <p className="note" style={{marginBottom:12}}>One-time hold-out inference run. Proxy: DLP / CTDIvol correlate with net scan energy R²=0.87–0.92 (Schoen et al.), enabling energy inference from dose reports.</p>
+            <div className="cards">
+              <Card icon={<Zap/>}        title="Test set energy"          value={`${ai.testing.kwhTotal} kWh`}                   sub={`${ai.testing.studies} studies. One-time cost; small fraction of training energy.`}/>
+              <Card icon={<Leaf/>}       title="Test set CO₂e"            value={`${ai.testing.kgCo2e} kgCO₂e`}                 sub={`At ${ai.cloudCi} kgCO₂e/kWh. Include in model carbon disclosure.`}/>
+              <Card icon={<Target/>}     title="Test set size"            value={`${ai.testing.studies} studies`}               sub="Default hold-out set. Larger sets improve accuracy estimates but increase energy cost."/>
+              <Card icon={<BarChart3/>}  title="Precision mode"           value={scen.precision}                                 sub={`AMP (float16) saves ${ai.ampSavingPct}% inference energy with minimal accuracy loss. Apply to both test and inference.`}/>
+            </div>
+          </section>
 
           {/* ── Phase 3: Inference ── */}
-          {aiTab==='inference' && (
-            <section style={{background:'none',boxShadow:'none',padding:0}}>
-              <h2 style={{marginBottom:12}}>Phase 3 — Inference and deployment</h2>
-              <p className="note" style={{marginBottom:12}}>Inference scales with every study — this dominates the AI lifecycle energy cost. MRI cooling adds +45% to scanner energy during active acquisition (Heye/Vosshenrich). (Implementation Guide §4 · Metric 2)</p>
-              <div className="cards">
-                <Card icon={<Activity/>}   title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub="Per-inference energy including PUE and AMP factor. Scales with every request."/>
-                <Card icon={<Zap/>}        title="Monthly inference energy" value={`${ai.inference.kwhMonthly} kWh`}               sub={`Across ${ai.inference.studies.toLocaleString()} studies/month at ${scen.cloudProvider}.`}/>
-                <Card icon={<Gauge/>}      title="Lifetime inference total" value={`${ai.inference.kwhLifetime.toLocaleString()} kWh`} sub="36-month deployment. Inference typically exceeds training energy within 1–3 months."/>
-                <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh cooling estimate. Often overlooked environmental cost.`}/>
-              </div>
-            </section>
-          )}
+          <section id="ai-inference" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>Phase 3 — Inference and deployment</h2>
+            <p className="note" style={{marginBottom:12}}>Inference scales with every study — this dominates the AI lifecycle energy cost. MRI cooling adds +45% to scanner energy during active acquisition (Heye/Vosshenrich). (Implementation Guide §4 · Metric 2)</p>
+            <div className="cards">
+              <Card icon={<Activity/>}   title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub="Per-inference energy including PUE and AMP factor. Scales with every request."/>
+              <Card icon={<Zap/>}        title="Monthly inference energy" value={`${ai.inference.kwhMonthly} kWh`}               sub={`Across ${ai.inference.studies.toLocaleString()} studies/month at ${scen.cloudProvider}.`}/>
+              <Card icon={<Gauge/>}      title="Lifetime inference total" value={`${ai.inference.kwhLifetime.toLocaleString()} kWh`} sub="36-month deployment. Inference typically exceeds training energy within 1–3 months."/>
+              <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh cooling estimate. Often overlooked environmental cost.`}/>
+            </div>
+          </section>
 
           {/* ── Carbon ── */}
-          {aiTab==='carbon' && (
-            <section style={{background:'none',boxShadow:'none',padding:0}}>
-              <h2 style={{marginBottom:12}}>Carbon emissions summary</h2>
-              <p className="note" style={{marginBottom:12}}>Operational carbon uses cloud provider CI ({ai.cloudCi} kgCO₂e/kWh). Clinical savings use local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh). Global avg: 0.473 · EU avg: 0.237 (Vosshenrich)</p>
-              <div className="cards">
-                <Card icon={<Leaf/>}        title="Gross CO₂e/month"          value={`${ai.grossKgCo2e} kgCO₂e`}                 sub="Inference + amortised training + embodied GPU (all monthly)."/>
-                <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${AI_MODELS[scen.modelSize].embCo2Kg} kgCO₂e manufacturing, amortised 36 months. (ESR PP 2025)`}/>
-                <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`}          sub="Scanner time reduction + avoided scans. Replace with measured before/after metering."/>
-                <section className="card">
-                  <div className="cardHead"><BarChart3/><span>Net AI impact / month</span></div>
-                  <b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e} kgCO₂e</b>
-                  <p>{ai.netKgCo2e < 0 ? "Net positive — clinical savings outweigh full AI footprint." : "Net negative — AI costs currently exceed measured savings."}</p>
-                </section>
-              </div>
-            </section>
-          )}
+          <section id="ai-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>Carbon emissions summary</h2>
+            <p className="note" style={{marginBottom:12}}>Operational carbon uses cloud provider CI ({ai.cloudCi} kgCO₂e/kWh). Clinical savings use local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh). Global avg: 0.473 · EU avg: 0.237 (Vosshenrich)</p>
+            <div className="cards">
+              <Card icon={<Leaf/>}        title="Gross CO₂e/month"          value={`${ai.grossKgCo2e} kgCO₂e`}                 sub="Inference + amortised training + embodied GPU (all monthly)."/>
+              <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${AI_MODELS[scen.modelSize].embCo2Kg} kgCO₂e manufacturing, amortised 36 months. (ESR PP 2025)`}/>
+              <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`}          sub="Scanner time reduction + avoided scans. Replace with measured before/after metering."/>
+              <section className="card">
+                <div className="cardHead"><BarChart3/><span>Net AI impact / month</span></div>
+                <b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e} kgCO₂e</b>
+                <p>{ai.netKgCo2e < 0 ? "Net positive — clinical savings outweigh full AI footprint." : "Net negative — AI costs currently exceed measured savings."}</p>
+              </section>
+            </div>
+          </section>
 
           {/* ── Clinical ── */}
-          {aiTab==='clinical' && (
-            <section style={{background:'none',boxShadow:'none',padding:0}}>
-              <h2 style={{marginBottom:12}}>Clinical sustainability co-benefits</h2>
-              <p className="note" style={{marginBottom:12}}>Unnecessary imaging estimated at 20–50% of all scans (Implementation Guide §1). AI decision support targets the Prevent tier of the Recycling Pyramid.</p>
-              <div className="cards">
-                <Card icon={<TrendingDown/>} title="Scan time reduction"        value={`${ai.scanTimeReductPct}%`}                sub={`AI reconstruction/denoising. Saves ${ai.scanEnergySaved} kWh/month in scanner energy. (Radiol 2023: 45–89% range)`}/>
-                <Card icon={<Leaf/>}         title="Low-value imaging avoided"  value={`${ai.lowValueReductPct}%`}               sub={`~${ai.scansAvoided} scans/month avoided. Reduces energy, contrast waste, and data storage. (McKee 2024: up to 20%)`}/>
-                <Card icon={<Zap/>}          title="Scanner energy saved/month" value={`${ai.scanEnergySaved} kWh`}              sub="Direct hardware energy saving from shorter protocols and avoided acquisitions."/>
-                <Card icon={<AlertTriangle/>} title="Rebound effect risk"        value={ai.reboundRisk}                          sub="Faster reads may induce more scan orders, cancelling gains. Monitor scan volume after deployment. (Implementation Guide §4)"/>
-              </div>
-            </section>
-          )}
+          <section id="ai-clinical" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>Clinical sustainability co-benefits</h2>
+            <p className="note" style={{marginBottom:12}}>Unnecessary imaging estimated at 20–50% of all scans (Implementation Guide §1). AI decision support targets the Prevent tier of the Recycling Pyramid.</p>
+            <div className="cards">
+              <Card icon={<TrendingDown/>} title="Scan time reduction"        value={`${ai.scanTimeReductPct}%`}                sub={`AI reconstruction/denoising. Saves ${ai.scanEnergySaved} kWh/month in scanner energy. (Radiol 2023: 45–89% range)`}/>
+              <Card icon={<Leaf/>}         title="Low-value imaging avoided"  value={`${ai.lowValueReductPct}%`}               sub={`~${ai.scansAvoided} scans/month avoided. Reduces energy, contrast waste, and data storage. (McKee 2024: up to 20%)`}/>
+              <Card icon={<Zap/>}          title="Scanner energy saved/month" value={`${ai.scanEnergySaved} kWh`}              sub="Direct hardware energy saving from shorter protocols and avoided acquisitions."/>
+              <Card icon={<AlertTriangle/>} title="Rebound effect risk"        value={ai.reboundRisk}                          sub="Faster reads may induce more scan orders, cancelling gains. Monitor scan volume after deployment. (Implementation Guide §4)"/>
+            </div>
+          </section>
 
           {/* ── Benchmarks ── */}
-          {aiTab==='benchmarks' && (
-            <section>
-              <h2>Modality energy benchmarks</h2>
-              <p className="note" style={{marginBottom:12}}>Annual reference values from Vosshenrich et al. Idle state accounts for 50–66% of total energy (Schoen et al.: idle offers 14.9× more savings potential than active state).</p>
-              <div className="row" style={{fontWeight:700,color:'#2E7D32'}}><span>Modality</span><span>kWh / year</span><span style={{fontSize:12}}>Note</span></div>
-              {MODALITY_BENCHMARKS.map((m,i)=>(
-                <div key={i} className="row">
-                  <b>{m.modality}</b>
-                  <span>{m.kwhYear.toLocaleString()} kWh · {m.co2Year.toLocaleString()} kg CO₂e</span>
-                  <small>{m.note}</small>
-                </div>
-              ))}
-            </section>
-          )}
+          <section id="ai-benchmarks" className="aiSection" style={{marginTop:28}}>
+            <h2>Modality energy benchmarks</h2>
+            <p className="note" style={{marginBottom:12}}>Annual reference values from Vosshenrich et al. Idle state accounts for 50–66% of total energy (Schoen et al.: idle offers 14.9× more savings potential than active state).</p>
+            <div className="row" style={{fontWeight:700,color:'#2E7D32'}}><span>Modality</span><span>kWh / year</span><span style={{fontSize:12}}>Note</span></div>
+            {MODALITY_BENCHMARKS.map((m,i)=>(
+              <div key={i} className="row">
+                <b>{m.modality}</b>
+                <span>{m.kwhYear.toLocaleString()} kWh · {m.co2Year.toLocaleString()} kg CO₂e</span>
+                <small>{m.note}</small>
+              </div>
+            ))}
+          </section>
         </main>
       )}
 
