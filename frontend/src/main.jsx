@@ -1106,10 +1106,24 @@ function App() {
           <div>
             <p className="eyebrow">Radiology + AI + Planetary Health</p>
             <h1 style={{fontSize:52,lineHeight:1.05,margin:'0 0 20px'}}>How much CO₂ does your department emit?</h1>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
-              <Sel label="Department type" value={settings.profile} options={META.profiles} onChange={v=>set('profile',v)}/>
-              <Sel label="Region / grid"   value={settings.region}  options={META.regions}  onChange={v=>set('region',v)}/>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:16}}>
+              <Sel label="Department type" value={settings.profile}    options={META.profiles}    onChange={v=>set('profile',v)}/>
+              <Sel label="Region / grid"   value={settings.region}     options={META.regions}     onChange={v=>set('region',v)}/>
+              <Sel label="Time period"     value={settings.timePeriod} options={META.timePeriods} onChange={v=>set('timePeriod',v)}/>
             </div>
+            {settings.region === 'Editable custom' && (
+              <div style={{marginBottom:16}}>
+                <label style={{maxWidth:300,fontWeight:700,color:'#2E7D32',display:'flex',flexDirection:'column',gap:8,fontSize:14}}>
+                  Custom carbon intensity (kgCO₂e/kWh)
+                  <input
+                    type="number" min="0" max="2" step="0.001"
+                    value={settings.customCi}
+                    onChange={e=>set('customCi',e.target.value)}
+                  />
+                </label>
+                <p className="note" style={{marginTop:6,fontSize:12}}>Enter your local utility or national grid factor. Global avg: 0.473 · EU avg: 0.237 (Vosshenrich et al.)</p>
+              </div>
+            )}
             {!landingAIOpen ? (
               <button onClick={()=>setLandingAIOpen(true)} style={{background:'none',border:'1.5px dashed #81C784',color:'#2E7D32',borderRadius:14,padding:'8px 18px',cursor:'pointer',fontSize:14,fontWeight:600}}>
                 + Add AI / ML tools
@@ -1125,9 +1139,9 @@ function App() {
             )}
           </div>
           <div className="heroVisual">
-            <div style={{color:'#607d66',fontSize:13,marginBottom:8}}>{settings.profile} · {settings.region} · Monthly</div>
+            <div style={{color:'#607d66',fontSize:13,marginBottom:8}}>{settings.profile} · {settings.region} · {settings.timePeriod}</div>
             <div style={{fontSize:56,fontWeight:900,color:'#1b5e20',lineHeight:1}}>{fmtCo2(dash.scopes.scope2Kg + landingAICo2)}</div>
-            <div style={{color:'#2E7D32',fontWeight:700,fontSize:16,marginTop:4,marginBottom: landingAIOpen && landingAICo2>0 ? 8 : 20}}>CO₂ per month</div>
+            <div style={{color:'#2E7D32',fontWeight:700,fontSize:16,marginTop:4,marginBottom: landingAIOpen && landingAICo2>0 ? 8 : 20}}>CO₂ · {settings.timePeriod.toLowerCase()}</div>
             {landingAIOpen && landingAICo2>0 && (
               <div style={{fontSize:13,color:'#607d66',marginBottom:16}}>↑ includes {fmtCo2(landingAICo2)} from AI tools</div>
             )}
