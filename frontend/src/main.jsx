@@ -872,8 +872,10 @@ function App() {
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
   const setS = (key, val) => setScen(s => ({...s, [key]: val}));
   const [aiTab,   setAiTab]   = useState('model');
-  const [dashTab, setDashTab] = useState('energy');
+  const [dashTab, setDashTab] = useState('equiv');
   const [equivScope, setEquivScope] = useState('scope2');
+  const [landingAIOpen, setLandingAIOpen] = useState(false);
+  const [landingAI, setLandingAI] = useState({gpu:'NVIDIA A100 (80GB SXM4)', hoursPerDay:'8'});
   const [ecoCopied, setEcoCopied] = useState(false);
   const [ecoLabel, setEcoLabel] = useState({
     projectName: '',
@@ -916,14 +918,7 @@ function App() {
   const removeStorageLine = id => setCloudTracker(t => ({...t, storageLines: t.storageLines.filter(l => l.id !== id)}));
   const updateStorageLine = (id, field, val) => setCloudTracker(t => ({...t, storageLines: t.storageLines.map(l => l.id === id ? {...l, [field]: val} : l)}));
 
-  // Print the dashboard: synchronously render it before opening the dialog,
-  // then restore the export page once the dialog is dismissed.
-  const handlePrint = () => {
-    flushSync(() => setPage('dashboard'));
-    const restore = () => { setPage('export'); window.removeEventListener('afterprint', restore); };
-    window.addEventListener('afterprint', restore);
-    window.print();
-  };
+  const handlePrint = () => { window.print(); };
 
   // Persist settings to URL hash so links are shareable
   useEffect(() => { writeHash(settings); }, [settings]);
@@ -1030,6 +1025,17 @@ function App() {
 
   const cloudResult = useMemo(() => computeCloudCarbon(cloudTracker), [cloudTracker]);
 
+  const landingAIKwh = useMemo(() => {
+    if (!landingAIOpen) return 0;
+    const tdpKw = GPU_PRESETS[landingAI.gpu]?.tdpKw ?? 0.3;
+    const hours = parseFloat(landingAI.hoursPerDay) || 0;
+    return rnd(tdpKw * hours * 30 * (CLOUD['Local compute']?.pue ?? 1.5), 2);
+  }, [landingAIOpen, landingAI]);
+  const landingAICo2 = useMemo(() => {
+    if (!landingAIOpen) return 0;
+    return rnd(landingAIKwh * getCI(settings.region, settings.customCi), 2);
+  }, [landingAIOpen, landingAIKwh, settings.region, settings.customCi]);
+
   const chartEnergy = {
     labels: dash.byEquipment.map(x => x.equipment),
     datasets: [{
@@ -1080,8 +1086,8 @@ function App() {
     responsive:true,
   };
 
-  const pages = ['landing','input','dashboard','equiv','ai','cloudtrack','scenario','ecolabel','export'];
-  const PAGE_LABELS = {landing:'Landing', input:'Input', dashboard:'Dashboard', equiv:'Equivalencies', ai:'AI', cloudtrack:'Cloud Carbon', scenario:'Scenario', ecolabel:'Eco-label', export:'References/Report'};
+  const pages = ['landing','dashboard','ai','cloudtrack','scenario','ecolabel'];
+  const PAGE_LABELS = {landing:'Home', dashboard:'Dashboard', ai:'AI', cloudtrack:'Cloud Carbon', scenario:'Scenario', ecolabel:'Eco-label'};
 
   return (
     <>
@@ -1094,79 +1100,77 @@ function App() {
         </nav>
       </header>
 
-      {/* ── Landing ── */}
+      {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
         <main className="hero">
           <div>
             <p className="eyebrow">Radiology + AI + Planetary Health</p>
-            <h1>Measure. Optimize. Sustain.</h1>
-            <p>EcoRad estimates environmental impact from imaging operations, infrastructure, consumables, patient workflows, and AI tool use.</p>
-            <button onClick={()=>setPage('input')}>Get started →</button>
+            <h1 style={{fontSize:52,lineHeight:1.05,margin:'0 0 20px'}}>How much CO₂ does your department emit?</h1>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
+              <Sel label="Department type" value={settings.profile} options={META.profiles} onChange={v=>set('profile',v)}/>
+              <Sel label="Region / grid"   value={settings.region}  options={META.regions}  onChange={v=>set('region',v)}/>
+            </div>
+            {!landingAIOpen ? (
+              <button onClick={()=>setLandingAIOpen(true)} style={{background:'none',border:'1.5px dashed #81C784',color:'#2E7D32',borderRadius:14,padding:'8px 18px',cursor:'pointer',fontSize:14,fontWeight:600}}>
+                + Add AI / ML tools
+              </button>
+            ) : (
+              <div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:8}}>
+                  <Sel label="GPU type"    value={landingAI.gpu}         options={META.gpuModels}                   onChange={v=>setLandingAI(a=>({...a,gpu:v}))}/>
+                  <Sel label="Hours / day" value={landingAI.hoursPerDay} options={['2','4','6','8','12','16','24']} onChange={v=>setLandingAI(a=>({...a,hoursPerDay:v}))}/>
+                </div>
+                <button onClick={()=>setLandingAIOpen(false)} style={{background:'none',border:'none',color:'#607d66',cursor:'pointer',fontSize:13,padding:0}}>✕ Remove AI</button>
+              </div>
+            )}
           </div>
           <div className="heroVisual">
-            <Logo/>
-            <p>Set your region and time period on the <strong>input</strong> page to customise every number in the dashboard.</p>
+            <div style={{color:'#607d66',fontSize:13,marginBottom:8}}>{settings.profile} · {settings.region} · Monthly</div>
+            <div style={{fontSize:56,fontWeight:900,color:'#1b5e20',lineHeight:1}}>{fmtCo2(dash.scopes.scope2Kg + landingAICo2)}</div>
+            <div style={{color:'#2E7D32',fontWeight:700,fontSize:16,marginTop:4,marginBottom: landingAIOpen && landingAICo2>0 ? 8 : 20}}>CO₂ per month</div>
+            {landingAIOpen && landingAICo2>0 && (
+              <div style={{fontSize:13,color:'#607d66',marginBottom:16}}>↑ includes {fmtCo2(landingAICo2)} from AI tools</div>
+            )}
+            <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:24}}>
+              {[
+                {icon:<Car style={{width:18,height:18}}/>,     n:Math.round((dash.scopes.scope2Kg+landingAICo2)/0.17).toLocaleString(), label:'km driven by car'},
+                {icon:<Plane style={{width:18,height:18}}/>,   n:String(rnd((dash.scopes.scope2Kg+landingAICo2)/255,1)),                label:'short-haul flights'},
+                {icon:<TreePine style={{width:18,height:18}}/>,n:Math.round((dash.scopes.scope2Kg+landingAICo2)/21).toLocaleString(),  label:'tree-years to offset'},
+              ].map((e,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{color:'#2E7D32'}}>{e.icon}</span>
+                  <strong style={{color:'#263238'}}>{e.n}</strong>
+                  <span style={{color:'#607d66',fontSize:14}}>{e.label}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setPage('dashboard')}>Full breakdown →</button>
           </div>
         </main>
       )}
 
-      {/* ── Input ── */}
-      {page==='input' && (
-        <main>
-          <h1>Data input</h1>
-          <p className="note">These settings recalculate the entire dashboard in real time.</p>
-          <div className="grid grid3">
-            <Sel label="Department profile" value={settings.profile}     options={META.profiles}     onChange={v=>set('profile',v)}/>
-            <Sel label="Intended use"       value={settings.intendedUse} options={META.intendedUses} onChange={v=>set('intendedUse',v)}/>
-            <Sel label="Region / grid"      value={settings.region}      options={META.regions}      onChange={v=>set('region',v)}/>
-            <Sel label="Metric type"        value={settings.metricType}  options={META.metricTypes}  onChange={v=>set('metricType',v)}/>
-            <Sel label="Time period"        value={settings.timePeriod}  options={META.timePeriods}  onChange={v=>set('timePeriod',v)}/>
-          </div>
-          {settings.region === 'Editable custom' && (
-            <div style={{marginTop:16}}>
-              <label style={{maxWidth:320}}>
-                Custom carbon intensity (kgCO₂e/kWh)
-                <input
-                  type="number" min="0" max="2" step="0.001"
-                  value={settings.customCi}
-                  onChange={e => set('customCi', e.target.value)}
-                  style={{marginTop:8}}
-                />
-              </label>
-              <p className="note" style={{marginTop:6}}>Enter your local utility or national grid factor. Check your electricity provider or national statistics office. Global avg: 0.473 · EU avg: 0.237 (Vosshenrich et al.)</p>
-            </div>
-          )}
-          <div className="inputSummary">
-            <p>Carbon intensity for <strong>{settings.region}</strong>: <strong>{getCI(settings.region, settings.customCi)} kgCO₂e/kWh</strong> <span className="note">— {settings.region === 'Editable custom' ? 'custom value — edit above.' : 'Our World in Data, 2022–2023 national average. Replace with local utility data for higher accuracy.'}</span></p>
-            <p>Showing <strong>{settings.timePeriod.toLowerCase()}</strong> figures — multiplier ×{TIME_MULT[settings.timePeriod]}</p>
-            <p className="note">Equipment power defaults: MRI 30 kW active (Heye et al., JMRI 2023 · DOI 10.1002/jmri.28994); CT 60 kW active (Acra 2024 · DOI 10.1016/j.acra.2024.05.004). See <a href="https://github.com/takinci/EcoRad/blob/main/sources.md" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">sources.md</a> for all citations.</p>
-            <button onClick={()=>setPage(settings.metricType==='AI net impact' ? 'ai' : 'dashboard')} style={{marginTop:16}}>
-              View {settings.metricType==='AI net impact' ? 'AI dashboard' : 'dashboard'} →
-            </button>
-          </div>
-        </main>
-      )}
 
       {/* ── Dashboard ── */}
       {page==='dashboard' && (
         <main>
-          <h1>{settings.profile} <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
-          {settings.metricType !== 'Energy' && (
-            <p className="note" style={{marginBottom:16}}>
-              Showing all metrics — <strong>{settings.metricType}</strong> sections highlighted.{' '}
-              {settings.intendedUse !== 'Estimate annual footprint' && <>Intended use: <em>{settings.intendedUse}</em>.</>}
-            </p>
-          )}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
+            <h1 style={{margin:0}}>{settings.profile} <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
+            <div style={{display:'flex',gap:8}}>
+              <button className="download" onClick={()=>downloadCSV(dash)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
+              <button className="download" onClick={handlePrint} style={{padding:'8px 14px',fontSize:13}}><Download/>Print / PDF</button>
+            </div>
+          </div>
 
           {/* ── Sticky tab nav ── */}
           <div className="stickyControls">
             <div className="aiSummary">
-              <span>Total energy <b>{fmtKwh(dash.totals.kwh)}{dash.totals.label}</b></span>
-              <span>Scope 2 CO₂ <b>{fmtCo2(dash.scopes.scope2Kg)}</b></span>
+              <span>Total energy <b>{fmtKwh(dash.totals.kwh + landingAIKwh)}{dash.totals.label}</b></span>
+              <span>Scope 2 CO₂ <b>{fmtCo2(dash.scopes.scope2Kg + landingAICo2)}</b></span>
+              {landingAIOpen && <span>AI tools <b>{fmtCo2(landingAICo2)}</b></span>}
               <span>Avoidable idle <b>{fmtKwh(dash.totals.idleWasteKwh)}</b></span>
             </div>
             <div className="aiTabs">
-              {[['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources'],['equiv','Equivalencies']].map(([id,label])=>(
+              {[['equiv','What it means'],['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources']].map(([id,label])=>(
                 <button key={id} className={dashTab===id?'on':''} onClick={()=>{
                   setDashTab(id);
                   document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1175,27 +1179,47 @@ function App() {
             </div>
           </div>
 
-          {/* ── 1. Energy consumption ── */}
-          <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
-            <h2 style={{marginBottom:12,color: settings.metricType==='Energy' ? '#1b5e20' : undefined}}>1. Energy consumption {settings.metricType==='Energy' && <span className="badge">viewing</span>}</h2>
+          {/* ── What it means (equivalencies — first) ── */}
+          <section id="dash-equiv" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
+            <h2 style={{marginBottom:12}}>What it means in everyday terms <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(Scope 2 electricity)</span></h2>
             <div className="cards">
-              <Card icon={<Gauge/>}       title={`Total electricity ${dash.totals.label}`}    value={fmtKwh(dash.totals.kwh)}                  sub="All scanners, PACS, workstations, and servers." style={{gridColumn:'span 4'}}/>
-              <Card icon={<Activity/>}    title={`Active scanning ${dash.totals.label}`}      value={fmtKwh(dash.totals.activeKwh)}            sub={`${dash.totals.activePct}% of total — energy during actual scan acquisition.`}/>
-              <Card icon={<TrendingDown/>} title={`Idle + standby ${dash.totals.label}`}      value={fmtKwh(dash.totals.idleKwh)}              sub={`${dash.totals.idlePct}% of total — between scans and overnight. Primary optimisation target.`}/>
-              <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}      value={fmtKwh(dash.totals.idleWasteKwh)}         sub="Recoverable by standby / power-off policies."/>
-              <Card icon={<Activity/>}    title="Energy per imaging scan"                     value={`${dash.totals.energyPerScan} kWh`}       sub="Total ÷ all scans. Use for modality benchmarking and protocol optimisation."/>
+              <Card icon={<Car/>}      title="km driven by car"     value={Math.round((dash.scopes.scope2Kg+landingAICo2)/0.17).toLocaleString()} sub="Average petrol car at 0.17 kgCO₂/km (DEFRA 2023)."/>
+              <Card icon={<Plane/>}    title="Short-haul flights"   value={String(rnd((dash.scopes.scope2Kg+landingAICo2)/255,1))}               sub="Economy passenger seats at 255 kgCO₂ each (ICAO 2023)."/>
+              <Card icon={<TreePine/>} title="Tree-years to offset" value={Math.round((dash.scopes.scope2Kg+landingAICo2)/21).toLocaleString()}   sub="Trees growing for 1 year absorbing ~21 kgCO₂/yr each."/>
+              <Card icon={<Activity/>} title="Smartphone charges"   value={Math.round(dash.totals.kwh/0.012).toLocaleString()}                    sub="Full charges at 12 Wh each."/>
+            </div>
+            {landingAIOpen && landingAICo2>0 && (
+              <p className="note" style={{marginTop:10}}>AI tools contribute <strong>{fmtCo2(landingAICo2)}</strong>{dash.totals.label} — {rnd(landingAICo2/(dash.scopes.scope2Kg+landingAICo2)*100,1)}% of total.{' '}
+                <button onClick={()=>setPage('ai')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:'0 2px',fontSize:13,fontWeight:600,boxShadow:'none'}}>Full AI analysis →</button>
+              </p>
+            )}
+            <p className="note" style={{marginTop:8}}>Also equivalent to <strong>{dash.equivalencies.household_years}</strong> household electricity years.{' '}
+              <button onClick={()=>setPage('equiv')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:'0 2px',fontSize:13,fontWeight:600,boxShadow:'none'}}>More equivalencies →</button>
+            </p>
+          </section>
+
+          {/* ── 1. Energy consumption ── */}
+          <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:12}}>1. Energy consumption</h2>
+            <div className="cards">
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh + landingAIKwh)}  sub={`All scanners, PACS, workstations${landingAIOpen?' and AI tools':''}.`} style={{gridColumn:'span 4'}}/>
+              <Card icon={<Activity/>}     title={`Active scanning ${dash.totals.label}`}    value={fmtKwh(dash.totals.activeKwh)}            sub={`${dash.totals.activePct}% of total — energy during actual scan acquisition.`}/>
+              <Card icon={<TrendingDown/>} title={`Idle + standby ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleKwh)}              sub={`${dash.totals.idlePct}% of total — between scans and overnight. Primary optimisation target.`}/>
+              <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}         sub="Recoverable by standby / power-off policies."/>
+              <Card icon={<Activity/>}     title="Energy per imaging scan"                   value={`${dash.totals.energyPerScan} kWh`}       sub="Total ÷ all scans. Use for modality benchmarking and protocol optimisation."/>
+              {landingAIOpen && <Card icon={<Cpu/>} title={`AI tools estimate ${dash.totals.label}`} value={fmtKwh(landingAIKwh)} sub={`${landingAI.gpu} · ${landingAI.hoursPerDay} h/day · local PUE 1.5. For detailed analysis use the AI tab.`}/>}
             </div>
           </section>
 
           {/* ── 2. Carbon emissions ── */}
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:12,color: settings.metricType==='Carbon' ? '#1b5e20' : undefined}}>2. Carbon emissions — GHG Protocol scopes {settings.metricType==='Carbon' && <span className="badge">viewing</span>}</h2>
+            <h2 style={{marginBottom:12}}>2. Carbon emissions — GHG Protocol scopes</h2>
             <p className="note" style={{marginBottom:12}}>Scope 1: direct fuel (estimated). Scope 2: purchased electricity (calculated). Scope 3: hardware embodied carbon + patient travel (estimated). All {dash.totals.label}.</p>
             <div className="cards">
-              <Card icon={<Factory/>}    title="Scope 1 — Direct"             value={fmtCo2(dash.scopes.scope1Kg)}           sub="Backup generators, medical gas. Estimated 8% of Scope 2 (McKee 2024)."/>
-              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"        value={fmtCo2(dash.scopes.scope2Kg)}           sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Primary measured scope.`}/>
-              <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon"    value={fmtCo2(dash.scopes.scope3EmbKg)}        sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
-              <Card icon={<Car/>}        title="Scope 3 — Patient travel"     value={fmtCo2(dash.scopes.scope3TravelKg)}     sub={`${dash.scopes.imagingScans.toLocaleString()} scans × ${PATIENT_KM_RT} km avg round trip.`}/>
+              <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={fmtCo2(dash.scopes.scope1Kg)}       sub="Backup generators, medical gas. Estimated 8% of Scope 2 (McKee 2024)."/>
+              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}       sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Primary measured scope.`}/>
+              <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
+              <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={fmtCo2(dash.scopes.scope3TravelKg)} sub={`${dash.scopes.imagingScans.toLocaleString()} scans × ${PATIENT_KM_RT} km avg round trip.`}/>
             </div>
             <section style={{marginTop:16}}>
               <h2>Scope 1 / 2 / 3 breakdown</h2>
@@ -1214,10 +1238,10 @@ function App() {
           <section id="dash-infrastructure" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>3. Infrastructure and hardware</h2>
             <div className="cards">
-              <Card icon={<Cpu/>}         title="Top idle waster"               value={dash.topOpportunities[0]?.equipment ?? '—'}               sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
-              <Card icon={<Activity/>}    title="Hardware lifespans"             value="MRI 15 yr / CT 12 yr"                                      sub="X-ray 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
-              <Card icon={<TrendingDown/>} title="Carbon intensity"              value={`${dash.ci} kgCO₂e/kWh`}                                  sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
-              <Card icon={<Gauge/>}       title="Scope 3 total"                  value={fmtCo2(dash.scopes.scope3Kg)}                             sub="Embodied + patient travel combined. Often larger than Scope 2 in a full lifecycle view."/>
+              <Card icon={<Cpu/>}          title="Top idle waster"    value={dash.topOpportunities[0]?.equipment ?? '—'}          sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
+              <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="X-ray 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
+              <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
+              <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg)}                       sub="Embodied + patient travel combined. Often larger than Scope 2 in a full lifecycle view."/>
             </div>
             <section style={{marginTop:12}}>
               <h2>Top 5 improvement opportunities — idle energy</h2>
@@ -1233,26 +1257,14 @@ function App() {
 
           {/* ── 4. Resource metrics ── */}
           <section id="dash-resources" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:12,color: settings.metricType==='Water' ? '#1b5e20' : undefined}}>4. Resource footprint {settings.metricType==='Water' && <span className="badge">viewing</span>}</h2>
+            <h2 style={{marginBottom:12}}>4. Resource footprint</h2>
             <p className="note" style={{marginBottom:12}}>Replace defaults with procurement records, waste manifests, and water bills for publication-quality figures.</p>
             <div className="cards">
-              <Card icon={<Droplets/>}   title={`Water footprint ${dash.totals.label}`}       value={fmtL(dash.resources.waterLitres)}           sub={`${WATER_PER_KWH} L/kWh cooling estimate. Google Cloud 0.45 L/kWh; local servers ~2 L/kWh.`}/>
-              <Card icon={<FileText/>}   title={`Paper consumption ${dash.totals.label}`}     value={`${dash.resources.paperKg} kg`}                     sub={`~${PAPER_G_PER_ENC}g/encounter digital workflow. Full film-based: ~200g. (ESR Green Imaging)`}/>
-              <Card icon={<Trash2/>}     title={`Hazardous waste ${dash.totals.label}`}       value={`${dash.resources.hazardousKg} kg`}                 sub="Contrast media disposal, sharps. Replace with waste manifest data."/>
-              <Card icon={<Leaf/>}       title={`Total Scope 2 carbon ${dash.totals.label}`}  value={fmtCo2(dash.scopes.scope2Kg)}                       sub="All electricity-derived emissions. Primary target for renewable energy procurement."/>
+              <Card icon={<Droplets/>} title={`Water footprint ${dash.totals.label}`}      value={fmtL(dash.resources.waterLitres)}  sub={`${WATER_PER_KWH} L/kWh cooling estimate. Google Cloud 0.45 L/kWh; local servers ~2 L/kWh.`}/>
+              <Card icon={<FileText/>} title={`Paper consumption ${dash.totals.label}`}    value={`${dash.resources.paperKg} kg`}    sub={`~${PAPER_G_PER_ENC}g/encounter digital workflow. Full film-based: ~200g. (ESR Green Imaging)`}/>
+              <Card icon={<Trash2/>}   title={`Hazardous waste ${dash.totals.label}`}      value={`${dash.resources.hazardousKg} kg`} sub="Contrast media disposal, sharps. Replace with waste manifest data."/>
+              <Card icon={<Leaf/>}     title={`Total Scope 2 carbon ${dash.totals.label}`} value={fmtCo2(dash.scopes.scope2Kg)}      sub="All electricity-derived emissions. Primary target for renewable energy procurement."/>
             </div>
-          </section>
-
-          {/* ── 5. Equivalencies ── */}
-          <section id="dash-equiv" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:12}}>5. Real-world equivalencies <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(Scope 2 electricity only)</span></h2>
-            <div className="cards">
-              <Card icon={<Car/>}        title="Car km equivalent"      value={dash.equivalencies.car_km.toLocaleString()}           sub="km driven by average petrol car at 0.17 kgCO₂/km (DEFRA 2023)."/>
-              <Card icon={<Activity/>}   title="Phone charges"          value={dash.equivalencies.phone_charges.toLocaleString()}    sub="Smartphone full charges at 12 Wh each."/>
-              <Card icon={<TreePine/>}   title="Tree-years to offset"   value={dash.equivalencies.trees_year.toLocaleString()}       sub="Trees growing for 1 year absorbing ~21 kgCO₂/yr each."/>
-              <Card icon={<Plane/>}      title="Short-haul flights"     value={dash.equivalencies.flights_short.toLocaleString()}    sub="Economy passenger seats at 255 kgCO₂ each (ICAO 2023)."/>
-            </div>
-            <p className="note" style={{marginTop:12}}>Also equivalent to <strong>{dash.equivalencies.household_years}</strong> household electricity years (3 500 kWh/yr average).</p>
           </section>
         </main>
       )}
@@ -1962,30 +1974,10 @@ function App() {
         </main>
       )}
 
-      {/* ── Export ── */}
-      {page==='export' && (
-        <main>
-          <h1>References / Report</h1>
-          <p>Every report should include the assumptions table, confidence level, units, and citation fields.</p>
-          <button className="download" onClick={()=>downloadCSV(dash)}><Download/>Download CSV ({settings.timePeriod})</button>
-          <button className="download" onClick={handlePrint} style={{marginLeft:'12px'}}><Download/>Print / Save as PDF</button>
-          <section style={{marginTop:24}}>
-            <h2>Key assumptions and sources</h2>
-            <p className="note">Carbon intensity: Our World in Data 2022–2023 national averages (ourworldindata.org/grapher/carbon-intensity-electricity).</p>
-            <p className="note">MRI active power 30 kW: Heye et al. J Magn Reson Imaging 2023 · DOI 10.1002/jmri.28994.</p>
-            <p className="note">CT active power 60 kW: Acra 2024 · DOI 10.1016/j.acra.2024.05.004; CJRS 2022 · DOI 10.1177/08465371221133074.</p>
-            <p className="note">AI footprint methodology: Doo FX et al. Radiology 2024 · DOI 10.1148/radiol.232030.</p>
-            <p className="note">Optimal LLM energy efficiency: Doo FX et al. Radiology 2024 · DOI 10.1148/radiol.240320.</p>
-            <p className="note">AI sustainability paradox: Kocak B et al. Insights Imaging 2025 · DOI 10.1186/s13244-025-01962-2.</p>
-            <p className="note">Intervention savings: McKee BJ et al. Radiology 2024 · DOI 10.1148/radiol.240219; ESR Position Paper 2025.</p>
-            <p className="note">Full reference list: <a href="https://github.com/takinci/EcoRad/blob/main/sources.md" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">sources.md on GitHub</a>. All numbers are defaults — replace with locally measured values for publication-quality reporting.</p>
-          </section>
-        </main>
-      )}
-
       <footer>
         <Logo dark/>
         <span>ESG-ready sustainability intelligence for academic hospitals, enterprise healthcare systems, radiology AI teams, and scientific reporting.</span>
+        <a href="https://github.com/takinci/EcoRad/blob/main/sources.md" style={{color:'#A5D6A7',fontSize:13,whiteSpace:'nowrap'}} target="_blank" rel="noreferrer">All assumptions &amp; citations: sources.md</a>
       </footer>
     </>
   );
