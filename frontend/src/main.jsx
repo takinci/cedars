@@ -2528,10 +2528,34 @@ function App() {
           </>)}
 
           {ecoLabelTab==='dept' && (<>
-            <p className="note" style={{marginBottom:24}}>
+            <p className="note" style={{marginBottom:16}}>
               Generate a department-level sustainability label for ESG reports, accreditation submissions, or public sustainability disclosures.
               Tier rating (A–E) is based on kgCO₂e per imaging study, benchmarked against published radiology carbon intensity data (Vosshenrich R et al., Curr Opin Urol 2024).
             </p>
+
+            {/* ── Pre-fill from Radiology Dashboard ── */}
+            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:24,padding:'12px 16px',background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16}}>
+              <button onClick={()=>{
+                const mult = TIME_MULT[settings.timePeriod] ?? 1;
+                const monthlyKwh = dash.totals.kwh / mult;
+                const monthlyStudies = dash.scopes.imagingScans / mult;
+                setDeptLabel(d=>({
+                  ...d,
+                  region: settings.region,
+                  ...(monthlyKwh > 0     ? {annualKwh:     String(Math.round(monthlyKwh * 12))}     : {}),
+                  ...(monthlyStudies > 0 ? {annualStudies:  String(Math.round(monthlyStudies * 12))} : {}),
+                }));
+              }} style={{
+                display:'inline-flex',alignItems:'center',gap:7,
+                background:'#2E7D32',color:'white',border:'none',borderRadius:10,
+                padding:'7px 16px',cursor:'pointer',fontSize:12,fontWeight:700,
+              }}>
+                <ArrowRight size={13}/> Pre-fill from dashboards
+              </button>
+              <span style={{fontSize:11,color:'#607d66'}}>
+                Copies grid region from settings · Annualises electricity (kWh) and imaging studies from Radiology Dashboard
+              </span>
+            </div>
 
             <div className="inputSummary" style={{marginBottom:24}}>
               <h2 style={{marginTop:0,marginBottom:16,color:'#1b5e20'}}>Department identity</h2>
