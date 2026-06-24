@@ -106,12 +106,16 @@ const MRI_CARDS = [
 // Reconstruction: on-site low-latency inference (Radiol 2023, doi:10.1148/radiol.230441).
 const AI_PRESETS = [
   {key:'cad',   label:'Detection AI',          Icon:Target,    gpu:'NVIDIA RTX A6000',       hoursPerDay:'6',  numGpus:'1', deployment:'Local compute', sublabel:'Detection / classification',
+   aiDash:{architecture:'CNN / ResNet',            modelSize:'Small (< 100M params)',     precision:'float32 (standard)'},
    tooltip:'RTX A6000 (300 W TDP) — typical dedicated workstation GPU for on-site CAD inference. 6 h/day reflects active clinical hours for real-time detection on incoming studies. Local deployment for low-latency PACS integration. Sources: Doo et al. Radiology 2024 (doi:10.1148/radiol.232030); Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2); NVIDIA DC Specs.'},
   {key:'llm',   label:'LLM Report Assistant',  Icon:Brain,     gpu:'NVIDIA A100 (40GB PCIe)',hoursPerDay:'8',  numGpus:'1', deployment:'AWS',           sublabel:'NLP / report generation',
+   aiDash:{architecture:'Vision Transformer (ViT)', modelSize:'Large (> 1B params)',       precision:'float16 / AMP'},
    tooltip:'A100 40 GB PCIe (250 W TDP) — sufficient VRAM for medical LLM inference without full SXM power draw. 8 h/day = active clinical day. AWS reflects common cloud hosting of large language models for scalability and model update flexibility. Sources: Doo et al. Radiology 2024 (doi:10.1148/radiol.240320, LLM energy scaling); Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2).'},
   {key:'recon', label:'Reconstruction AI',     Icon:Cpu,       gpu:'NVIDIA RTX A6000',       hoursPerDay:'12', numGpus:'1', deployment:'Local compute', sublabel:'MR/CT deep learning recon',
+   aiDash:{architecture:'Diffusion / Generative AI',modelSize:'Medium (100M–1B params)',   precision:'float16 / AMP'},
    tooltip:'RTX A6000 (300 W TDP) for inline MR/CT reconstruction (denoising, acceleration, or synthetic imaging). 12 h/day accounts for reconstruction running during scanning hours plus overnight batch jobs. Local deployment required for low-latency integration with scanner console. Sources: Radiol 2023 (doi:10.1148/radiol.230441); Doo 2024 (doi:10.1148/radiol.232030).'},
   {key:'seg',   label:'Segmentation AI',       Icon:BarChart3, gpu:'NVIDIA T4',              hoursPerDay:'4',  numGpus:'1', deployment:'Local compute', sublabel:'Organ / lesion U-Net',
+   aiDash:{architecture:'U-Net (segmentation)', modelSize:'Small (< 100M params)',          precision:'float32 (standard)'},
    tooltip:'NVIDIA T4 (70 W TDP) — energy-efficient inference GPU well-matched to U-Net segmentation models. 4 h/day for scheduled batch processing (often overnight or off-peak). Local deployment for data-privacy compliance. T4 TDP significantly lower than data-centre GPUs — a good default for lightweight segmentation. Sources: Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2); Doo 2024 (doi:10.1148/radiol.232030); NVIDIA DC Specs.'},
   {key:'custom',label:'Custom',                Icon:Plus,      gpu:'NVIDIA A100 (80GB SXM4)',hoursPerDay:'8',  numGpus:'1', deployment:'Local compute', sublabel:'Set all parameters manually',
    tooltip:null},
@@ -1886,6 +1890,19 @@ function App() {
 
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls">
+            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:6,marginBottom:12}}>
+              <span style={{fontSize:11,color:'#90a4ae',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',marginRight:4}}>Quick load:</span>
+              {AI_PRESETS.filter(p=>p.aiDash).map(({key,label,Icon,aiDash})=>(
+                <button key={key} onClick={()=>{setS('architecture',aiDash.architecture);setS('modelSize',aiDash.modelSize);setS('precision',aiDash.precision);}} style={{
+                  display:'inline-flex',alignItems:'center',gap:5,
+                  background: scen.architecture===aiDash.architecture && scen.modelSize===aiDash.modelSize ? '#c8e6c9' : '#f1f8f1',
+                  border:'1.5px solid #c8e6c9',borderRadius:10,padding:'4px 12px',
+                  cursor:'pointer',fontSize:11,fontWeight:700,color:'#2E7D32',
+                }}>
+                  <Icon size={11}/>{label}
+                </button>
+              ))}
+            </div>
             <div className="grid">
               <Sel label="Architecture"        value={scen.architecture}  options={META.architectures}   onChange={v=>setS('architecture',v)}/>
               <Sel label="Model size"          value={scen.modelSize}     options={META.modelSizes}      onChange={v=>setS('modelSize',v)}/>
@@ -2281,9 +2298,38 @@ function App() {
             Enter your model's actual training metrics to generate a standardised sustainability label for paper or conference submission.
             Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030).
           </p>
-          <p className="note" style={{marginBottom:24}}>
+          <p className="note" style={{marginBottom:16}}>
             Measure training energy with <a href="https://codecarbon.io/" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">CodeCarbon</a>, <code>nvidia-smi</code>, or your cloud provider's carbon dashboard for the most accurate figures.
           </p>
+
+          {/* ── Pre-fill from dashboards ── */}
+          <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:24,padding:'12px 16px',background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16}}>
+            <button onClick={()=>{
+              const ARCH_TASK = {
+                'CNN / ResNet':              'Classification',
+                'U-Net (segmentation)':      'Segmentation',
+                'EfficientNet':              'Classification',
+                'Vision Transformer (ViT)':  'Detection',
+                'Diffusion / Generative AI': 'Reconstruction',
+              };
+              setEcoLabel(e=>({
+                ...e,
+                ...(scen.architecture                 ? {architecture:      scen.architecture}                              : {}),
+                ...(ARCH_TASK[scen.architecture]       ? {taskType:          ARCH_TASK[scen.architecture]}                   : {}),
+                ...(dash.scopes.imagingScans > 0       ? {inferStudiesMonth: String(Math.round(dash.scopes.imagingScans))}   : {}),
+                ...(ai.inference?.kwhPerStudy != null  ? {inferKwhPerStudy:  String(ai.inference.kwhPerStudy)}               : {}),
+              }));
+            }} style={{
+              display:'inline-flex',alignItems:'center',gap:7,
+              background:'#2E7D32',color:'white',border:'none',borderRadius:10,
+              padding:'7px 16px',cursor:'pointer',fontSize:12,fontWeight:700,
+            }}>
+              <ArrowRight size={13}/> Pre-fill from dashboards
+            </button>
+            <span style={{fontSize:11,color:'#607d66'}}>
+              Copies architecture &amp; task from AI dashboard · Inference studies/month from Radiology dashboard · kWh/study from AI dashboard inference model
+            </span>
+          </div>
 
           {/* ── Form ── */}
           <div className="inputSummary" style={{marginBottom:24}}>
