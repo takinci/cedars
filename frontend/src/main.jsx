@@ -557,19 +557,23 @@ function computeAI(cloudProvider, region, modelSize, precision, architecture, cu
   const ampF  = PRECISION_FACTOR[precision]    ?? 1.0;
   const DEPLOY_MO    = Math.max(1,  parseInt(overrides.deployMonths) || 36);
   const TEST_STUDIES = Math.max(1,  parseInt(overrides.testStudies)  || 500);
-  const trainMwhBase = overrides.trainMwh && parseFloat(overrides.trainMwh) > 0
-    ? parseFloat(overrides.trainMwh)
-    : model.trainMwh;
+  const trainKwhCustom = overrides.trainKwh && parseFloat(overrides.trainKwh) > 0
+    ? parseFloat(overrides.trainKwh)
+    : null;
+  const trainMwhBase = !trainKwhCustom
+    ? model.trainMwh
+    : null;
   // Derive scan volume and per-scan energy from the user's equipment fleet
   const profileDash  = computeDashboard(region, 'Monthly', equipment, customCi);
   const STUDIES      = profileDash.scopes.imagingScans;               // imaging scans/month for this profile
   const AVG_SCAN_KWH = profileDash.totals.energyPerScan || 0.5;       // kWh/scan from this profile (fallback 0.5)
 
   // ── Phase 1: Training ────────────────────────────────────────────────────
-  // Total one-time training energy scaled by architecture and model size.
-  // Developer tools: CodeCarbon, EcoLogits, Carbontracker (Implementation Guide §4)
-  // Sources: LLM-Energy PDF; Doo 2024 (10.1148/radiol.232030)
-  const trainKwhTotal  = rnd(trainMwhBase * 1000 * arch.trainFactor, 0);
+  // trainKwhCustom: GPU-derived energy (tdpKw × n × hours × PUE) — arch factor already baked in.
+  // Default: literature estimate scaled by architecture and model size (arch.trainFactor).
+  const trainKwhTotal = trainKwhCustom !== null
+    ? rnd(trainKwhCustom, 0)
+    : rnd(trainMwhBase * 1000 * arch.trainFactor, 0);
   const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
   const trainGpuHours  = rnd(trainKwhTotal / model.gpuKw, 0); // estimated GPU compute time
   const trainKwhMonth  = rnd(trainKwhTotal / DEPLOY_MO, 2);   // amortised over deployment
@@ -1165,7 +1169,9 @@ function App() {
     modelSize: "Small (< 100M params)",
     precision: "float32 (standard)",
     architecture: "CNN / ResNet",
-    trainMwh: '',
+    trainGpu: '',
+    trainNumGpus: '1',
+    trainHours: '',
     testStudies: '500',
     deployMonths: '36',
   });
@@ -1266,7 +1272,14 @@ function App() {
   // Recalculate whenever settings change
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi), [settings.region, settings.timePeriod, settings.equipment, settings.customCi]);
   const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState), [scen.intervention, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState]);
-  const ai       = useMemo(() => computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment, {trainMwh: scen.trainMwh, testStudies: scen.testStudies, deployMonths: scen.deployMonths}), [scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment, scen.trainMwh, scen.testStudies, scen.deployMonths]);
+  const ai       = useMemo(() => {
+    const gpuPreset   = GPU_PRESETS[scen.trainGpu];
+    const trainH      = parseFloat(scen.trainHours) || 0;
+    const trainN      = Math.max(1, parseInt(scen.trainNumGpus) || 1);
+    const pue         = CLOUD[scen.cloudProvider]?.pue ?? 1.5;
+    const trainKwh    = gpuPreset && trainH > 0 ? rnd(gpuPreset.tdpKw * trainN * trainH * pue, 1) : 0;
+    return computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment, {trainKwh, testStudies: scen.testStudies, deployMonths: scen.deployMonths});
+  }, [scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment, scen.trainGpu, scen.trainNumGpus, scen.trainHours, scen.testStudies, scen.deployMonths]);
 
   const landingAIKwh = useMemo(() => {
     if (!landingAIOpen) return 0;
@@ -1959,39 +1972,55 @@ function App() {
               <Sel label="Precision / AMP"     value={scen.precision}     options={META.precisions}      onChange={v=>setS('precision',v)}/>
               <Sel label="Cloud / deployment"  value={scen.cloudProvider} options={META.cloudProviders}  onChange={v=>setS('cloudProvider',v)}/>
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginTop:10,paddingTop:10,borderTop:'1px solid #eef7ee'}}>
-              <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                Training energy (MWh)
-                <input type="number" min="0" step="0.1"
-                  value={scen.trainMwh}
-                  onChange={e=>setS('trainMwh',e.target.value)}
-                  placeholder={`default: ${AI_MODELS[scen.modelSize]?.trainMwh ?? '—'} MWh`}
-                  style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}
-                />
-              </label>
-              <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                Test set size (studies)
-                <input type="number" min="1"
-                  value={scen.testStudies}
-                  onChange={e=>setS('testStudies',e.target.value)}
-                  placeholder="default: 500"
-                  style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}
-                />
-              </label>
-              <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                Deployment lifespan (months)
-                <input type="number" min="1"
-                  value={scen.deployMonths}
-                  onChange={e=>setS('deployMonths',e.target.value)}
-                  placeholder="default: 36"
-                  style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}
-                />
-              </label>
+            <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid #eef7ee'}}>
+              {(()=>{
+                const gp = GPU_PRESETS[scen.trainGpu];
+                const h  = parseFloat(scen.trainHours) || 0;
+                const n  = Math.max(1, parseInt(scen.trainNumGpus) || 1);
+                const pue = CLOUD[scen.cloudProvider]?.pue ?? 1.5;
+                const estKwh = gp && h > 0 ? rnd(gp.tdpKw * n * h * pue, 1) : null;
+                return (<>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                    <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Training energy estimator</span>
+                    {estKwh !== null
+                      ? <span style={{fontSize:11,background:'#e8f5e9',color:'#2E7D32',padding:'2px 10px',borderRadius:10,fontWeight:700}}>{estKwh} kWh estimated</span>
+                      : <span style={{fontSize:11,color:'#90a4ae'}}>select GPU + hours below, or leave blank to use model-size default</span>
+                    }
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:8,marginBottom:8}}>
+                    <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                      Training GPU
+                      <select value={scen.trainGpu} onChange={e=>setS('trainGpu',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}>
+                        <option value="">— use model default —</option>
+                        {META.gpuModels.map(g=><option key={g} value={g}>{g}</option>)}
+                      </select>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                      # GPUs
+                      <input type="number" min="1" value={scen.trainNumGpus} onChange={e=>setS('trainNumGpus',e.target.value)} placeholder="1" style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                      Training hours
+                      <input type="number" min="0" step="0.5" value={scen.trainHours} onChange={e=>setS('trainHours',e.target.value)} placeholder="e.g. 48" style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}/>
+                    </label>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                    <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                      Test set size (studies)
+                      <input type="number" min="1" value={scen.testStudies} onChange={e=>setS('testStudies',e.target.value)} placeholder="default: 500" style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                      Deployment lifespan (months)
+                      <input type="number" min="1" value={scen.deployMonths} onChange={e=>setS('deployMonths',e.target.value)} placeholder="default: 36" style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:12,background:'white'}}/>
+                    </label>
+                  </div>
+                  <p className="note" style={{fontSize:11,marginTop:5,marginBottom:0}}>
+                    GPU TDP × count × hours × PUE → training energy. PUE is taken from the selected cloud/deployment above.
+                    Test set and lifespan affect amortisation and one-time test CO₂.
+                  </p>
+                </>);
+              })()}
             </div>
-            <p className="note" style={{fontSize:11,marginTop:5,marginBottom:0}}>
-              Training energy: enter actual kWh from CodeCarbon or EcoLogits — overrides the model-size default.
-              Test set and lifespan affect training cost amortisation and one-time test CO₂.
-            </p>
             <div className="aiSummary">
               <span>Net impact <b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e} kgCO₂e/mo</b></span>
               <span>Efficiency <b>{ai.efficiencyRatio} acc%/kWh</b></span>
@@ -2012,7 +2041,7 @@ function App() {
             <h2 style={{marginBottom:12}}>Model details</h2>
             <div className="cards">
               <Card icon={<Brain/>}      title="Architecture"         value={scen.architecture}                         sub={ai.archDesc}/>
-              <Card icon={<Cpu/>}        title="Model size"           value={scen.modelSize}                            sub={`~${AI_MODELS[scen.modelSize].trainMwh * 1000} kWh to train. Accuracy: ${rnd(ai.accuracy*100,0)}%.`}/>
+              <Card icon={<Cpu/>}        title="Model size"           value={scen.modelSize}                            sub={`${ai.training.kwhTotal} kWh to train${scen.trainGpu && parseFloat(scen.trainHours) > 0 ? ' (GPU estimate)' : ' (model default)'}. Accuracy: ${rnd(ai.accuracy*100,0)}%.`}/>
               <Card icon={<Target/>}     title="Accuracy"             value={`${rnd(ai.accuracy*100,0)}%`}              sub="Diagnostic accuracy on hold-out test set. Larger models gain marginally at high energy cost."/>
               <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub="Accuracy % per monthly inference kWh. Use to compare architectures and model sizes. (Green AI metric)"/>
             </div>
