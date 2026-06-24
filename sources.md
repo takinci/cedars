@@ -28,6 +28,7 @@ EcoRad stores uncertain literature values as transparent, editable defaults with
 |----|---------|
 | McKee-2024 | McKee BJ et al. *Planetary Health and Radiology: Why We Should Care and What We Can Do.* Radiology 2024. DOI: [10.1148/radiol.240219](https://doi.org/10.1148/radiol.240219). Used for intervention framing and the operational sustainability action categories. |
 | Doo-2024 | Doo FX et al. *Environmental Sustainability and AI in Radiology: A Double-Edged Sword.* Radiology 2024. DOI: [10.1148/radiol.232030](https://doi.org/10.1148/radiol.232030). Used for AI footprint vs. operational benefit framework; cloud PUE and carbon intensity discussion. |
+| Doo-JACR-2024 | Doo FX et al. *Sustainability in Radiology — Implementation Framework and Metrics Guide.* J Am Coll Radiol 2024. **[Add DOI]** This is the primary framework document referenced throughout EcoRad as "Implementation Guide". Provides: (1) GHG Protocol Scope 1/2/3 structure for radiology departments; (2) the "Recycling Pyramid" (Prevent unnecessary scans → Reduce scan energy → Recover/recycle) for AI sustainability prioritisation; (3) Scope 3 inclusions for radiology — staff commute, DICOM data transfer; (4) AI lifecycle metric definitions (§4): training energy (Metric 1), inference energy (Metric 2), per-study Software Carbon Intensity; (5) AI efficiency ratio (accuracy % per kWh). All "Implementation Guide §N" and "Doo et al. JACR 2024" references in the UI and `computeAI()` source code comments refer to this paper. |
 | ESR-GI | ESR Green Imaging Department self-assessment tool. https://www.myesr.org/greenid/. Intervention categories and self-assessment framing. |
 | ESR-eBook | ESR. *Sustainable Imaging* (eBook 28). https://www.myesr.org/app/uploads/2025/05/ESR_Modern_eBook_28.pdf. Comprehensive practice guidance. |
 | ESR-PP-2025 | *Sustainability in Radiology: Position Paper and Call to Action.* European Society of Radiology 2025. Intervention priorities and Scope 1/2/3 framing. |
@@ -98,6 +99,7 @@ EcoRad stores uncertain literature values as transparent, editable defaults with
 | ID | Citation |
 |----|---------|
 | Doo-2024 | See Radiology sustainability section. Primary reference for `computeAI()` footprint vs. benefit logic. |
+| Doo-JACR-2024 | See Radiology sustainability section. Defines the AI lifecycle phases used in `computeAI()`: Phase 1 training (one-time, amortised over deployment lifespan), Phase 2 testing/validation (one-time inference over hold-out set), Phase 3 inference/deployment (recurring, dominates lifetime cost). Sections §1–§4 define metrics referenced in AI Dashboard UI notes and card sub-texts. The "Recycling Pyramid" (Prevent → Reduce → Recover) displayed in the AI Dashboard header comes from §1. |
 | LLM-Energy | Doo FX, Savani D, Kanhere A, Carlos RC, Joshi A, Yi PH, Parekh VS. *Optimal Large Language Model Characteristics to Balance Accuracy and Energy Use for Sustainable Medical Applications.* Radiology 2024;312(2). DOI: [10.1148/radiol.240320](https://doi.org/10.1148/radiol.240320). Inference energy scaling with model size; underpins the model-efficiency intervention note. |
 | Planet-Health | Same as McKee-2024 above (DOI: [10.1148/radiol.240219](https://doi.org/10.1148/radiol.240219)). McKee BJ et al. *Planetary Health and Radiology: Why We Should Care and What We Can Do.* Radiology 2024. Framework for scoping AI footprint inside departmental Scope 2. |
 | AI-Sustainability | Same as Doo-2024 above (DOI: [10.1148/radiol.232030](https://doi.org/10.1148/radiol.232030)). Doo FX et al. *Environmental Sustainability and AI in Radiology: A Double-Edged Sword.* Radiology 2024. AI operational lifecycle, cloud carbon, and procurement guidance. |
@@ -150,6 +152,40 @@ Used in the Dashboard "What it means" tab and the Home page result panel to expr
 
 ---
 
+## Scope 3 metrics: staff commute, DICOM data transfer, and Software Carbon Intensity
+
+These three metrics were added to EcoRad based on gaps identified in Doo et al. JACR 2024 relative to common departmental reporting practice.
+
+| ID | Citation |
+|----|---------|
+| Doo-JACR-2024 | See Radiology sustainability section. Framework source for including staff commute and DICOM data transfer in departmental Scope 3, and for the per-study SCI metric. All three are described as actionable Scope 3 additions that most departments currently omit. |
+| DEFRA-2023 | See Equivalencies section. Staff commute emission factor: **0.17 kgCO₂e/km** (average petrol passenger car, round trip). Used in `staffCommuteCo2`: `staffCount × commuteKm × 2 × STAFF_DAYS_PER_MO × timeMult × 0.17`. |
+| Aslan-2018 | Aslan S, Mayers C, Koomey JG, France C. *Electricity Intensity of Internet Data Transmission: Untangling the Estimates.* J Industrial Ecology 2018;23(1):182–194. DOI: [10.1111/jiec.12630](https://doi.org/10.1111/jiec.12630). Fixed-line data-centre network average: **0.001 kWh/GB** (NET_KWH_PER_GB). Used for DICOM network transfer CO₂: `imagingScans × 0.3 GB/study × 0.001 kWh/GB × gridCI`. Note: covers data-centre network segment only; last-mile and end-user device energy not included. |
+| GSF-SCI | Green Software Foundation. *Software Carbon Intensity (SCI) Specification v1.0.* https://greensoftware.foundation/articles/software-carbon-intensity. DOI: [10.5281/zenodo.8369519](https://doi.org/10.5281/zenodo.8369519). Formula: **SCI = (E × I + M) / R** where E = operational energy (kWh), I = carbon intensity (kgCO₂e/kWh), M = embodied carbon, R = functional unit (one imaging study). Used in the "SCI — carbon per imaging study" card in the Dashboard. Cited alongside Doo-JACR-2024 as the standard metric for per-study carbon reporting. |
+
+**Staff count estimation from device fleet (`STAFF_PER_DEVICE`):**
+
+Staff commute headcount is derived automatically from the equipment configuration using NHS/British Institute of Radiology (BIR) workforce planning ratios. These represent whole-department FTE (radiologists, radiographers, nurses, physicists, admin, IT) per active device unit — not technologist-only counts. These are indicative defaults; replace with actual HR data for publication.
+
+| Device type | FTE/unit | Basis |
+|-------------|----------|-------|
+| MRI (0.35T) | 4 | Simple open-bore, less complex workflow |
+| MRI (1.5T / 3T) | 5 | Standard clinical MRI; BIR staffing norms |
+| MRI (7T) | 6 | Research / specialist; additional physicists |
+| CT | 4 | Standard clinical CT |
+| PET-CT | 5 | Specialist techs + radiologist + physicist |
+| Angio / IR suite | 6 | Radiologist + 2–3 techs/nurses + scrub |
+| Fluoroscopy | 3 | Shared tech + radiologist |
+| X-ray room | 3 | 1–2 radiographers + shared radiologist |
+| Ultrasound | 2 | Sonographer + shared radiologist |
+| Mammography | 2 | Radiographer + shared radiologist |
+| PACS / Servers | 2 | IT support staff |
+| Workstations | 1 | One reading radiologist per station |
+
+**References:** British Institute of Radiology. *Radiology Workforce Census.* 2023. https://www.bir.org.uk/. NHS England. *Diagnostic Imaging Dataset Statistical Release.* 2023. https://www.england.nhs.uk/statistics/statistical-work-areas/diagnostic-imaging-dataset/.
+
+---
+
 ## Cloud Carbon Tracker regional data
 
 | ID | Source | Used for |
@@ -174,5 +210,6 @@ Used in the Dashboard "What it means" tab and the Home page result panel to expr
 3. **Mark every input** as `measured`, `estimated`, or `assumed` (see confidence field in dashboard CSV).
 4. **Carbon intensity must be editable and region-specific.** National averages underestimate variation by utility or time of day.
 5. **Separate AI gross footprint from estimated sustainability benefits.** Net AI impact can be negative (net-positive) if AI reduces unnecessary scans.
-6. **Report Scope 1, 2, and 3 separately** where the data model supports it.
+6. **Report Scope 1, 2, and 3 separately** where the data model supports it. The Scope 1/2/3 structure follows the GHG Protocol as applied to radiology departments by **Doo-JACR-2024**. Scope 3 inclusions (embodied carbon, patient travel, staff commute, DICOM data transfer) are drawn from that framework.
 7. **Update defaults annually** as grids decarbonise and scanner technology improves.
+8. **AI lifecycle reporting follows Doo-JACR-2024 §4.** Training (Phase 1), testing/validation (Phase 2), and inference/deployment (Phase 3) are the three phases. Per-study Software Carbon Intensity (SCI) per the Green Software Foundation specification is the recommended single-number comparison metric for AI tools.
