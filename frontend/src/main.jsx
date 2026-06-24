@@ -30,13 +30,25 @@ const CARBON_INTENSITY = {
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
+// MRI field-strength variants. Power specs calibrated to MODALITY_BENCHMARKS annual kWh.
+// 3T: Heye JMRI 2023 (30 kW active mean) → ≈127 MWh/yr. 1.5T: high cryocooler idle → ≈233 MWh/yr.
+// 7T research: Heye 2023 45 kW active, high idle → ≈190 MWh/yr.
+// 0.35T permanent magnet: Klein 2024 → ≈18 MWh/yr (close to benchmark 16.1 MWh/yr).
+const MRI_VARIANTS = {
+  '3t':   {label:'3T',              active_kw:30, idle_kw:15,  standby_kw:5,   off_kw:0.5,  scans:1200, avoidable_idle_h:120},
+  '15t':  {label:'1.5T',            active_kw:22, idle_kw:32,  standby_kw:25,  off_kw:1.5,  scans:1000, avoidable_idle_h:120},
+  '7t':   {label:'7T Research',     active_kw:45, idle_kw:22,  standby_kw:8,   off_kw:1.0,  scans:300,  avoidable_idle_h:150},
+  '035t': {label:'0.35T Low-field', active_kw:6,  idle_kw:1.5, standby_kw:0.5, off_kw:0.05, scans:800,  avoidable_idle_h:80},
+};
+
 // Per-unit equipment specs — one row = one machine/set. Power values from literature (see sources.md).
 // Hours are typical monthly operational patterns for clinical radiology equipment.
-// MRI: JMRI-2023 (Heye et al.) 30 kW active 3T mean. CT: Acra-2024, CJRS-2022 40–80 kW range.
-// X-ray/Mammo: AJR-2025-CT. Ultrasound: low draw, EurRad-2024-MRI context. PACS: Radiol-240398.
+// CT: Acra-2024, CJRS-2022 40–80 kW range, mid-point 60 kW. X-ray/Mammo: AJR-2025-CT.
+// PET-CT: 22 kW active + 5 kW idle calibrated to MODALITY_BENCHMARKS 66,150 kWh/yr. Radiol-240398.
 const EQUIPMENT_UNITS = {
   mri:         {name:"MRI Scanner",    modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1200},
   ct:          {name:"CT Scanner",     modality:"CT",         active_kw:60,  idle_kw:8,   standby_kw:3,   off_kw:0.2,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
+  petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:100, scans:400},
   xray:        {name:"X-ray Room",     modality:"X-ray",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   mammography: {name:"Mammography",    modality:"X-ray",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
@@ -44,33 +56,41 @@ const EQUIPMENT_UNITS = {
   workstations:{name:"Workstations",   modality:"Workstation",active_kw:2,   idle_kw:0.8, standby_kw:0.2, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:0},
 };
 
-const DEFAULT_EQUIPMENT = {mri:1, ct:1, xray:1, ultrasound:1, mammography:0, pacs:1, workstations:4};
+// mriType is stored inside the equipment object (not a count, filtered out in buildFleet)
+const DEFAULT_EQUIPMENT = {mri:1, mriType:'3t', ct:1, petct:0, xray:1, ultrasound:1, mammography:0, pacs:1, workstations:4};
 
-// Build a fleet array from equipment counts — scales power by count, hours stay per-unit (not per-fleet)
+// Build a fleet array from equipment counts.
+// mriType is a string key inside the equipment object, not a count — skip it in the iteration.
+// Power scales linearly with count; avoidable_idle_h is hours/period (does not scale with count).
 function buildFleet(equipment) {
-  return Object.entries(equipment ?? DEFAULT_EQUIPMENT)
-    .filter(([, n]) => n > 0)
+  const eq = equipment ?? DEFAULT_EQUIPMENT;
+  const mriV = MRI_VARIANTS[eq.mriType ?? '3t'] ?? MRI_VARIANTS['3t'];
+  return Object.entries(eq)
+    .filter(([key, val]) => key !== 'mriType' && typeof val === 'number' && val > 0)
     .map(([key, n]) => {
-      const u = EQUIPMENT_UNITS[key];
-      if (!u) return null;
+      const base = EQUIPMENT_UNITS[key];
+      if (!base) return null;
+      const u = key === 'mri'
+        ? {...base, ...mriV, name:`MRI (${mriV.label})`}
+        : base;
       return {
         ...u,
-        name:        n > 1 ? `${n}× ${u.name}` : u.name,
-        active_kw:   u.active_kw   * n,
-        idle_kw:     u.idle_kw     * n,
-        standby_kw:  u.standby_kw  * n,
-        off_kw:      u.off_kw      * n,
-        scans:       u.scans       * n,
-        // avoidable_idle_h = hours per night — same regardless of unit count
+        name:       n > 1 ? `${n}× ${u.name}` : u.name,
+        active_kw:  u.active_kw  * n,
+        idle_kw:    u.idle_kw    * n,
+        standby_kw: u.standby_kw * n,
+        off_kw:     u.off_kw     * n,
+        scans:      u.scans      * n,
       };
     })
     .filter(Boolean);
 }
 
-// UI card definitions for the equipment picker
+// UI card definitions for the equipment picker (order = grid display order)
 const EQUIP_CARDS = [
-  {key:'mri',         label:'MRI',          Icon:Brain},
+  {key:'mri',         label:'MRI',          Icon:Brain,    hasMriVariant:true},
   {key:'ct',          label:'CT',           Icon:Activity},
+  {key:'petct',       label:'PET-CT',       Icon:Cpu},
   {key:'xray',        label:'X-ray',        Icon:Zap},
   {key:'ultrasound',  label:'Ultrasound',   Icon:Droplets},
   {key:'mammography', label:'Mammography',  Icon:Target},
@@ -307,7 +327,7 @@ const WATER_PER_KWH = 1.8;
 // MRI 3T: ~70 tCO₂e manufacturing / 15-yr lifespan (ESR PP 2025, Radiol 10.1148/radiol.240398)
 // CT: ~20 tCO₂e / 12 yr; X-ray: ~4 tCO₂e / 10 yr; Ultrasound: ~1 tCO₂e / 7 yr
 const EMBODIED_KG_MO = {
-  "MRI": 389, "CT": 139, "X-ray": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
+  "MRI": 389, "CT": 139, "PET-CT": 278, "X-ray": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
 };
 
 const PATIENT_KM_RT    = 20;   // avg round-trip patient travel km — replace with local data (ESR sustainability guidance)
@@ -346,7 +366,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     const kgco2e       = kwh * ci;
     const idleWasteKwh = eq.idle_kw * eq.avoidable_idle_h * mult;
     const scans        = eq.scans * mult;
-    const isImaging    = ["MRI","CT","X-ray","Ultrasound"].includes(eq.modality);
+    const isImaging    = ["MRI","CT","PET-CT","X-ray","Ultrasound"].includes(eq.modality);
     return {equipment: eq.name, modality: eq.modality,
             kwh: rnd(kwh), activeKwh: rnd(activeKwh), idleKwh: rnd(idleKwh),
             kgco2e: rnd(kgco2e), scans,
@@ -365,7 +385,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
 
   // Patient-generating imaging scans only (MRI/CT/X-ray/US) — excludes PACS and Workstation rows
   const imagingScans = fleet
-    .filter(e => ["MRI","CT","X-ray","Ultrasound"].includes(e.modality))
+    .filter(e => ["MRI","CT","PET-CT","X-ray","Ultrasound"].includes(e.modality))
     .reduce((s, e) => s + e.scans * mult, 0);
 
   // GHG Protocol scope breakdown
@@ -439,7 +459,7 @@ function computeScenario(intervention, region, timePeriod, equipment, customCi, 
   if (intervention === 'Turn MRI/CT scanners off overnight') {
     // Dynamic: MRI + CT idle → target state during avoidable idle hours
     kwhSaved = rnd(fleet
-      .filter(eq => ['MRI','CT'].includes(eq.modality))
+      .filter(eq => ['MRI','CT','PET-CT'].includes(eq.modality))
       .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
 
   } else if (intervention === 'Use standby mode during inactive periods') {
@@ -1085,7 +1105,7 @@ function App() {
 
   // Shared settings — drive all calculations; initialised from URL hash if present
   const [settings, setSettings] = useState(() => ({
-    equipment: DEFAULT_EQUIPMENT,
+    equipment: {...DEFAULT_EQUIPMENT},
     intendedUse: "Estimate annual footprint",
     region: "Switzerland",
     metricType: "Energy",
@@ -1398,34 +1418,56 @@ function App() {
             <div style={{marginBottom:16}}>
               <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:10,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment in your department</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:10}}>
-                {EQUIP_CARDS.map(({key, label, Icon}) => {
+                {EQUIP_CARDS.map(({key, label, Icon, hasMriVariant}) => {
                   const count = settings.equipment[key] ?? 0;
+                  const active = count > 0;
+                  const mriType = settings.equipment.mriType ?? '3t';
+                  const cardLabel = hasMriVariant ? `MRI ${MRI_VARIANTS[mriType]?.label ?? '3T'}` : label;
                   return (
                     <div key={key} style={{
-                      background: count > 0 ? '#e8f5e9' : '#f9f9f9',
-                      border: `2px solid ${count > 0 ? '#a5d6a7' : '#e0e0e0'}`,
+                      background: active ? '#e8f5e9' : '#f9f9f9',
+                      border: `2px solid ${active ? '#a5d6a7' : '#e0e0e0'}`,
                       borderRadius: 14,
-                      padding: '10px 8px 8px',
+                      padding: hasMriVariant ? '8px 8px 6px' : '10px 8px 8px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: 4,
                       transition: 'border-color 0.15s, background 0.15s',
                     }}>
-                      <Icon size={18} style={{color: count > 0 ? '#2E7D32' : '#bdbdbd', flexShrink:0}}/>
-                      <div style={{fontSize:10,fontWeight:700,color: count > 0 ? '#1b5e20' : '#9e9e9e',textAlign:'center',lineHeight:1.2,letterSpacing:'0.01em'}}>{label}</div>
+                      <Icon size={18} style={{color: active ? '#2E7D32' : '#bdbdbd', flexShrink:0}}/>
+                      <div style={{fontSize:10,fontWeight:700,color: active ? '#1b5e20' : '#9e9e9e',textAlign:'center',lineHeight:1.2,letterSpacing:'0.01em'}}>{cardLabel}</div>
+                      {/* MRI field-strength selector */}
+                      {hasMriVariant && (
+                        <select
+                          value={mriType}
+                          onChange={e => setEquip('mriType', e.target.value)}
+                          style={{
+                            width:'100%', padding:'2px 2px',
+                            border:`1px solid ${active ? '#a5d6a7' : '#e0e0e0'}`,
+                            borderRadius:6, fontSize:10, background:'white',
+                            color: active ? '#1b5e20' : '#9e9e9e',
+                            fontWeight:600, textAlign:'center', cursor:'pointer',
+                          }}
+                        >
+                          {Object.entries(MRI_VARIANTS).map(([k,v])=>(
+                            <option key={k} value={k}>{v.label}</option>
+                          ))}
+                        </select>
+                      )}
+                      {/* Count selector */}
                       <select
                         value={count}
                         onChange={e => setEquip(key, Number(e.target.value))}
                         style={{
                           width:'100%', padding:'3px 2px',
-                          border:`1px solid ${count > 0 ? '#a5d6a7' : '#e0e0e0'}`,
+                          border:`1px solid ${active ? '#a5d6a7' : '#e0e0e0'}`,
                           borderRadius:8, fontSize:13, background:'white',
-                          color: count > 0 ? '#1b5e20' : '#9e9e9e',
+                          color: active ? '#1b5e20' : '#9e9e9e',
                           fontWeight:700, textAlign:'center', cursor:'pointer',
                         }}
                       >
-                        {Array.from({length:11},(_,i)=><option key={i} value={i}>{i === 0 ? '— none' : i}</option>)}
+                        {Array.from({length:21},(_,i)=><option key={i} value={i}>{i === 0 ? '— none' : i}</option>)}
                       </select>
                     </div>
                   );
