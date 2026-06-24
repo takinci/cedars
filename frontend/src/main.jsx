@@ -1257,6 +1257,21 @@ function App() {
   const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState), [scen.intervention, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState]);
   const ai       = useMemo(() => computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment), [scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment]);
 
+  const landingAIKwh = useMemo(() => {
+    if (!landingAIOpen) return 0;
+    return rnd(Object.values(landingAITools).reduce((sum, cfg) => {
+      const tdpKw = GPU_PRESETS[cfg.gpu]?.tdpKw ?? 0.3;
+      const hours = parseFloat(cfg.hoursPerDay) || 0;
+      const n     = parseInt(cfg.numGpus, 10) || 1;
+      const pue   = CLOUD[cfg.deployment]?.pue ?? 1.5;
+      return sum + tdpKw * n * hours * 30 * pue;
+    }, 0), 2);
+  }, [landingAIOpen, landingAITools]);
+  const landingAICo2 = useMemo(() => {
+    if (!landingAIOpen) return 0;
+    return rnd(landingAIKwh * getCI(settings.region, settings.customCi), 2);
+  }, [landingAIOpen, landingAIKwh, settings.region, settings.customCi]);
+
   const equivData = useMemo(() => {
     const co2 = equivScope === 'scope2'
       ? dash.scopes.scope2Kg + landingAICo2
@@ -1368,21 +1383,6 @@ function App() {
   }, [deptLabel, settings.customCi]);
 
   const cloudResult = useMemo(() => computeCloudCarbon(cloudTracker), [cloudTracker]);
-
-  const landingAIKwh = useMemo(() => {
-    if (!landingAIOpen) return 0;
-    return rnd(Object.values(landingAITools).reduce((sum, cfg) => {
-      const tdpKw = GPU_PRESETS[cfg.gpu]?.tdpKw ?? 0.3;
-      const hours = parseFloat(cfg.hoursPerDay) || 0;
-      const n     = parseInt(cfg.numGpus, 10) || 1;
-      const pue   = CLOUD[cfg.deployment]?.pue ?? 1.5;
-      return sum + tdpKw * n * hours * 30 * pue;
-    }, 0), 2);
-  }, [landingAIOpen, landingAITools]);
-  const landingAICo2 = useMemo(() => {
-    if (!landingAIOpen) return 0;
-    return rnd(landingAIKwh * getCI(settings.region, settings.customCi), 2);
-  }, [landingAIOpen, landingAIKwh, settings.region, settings.customCi]);
 
   const chartEnergy = {
     labels: dash.byEquipment.map(x => x.equipment),
