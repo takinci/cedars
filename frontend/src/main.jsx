@@ -105,11 +105,16 @@ const MRI_CARDS = [
 // LLM: A100-class cloud GPU for report generation (LLM-Energy PDF, Radiology 2024).
 // Reconstruction: on-site low-latency inference (Radiol 2023, doi:10.1148/radiol.230441).
 const AI_PRESETS = [
-  {key:'cad',   label:'Detection AI',         Icon:Target,    gpu:'NVIDIA RTX A6000',      hoursPerDay:'6',  numGpus:'1', deployment:'Local compute', sublabel:'Detection / classification'},
-  {key:'llm',   label:'LLM Report Assistant',Icon:Brain,     gpu:'NVIDIA A100 (40GB PCIe)',hoursPerDay:'8',  numGpus:'1', deployment:'AWS',           sublabel:'NLP / report generation'},
-  {key:'recon', label:'Reconstruction AI',   Icon:Cpu,       gpu:'NVIDIA RTX A6000',      hoursPerDay:'12', numGpus:'1', deployment:'Local compute', sublabel:'MR/CT deep learning recon'},
-  {key:'seg',   label:'Segmentation AI',     Icon:BarChart3, gpu:'NVIDIA T4',             hoursPerDay:'4',  numGpus:'1', deployment:'Local compute', sublabel:'Organ / lesion U-Net'},
-  {key:'custom',label:'Custom',              Icon:Plus,      gpu:'NVIDIA A100 (80GB SXM4)',hoursPerDay:'8',  numGpus:'1', deployment:'Local compute', sublabel:'Set all parameters manually'},
+  {key:'cad',   label:'Detection AI',          Icon:Target,    gpu:'NVIDIA RTX A6000',       hoursPerDay:'6',  numGpus:'1', deployment:'Local compute', sublabel:'Detection / classification',
+   tooltip:'RTX A6000 (300 W TDP) — typical dedicated workstation GPU for on-site CAD inference. 6 h/day reflects active clinical hours for real-time detection on incoming studies. Local deployment for low-latency PACS integration. Sources: Doo et al. Radiology 2024 (doi:10.1148/radiol.232030); Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2); NVIDIA DC Specs.'},
+  {key:'llm',   label:'LLM Report Assistant',  Icon:Brain,     gpu:'NVIDIA A100 (40GB PCIe)',hoursPerDay:'8',  numGpus:'1', deployment:'AWS',           sublabel:'NLP / report generation',
+   tooltip:'A100 40 GB PCIe (250 W TDP) — sufficient VRAM for medical LLM inference without full SXM power draw. 8 h/day = active clinical day. AWS reflects common cloud hosting of large language models for scalability and model update flexibility. Sources: Doo et al. Radiology 2024 (doi:10.1148/radiol.240320, LLM energy scaling); Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2).'},
+  {key:'recon', label:'Reconstruction AI',     Icon:Cpu,       gpu:'NVIDIA RTX A6000',       hoursPerDay:'12', numGpus:'1', deployment:'Local compute', sublabel:'MR/CT deep learning recon',
+   tooltip:'RTX A6000 (300 W TDP) for inline MR/CT reconstruction (denoising, acceleration, or synthetic imaging). 12 h/day accounts for reconstruction running during scanning hours plus overnight batch jobs. Local deployment required for low-latency integration with scanner console. Sources: Radiol 2023 (doi:10.1148/radiol.230441); Doo 2024 (doi:10.1148/radiol.232030).'},
+  {key:'seg',   label:'Segmentation AI',       Icon:BarChart3, gpu:'NVIDIA T4',              hoursPerDay:'4',  numGpus:'1', deployment:'Local compute', sublabel:'Organ / lesion U-Net',
+   tooltip:'NVIDIA T4 (70 W TDP) — energy-efficient inference GPU well-matched to U-Net segmentation models. 4 h/day for scheduled batch processing (often overnight or off-peak). Local deployment for data-privacy compliance. T4 TDP significantly lower than data-centre GPUs — a good default for lightweight segmentation. Sources: Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2); Doo 2024 (doi:10.1148/radiol.232030); NVIDIA DC Specs.'},
+  {key:'custom',label:'Custom',                Icon:Plus,      gpu:'NVIDIA A100 (80GB SXM4)',hoursPerDay:'8',  numGpus:'1', deployment:'Local compute', sublabel:'Set all parameters manually',
+   tooltip:null},
 ];
 
 const OTHER_CARDS = [
@@ -1530,10 +1535,10 @@ function App() {
                 </div>
                 {/* Preset chips — toggle each tool independently */}
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginBottom:10}}>
-                  {AI_PRESETS.map(({key,label,sublabel,Icon})=>{
+                  {AI_PRESETS.map(({key,label,sublabel,Icon,tooltip})=>{
                     const active = !!landingAITools[key];
                     return (
-                      <button key={key} onClick={()=>{
+                      <button key={key} title={tooltip ?? undefined} onClick={()=>{
                         if (active) {
                           const {[key]:_removed, ...rest} = landingAITools;
                           setLandingAITools(rest);
@@ -1547,7 +1552,9 @@ function App() {
                         border:`2px solid ${active ? '#a5d6a7' : '#e0e0e0'}`,
                         borderRadius:12,padding:'8px 4px',cursor:'pointer',
                         transition:'border-color 0.15s,background 0.15s',
+                        position:'relative',
                       }}>
+                        {tooltip && <span style={{position:'absolute',top:3,right:5,fontSize:9,color:'#90a4ae',fontWeight:700,cursor:'help'}}>ⓘ</span>}
                         <Icon size={16} style={{color: active ? '#2E7D32' : '#bdbdbd'}}/>
                         <span style={{fontSize:9,fontWeight:700,color: active ? '#1b5e20' : '#9e9e9e',textAlign:'center',lineHeight:1.2}}>{label}</span>
                         <span style={{fontSize:8,color: active ? '#4CAF50' : '#bdbdbd',textAlign:'center',lineHeight:1.2}}>{active ? '✓ added' : sublabel}</span>
@@ -1556,18 +1563,19 @@ function App() {
                   })}
                 </div>
                 {/* Per-tool config card for each active tool */}
-                {AI_PRESETS.filter(p=>landingAITools[p.key]).map(({key,label,Icon})=>{
+                {AI_PRESETS.filter(p=>landingAITools[p.key]).map(({key,label,Icon,tooltip})=>{
                   const cfg = landingAITools[key];
                   const toolKwh = rnd((GPU_PRESETS[cfg.gpu]?.tdpKw??0.3)*(parseInt(cfg.numGpus,10)||1)*(parseFloat(cfg.hoursPerDay)||0)*30*(CLOUD[cfg.deployment]?.pue??1.5),1);
                   const toolCo2 = rnd(toolKwh*getCI(settings.region,settings.customCi),2);
                   return (
-                    <div key={key} style={{background:'#f9fdf9',border:'1px solid #c8e6c9',borderRadius:12,padding:'10px 12px',marginBottom:6}}>
+                    <div key={key} title={tooltip ?? undefined} style={{background:'#f9fdf9',border:'1px solid #c8e6c9',borderRadius:12,padding:'10px 12px',marginBottom:6,position:'relative'}}>
+                      {tooltip && <span style={{position:'absolute',top:8,right:10,fontSize:10,color:'#90a4ae',fontWeight:700,cursor:'help'}}>ⓘ</span>}
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
                         <div style={{display:'flex',alignItems:'center',gap:6}}>
                           <Icon size={13} style={{color:'#2E7D32'}}/>
                           <span style={{fontSize:12,fontWeight:700,color:'#1b5e20'}}>{label}</span>
                         </div>
-                        <span style={{fontSize:11,color:'#607d66'}}>~{fmtKwh(toolKwh)}/mo · {fmtCo2(toolCo2)}/mo</span>
+                        <span style={{fontSize:11,color:'#607d66',paddingRight:16}}>~{fmtKwh(toolKwh)}/mo · {fmtCo2(toolCo2)}/mo</span>
                       </div>
                       {/* Presets: show literature-backed values as read-only chips */}
                       {key !== 'custom' ? (
