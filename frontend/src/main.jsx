@@ -5,7 +5,7 @@ import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, To
 
 const Bar      = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Bar})));
 const Doughnut = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Doughnut})));
-import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe} from 'lucide-react';
+import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan} from 'lucide-react';
 import './styles.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
@@ -47,11 +47,16 @@ const EQUIPMENT_UNITS = {
   xray:        {name:"X-ray Room",     modality:"X-ray",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   mammography: {name:"Mammography",    modality:"X-ray",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
-  pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:0},
-  workstations:{name:"Workstations",   modality:"Workstation",active_kw:2,   idle_kw:0.8, standby_kw:0.2, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:0},
+  pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
+  workstations:{name:"Workstations",   modality:"Workstation",active_kw:2,   idle_kw:0.8, standby_kw:0.2, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
+  // Interventional imaging — power from direct sensor measurements (Vosshenrich et al., AJR 2024, 10.2214/AJR.24.30988).
+  // Hours from paper Table 3 annual projections ÷ 12. No distinct standby mode; standby_kw = off_kw.
+  // IR suite = Artis pheno (monoplanar). Fluoroscopy = Artis zee multipurpose. Chiller not included in sensor.
+  angio:       {name:"Angio / IR Suite",  modality:"Angio/IR",    active_kw:7.5, idle_kw:6.9, standby_kw:1.1, off_kw:1.1, active_h:105, idle_h:116, standby_h:0, off_h:509, avoidable_idle_h:120, scans:80},
+  fluoro:      {name:"Fluoroscopy Unit",  modality:"Fluoroscopy", active_kw:3.1, idle_kw:2.8, standby_kw:0.6, off_kw:0.6, active_h:107, idle_h:118, standby_h:0, off_h:505, avoidable_idle_h:90,  scans:120},
 };
 
-const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:1, mri_7t:0, ct:1, petct:0, xray:1, ultrasound:1, mammography:0, pacs:1, workstations:4};
+const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:1, mri_7t:0, ct:1, petct:0, angio:0, fluoro:0, xray:1, ultrasound:1, mammography:0, pacs:1, workstations:4};
 
 // Build a fleet array from equipment counts — scales power by count, hours stay per-unit.
 function buildFleet(equipment) {
@@ -74,23 +79,37 @@ function buildFleet(equipment) {
 }
 
 // MRI cards rendered as a separate grouped section; other cards below.
-// CT tooltip flags the absence of published PCCT/DECT benchmarks.
-const CT_TOOLTIP = 'Energy benchmark covers conventional CT (energy-integrating detector). Photon-counting CT and dual-source DECT are not yet stratified in the radiology sustainability literature — enter vendor TDP if known.';
+// Equipment card tooltips — cite primary source for each modality's power/energy assumptions.
+const MRI_035T_TOOLTIP  = 'Permanent magnet; no cryocooler, so idle ≈ off. Active 6 kW estimated from low-field data in EurRad 2024 (doi:10.1007/s00330-024-11056-0) and Heye et al. JMRI 2023 (doi:10.1002/jmri.28994). Projected ~18 MWh/yr — far lower than superconducting systems.';
+const MRI_15T_TOOLTIP   = 'Superconducting: cryocooler idle draw (32 kW) often exceeds active scanning power (22 kW). Sources: Heye et al. JMRI 2023 (doi:10.1002/jmri.28994), Radiol 2024 (doi:10.1148/radiol.243453), EurRad 2024 (doi:10.1007/s00330-024-11056-0). Projected ~233 MWh/yr — dominated by cryocooler.';
+const MRI_3T_TOOLTIP    = 'Active 30 kW from measured mean of 3T scanners: Heye et al. JMRI 2023 (doi:10.1002/jmri.28994). Idle 15 kW: Radiol 2024 (doi:10.1148/radiol.243453). Standby 5 kW: cryocooler minimum (Herrmann 2012). Projected ~127 MWh/yr. Replace with scanner logs if available.';
+const MRI_7T_TOOLTIP    = 'No published sustainability benchmark specific to 7T. Active 45 kW and idle 22 kW extrapolated from high-field MRI data in Neurad 2024 (doi:10.1016/j.neurad.2023.12.001) and EurRad 2024 (doi:10.1007/s00330-024-11056-0). Treat as estimate; replace with vendor TDP.';
+const CT_TOOLTIP        = 'Active 60 kW (mid-range MDCT). Sources: Academic Radiology 2024 (doi:10.1016/j.acra.2024.05.004), CJRS 2022 (doi:10.1177/08465371221133074), AJR 2023 (doi:10.2214/AJR.23.30189). Photon-counting CT and dual-source DECT not yet stratified in sustainability literature — enter vendor TDP if known.';
+const PETCT_TOOLTIP     = 'Active 22 kW calibrated to annual benchmark of ~66,150 kWh from Vosshenrich et al. Curr Opin Urol 2024 (doi:10.1097/MOU.0000000000001337). Cyclotron energy for isotope production is external and not included here. Embodied carbon ~278 kgCO₂/month.';
+const ANGIO_TOOLTIP     = 'Direct power-sensor measurements on an IR suite (Artis pheno). Idle 6.9 kW, active 7.5 kW, off 1.1 kW; annual ~25,525 kWh. For biplane INR suites idle is ~7.4 kW; cath labs ~4.5 kW. Chiller not included. (Vosshenrich et al. AJR 2024, doi:10.2214/AJR.24.30988)';
+const FLUORO_TOOLTIP    = 'Direct power-sensor measurements on a multipurpose fluoroscopy unit (Artis zee). Idle 2.8 kW, active 3.1 kW; annual ~11,439 kWh. 96% of energy is nonproductive — powering down overnight is the dominant savings lever. (Vosshenrich et al. AJR 2024, doi:10.2214/AJR.24.30988)';
+const XRAY_TOOLTIP      = 'Active 12 kW estimated from AJR 2025 CT/radiography energy review (doi:10.2214/AJR.25.33951) and AJR 2023 (doi:10.2214/AJR.23.30189). Idle substantially lower than CT due to absence of high-power x-ray tube standby. High throughput (2,500+ scans/month) gives low per-scan footprint.';
+const ULTRASOUND_TOOLTIP= 'Active draw ~1.5 kW — lowest energy imaging modality by a large margin. References: EUF 2023 systematic review (doi:10.1016/j.euf.2023.09.009), Vosshenrich et al. Curr Opin Urol 2024 (doi:10.1097/MOU.0000000000001337). High scan volumes give lowest kWh/scan across all modalities.';
+const MAMMO_TOOLTIP     = 'Active 5 kW; usage pattern (100 active h/month, shorter operating hours than general radiology) derived from EurRad 2026 mammography screening footprint study (doi:10.1007/s00330-026-12373-2). Screening programmes have seasonal throughput variation — adjust scans accordingly.';
+const PACS_TOOLTIP      = 'Server/PACS infrastructure draws near-constant power in all states (4 kW baseline per rack/server set). Reference: Radiol 2024 multi-modality IT infrastructure study (doi:10.1148/radiol.240398). Virtualisation and server consolidation can reduce this by 20–40% (Doo 2024, doi:10.1148/radiol.232030).';
+const WS_TOOLTIP        = 'Active 2 kW, standby 0.2 kW per workstation. Reference: Radiol 2024 (doi:10.1148/radiol.240398). A 4-workstation department uses ~14 MWh/yr; screen-saver and end-of-day shutdown policies capture most of the avoidable idle energy. Count shared reading stations only.';
 
 const MRI_CARDS = [
-  {key:'mri_035t', label:'MRI 0.35T', sublabel:'Low-field / permanent magnet', Icon:Brain},
-  {key:'mri_15t',  label:'MRI 1.5T',  sublabel:'Superconducting (high idle)',   Icon:Brain},
-  {key:'mri_3t',   label:'MRI 3T',    sublabel:'State-of-the-art',              Icon:Brain},
-  {key:'mri_7t',   label:'MRI 7T',    sublabel:'Research scanner',              Icon:Brain},
+  {key:'mri_035t', label:'MRI 0.35T', sublabel:'Low-field / permanent magnet', Icon:Brain, tooltip:MRI_035T_TOOLTIP},
+  {key:'mri_15t',  label:'MRI 1.5T',  sublabel:'Superconducting (high idle)',   Icon:Brain, tooltip:MRI_15T_TOOLTIP},
+  {key:'mri_3t',   label:'MRI 3T',    sublabel:'State-of-the-art',              Icon:Brain, tooltip:MRI_3T_TOOLTIP},
+  {key:'mri_7t',   label:'MRI 7T',    sublabel:'Research scanner',              Icon:Brain, tooltip:MRI_7T_TOOLTIP},
 ];
 const OTHER_CARDS = [
-  {key:'ct',          label:'CT',           Icon:Activity, tooltip:CT_TOOLTIP},
-  {key:'petct',       label:'PET-CT',       Icon:Cpu},
-  {key:'xray',        label:'X-ray',        Icon:Zap},
-  {key:'ultrasound',  label:'Ultrasound',   Icon:Droplets},
-  {key:'mammography', label:'Mammography',  Icon:Target},
-  {key:'pacs',        label:'PACS/Servers', Icon:Server},
-  {key:'workstations',label:'Workstations', Icon:Monitor},
+  {key:'ct',          label:'CT',              Icon:Activity, tooltip:CT_TOOLTIP},
+  {key:'petct',       label:'PET-CT',          Icon:Cpu,      tooltip:PETCT_TOOLTIP},
+  {key:'angio',       label:'Angio / IR Suite',Icon:Heart,    sublabel:'Interventional suite',   tooltip:ANGIO_TOOLTIP},
+  {key:'fluoro',      label:'Fluoroscopy',     Icon:Scan,     sublabel:'Diagnostic / basic IR',  tooltip:FLUORO_TOOLTIP},
+  {key:'xray',        label:'X-ray',           Icon:Zap,      tooltip:XRAY_TOOLTIP},
+  {key:'ultrasound',  label:'Ultrasound',      Icon:Droplets, tooltip:ULTRASOUND_TOOLTIP},
+  {key:'mammography', label:'Mammography',     Icon:Target,   tooltip:MAMMO_TOOLTIP},
+  {key:'pacs',        label:'PACS/Servers',    Icon:Server,   tooltip:PACS_TOOLTIP},
+  {key:'workstations',label:'Workstations',    Icon:Monitor,  tooltip:WS_TOOLTIP},
 ];
 
 const EQUIPMENT_BASE = buildFleet(DEFAULT_EQUIPMENT);
@@ -322,7 +341,8 @@ const WATER_PER_KWH = 1.8;
 // MRI 3T: ~70 tCO₂e manufacturing / 15-yr lifespan (ESR PP 2025, Radiol 10.1148/radiol.240398)
 // CT: ~20 tCO₂e / 12 yr; X-ray: ~4 tCO₂e / 10 yr; Ultrasound: ~1 tCO₂e / 7 yr
 const EMBODIED_KG_MO = {
-  "MRI": 389, "CT": 139, "PET-CT": 278, "X-ray": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
+  "MRI": 389, "CT": 139, "PET-CT": 278, "Angio/IR": 200, "Fluoroscopy": 80,
+  "X-ray": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
 };
 
 const PATIENT_KM_RT    = 20;   // avg round-trip patient travel km — replace with local data (ESR sustainability guidance)
@@ -380,7 +400,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
 
   // Patient-generating imaging scans only (MRI/CT/X-ray/US) — excludes PACS and Workstation rows
   const imagingScans = fleet
-    .filter(e => ["MRI","CT","PET-CT","X-ray","Ultrasound"].includes(e.modality))
+    .filter(e => ["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","X-ray","Ultrasound"].includes(e.modality))
     .reduce((s, e) => s + e.scans * mult, 0);
 
   // GHG Protocol scope breakdown
