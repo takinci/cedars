@@ -8,7 +8,7 @@
 
 **Measure the environmental footprint of a clinical imaging department — energy, carbon, water, AI, and more — directly in your browser.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-takinci.github.io%2FEcoRad-2E7D32?style=for-the-badge&logo=github)](https://takinci.github.io/cedars/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-takinci.github.io%2Fcedars-2E7D32?style=for-the-badge&logo=github)](https://takinci.github.io/cedars/)
 [![Built with React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?style=flat-square&logo=chartdotjs)](https://www.chartjs.org)
 [![GitHub Pages](https://img.shields.io/badge/Deployed-GitHub%20Pages-222?style=flat-square&logo=github)](https://takinci.github.io/cedars/)
@@ -116,8 +116,8 @@ Full reference list: [sources.md](./sources.md)
 ## Run locally
 
 ```bash
-git clone https://github.com/takinci/EcoRad.git
-cd EcoRad/frontend
+git clone https://github.com/takinci/cedars.git
+cd cedars/frontend
 npm install
 npm run dev
 ```
