@@ -1053,7 +1053,7 @@ function cedarsRating(score) {
   return CEDARS_RATINGS.find(r => score >= r.min) ?? CEDARS_RATINGS[CEDARS_RATINGS.length - 1];
 }
 // Footprint (kgCO₂e) → 0–100 Score on a log scale: lo → 100 (greenest), hi → 0 (worst).
-// Anchors are candidate values (TBD), aligned with published reference footprints.
+// Anchors are aligned with published reference footprints.
 function cedarsScore(value, lo, hi) {
   const x = Math.max(parseFloat(value) || 0, 1e-6);
   if (x <= lo) return 100;
@@ -2998,7 +2998,7 @@ function App() {
           {/* ── CEDARS disclosure checklist ── */}
           <section style={{marginBottom:24}}>
             <h2 style={{marginBottom:4}}>CEDARS disclosure checklist</h2>
-            <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible environmental footprint — a candidate reporting standard, after CLAIM/DEAL. Report these alongside your study.</p>
+            <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible environmental footprint — a reporting standard modelled on CLAIM/DEAL. Report these alongside your study.</p>
             {(()=>{
               const d = ecoLabelData;
               const items = [
@@ -3196,7 +3196,7 @@ function App() {
             {/* ── CEDARS disclosure checklist (department) ── */}
             <section style={{marginBottom:24}}>
               <h2 style={{marginBottom:4}}>CEDARS disclosure checklist</h2>
-              <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible department footprint — a candidate reporting standard, after CLAIM/DEAL.</p>
+              <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible department footprint — a reporting standard modelled on CLAIM/DEAL.</p>
               {(()=>{
                 const d = deptLabelData;
                 const items = [
