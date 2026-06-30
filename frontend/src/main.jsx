@@ -110,16 +110,12 @@ const MRI_CARDS = [
 // Reconstruction: on-site low-latency inference (Radiol 2023, doi:10.1148/radiol.230441).
 const AI_PRESETS = [
   {key:'cad',   label:'Detection AI',          Icon:Target,    gpu:'NVIDIA RTX A6000',       hoursPerDay:'6',  numGpus:'1', deployment:'Local compute', sublabel:'Detection / classification',
-   aiDash:{architecture:'CNN / ResNet',            modelSize:'Small (< 100M params)',     precision:'float32 (standard)'},
    tooltip:'RTX A6000 (300 W TDP) — typical dedicated workstation GPU for on-site CAD inference. 6 h/day reflects active clinical hours for real-time detection on incoming studies. Local deployment for low-latency PACS integration. Sources: Doo et al. Radiology 2024 (doi:10.1148/radiol.232030); Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2); NVIDIA DC Specs.'},
   {key:'llm',   label:'LLM Report Assistant',  Icon:Brain,     gpu:'NVIDIA A100 (40GB PCIe)',hoursPerDay:'8',  numGpus:'1', deployment:'AWS',           sublabel:'NLP / report generation',
-   aiDash:{architecture:'Vision Transformer (ViT)', modelSize:'Large (> 1B params)',       precision:'float16 / AMP'},
    tooltip:'A100 40 GB PCIe (250 W TDP) — sufficient VRAM for medical LLM inference without full SXM power draw. 8 h/day = active clinical day. AWS reflects common cloud hosting of large language models for scalability and model update flexibility. Sources: Doo et al. Radiology 2024 (doi:10.1148/radiol.240320, LLM energy scaling); Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2).'},
   {key:'recon', label:'Reconstruction AI',     Icon:Cpu,       gpu:'NVIDIA RTX A6000',       hoursPerDay:'12', numGpus:'1', deployment:'Local compute', sublabel:'MR/CT deep learning recon',
-   aiDash:{architecture:'Diffusion / Generative AI',modelSize:'Medium (100M–1B params)',   precision:'float16 / AMP'},
    tooltip:'RTX A6000 (300 W TDP) for inline MR/CT reconstruction (denoising, acceleration, or synthetic imaging). 12 h/day accounts for reconstruction running during scanning hours plus overnight batch jobs. Local deployment required for low-latency integration with scanner console. Sources: Radiol 2023 (doi:10.1148/radiol.230441); Doo 2024 (doi:10.1148/radiol.232030).'},
   {key:'seg',   label:'Segmentation AI',       Icon:BarChart3, gpu:'NVIDIA T4',              hoursPerDay:'4',  numGpus:'1', deployment:'Local compute', sublabel:'Organ / lesion U-Net',
-   aiDash:{architecture:'U-Net (segmentation)', modelSize:'Small (< 100M params)',          precision:'float32 (standard)'},
    tooltip:'NVIDIA T4 (70 W TDP) — energy-efficient inference GPU well-matched to U-Net segmentation models. 4 h/day for scheduled batch processing (often overnight or off-peak). Local deployment for data-privacy compliance. T4 TDP significantly lower than data-centre GPUs — a good default for lightweight segmentation. Sources: Kocak et al. Insights Imaging 2025 (doi:10.1186/s13244-025-01962-2); Doo 2024 (doi:10.1148/radiol.232030); NVIDIA DC Specs.'},
   {key:'custom',label:'Custom',                Icon:Plus,      gpu:'NVIDIA A100 (80GB SXM4)',hoursPerDay:'8',  numGpus:'1', deployment:'Local compute', sublabel:'Set all parameters manually',
    tooltip:null},
@@ -336,20 +332,39 @@ const MODALITY_BENCHMARKS = [
 // Clinical benefit estimates from sources: scan time reduction (Radiol 2023 10.1148/radiol.230441),
 // low-value imaging reduction McKee 2024 (10.1148/radiol.240219), ESR PP 2025.
 // Embodied GPU CO₂ from ESR PP 2025 / Clinical-AI PDF.
-const AI_MODELS = {
-  "Small (< 100M params)": {
-    gpuKw: 0.08, inferSec: 2.5,  trainMwh: 0.5,  accuracy: 0.88,
-    scanTimeReductPct: 30, lowValueReductPct: 10, embCo2Kg: 50,
-  },
-  "Medium (100M–1B params)": {
-    gpuKw: 0.15, inferSec: 5,    trainMwh: 5,    accuracy: 0.93,
-    scanTimeReductPct: 60, lowValueReductPct: 15, embCo2Kg: 80,
-  },
-  "Large (> 1B params)": {
-    gpuKw: 0.25, inferSec: 10,   trainMwh: 50,   accuracy: 0.96,
-    scanTimeReductPct: 75, lowValueReductPct: 20, embCo2Kg: 150,
-  },
-};
+// Task-family model library. Each entry is an editable, literature-anchored starting point
+// spanning the real space of radiology AI. Energy drivers (params, dim, resolution, inferSec,
+// gpuKw, trainMwh) are physically grounded; performance fields (accuracyPct, accuracyMetric,
+// scanTimeReductPct, lowValueReductPct) are the model's REPORTED values from the cited
+// reference — EcoRad never predicts accuracy, it only records what the user enters.
+const AI_MODEL_LIBRARY = [
+  {key:'cad',        label:'CAD / triage classifier',          Icon:Target,   reference:'CheXNet (DenseNet-121)',          refCite:'Rajpurkar 2017, arXiv:1711.05225',
+   architecture:'CNN / ResNet',                dim:'2D', resolution:224,  slices:1,   paramsM:8,    inferSec:0.4, gpuKw:0.07, trainMwh:0.05, embCo2Kg:40,  accuracyPct:84, accuracyMetric:'AUC',         scanTimeReductPct:0,  lowValueReductPct:12},
+  {key:'detect',     label:'Lesion / nodule detection',        Icon:Scan,     reference:'RetinaNet-style detector',        refCite:'Lin 2017 (focal loss); task-specific',
+   architecture:'CNN / ResNet',                dim:'2D', resolution:512,  slices:1,   paramsM:35,   inferSec:0.8, gpuKw:0.15, trainMwh:0.2,  embCo2Kg:60,  accuracyPct:90, accuracyMetric:'Sensitivity', scanTimeReductPct:0,  lowValueReductPct:8},
+  {key:'seg2d',      label:'Organ segmentation (2D)',          Icon:Brain,    reference:'U-Net',                           refCite:'Ronneberger 2015, MICCAI',
+   architecture:'U-Net (segmentation)',        dim:'2D', resolution:256,  slices:1,   paramsM:30,   inferSec:0.6, gpuKw:0.12, trainMwh:0.15, embCo2Kg:60,  accuracyPct:91, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
+  {key:'seg3d',      label:'Volumetric segmentation (3D / nnU-Net)', Icon:Cpu, reference:'nnU-Net',                       refCite:'Isensee 2021, Nat Methods',
+   architecture:'U-Net (segmentation)',        dim:'3D', resolution:128,  slices:128, paramsM:30,   inferSec:8,   gpuKw:0.25, trainMwh:2,    embCo2Kg:100, accuracyPct:88, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
+  {key:'recon',      label:'Reconstruction / denoising',       Icon:Activity, reference:'DL recon (low-dose CT / fast MRI)', refCite:'Radiology 2023, 10.1148/radiol.230441',
+   architecture:'CNN / ResNet',                dim:'2D', resolution:256,  slices:1,   paramsM:10,   inferSec:1.2, gpuKw:0.2,  trainMwh:0.5,  embCo2Kg:80,  accuracyPct:95, accuracyMetric:'SSIM',        scanTimeReductPct:50, lowValueReductPct:0},
+  {key:'synth',      label:'Image synthesis (diffusion)',      Icon:Zap,      reference:'Diffusion model (e.g. MRI→CT)',   refCite:'Kazerouni 2023, Med Image Anal',
+   architecture:'Diffusion / Generative AI',   dim:'2D', resolution:256,  slices:1,   paramsM:120,  inferSec:6,   gpuKw:0.3,  trainMwh:8,    embCo2Kg:150, accuracyPct:90, accuracyMetric:'SSIM',        scanTimeReductPct:0,  lowValueReductPct:0},
+  {key:'report',     label:'Report generation (LLM / VLM)',    Icon:FileText, reference:'Radiology report-generation LLM', refCite:'Doo 2024, Radiology 10.1148/radiol.240320',
+   architecture:'Vision Transformer (ViT)',    dim:'2D', resolution:512,  slices:1,   paramsM:7000, inferSec:12,  gpuKw:0.35, trainMwh:50,   embCo2Kg:200, accuracyPct:70, accuracyMetric:'RadGraph F1', scanTimeReductPct:0,  lowValueReductPct:5},
+  {key:'foundation', label:'Foundation / prompt model (MedSAM)', Icon:Globe,  reference:'MedSAM (Segment Anything, medical)', refCite:'Ma 2024, Nat Commun',
+   architecture:'Vision Transformer (ViT)',    dim:'2D', resolution:1024, slices:1,   paramsM:90,   inferSec:3,   gpuKw:0.3,  trainMwh:5,    embCo2Kg:150, accuracyPct:89, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
+  {key:'custom',     label:'Custom / blank',                   Icon:Cpu,      reference:'User-defined',                    refCite:'—',
+   architecture:'CNN / ResNet',                dim:'2D', resolution:256,  slices:1,   paramsM:25,   inferSec:1,   gpuKw:0.15, trainMwh:0.5,  embCo2Kg:60,  accuracyPct:90, accuracyMetric:'AUC',         scanTimeReductPct:0,  lowValueReductPct:0},
+];
+const AI_MODEL_BY_KEY = Object.fromEntries(AI_MODEL_LIBRARY.map(m => [m.key, m]));
+// Derived size label from parameter count (informational only — not an energy driver).
+function sizeLabel(paramsM) {
+  const p = parseFloat(paramsM) || 0;
+  if (p < 100)  return 'Small (< 100M params)';
+  if (p < 1000) return 'Medium (100M–1B params)';
+  return 'Large (> 1B params)';
+}
 // Automatic Mixed Precision (AMP) reduces inference energy ~40% (float32→float16)
 // Source: LLM-Energy PDF; Clinical-AI PDF
 const PRECISION_FACTOR = {
@@ -387,7 +402,7 @@ const META = {
   interventions:  Object.keys(INTERVENTIONS),
   cloudProviders: Object.keys(CLOUD),
   scannerStates:  ["Active", "Idle", "Standby", "Off"],
-  modelSizes:     Object.keys(AI_MODELS),
+  aiModels:       AI_MODEL_LIBRARY.map(m => m.label),
   precisions:     Object.keys(PRECISION_FACTOR),
   architectures:  Object.keys(AI_ARCHITECTURES),
   gpuModels:      Object.keys(GPU_PRESETS),
@@ -553,7 +568,10 @@ function computeScenario(intervention, region, timePeriod, equipment, customCi, 
   };
 }
 
-function computeAI(cloudProvider, region, modelSize, precision, architecture, customCi, equipment, overrides = {}) {
+// `model` is the effective spec built from the library entry + the user's edits:
+// {gpuKw, inferSec, trainMwh, embCo2Kg, paramsM, dim, resolution, slices,
+//  accuracy (0–1), accuracyMetric, scanTimeReductPct, lowValueReductPct}.
+function computeAI(cloudProvider, region, model, precision, architecture, customCi, equipment, overrides = {}) {
   // Cloud carbon: use the specific deployment region's grid CI when given (shared with the
   // Infrastructure tab), falling back to the provider's coarse average.
   const baseCf   = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
@@ -564,7 +582,6 @@ function computeAI(cloudProvider, region, modelSize, precision, architecture, cu
     ci:  (regionCi != null) ? regionCi : baseCf.ci,
   };
   const ci    = getCI(region, customCi);
-  const model = AI_MODELS[modelSize]           ?? AI_MODELS["Small (< 100M params)"];
   const arch  = AI_ARCHITECTURES[architecture] ?? AI_ARCHITECTURES["CNN / ResNet"];
   const ampF  = PRECISION_FACTOR[precision]    ?? 1.0;
   const DEPLOY_MO    = Math.max(1,  parseInt(overrides.deployMonths) || 36);
@@ -628,13 +645,16 @@ function computeAI(cloudProvider, region, modelSize, precision, architecture, cu
   const reboundRisk     = model.scanTimeReductPct > 60 ? "High" : model.scanTimeReductPct > 30 ? "Moderate" : "Low";
 
   return {
-    architecture, modelSize, precision, archDesc: arch.desc,
+    architecture, modelSize: sizeLabel(model.paramsM), precision, archDesc: arch.desc,
+    paramsM: model.paramsM, dim: model.dim, resolution: model.resolution, slices: model.slices,
+    inferSec: model.inferSec, trainMwhBase: model.trainMwh, embCo2KgTotal: model.embCo2Kg,
     training:  {kwhTotal: trainKwhTotal, kgCo2e: trainKgCo2e, gpuHours: trainGpuHours, kwhAmortised: trainKwhMonth},
     testing:   {kwhTotal: testKwhTotal,  kgCo2e: testKgCo2e,  studies: TEST_STUDIES},
     inference: {kwhPerStudy: inferKwhPerStudy, kwhMonthly: inferKwhMonthly, kwhLifetime: inferKwhLifetime, studies: STUDIES},
     monthly:   {kwh: totalMonthlyKwh, co2: rnd(totalMonthlyKwh * cf.ci, 3)},
     ampSavingPct, grossKgCo2e, embGpuKgCo2e, savingsKgCo2e, netKgCo2e,
-    pue: cf.pue, cloudCi: cf.ci, waterLitres, efficiencyRatio, accuracy: model.accuracy,
+    pue: cf.pue, cloudCi: cf.ci, waterLitres, efficiencyRatio,
+    accuracy: model.accuracy, accuracyMetric: model.accuracyMetric,
     scanTimeReductPct: model.scanTimeReductPct, lowValueReductPct: model.lowValueReductPct,
     scansAvoided, scanEnergySaved, reboundRisk,
   };
@@ -824,7 +844,10 @@ function downloadAICSV(ai, scen, region) {
   const lines = [
     row(['EcoRad AI Sustainability Report']),
     row(['Region', region, 'Cloud / deployment', scen.cloudProvider]),
-    row(['Architecture', scen.architecture, 'Model size', scen.modelSize]),
+    row(['Model template', AI_MODEL_BY_KEY[scen.modelKey]?.label ?? scen.modelKey, 'Reference', AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? '']),
+    row(['Architecture', scen.architecture, 'Model size', ai.modelSize]),
+    row(['Parameters (M)', ai.paramsM, 'Dimensionality', ai.dim]),
+    row(['Input resolution (px)', ai.resolution, 'Slices', ai.dim==='3D' ? ai.slices : 'n/a']),
     row(['Precision / AMP', scen.precision, 'Cloud CI (kgCO2e/kWh)', ai.cloudCi]),
     row(['PUE', ai.pue]),
     blank,
@@ -872,7 +895,7 @@ function downloadAICSV(ai, scen, region) {
     row(['EFFICIENCY & RESOURCES']),
     row(['Metric', 'Value', 'Unit']),
     row(['Efficiency ratio',             ai.efficiencyRatio,          'acc%/kWh']),
-    row(['Diagnostic accuracy',          `${rnd(ai.accuracy * 100, 0)}%`,'']),
+    row(['Reported performance',         `${rnd(ai.accuracy * 100, 1)}% ${ai.accuracyMetric}`,'user-entered']),
     row(['Monthly water footprint',      ai.waterLitres,              'L']),
   ];
 
@@ -1197,9 +1220,13 @@ function App() {
     cloudProvider: "Local compute",
     cloudRegion: "On-premise (Switzerland)",
     scannerState: "Standby",
-    modelSize: "Small (< 100M params)",
-    precision: "float32 (standard)",
+    // AI model — seeded from the library (CAD entry); all fields are editable.
+    modelKey: 'cad',
     architecture: "CNN / ResNet",
+    precision: "float32 (standard)",
+    paramsM: '8', dim: '2D', resolution: '224', slices: '1', inferSec: '0.4',
+    accuracyPct: '84', accuracyMetric: 'AUC',
+    scanTimeReductPct: '0', lowValueReductPct: '12',
     trainGpu: '',
     trainNumGpus: '1',
     trainHours: '',
@@ -1209,6 +1236,16 @@ function App() {
 
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
   const setS = (key, val) => setScen(s => ({...s, [key]: val}));
+  // Load a library entry as an editable starting point — seeds every model field.
+  const setModel = key => {
+    const m = AI_MODEL_BY_KEY[key] ?? AI_MODEL_LIBRARY[0];
+    setScen(s => ({
+      ...s, modelKey: key, architecture: m.architecture,
+      paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: String(m.inferSec),
+      accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
+      scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
+    }));
+  };
   // Provider + region are shared between the AI lifecycle math and the Infrastructure tab.
   // Changing provider resets region to that provider's first (cleanest-listed) region.
   const setCloudProvider = prov => setScen(s => ({
@@ -1217,6 +1254,7 @@ function App() {
   }));
   const [aiTab,         setAiTab]         = useState('model');
   const [trainExpanded, setTrainExpanded] = useState(false);
+  const [modelExpanded, setModelExpanded] = useState(false);
   const [dashTab, setDashTab] = useState('equiv');
   const [equivScope, setEquivScope] = useState('scope2');
   const [landingAIOpen, setLandingAIOpen] = useState(false);
@@ -1314,8 +1352,23 @@ function App() {
     const trainN      = Math.max(1, parseInt(scen.trainNumGpus) || 1);
     const pue         = CLOUD[scen.cloudProvider]?.pue ?? 1.5;
     const trainKwh    = gpuPreset && trainH > 0 ? rnd(gpuPreset.tdpKw * trainN * trainH * pue, 1) : 0;
-    return computeAI(scen.cloudProvider, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment, {trainKwh, testStudies: scen.testStudies, deployMonths: scen.deployMonths, cloudRegion: scen.cloudRegion});
-  }, [scen.cloudProvider, scen.cloudRegion, settings.region, scen.modelSize, scen.precision, scen.architecture, settings.customCi, settings.equipment, scen.trainGpu, scen.trainNumGpus, scen.trainHours, scen.testStudies, scen.deployMonths]);
+    // Build the effective model spec: library defaults for non-edited fields (gpuKw,
+    // trainMwh, embCo2Kg) + the user's editable values for everything else.
+    const lib = AI_MODEL_BY_KEY[scen.modelKey] ?? AI_MODEL_LIBRARY[0];
+    const model = {
+      gpuKw: lib.gpuKw, trainMwh: lib.trainMwh, embCo2Kg: lib.embCo2Kg,
+      paramsM:    parseFloat(scen.paramsM)    || lib.paramsM,
+      dim:        scen.dim || lib.dim,
+      resolution: parseFloat(scen.resolution) || lib.resolution,
+      slices:     parseFloat(scen.slices)     || lib.slices,
+      inferSec:   parseFloat(scen.inferSec)   || lib.inferSec,
+      accuracy:   Math.min(1, Math.max(0, (parseFloat(scen.accuracyPct) || 0) / 100)),
+      accuracyMetric: scen.accuracyMetric || lib.accuracyMetric,
+      scanTimeReductPct: Math.max(0, parseFloat(scen.scanTimeReductPct) || 0),
+      lowValueReductPct: Math.max(0, parseFloat(scen.lowValueReductPct) || 0),
+    };
+    return computeAI(scen.cloudProvider, settings.region, model, scen.precision, scen.architecture, settings.customCi, settings.equipment, {trainKwh, testStudies: scen.testStudies, deployMonths: scen.deployMonths, cloudRegion: scen.cloudRegion});
+  }, [scen, settings.region, settings.customCi, settings.equipment]);
 
   const landingAIKwh = useMemo(() => {
     if (!landingAIOpen) return 0;
@@ -2011,27 +2064,67 @@ function App() {
 
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls" style={{padding:'12px 16px'}}>
-            {/* Quick load chips */}
-            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:5,marginBottom:8}}>
-              <span style={{fontSize:10,color:'#90a4ae',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',marginRight:2}}>Quick load:</span>
-              {AI_PRESETS.filter(p=>p.aiDash).map(({key,label,Icon,aiDash})=>(
-                <button key={key} onClick={()=>{setS('architecture',aiDash.architecture);setS('modelSize',aiDash.modelSize);setS('precision',aiDash.precision);}} style={{
-                  display:'inline-flex',alignItems:'center',gap:4,
-                  background: scen.architecture===aiDash.architecture && scen.modelSize===aiDash.modelSize ? '#c8e6c9' : '#f1f8f1',
-                  border:'1.5px solid #c8e6c9',borderRadius:8,padding:'3px 9px',
-                  cursor:'pointer',fontSize:10,fontWeight:700,color:'#2E7D32',
-                }}>
-                  <Icon size={10}/>{label}
-                </button>
-              ))}
-            </div>
-
-            {/* 4 main selectors — compact row */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
-              <Sel label="Architecture"       value={scen.architecture}  options={META.architectures}  onChange={v=>setS('architecture',v)}/>
-              <Sel label="Model size"         value={scen.modelSize}     options={META.modelSizes}     onChange={v=>setS('modelSize',v)}/>
+            {/* Model library picker + precision + cloud */}
+            <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr 1fr',gap:8}}>
+              <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>
+                Model <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— task-family template, fully editable</span>
+                <select value={scen.modelKey} onChange={e=>setModel(e.target.value)}>
+                  {AI_MODEL_LIBRARY.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+                </select>
+              </label>
               <Sel label="Precision / AMP"    value={scen.precision}     options={META.precisions}     onChange={v=>setS('precision',v)}/>
               <Sel label="Cloud / deployment" value={scen.cloudProvider} options={META.cloudProviders} onChange={setCloudProvider}/>
+            </div>
+            <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
+              {AI_MODEL_BY_KEY[scen.modelKey]?.reference ? <>Reference: <strong>{AI_MODEL_BY_KEY[scen.modelKey].reference}</strong> · {AI_MODEL_BY_KEY[scen.modelKey].refCite} · </> : null}
+              {scen.architecture} · {sizeLabel(scen.paramsM)} · {scen.dim}
+            </p>
+
+            {/* Collapsible advanced model parameters */}
+            <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
+              <button onClick={()=>setModelExpanded(v=>!v)} style={{background:'none',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:6,width:'100%'}}>
+                <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced model parameters</span>
+                <span style={{fontSize:10,color:'#90a4ae'}}>{scen.paramsM}M params · {scen.resolution}px{scen.dim==='3D'?` × ${scen.slices} slices`:''} · {scen.inferSec}s/study</span>
+                <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{modelExpanded ? '▴ collapse' : '▾ expand'}</span>
+              </button>
+              {modelExpanded && (
+                <div style={{marginTop:8}}>
+                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:6,marginBottom:6}}>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Architecture
+                      <select value={scen.architecture} onChange={e=>setS('architecture',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}>
+                        {META.architectures.map(a=><option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Parameters (M)
+                      <input type="number" min="0" step="1" value={scen.paramsM} onChange={e=>setS('paramsM',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Dimensionality
+                      <select value={scen.dim} onChange={e=>setS('dim',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}>
+                        <option value="2D">2D (image / slice)</option>
+                        <option value="3D">3D (volume)</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Input resolution (px)
+                      <input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11,opacity:scen.dim==='3D'?1:0.5}}>
+                      Slices / volume
+                      <input type="number" min="1" value={scen.slices} disabled={scen.dim!=='3D'} onChange={e=>setS('slices',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:scen.dim==='3D'?'white':'#f5f5f5'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Inference time (s/study)
+                      <input type="number" min="0" step="0.1" value={scen.inferSec} onChange={e=>setS('inferSec',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
+                  </div>
+                  <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>Inference time/study is the inference energy driver. Params, dimensionality, and resolution describe the model and set the size label.</p>
+                </div>
+              )}
             </div>
 
             {/* Collapsible training assumptions */}
@@ -2050,7 +2143,7 @@ function App() {
                     <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Training assumptions</span>
                     {estKwh !== null
                       ? <span style={{fontSize:10,background:'#e8f5e9',color:'#2E7D32',padding:'1px 8px',borderRadius:8,fontWeight:700}}>{estKwh} kWh</span>
-                      : <span style={{fontSize:10,color:'#90a4ae'}}>model default · {AI_MODELS[scen.modelSize]?.trainMwh * 1000} kWh</span>
+                      : <span style={{fontSize:10,color:'#90a4ae'}}>model default · {(ai.trainMwhBase * 1000).toLocaleString()} kWh</span>
                     }
                     <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{trainExpanded ? '▴ collapse' : '▾ expand'}</span>
                   </button>
@@ -2111,9 +2204,38 @@ function App() {
             <h2 style={{marginBottom:12}}>Model details</h2>
             <div className="cards">
               <Card icon={<Brain/>}      title="Architecture"         value={scen.architecture}                         sub={ai.archDesc}/>
-              <Card icon={<Cpu/>}        title="Model size"           value={scen.modelSize}                            sub={`${ai.training.kwhTotal} kWh to train${scen.trainGpu && parseFloat(scen.trainHours) > 0 ? ' (GPU estimate)' : ' (model default)'}. Accuracy: ${rnd(ai.accuracy*100,0)}%.`}/>
-              <Card icon={<Target/>}     title="Accuracy"             value={`${rnd(ai.accuracy*100,0)}%`}              sub="Diagnostic accuracy on hold-out test set. Larger models gain marginally at high energy cost."/>
-              <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub="Accuracy % per monthly inference kWh. Use to compare architectures and model sizes. (Green AI metric)"/>
+              <Card icon={<Cpu/>}        title="Model size"           value={ai.modelSize}                              sub={`${ai.paramsM.toLocaleString()}M params · ${ai.dim}${ai.dim==='3D'?` · ${ai.slices} slices`:''} · ${ai.resolution}px input.`}/>
+              <Card icon={<Target/>}     title={`Reported ${ai.accuracyMetric}`} value={`${rnd(ai.accuracy*100,1)}%`}     sub={`Your reported value — default from ${AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'reference'}. Edit below. EcoRad does not predict performance.`}/>
+              <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub={`Reported ${ai.accuracyMetric} % per monthly inference kWh. Use to compare models. (Green AI metric)`}/>
+            </div>
+
+            {/* Editable reported performance — decoupled from model size */}
+            <div className="inputSummary" style={{marginTop:16}}>
+              <h3 style={{marginTop:0,marginBottom:4,color:'#1b5e20',fontSize:15}}>Reported performance &amp; clinical benefit</h3>
+              <p className="note" style={{marginBottom:12,fontSize:12}}>
+                These are <strong>your reported numbers</strong>, not predictions — defaults come from {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} ({AI_MODEL_BY_KEY[scen.modelKey]?.refCite ?? '—'}). Replace with your own validation results.
+              </p>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1.2fr 1fr 1fr',gap:10}}>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                  Performance value (%)
+                  <input type="number" min="0" max="100" step="0.1" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
+                </label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                  Metric
+                  <select value={scen.accuracyMetric} onChange={e=>setS('accuracyMetric',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}>
+                    {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','Other'].map(m=><option key={m} value={m}>{m}</option>)}
+                  </select>
+                </label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                  Scan-time reduction (%)
+                  <input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
+                </label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                  Low-value imaging avoided (%)
+                  <input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
+                </label>
+              </div>
+              <p className="note" style={{marginTop:8,fontSize:11}}>Scan-time reduction and low-value-imaging avoidance drive the clinical CO₂ savings on the Clinical and Carbon tabs. Set to 0 if not applicable to this task.</p>
             </div>
           </section>
 
@@ -2159,7 +2281,7 @@ function App() {
             <p className="note" style={{marginBottom:12}}>Operational carbon uses cloud provider CI ({ai.cloudCi} kgCO₂e/kWh). Clinical savings use local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh). Global avg: 0.473 · EU avg: 0.237 (Vosshenrich)</p>
             <div className="cards">
               <Card icon={<Leaf/>}        title="Gross CO₂e/month"          value={`${ai.grossKgCo2e} kgCO₂e`}                 sub="Inference + amortised training + embodied GPU (all monthly)."/>
-              <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${AI_MODELS[scen.modelSize].embCo2Kg} kgCO₂e manufacturing, amortised 36 months. (ESR PP 2025)`}/>
+              <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${ai.embCo2KgTotal} kgCO₂e manufacturing, amortised 36 months. (ESR PP 2025)`}/>
               <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`}          sub="Scanner time reduction + avoided scans. Replace with measured before/after metering."/>
               <section className="card">
                 <div className="cardHead"><BarChart3/><span>Net AI impact / month</span></div>
