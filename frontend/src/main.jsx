@@ -804,7 +804,7 @@ function Logo({onClick}) {
   return (
     <div className="brand" onClick={onClick} style={onClick ? {cursor:'pointer'} : undefined}>
       <img src="./logo-only.png" alt="CEDARS logo" style={{width:68, height:68, objectFit:'contain'}}/>
-      <div><strong>CEDARS</strong><span>Carbon, Energy Diagnostics for AI &amp; Radiology Sustainability</span></div>
+      <div><strong>CEDARS</strong><span>Carbon, Energy Diagnostics and Reporting for Sustainability</span></div>
     </div>
   );
 }

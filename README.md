@@ -4,7 +4,7 @@
 
 # CEDARS
 
-### Carbon, Energy Diagnostics for AI and Radiology Sustainability
+### Carbon, Energy Diagnostics and Reporting for Sustainability
 
 **Measure the environmental footprint of clinical imaging — energy, carbon, water, and AI — and turn it into a standardised, shareable disclosure, directly in your browser.**
 
@@ -19,7 +19,7 @@
 
 ## What is CEDARS?
 
-CEDARS (Carbon, Energy Diagnostics for AI and Radiology Sustainability) is a browser-based tool that quantifies the environmental footprint of a radiology operation **and** of the AI models it deploys, then expresses the result as a standardised **CEDARS Score and Rating** ecolabel for reporting and comparison — all from published literature defaults you can override with your own measured data.
+CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browser-based tool that quantifies the environmental footprint of a radiology operation **and** of the AI models it deploys, then expresses the result as a standardised **CEDARS Score and Rating** ecolabel for reporting and comparison — all from published literature defaults you can override with your own measured data.
 
 No installation. No backend. No data leaves your browser.
 
