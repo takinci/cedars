@@ -8,10 +8,10 @@
 
 **Measure the environmental footprint of a clinical imaging department — energy, carbon, water, AI, and more — directly in your browser.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-takinci.github.io%2FEcoRad-2E7D32?style=for-the-badge&logo=github)](https://takinci.github.io/EcoRad/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-takinci.github.io%2FEcoRad-2E7D32?style=for-the-badge&logo=github)](https://takinci.github.io/cedars/)
 [![Built with React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?style=flat-square&logo=chartdotjs)](https://www.chartjs.org)
-[![GitHub Pages](https://img.shields.io/badge/Deployed-GitHub%20Pages-222?style=flat-square&logo=github)](https://takinci.github.io/EcoRad/)
+[![GitHub Pages](https://img.shields.io/badge/Deployed-GitHub%20Pages-222?style=flat-square&logo=github)](https://takinci.github.io/cedars/)
 
 </div>
 
@@ -23,7 +23,7 @@ CEDARS (Carbon, Energy Diagnostics for AI and Radiology Sustainability) is a bro
 
 No installation. No backend. No data leaves your browser.
 
-**→ Try it live: [takinci.github.io/EcoRad](https://takinci.github.io/EcoRad/)**
+**→ Try it live: [takinci.github.io/cedars](https://takinci.github.io/cedars/)**
 
 ---
 
@@ -173,6 +173,6 @@ See [sources.md](./sources.md) for the full assumptions governance document.
 
 Built for radiology sustainability research · Evidence-based · Open source
 
-[**→ Open CEDARS**](https://takinci.github.io/EcoRad/)
+[**→ Open CEDARS**](https://takinci.github.io/cedars/)
 
 </div>
