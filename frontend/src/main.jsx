@@ -1631,8 +1631,14 @@ function App() {
       (s, name) => s + (INTERVENTIONS[name]?.kwh || 0), 0
     );
     const annualKwhSaving = monthlyKwhSaving * 12;
-    const co2Saving = rnd(annualKwhSaving * effectiveCi, 1);
-    const potentialFacilityCo2 = Math.max(0, annualKwh - annualKwhSaving) * effectiveCi;
+    // Percentage-based CO₂ levers (renewable electricity, lower-carbon region, extend
+    // hardware lifetime) stack multiplicatively and apply to operational CO₂ — mirrors
+    // the Compare tab so a ticked action has the same effect in both places.
+    const co2PctFraction = 1 - deptLabel.activeInterventions.reduce(
+      (f, name) => f * (1 - ((INTERVENTIONS[name]?.co2Pct || 0) / 100)), 1
+    );
+    const potentialFacilityCo2 = Math.max(0, annualKwh - annualKwhSaving) * effectiveCi * (1 - co2PctFraction);
+    const co2Saving = rnd(facilityCo2 - potentialFacilityCo2, 1);
     const potentialCo2PerStudy = annualStudies > 0
       ? rnd(Math.max(0, potentialFacilityCo2 + aiNetCo2Yr) / annualStudies, 3) : 0;
     const potentialScore = hasData ? cedarsScore(potentialCo2PerStudy, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
