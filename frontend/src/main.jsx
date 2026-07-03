@@ -147,7 +147,7 @@ const INTERVENTIONS = {
   // standby ~40–60 % lower than idle (Herrmann 2012, CJRS 2022)
   "Use standby mode during inactive periods":{kwh: 1200, note: "Drops idle to standby during low-activity windows. (Herrmann 2012, CJRS 2022)"},
   // reducing 5–10 % unnecessary scans (McKee 2024, ESR PP 2025)
-  "Reduce low-value imaging":                {kwh:  800, note: "Fewer scans = less active operation time. (McKee 2024, ESR PP 2025)"},
+  "Reduce low-value imaging":                {kwh:  800, note: "Appropriateness-guided ordering (ACR Appropriateness Criteria, Choosing Wisely, ESR iGuide) cuts inappropriate exams — fewer scans, less active operation time, and better-targeted care. (McKee 2024; ESR PP 2025)"},
   // tighter scheduling cuts dead-time idle (IJHCQA 2016)
   "Optimize scheduling":                     {kwh:  600, note: "Tighter scheduling reduces dead-time idle energy. (IJHCQA 2016)"},
   // protocol compression reduces per-scan active time (Radiol 2023, EurRad 2024)
