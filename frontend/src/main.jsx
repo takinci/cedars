@@ -1088,7 +1088,7 @@ function generateDeptText(d) {
   return (
     `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e (effective carbon intensity: ${d.effectiveCi} kgCO₂e/kWh; renewable energy: ${d.renewablePct}%; grid region: ${d.region}). ` +
     (d.aiToolCount > 0 ? ` This figure includes ${d.aiToolCount} deployed AI tool${d.aiToolCount > 1 ? 's' : ''}, contributing a net ${d.aiNetCo2Yr >= 0 ? '+' : ''}${d.aiNetCo2Yr.toLocaleString()} kgCO₂e/yr (gross ${d.aiGrossCo2Yr.toLocaleString()} kgCO₂e/yr from compute, offset by ${d.aiSavingsCo2Yr.toLocaleString()} kgCO₂e/yr of clinical savings).` : '') +
-    ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
+    ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
     (d.interventionCount > 0 ? ` The department has implemented ${d.interventionCount} sustainability intervention${d.interventionCount > 1 ? 's' : ''}, with an estimated energy saving potential of ${d.annualKwhSaving.toLocaleString()} kWh/yr (${d.co2Saving} kgCO₂e/yr).` : '') +
     ` Sustainability metrics were estimated using CEDARS (${d.date}), informed by the framework of Vosshenrich R et al. (Curr Opin Urol 2024, DOI: 10.1097/MOU.0000000000001337) and McKee BJ et al. (Radiology 2024, DOI: 10.1148/radiol.240219).`
   );
@@ -1102,6 +1102,7 @@ function downloadDeptPNG(d) {
     ...(d.aiToolCount > 0 ? [['Deployed AI tools', `${d.aiToolCount} \xb7 net ${d.aiNetCo2Yr>=0?'+':''}${d.aiNetCo2Yr.toLocaleString()} kgCO₂e/yr`]] : []),
     ['Studies / year',       d.annualStudies.toLocaleString()],
     ['Energy per study',     `${d.kwhPerStudy} kWh`],
+    ...(d.utilPct != null ? [['Fleet utilisation', `${d.utilPct}% of configured fleet`]] : []),
     ['Carbon intensity',     `${d.effectiveCi} kgCO₂e/kWh (${d.renewablePct}% renewable)`],
     ['Grid region',          d.region],
     ...(d.interventionCount > 0 ? [['Active interventions', `${d.interventionCount} implemented \xb7 ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved`]] : []),
@@ -1644,6 +1645,11 @@ function App() {
     const annualStudies = parseFloat(deptLabel.annualStudies) || 0;
     const facilityCo2 = rnd(annualKwh * effectiveCi, 1);
     const kwhPerStudy = annualStudies > 0 ? rnd(annualKwh / annualStudies, 2) : 0;
+    // Efficiency of converting energy into delivered care: per-study CO₂ already drives
+    // the Score; utilisation (studies vs the configured fleet's typical throughput) is
+    // the explanatory diagnostic for the "large fleet, low volume" case.
+    const fleetCapacityYr = efficiency.capacityYr;
+    const utilPct = (fleetCapacityYr > 0 && annualStudies > 0) ? rnd(annualStudies / fleetCapacityYr * 100, 0) : null;
     const hasData = annualStudies > 0;
     // Deployed AI tools — each adds net annual CO₂ (compute − clinical savings).
     const aiToolResults = (deptLabel.aiTools || []).map(t => ({
@@ -1679,6 +1685,7 @@ function App() {
       region: deptLabel.region,
       ci, effectiveCi, renewablePct,
       annualKwh, annualStudies, totalAnnualCo2, co2PerStudy, kwhPerStudy,
+      fleetCapacityYr, utilPct,
       hasData, score,
       leaves: rating?.leaves ?? 0, ratingLabel: rating?.label ?? 'Enter data above',
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
@@ -1689,7 +1696,7 @@ function App() {
       aiNetCo2Yr, aiKwhYr, aiGrossCo2Yr, aiSavingsCo2Yr,
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [deptLabel, settings.customCi]);
+  }, [deptLabel, settings.customCi, efficiency.capacityYr]);
 
   // Auto-seed the AI model's training (amortised) + inference as locked compute lines,
   // then layer the user's own Infrastructure-tab workloads on top. Provider/region come
@@ -3170,7 +3177,7 @@ function App() {
           {ecoLabelTab==='dept' && (<>
             <p className="note" style={{marginBottom:16}}>
               Generate a department-level sustainability label for ESG reports, accreditation submissions, or public sustainability disclosures.
-              The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study, benchmarked against published radiology carbon intensity data (Vosshenrich R et al., Curr Opin Urol 2024), and follow the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
+              The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department scores well even at a high absolute footprint, while an under-used fleet does not. Benchmarked against published radiology carbon intensity data (Vosshenrich R et al., Curr Opin Urol 2024), following the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
             </p>
 
             {/* ── Pre-fill from Radiology Dashboard ── */}
@@ -3326,6 +3333,7 @@ function App() {
                   ...(deptLabelData.aiToolCount>0 ? [['Deployed AI tools', `${deptLabelData.aiToolCount} · net ${deptLabelData.aiNetCo2Yr>=0?'+':''}${deptLabelData.aiNetCo2Yr.toLocaleString()} kgCO₂e/yr`]] : []),
                   ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
                   ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
+                  ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
                   ['Effective grid CI',    `${deptLabelData.effectiveCi} kgCO₂e/kWh (${deptLabelData.renewablePct}% renewable)`],
                   ['Grid region',          deptLabelData.region],
                   ...(deptLabelData.interventionCount>0 ? [['Active interventions', `${deptLabelData.interventionCount} implemented · ${deptLabelData.annualKwhSaving.toLocaleString()} kWh/yr saving`]] : []),
@@ -3378,7 +3386,7 @@ function App() {
                   ['4', 'Annual carbon footprint (facility + AI)', d.totalAnnualCo2 > 0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—', d.totalAnnualCo2 > 0, 'Department'],
                   ['5', 'Deployed AI tools (net annual CO₂)', d.aiToolCount > 0 ? `${d.aiToolCount} · net ${d.aiNetCo2Yr>=0?'+':''}${d.aiNetCo2Yr.toLocaleString()} kgCO₂e/yr` : 'none deployed', d.aiToolCount > 0, 'AI workload'],
                   ['6', 'Active mitigation / interventions', d.interventionCount > 0 ? `${d.interventionCount} · ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved` : 'none reported', d.interventionCount > 0, 'Interventions'],
-                  ['7', 'Carbon intensity per study', d.hasData ? `${d.co2PerStudy} kgCO₂e/study` : '—', d.hasData, 'Department'],
+                  ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
                   ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
                 ];
                 return (
