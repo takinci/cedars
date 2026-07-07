@@ -1556,7 +1556,10 @@ function App() {
       energyPerStudy: util > 0 ? rnd(dEnergy / util, 3) : dEnergy,
       co2PerStudy:    util > 0 ? rnd(dCo2 / util, 3)    : dCo2,
       designedCo2PerStudy: dCo2,
-      nonProductivePct: rnd(100 - dash.totals.activePct, 0),
+      // Active energy scales with actual volume, so under-utilisation raises the
+      // non-productive share (idle/standby/off + unused capacity). At 100% utilisation
+      // this equals the fleet's baseline duty cycle; it rises as utilisation falls.
+      nonProductivePct: rnd(Math.max(0, 100 - dash.totals.activePct * util), 0),
       band,
     };
   }, [settings.equipment, settings.actualStudiesYear, dash.totals.energyPerScan, dash.totals.activePct, dash.ci]);
@@ -2158,7 +2161,7 @@ function App() {
                   ? `${rnd(1/efficiency.util,1)}× the fleet's efficient baseline (${efficiency.designedCo2PerStudy} kgCO₂e) — fixed energy amortised over fewer studies.`
                   : `At or above typical throughput — efficient conversion. Lower = more care per kg CO₂.`}/>
               <Card icon={<Zap/>} title="Energy per study" value={`${efficiency.energyPerStudy} kWh`} sub="Fleet energy ÷ actual studies. Rises as utilisation falls."/>
-              <Card icon={<Activity/>} title="Non-productive energy" value={`${efficiency.nonProductivePct}%`} sub="Share of fleet energy spent idle / standby / off (not scanning). The main efficiency lever — power-down &amp; scheduling."/>
+              <Card icon={<Activity/>} title="Non-productive energy" value={`${efficiency.nonProductivePct}%`} sub="Share of fleet energy not converted into active scanning — idle, standby, off, and unused capacity. Rises as utilisation falls. Levers: power-down, scheduling, consolidation."/>
             </div>
             <p className="note" style={{marginTop:12}}>
               A large fleet doing little imaging shows high CO₂/study (poor conversion of energy into care); a small, busy fleet shows low CO₂/study even at higher <em>total</em> emissions. Utilisation explains the per-study figure; non-productive energy points to the fix.
