@@ -3245,12 +3245,14 @@ function App() {
               <button onClick={()=>{
                 const mult = TIME_MULT[settings.timePeriod] ?? 1;
                 const monthlyKwh = dash.totals.kwh / mult;
-                const monthlyStudies = dash.scopes.imagingScans / mult;
+                // Use the actual imaging volume entered on the Efficiency tab if set;
+                // otherwise fall back to the fleet's typical throughput.
+                const annualStudies = efficiency.studiesYr;
                 setDeptLabel(d=>({
                   ...d,
                   region: settings.region,
-                  ...(monthlyKwh > 0     ? {annualKwh:     String(Math.round(monthlyKwh * 12))}     : {}),
-                  ...(monthlyStudies > 0 ? {annualStudies:  String(Math.round(monthlyStudies * 12))} : {}),
+                  ...(monthlyKwh > 0    ? {annualKwh:     String(Math.round(monthlyKwh * 12))} : {}),
+                  ...(annualStudies > 0 ? {annualStudies:  String(annualStudies)}              : {}),
                 }));
               }} style={{
                 display:'inline-flex',alignItems:'center',gap:7,
@@ -3260,7 +3262,7 @@ function App() {
                 <ArrowRight size={13}/> Pre-fill from dashboards
               </button>
               <span style={{fontSize:11,color:'#607d66'}}>
-                Copies grid region from settings · Annualises electricity (kWh) and imaging studies from Radiology Dashboard
+                Copies grid region · electricity (kWh) · and imaging studies/year ({efficiency.isEstimate ? 'fleet estimate' : 'your actual volume from the Efficiency tab'})
               </span>
             </div>
 
