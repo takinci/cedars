@@ -213,6 +213,40 @@ Staff commute headcount is derived automatically from the equipment configuratio
 
 ---
 
+## Contrast media and contamination (`CONTRAST`)
+
+Estimates the iodinated (ICM — CT, PET-CT, angiography, fluoroscopy) and gadolinium-based (GBCA — MRI) contrast footprint from the fleet's per-modality exam counts × fixed literature defaults. Two distinct concerns: **waste** (contrast drawn but discarded) and **contamination** (administered contrast excreted by patients into wastewater). Both agent classes pass through wastewater treatment largely unremoved, so environmental release ≈ administered dose (a defensible mass-balance).
+
+> ⚠️ **Verification status:** the numeric defaults below are literature-informed midpoints entered from domain knowledge; the dedicated verification pass was halted. Treat them as *editable defaults to be confirmed against the cited primary sources and local pharmacy/procurement data* before publication. Contrast-use fractions in particular vary widely by institution and indication.
+
+**Default parameters (`CONTRAST`):**
+
+| Parameter | Default | Basis / to verify |
+|-----------|---------|-------------------|
+| % CT with contrast | 40% | Institution-dependent; ~30–50% typical. **[verify]** |
+| % PET-CT with contrast | 30% | CT component often low-dose/non-contrast. **[verify]** |
+| % Angio/IR with contrast | 90% | Most interventional procedures are contrast-based. **[verify]** |
+| % Fluoroscopy with contrast | 50% | Indication-dependent. **[verify]** |
+| % MRI with gadolinium | 35% | ~30–45% of MRI use GBCA. **[verify]** |
+| Iodinated volume | 100 mL/exam | Typical CT contrast bolus 50–150 mL. **[verify]** |
+| Iodine concentration | 350 mgI/mL | Common agents 300–370 mgI/mL. |
+| Gadolinium per exam | ~1.0 g Gd | Standard 0.1 mmol/kg × ~70 kg = 7 mmol × 157 g/mol ≈ 1.1 g. |
+| GBCA volume | 15 mL/exam | ~15 mL of a 0.5 M macrocyclic agent. |
+| Waste fraction | 10% | Overfill / leftover discarded; multi-dose vials & weight-based dosing reduce it. **[verify]** |
+| Contrast density | 1.4 g/mL | For discarded-mass (hazardous-waste) estimate. |
+
+**Environmental / methodology references (to cite and verify):**
+
+| ID | Citation |
+|----|---------|
+| Gd-Environment | Gadolinium as an emerging "anthropogenic gadolinium" contaminant — GBCA passes through wastewater treatment essentially unremoved and is measurable in surface water, groundwater, and drinking water. E.g. Rogowska J et al. *Environ Sci Technol* 2018 (anthropogenic gadolinium in the aquatic environment); Brünjes R & Hofmann T, *Water Res* 2020 (Gd anomalies in rivers/tap water). **[verify exact refs/DOIs]** |
+| ICM-Environment | Iodinated contrast media are highly persistent, mobile organic pollutants; renally excreted largely unchanged within 24 h and poorly removed in treatment, forming iodinated disinfection by-products. Reviews of ICM occurrence in the aquatic environment. **[verify exact refs/DOIs]** |
+| Contrast-Stewardship | Contrast optimisation / stewardship (weight-based dosing, multi-dose/bulk vials, appropriate ordering, agent selection) reduces both waste and environmental release. ESR sustainability guidance; ACR/vendor contrast-optimisation literature. **[verify]** |
+
+**Co-benefit note:** reducing unnecessary contrast-enhanced imaging cuts patient risk (contrast reactions, gadolinium retention) *and* environmental contamination — a "sustainable = higher-value care" lever, linked to the appropriateness framing in the intervention set. A contrast-media **carbon (LCA)** figure is deliberately **not** reported yet: per-mL life-cycle CO₂e factors for contrast are sparse and would need a sourced LCA before inclusion; the resource/contamination masses above are more defensible.
+
+---
+
 ## Cloud Carbon Tracker regional data
 
 | ID | Source | Used for |
