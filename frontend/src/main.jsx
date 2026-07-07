@@ -394,6 +394,20 @@ const NET_KWH_PER_GB   = 0.001; // kWh/GB fixed-line data-centre average (Aslan 
 const STAFF_DAYS_PER_MO = 22;  // standard working days per month
 const AVG_STUDY_GB     = 0.3;  // weighted avg DICOM study: MRI ~1 GB, CT ~0.5 GB, X-ray ~0.05 GB
 
+// Contrast media — fixed literature-default parameters (institution-dependent; editable in future).
+// Iodinated (ICM) for CT/PET-CT/angio/fluoro; gadolinium (GBCA) for MRI. Excreted contrast passes
+// through wastewater treatment largely unremoved (esp. gadolinium) → environmental contamination.
+const CONTRAST = {
+  fraction:      {CT: 0.40, "PET-CT": 0.30, "Angio/IR": 0.90, Fluoroscopy: 0.50, MRI: 0.35}, // % of exams using contrast
+  icmMlPerExam:  100,   // mL iodinated contrast per enhanced exam
+  iodineMgPerMl: 350,   // mgI/mL (typical 300–370)
+  gbcaMlPerExam: 15,    // mL gadolinium agent per enhanced MRI (0.5 M)
+  gadGramsPerExam: 1.0, // ~0.1 mmol/kg × 70 kg → ~1 g Gd per exam
+  wasteFraction: 0.10,  // fraction of drawn contrast discarded unused (overfill/leftover)
+  densityGPerMl: 1.4,   // approx density of iodinated contrast for waste-mass estimate
+};
+const ICM_MODALITIES = ["CT", "PET-CT", "Angio/IR", "Fluoroscopy"];
+
 const META = {
   profiles:       ["Hospital radiology", "Outpatient imaging center", "Research imaging lab", "Teleradiology / informatics-heavy workflow"],
   intendedUses:   ["Estimate annual footprint", "Compare modalities", "Track monthly sustainability KPIs", "Evaluate AI tool impact", "Estimate savings from an intervention"],
@@ -460,7 +474,28 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // Resource metrics
   const waterLitres  = rnd(totalKwh * WATER_PER_KWH, 0);
   const paperKg      = rnd(imagingScans * PAPER_G_PER_ENC / 1000, 1);
+
+  // Contrast media & contamination — from per-modality exam counts × fixed literature defaults
+  let icmExams = 0, gbcaExams = 0;
+  byEquipment.forEach(e => {
+    const f = CONTRAST.fraction[e.modality] || 0;
+    if (f <= 0) return;
+    if (e.modality === 'MRI')                 gbcaExams += e.scans * f;
+    else if (ICM_MODALITIES.includes(e.modality)) icmExams += e.scans * f;
+  });
+  const icmVolumeL   = icmExams  * CONTRAST.icmMlPerExam  / 1000;
+  const gbcaVolumeL  = gbcaExams * CONTRAST.gbcaMlPerExam / 1000;
+  const iodineKg     = rnd(icmExams * CONTRAST.icmMlPerExam * CONTRAST.iodineMgPerMl / 1e6, 1); // mg → kg
+  const gadKg        = rnd(gbcaExams * CONTRAST.gadGramsPerExam / 1000, 2);                     // g → kg
+  const contrastVolumeL   = rnd(icmVolumeL + gbcaVolumeL, 0);
+  const contrastWastedL   = rnd((icmVolumeL + gbcaVolumeL) * CONTRAST.wasteFraction, 1);
+  const contrastHazKg     = rnd(contrastWastedL * CONTRAST.densityGPerMl, 1); // discarded contrast mass
   const hazardousKg  = rnd(imagingScans * HAZ_WASTE_G_SCAN / 1000, 1);
+  const contrast = {
+    enhancedExams: Math.round(icmExams + gbcaExams), icmExams: Math.round(icmExams), gbcaExams: Math.round(gbcaExams),
+    iodineKg, gadKg, gadGrams: rnd(gbcaExams * CONTRAST.gadGramsPerExam, 0),
+    volumeL: contrastVolumeL, wastedL: contrastWastedL, hazKg: contrastHazKg,
+  };
 
   return {
     byEquipment,
@@ -477,7 +512,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
       idlePct:   totalKwh > 0 ? rnd(totalIdleKwh   / totalKwh * 100, 1) : 0,
     },
     scopes:    {scope1Kg, scope2Kg, scope3EmbKg, scope3TravelKg, scope3Kg, imagingScans},
-    resources: {waterLitres, paperKg, hazardousKg},
+    resources: {waterLitres, paperKg, hazardousKg, contrast},
     equivalencies: {
       car_km:          rnd(totalCo2 / 0.17,   0),
       phone_charges:   rnd(totalKwh / 0.012,  0),
@@ -809,10 +844,10 @@ function Logo({onClick}) {
   );
 }
 
-function Card({title, value, sub, icon, style}) {
+function Card({title, value, sub, icon, style, tip}) {
   return (
-    <section className="card" style={style}>
-      <div className="cardHead">{icon}<span>{title}</span></div>
+    <section className="card" style={style} title={tip || undefined}>
+      <div className="cardHead">{icon}<span>{title}</span>{tip && <span style={{marginLeft:'auto',color:'#90a4ae',fontSize:13,cursor:'help'}} title={tip}>ⓘ</span>}</div>
       <b>{value}</b>
       <p>{sub}</p>
     </section>
@@ -2261,6 +2296,28 @@ function App() {
               <Card icon={<Trash2/>}   title={`Hazardous waste ${dash.totals.label}`}      value={`${dash.resources.hazardousKg} kg`} sub="Contrast media disposal, sharps. Replace with waste manifest data."/>
               <Card icon={<Leaf/>}     title={`Total Scope 2 carbon ${dash.totals.label}`} value={fmtCo2(dash.scopes.scope2Kg)}      sub="All electricity-derived emissions. Primary target for renewable energy procurement."/>
             </div>
+
+            <h3 style={{marginTop:24,marginBottom:4,color:'#2E7D32',fontSize:15}}>Contrast media &amp; contamination</h3>
+            <p className="note" style={{marginBottom:12}}>
+              Iodinated contrast (CT/angio/fluoro) and gadolinium (MRI) are excreted by patients and pass through wastewater treatment largely unremoved — gadolinium is now measurable in rivers and drinking water. Estimated from your fleet's exam volumes × literature defaults (hover ⓘ). Reducing unnecessary contrast exams cuts both patient risk and environmental release.
+            </p>
+            <div className="cards">
+              <Card icon={<Droplets/>} title={`Contrast-enhanced exams ${dash.totals.label}`} value={dash.resources.contrast.enhancedExams.toLocaleString()}
+                sub={`${dash.resources.contrast.icmExams.toLocaleString()} iodinated · ${dash.resources.contrast.gbcaExams.toLocaleString()} gadolinium.`}
+                tip={`Assumes ${Math.round(CONTRAST.fraction.CT*100)}% of CT, ${Math.round(CONTRAST.fraction.MRI*100)}% of MRI, ${Math.round(CONTRAST.fraction['Angio/IR']*100)}% of angio use contrast. Institution-dependent literature defaults.`}/>
+              <Card icon={<AlertTriangle/>} title={`Gadolinium released ${dash.totals.label}`} value={dash.resources.contrast.gadKg >= 1 ? `${dash.resources.contrast.gadKg} kg` : `${dash.resources.contrast.gadGrams.toLocaleString()} g`}
+                sub="Excreted to wastewater, ~unremoved by treatment. Persistent 'anthropogenic gadolinium' contamination."
+                tip={`~${CONTRAST.gadGramsPerExam} g Gd/exam (0.1 mmol/kg × 70 kg). Gadolinium passes through wastewater treatment essentially unremoved → environmental release ≈ administered dose.`}/>
+              <Card icon={<Droplets/>} title={`Iodine load ${dash.totals.label}`} value={`${dash.resources.contrast.iodineKg} kg`}
+                sub="Iodinated contrast excreted to wastewater. Persistent; forms disinfection by-products."
+                tip={`${CONTRAST.icmMlPerExam} mL/exam × ${CONTRAST.iodineMgPerMl} mgI/mL. Iodinated contrast is renally excreted largely unchanged within 24 h.`}/>
+              <Card icon={<Trash2/>} title={`Contrast wasted ${dash.totals.label}`} value={`${dash.resources.contrast.wastedL} L`}
+                sub={`~${dash.resources.contrast.hazKg} kg discarded contrast (pharma waste). Lever: weight-based dosing, multi-dose/bulk vials.`}
+                tip={`Assumes ${Math.round(CONTRAST.wasteFraction*100)}% of drawn contrast discarded unused (overfill/leftover). Total volume used: ${dash.resources.contrast.volumeL.toLocaleString()} L ${dash.totals.label}.`}/>
+            </div>
+            <p className="note" style={{marginTop:8,fontSize:12}}>
+              Estimates are mass-balance (release ≈ administered dose); contrast-use fractions vary widely by institution — replace with pharmacy/procurement data. Sources: gadolinium & iodinated contrast environmental persistence literature; ESR sustainability guidance.
+            </p>
           </section>
         </main>
       )}
