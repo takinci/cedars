@@ -1290,7 +1290,7 @@ const getCI = (region, customCi) =>
   region === 'Editable custom' ? (isNaN(parseFloat(customCi)) ? 0.30 : parseFloat(customCi)) : (CARBON_INTENSITY[region] ?? 0.25);
 
 // URL hash state persistence — encodes/decodes core settings so shared links work
-const HASH_KEYS = {u:'intendedUse', r:'region', m:'metricType', t:'timePeriod', c:'customCi'};
+const HASH_KEYS = {u:'intendedUse', r:'region', m:'metricType', t:'timePeriod', c:'customCi', a:'actualStudiesYear'};
 function readHash() {
   try {
     const q = new URLSearchParams(window.location.hash.replace(/^#/,''));
@@ -1318,6 +1318,7 @@ function App() {
     timePeriod: "Monthly",
     customCi: "0.30",
     staffCommuteKm: '15',
+    actualStudiesYear: '',
     ...readHash(),
   }));
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
@@ -1529,6 +1530,35 @@ function App() {
     const embCo2 = rnd(dash.scopes.scope3EmbKg / dash.scopes.imagingScans, 4);
     return rnd(opCo2 + embCo2, 4);
   }, [dash, settings.region, settings.customCi]);
+
+  // Efficiency — how much of the fleet's energy is converted into delivered care.
+  // Fixed fleet energy (idle/standby/cooling dominates) amortised over ACTUAL annual
+  // studies: underused fleets → high per-study footprint; busy fleets → low, even at
+  // high absolute CO₂. Utilisation = actual studies ÷ fleet's typical throughput.
+  const efficiency = useMemo(() => {
+    const IMAGING_MOD = new Set(["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","X-ray","Ultrasound"]);
+    const capacityYr = Object.entries(settings.equipment).reduce((s, [key, n]) => {
+      const u = EQUIPMENT_UNITS[key];
+      return s + ((u && IMAGING_MOD.has(u.modality)) ? Math.max(0, n || 0) * u.scans * 12 : 0);
+    }, 0);
+    const entered   = parseFloat(settings.actualStudiesYear) > 0 ? parseFloat(settings.actualStudiesYear) : null;
+    const studiesYr = entered ?? capacityYr;                 // blank → fleet estimate (utilisation 100%)
+    const util      = capacityYr > 0 ? studiesYr / capacityYr : 0;
+    const dEnergy   = dash.totals.energyPerScan;             // kWh/study at typical throughput
+    const dCo2      = rnd(dEnergy * dash.ci, 3);
+    const band = util >= 0.85 ? {label:'High utilisation',    color:'#2E7D32', bg:'#e8f5e9'}
+               : util >= 0.40 ? {label:'Typical utilisation', color:'#F57F17', bg:'#fff8e1'}
+               : {label:'Under-used fleet',    color:'#c62828', bg:'#ffebee'};
+    return {
+      capacityYr: Math.round(capacityYr), studiesYr: Math.round(studiesYr), isEstimate: !entered,
+      utilPct: rnd(util * 100, 0), util,
+      energyPerStudy: util > 0 ? rnd(dEnergy / util, 3) : dEnergy,
+      co2PerStudy:    util > 0 ? rnd(dCo2 / util, 3)    : dCo2,
+      designedCo2PerStudy: dCo2,
+      nonProductivePct: rnd(100 - dash.totals.activePct, 0),
+      band,
+    };
+  }, [settings.equipment, settings.actualStudiesYear, dash.totals.energyPerScan, dash.totals.activePct, dash.ci]);
 
   const equivData = useMemo(() => {
     const co2 = equivScope === 'scope2'
@@ -1964,7 +1994,7 @@ function App() {
               <span>Avoidable idle <b>{fmtKwh(dash.totals.idleWasteKwh)}</b></span>
             </div>
             <div className="aiTabs">
-              {[['equiv','What it means'],['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources']].map(([id,label])=>(
+              {[['equiv','What it means'],['efficiency','Efficiency'],['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources']].map(([id,label])=>(
                 <button key={id} className={dashTab===id?'on':''} onClick={()=>{
                   setDashTab(id);
                   document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -2088,6 +2118,43 @@ function App() {
 
             <p className="note" style={{borderTop:'1px solid #c8e6c9',paddingTop:16}}>
               Sources: DEFRA 2023 (car emissions); ICAO 2023 (aviation); EEA 2023 (EU household energy); IPCC (coal &amp; forest carbon); EPA (crude oil); FAO (forest sequestration).
+            </p>
+          </section>
+
+          {/* ── Efficiency — energy into healthcare ── */}
+          <section id="dash-efficiency" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:4}}>Efficiency — energy into healthcare</h2>
+            <p className="note" style={{marginBottom:16}}>
+              How efficiently your fleet's energy is converted into delivered patient care (imaging studies). Fixed energy — idle, standby, MRI cooling — is there whether you scan few patients or many, so an under-used fleet carries a high footprint <em>per study</em>. This reflects care <strong>delivered</strong>, not health outcomes.
+            </p>
+
+            <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',background:'#f1f8f1',borderRadius:12,padding:'10px 16px',marginBottom:16}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:700,color:'#2E7D32'}}>
+                Actual imaging studies / year
+                <input type="number" min="0" value={settings.actualStudiesYear} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder={`fleet est: ${efficiency.capacityYr.toLocaleString()}`} style={{width:150,padding:'6px 10px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:13,background:'white'}}/>
+              </label>
+              <span style={{fontSize:12,color:'#607d66'}}>
+                {efficiency.isEstimate
+                  ? `Blank — assuming fleet runs at typical throughput (~${efficiency.capacityYr.toLocaleString()}/yr). Enter your real annual volume to reveal utilisation.`
+                  : `Fleet typical capacity: ~${efficiency.capacityYr.toLocaleString()}/yr.`}
+              </span>
+            </div>
+
+            <div className="cards">
+              <section className="card" style={{borderTop:`3px solid ${efficiency.band.color}`}}>
+                <div className="cardHead"><Gauge/><span>Fleet utilisation</span></div>
+                <b style={{color:efficiency.band.color}}>{efficiency.utilPct}%</b>
+                <p>{efficiency.band.label} · {efficiency.studiesYr.toLocaleString()} of ~{efficiency.capacityYr.toLocaleString()} typical studies/yr.</p>
+              </section>
+              <Card icon={<Leaf/>} title="CO₂ per study (care delivered)" value={`${efficiency.co2PerStudy} kgCO₂e`}
+                sub={efficiency.util > 0 && efficiency.util < 0.99
+                  ? `${rnd(1/efficiency.util,1)}× the fleet's efficient baseline (${efficiency.designedCo2PerStudy} kgCO₂e) — fixed energy amortised over fewer studies.`
+                  : `At or above typical throughput — efficient conversion. Lower = more care per kg CO₂.`}/>
+              <Card icon={<Zap/>} title="Energy per study" value={`${efficiency.energyPerStudy} kWh`} sub="Fleet energy ÷ actual studies. Rises as utilisation falls."/>
+              <Card icon={<Activity/>} title="Non-productive energy" value={`${efficiency.nonProductivePct}%`} sub="Share of fleet energy spent idle / standby / off (not scanning). The main efficiency lever — power-down &amp; scheduling."/>
+            </div>
+            <p className="note" style={{marginTop:12}}>
+              A large fleet doing little imaging shows high CO₂/study (poor conversion of energy into care); a small, busy fleet shows low CO₂/study even at higher <em>total</em> emissions. Utilisation explains the per-study figure; non-productive energy points to the fix.
             </p>
           </section>
 
