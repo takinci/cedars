@@ -1430,7 +1430,7 @@ function App() {
     inferKwhPerStudy: '',
   });
   const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
-  const [ecoLabelTab, setEcoLabelTab] = useState('ai');
+  const [ecoLabelTab, setEcoLabelTab] = useState('dept');
   const [deptCopied, setDeptCopied] = useState(false);
   const [deptLabel, setDeptLabel] = useState({
     deptName: '', hospitalName: '', region: 'EU average',
