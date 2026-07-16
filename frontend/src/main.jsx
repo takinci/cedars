@@ -2927,6 +2927,43 @@ function App() {
             {scenario.usesScanner && <> · Scanner state target changes how deep the power-down goes (Standby saves less than Off).</>}
             {scenario.usesCloud   && <> · Cloud provider changes the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
           </p>
+          {/* Impact on your EcoLabel — current → projected */}
+          {(()=>{
+            const cur = deptLabelData;
+            const frac = scenario.baseline.co2 > 0 ? scenario.savings.co2 / scenario.baseline.co2 : 0;
+            const projCo2Study = rnd(cur.co2PerStudy * (1 - frac), 3);
+            const projScore = cur.hasData ? cedarsScore(projCo2Study, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
+            const projRating = projScore != null ? cedarsRating(projScore) : null;
+            const mkBox = (title, score, leaves, color, bg, label) => (
+              <div style={{flex:1,minWidth:210,background:bg,border:`2px solid ${color}`,borderRadius:16,padding:'14px 18px'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#607d66',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>{title}</div>
+                <div style={{display:'flex',alignItems:'center',gap:14}}>
+                  <div style={{fontSize:42,fontWeight:900,color,lineHeight:1}}>{score ?? '—'}</div>
+                  <div>
+                    <LeafRating leaves={leaves} size={16} color={color}/>
+                    <div style={{fontSize:13,fontWeight:700,color,marginTop:3}}>{label}</div>
+                  </div>
+                </div>
+              </div>
+            );
+            return (
+              <div style={{marginBottom:24}}>
+                <h2 style={{marginBottom:8}}>Impact on your EcoLabel</h2>
+                <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                  {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
+                  <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
+                  {mkBox(`Projected · ${scen.intervention}`, projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
+                </div>
+                {projScore != null && (
+                  projScore === cur.score
+                    ? <p className="note" style={{marginTop:8}}>This intervention doesn't move your CEDARS Score band, but still cuts {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
+                    : <p className="note" style={{marginTop:8}}>{scen.intervention} shifts your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
+                )}
+              </div>
+            );
+          })()}
+
+          <h2 style={{marginBottom:8}}>Energy &amp; carbon — before vs after</h2>
           <div className="scenarioGrid">
             <section className="card">
               <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
@@ -2946,7 +2983,7 @@ function App() {
             </section>
           </div>
           <div className="charts" style={{marginTop:24}}>
-            <section><h2>Before vs after</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
+            <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
           </div>
           <p className="note" style={{marginTop:12}}>Region: {settings.region} — {settings.timePeriod} figures. Change region or time period on the Input page.</p>
         </main>
