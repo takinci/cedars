@@ -1429,7 +1429,7 @@ function App() {
   const updateBenchLabel  = (id, label) => setBenchModels(list => list.map(m => m.id === id ? {...m, label} : m));
   const [dashTab, setDashTab] = useState('equiv');
   const [equivScope, setEquivScope] = useState('scope2');
-  const [landingAIOpen, setLandingAIOpen] = useState(true);
+  const [landingAIOpen, setLandingAIOpen] = useState(false);
   const [landingAITools, setLandingAITools] = useState({});
   const [ecoCopied, setEcoCopied] = useState(false);
   const [ecoLabel, setEcoLabel] = useState({
@@ -1977,95 +1977,10 @@ function App() {
               </div>
             )}
 
-            {!landingAIOpen ? (
-              <button onClick={()=>setLandingAIOpen(true)} style={{background:'none',border:'1.5px dashed #81C784',color:'#2E7D32',borderRadius:14,padding:'8px 18px',cursor:'pointer',fontSize:14,fontWeight:600}}>
-                + Add AI / ML tools
-              </button>
-            ) : (
-              <div>
-                <div style={{fontSize:11,fontWeight:700,color:'#90a4ae',letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:8,display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{flex:1,height:1,background:'#e0e0e0',display:'inline-block'}}/>
-                  AI / ML tools — click to add
-                  <span style={{flex:1,height:1,background:'#e0e0e0',display:'inline-block'}}/>
-                </div>
-                {/* Preset chips — toggle each tool independently */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginBottom:10}}>
-                  {AI_PRESETS.map(({key,label,sublabel,Icon,tooltip})=>{
-                    const active = !!landingAITools[key];
-                    return (
-                      <button key={key} title={tooltip ?? undefined} onClick={()=>{
-                        if (active) {
-                          const {[key]:_removed, ...rest} = landingAITools;
-                          setLandingAITools(rest);
-                        } else {
-                          const p = AI_PRESETS.find(x=>x.key===key);
-                          setLandingAITools(t=>({...t,[key]:{gpu:p.gpu,hoursPerDay:p.hoursPerDay,numGpus:p.numGpus,deployment:p.deployment}}));
-                        }
-                      }} style={{
-                        display:'flex',flexDirection:'column',alignItems:'center',gap:3,
-                        background: active ? '#e8f5e9' : '#f9f9f9',
-                        border:`2px solid ${active ? '#a5d6a7' : '#e0e0e0'}`,
-                        borderRadius:12,padding:'8px 4px',cursor:'pointer',
-                        transition:'border-color 0.15s,background 0.15s',
-                        position:'relative',
-                      }}>
-                        {tooltip && <span style={{position:'absolute',top:3,right:5,fontSize:9,color:'#90a4ae',fontWeight:700,cursor:'help'}}>ⓘ</span>}
-                        <Icon size={16} style={{color: active ? '#2E7D32' : '#bdbdbd'}}/>
-                        <span style={{fontSize:9,fontWeight:700,color: active ? '#1b5e20' : '#9e9e9e',textAlign:'center',lineHeight:1.2}}>{label}</span>
-                        <span style={{fontSize:8,color: active ? '#4CAF50' : '#bdbdbd',textAlign:'center',lineHeight:1.2}}>{active ? '✓ added' : sublabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Per-tool config card for each active tool */}
-                {AI_PRESETS.filter(p=>landingAITools[p.key]).map(({key,label,Icon,tooltip})=>{
-                  const cfg = landingAITools[key];
-                  const toolKwh = rnd((GPU_PRESETS[cfg.gpu]?.tdpKw??0.3)*(parseInt(cfg.numGpus,10)||1)*(parseFloat(cfg.hoursPerDay)||0)*30*(CLOUD[cfg.deployment]?.pue??1.5),1);
-                  const toolCo2 = rnd(toolKwh*getCI(settings.region,settings.customCi),2);
-                  return (
-                    <div key={key} title={tooltip ?? undefined} style={{background:'#f9fdf9',border:'1px solid #c8e6c9',borderRadius:12,padding:'10px 12px',marginBottom:6,position:'relative'}}>
-                      {tooltip && <span style={{position:'absolute',top:8,right:10,fontSize:10,color:'#90a4ae',fontWeight:700,cursor:'help'}}>ⓘ</span>}
-                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                        <div style={{display:'flex',alignItems:'center',gap:6}}>
-                          <Icon size={13} style={{color:'#2E7D32'}}/>
-                          <span style={{fontSize:12,fontWeight:700,color:'#1b5e20'}}>{label}</span>
-                        </div>
-                        <span style={{fontSize:11,color:'#607d66',paddingRight:16}}>~{fmtKwh(toolKwh)}/mo · {fmtCo2(toolCo2)}/mo</span>
-                      </div>
-                      {/* Presets: show literature-backed values as read-only chips */}
-                      {key !== 'custom' ? (
-                        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
-                          {[cfg.gpu, `${cfg.numGpus} GPU`, `${cfg.hoursPerDay}h/day`, cfg.deployment].map((s,i)=>(
-                            <span key={i} style={{background:'#e8f5e9',borderRadius:8,padding:'2px 8px',fontSize:10,color:'#1b5e20',fontWeight:600}}>{s}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        /* Custom only: full dropdown configuration */
-                        <>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:6}}>
-                            <Sel label="Deployment" value={cfg.deployment} options={Object.keys(CLOUD)} onChange={v=>setLandingAITools(t=>({...t,[key]:{...t[key],deployment:v}}))}/>
-                            <Sel label="GPU type"   value={cfg.gpu}        options={META.gpuModels}     onChange={v=>setLandingAITools(t=>({...t,[key]:{...t[key],gpu:v}}))}/>
-                          </div>
-                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                            <Sel label="No. of GPUs" value={cfg.numGpus}     options={['1','2','4','8']}            onChange={v=>setLandingAITools(t=>({...t,[key]:{...t[key],numGpus:v}}))}/>
-                            <Sel label="Hours / day" value={cfg.hoursPerDay} options={['2','4','6','8','12','16','24']} onChange={v=>setLandingAITools(t=>({...t,[key]:{...t[key],hoursPerDay:v}}))}/>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-                {/* Total summary shown when more than one tool is active */}
-                {Object.keys(landingAITools).length > 1 && (
-                  <div style={{display:'flex',gap:16,flexWrap:'wrap',padding:'8px 12px',background:'#e8f5e9',borderRadius:10,marginBottom:6,fontSize:12,fontWeight:700,color:'#1b5e20'}}>
-                    <span>{Object.keys(landingAITools).length} tools total</span>
-                    <span>~{fmtKwh(landingAIKwh)}/mo GPU energy</span>
-                    <span>~{fmtCo2(landingAICo2)}/mo CO₂e</span>
-                  </div>
-                )}
-                <button onClick={()=>{setLandingAIOpen(false);setLandingAITools({});}} style={{background:'none',border:'none',color:'#607d66',cursor:'pointer',fontSize:13,padding:0}}>✕ Remove all AI</button>
-              </div>
-            )}
+            <p className="note" style={{marginTop:4,padding:'8px 12px',background:'#f1f8f1',borderRadius:12,fontSize:13}}>
+              <Brain size={14} style={{verticalAlign:'-2px',marginRight:6,color:'#2E7D32'}}/>
+              Deploy <strong>clinical AI tools</strong> (avoided scans, shorter protocols, contrast) on the <button onClick={()=>setPage('dashboard')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:0,fontSize:13,fontWeight:700,boxShadow:'none'}}>Radiology Department →</button> tab, or model a model's build/run footprint on the <button onClick={()=>setPage('ai')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:0,fontSize:13,fontWeight:700,boxShadow:'none'}}>AI Model &amp; Informatics →</button> tab.
+            </p>
           </div>
           <div className="heroVisual">
             <div style={{color:'#607d66',fontSize:12,marginBottom:8,lineHeight:1.5}}>
