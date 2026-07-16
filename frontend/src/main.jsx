@@ -1407,7 +1407,7 @@ function App() {
   const updateBenchLabel  = (id, label) => setBenchModels(list => list.map(m => m.id === id ? {...m, label} : m));
   const [dashTab, setDashTab] = useState('equiv');
   const [equivScope, setEquivScope] = useState('scope2');
-  const [landingAIOpen, setLandingAIOpen] = useState(false);
+  const [landingAIOpen, setLandingAIOpen] = useState(true);
   const [landingAITools, setLandingAITools] = useState({});
   const [ecoCopied, setEcoCopied] = useState(false);
   const [ecoLabel, setEcoLabel] = useState({
@@ -1839,10 +1839,40 @@ function App() {
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
-        <main className="hero">
+        <main>
+          <p className="eyebrow">Radiology + AI + Planetary Health</p>
+          <h1 style={{fontSize:44,lineHeight:1.05,margin:'0 0 6px'}}>How much CO₂ does your department emit?</h1>
+          <p className="note" style={{marginBottom:20,fontSize:15}}>Set your department → model your AI → see your EcoLabel → improve it.</p>
+
+          {/* ── Journey walkthrough: 1 → 2 → 3 → 4 ── */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:12,marginBottom:28}}>
+            {[
+              {n:1,title:'Your Department',desc:'Equipment, energy & carbon',action:'Set up below',page:'dashboard',Icon:Activity},
+              {n:2,title:'AI & Informatics',desc:'Model & informatics footprint',action:'Open',page:'ai',Icon:Brain},
+              {n:3,title:'Your EcoLabel',desc:'See where you stand',action:'See label',page:'ecolabel',Icon:Leaf,reveal:true},
+              {n:4,title:'Improve It',desc:'Model interventions → grade up',action:'Improve',page:'scenario',Icon:TrendingDown},
+            ].map(s=>(
+              <button key={s.n} onClick={()=>setPage(s.page)} style={{textAlign:'left',background:s.reveal?deptLabelData.ratingBg:'white',border:`2px solid ${s.reveal?deptLabelData.ratingColor:'#e0e0e0'}`,borderRadius:18,padding:16,cursor:'pointer',boxShadow:'0 8px 30px #1b5e2010',display:'flex',flexDirection:'column',gap:8,minHeight:148}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
+                  <span style={{width:26,height:26,borderRadius:'50%',background:'#2E7D32',color:'white',fontWeight:800,fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>{s.n}</span>
+                  <s.Icon size={20} style={{color:'#2E7D32'}}/>
+                </div>
+                <div style={{fontWeight:800,fontSize:16,color:'#1b5e20'}}>{s.title}</div>
+                {s.reveal ? (
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:34,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</span>
+                    <span><LeafRating leaves={deptLabelData.leaves} size={13} color={deptLabelData.ratingColor}/><div style={{fontSize:11,color:deptLabelData.ratingColor,fontWeight:700,marginTop:2}}>{deptLabelData.ratingLabel}</div></span>
+                  </div>
+                ) : (
+                  <div style={{fontSize:13,color:'#607d66'}}>{s.desc}</div>
+                )}
+                <span style={{marginTop:'auto',fontSize:12,fontWeight:700,color:'#2E7D32'}}>{s.action} →</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="hero">
           <div>
-            <p className="eyebrow">Radiology + AI + Planetary Health</p>
-            <h1 style={{fontSize:52,lineHeight:1.05,margin:'0 0 20px'}}>How much CO₂ does your department emit?</h1>
             {/* Equipment card grid */}
             <div style={{marginBottom:16}}>
               <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment in your department</div>
@@ -2030,6 +2060,7 @@ function App() {
               ))}
             </div>
             <button onClick={()=>setPage('dashboard')}>Full breakdown →</button>
+          </div>
           </div>
         </main>
       )}
