@@ -1430,7 +1430,6 @@ function App() {
     inferKwhPerStudy: '',
   });
   const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
-  const [ecoLabelTab, setEcoLabelTab] = useState('dept');
   const [deptCopied, setDeptCopied] = useState(false);
   const [deptLabel, setDeptLabel] = useState({
     deptName: '', hospitalName: '', region: '',
@@ -2512,7 +2511,7 @@ function App() {
               <span>Cloud CI <b>{ai.cloudCi} kgCO₂e/kWh</b></span>
             </div>
             <div className="aiTabs" style={{marginTop:8}}>
-              {[['model','Model'],['training','Training'],['testing','Testing'],['inference','Inference'],['carbon','Carbon'],['clinical','Clinical'],['infra','Infrastructure'],['benchmark','Benchmark']].map(([id,lbl])=>(
+              {[['model','Model'],['training','Training'],['testing','Testing'],['inference','Inference'],['carbon','Carbon'],['clinical','Clinical'],['infra','Infrastructure'],['benchmark','Benchmark'],['ecolabel','Research label']].map(([id,lbl])=>(
                 <button key={id} className={aiTab===id?'on':''} onClick={()=>{
                   setAiTab(id);
                   document.getElementById('ai-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -2938,101 +2937,9 @@ function App() {
             </>)}
           </section>
 
-        </main>
-      )}
-
-      {/* ── Interventions ── */}
-      {page==='scenario' && (
-        <main>
-          <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
-          <p className="note" style={{marginBottom:16}}>Model an operational lever and see the projected impact on your footprint. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
-          <div className="grid" style={{marginBottom:8}}>
-            <Sel label="Intervention"         value={scen.intervention}  options={META.interventions}  onChange={v=>setS('intervention',v)}/>
-            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
-                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
-            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
-                 value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
-          </div>
-          <p className="note" style={{marginBottom:16}}>
-            {scenario.note}
-            {scenario.usesScanner && <> · Scanner state target changes how deep the power-down goes (Standby saves less than Off).</>}
-            {scenario.usesCloud   && <> · Cloud provider changes the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
-          </p>
-          {/* Impact on your EcoLabel — current → projected */}
-          {(()=>{
-            const cur = deptLabelData;
-            const frac = scenario.baseline.co2 > 0 ? scenario.savings.co2 / scenario.baseline.co2 : 0;
-            const projCo2Study = rnd(cur.co2PerStudy * (1 - frac), 3);
-            const projScore = cur.hasData ? cedarsScore(projCo2Study, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
-            const projRating = projScore != null ? cedarsRating(projScore) : null;
-            const mkBox = (title, score, leaves, color, bg, label) => (
-              <div style={{flex:1,minWidth:210,background:bg,border:`2px solid ${color}`,borderRadius:16,padding:'14px 18px'}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#607d66',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>{title}</div>
-                <div style={{display:'flex',alignItems:'center',gap:14}}>
-                  <div style={{fontSize:42,fontWeight:900,color,lineHeight:1}}>{score ?? '—'}</div>
-                  <div>
-                    <LeafRating leaves={leaves} size={16} color={color}/>
-                    <div style={{fontSize:13,fontWeight:700,color,marginTop:3}}>{label}</div>
-                  </div>
-                </div>
-              </div>
-            );
-            return (
-              <div style={{marginBottom:24}}>
-                <h2 style={{marginBottom:8}}>Impact on your EcoLabel</h2>
-                <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-                  {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
-                  <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
-                  {mkBox(`Projected · ${scen.intervention}`, projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
-                </div>
-                {projScore != null && (
-                  projScore === cur.score
-                    ? <p className="note" style={{marginTop:8}}>This intervention doesn't move your CEDARS Score band, but still cuts {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
-                    : <p className="note" style={{marginTop:8}}>{scen.intervention} shifts your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
-                )}
-              </div>
-            );
-          })()}
-
-          <h2 style={{marginBottom:8}}>Energy &amp; carbon — before vs after</h2>
-          <div className="scenarioGrid">
-            <section className="card">
-              <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
-              <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
-              <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
-            </section>
-            <section className="card savings">
-              <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
-              <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
-              <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
-              <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
-            </section>
-            <section className="card">
-              <div className="cardHead"><Leaf/><span>After intervention</span></div>
-              <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
-              <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
-            </section>
-          </div>
-          <div className="charts" style={{marginTop:24}}>
-            <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
-          </div>
-          <p className="note" style={{marginTop:12}}>Region: {settings.region} — {settings.timePeriod} figures. Change region or time period on the Input page.</p>
-        </main>
-      )}
-
-      {/* ── Eco-label ── */}
-      {page==='ecolabel' && (
-        <main>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
-            <h1 style={{margin:0}}>CEDARS EcoLabel</h1>
-            <div className="aiTabs">
-              <span style={{fontSize:11,color:'#90a4ae',fontWeight:700,alignSelf:'center',marginRight:4}}>Assess:</span>
-              <button className={ecoLabelTab==='ai'?'on':''} onClick={()=>setEcoLabelTab('ai')}>AI model only</button>
-              <button className={ecoLabelTab==='dept'?'on':''} onClick={()=>setEcoLabelTab('dept')}>Radiology department</button>
-            </div>
-          </div>
-
-          {ecoLabelTab==='ai' && (<>
+          {/* ── Research label — AI model disclosure (moved from EcoLabel) ── */}
+          <section id="ai-ecolabel" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:8}}>Research label — AI model disclosure</h2>
           <p className="note" style={{marginBottom:8}}>
             Score a single AI model on its own — the standalone research-disclosure label, with no department context.
             To see how a model affects an imaging operation's footprint, switch to <strong>Radiology department</strong> and attach it under "Deployed AI tools".
@@ -3309,9 +3216,97 @@ function App() {
                ` Sustainability metrics were estimated using CEDARS (${ecoLabelData.date}), following the framework of Doo FX et al. (Radiology 2024, DOI: 10.1148/radiol.232030).`}
             </pre>
           </section>
-          </>)}
+          </section>
 
-          {ecoLabelTab==='dept' && (<>
+        </main>
+      )}
+
+      {/* ── Interventions ── */}
+      {page==='scenario' && (
+        <main>
+          <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
+          <p className="note" style={{marginBottom:16}}>Model an operational lever and see the projected impact on your footprint. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
+          <div className="grid" style={{marginBottom:8}}>
+            <Sel label="Intervention"         value={scen.intervention}  options={META.interventions}  onChange={v=>setS('intervention',v)}/>
+            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
+                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
+            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
+                 value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
+          </div>
+          <p className="note" style={{marginBottom:16}}>
+            {scenario.note}
+            {scenario.usesScanner && <> · Scanner state target changes how deep the power-down goes (Standby saves less than Off).</>}
+            {scenario.usesCloud   && <> · Cloud provider changes the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
+          </p>
+          {/* Impact on your EcoLabel — current → projected */}
+          {(()=>{
+            const cur = deptLabelData;
+            const frac = scenario.baseline.co2 > 0 ? scenario.savings.co2 / scenario.baseline.co2 : 0;
+            const projCo2Study = rnd(cur.co2PerStudy * (1 - frac), 3);
+            const projScore = cur.hasData ? cedarsScore(projCo2Study, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
+            const projRating = projScore != null ? cedarsRating(projScore) : null;
+            const mkBox = (title, score, leaves, color, bg, label) => (
+              <div style={{flex:1,minWidth:210,background:bg,border:`2px solid ${color}`,borderRadius:16,padding:'14px 18px'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#607d66',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>{title}</div>
+                <div style={{display:'flex',alignItems:'center',gap:14}}>
+                  <div style={{fontSize:42,fontWeight:900,color,lineHeight:1}}>{score ?? '—'}</div>
+                  <div>
+                    <LeafRating leaves={leaves} size={16} color={color}/>
+                    <div style={{fontSize:13,fontWeight:700,color,marginTop:3}}>{label}</div>
+                  </div>
+                </div>
+              </div>
+            );
+            return (
+              <div style={{marginBottom:24}}>
+                <h2 style={{marginBottom:8}}>Impact on your EcoLabel</h2>
+                <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                  {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
+                  <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
+                  {mkBox(`Projected · ${scen.intervention}`, projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
+                </div>
+                {projScore != null && (
+                  projScore === cur.score
+                    ? <p className="note" style={{marginTop:8}}>This intervention doesn't move your CEDARS Score band, but still cuts {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
+                    : <p className="note" style={{marginTop:8}}>{scen.intervention} shifts your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
+                )}
+              </div>
+            );
+          })()}
+
+          <h2 style={{marginBottom:8}}>Energy &amp; carbon — before vs after</h2>
+          <div className="scenarioGrid">
+            <section className="card">
+              <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
+              <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
+              <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
+            </section>
+            <section className="card savings">
+              <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
+              <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
+              <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
+              <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
+            </section>
+            <section className="card">
+              <div className="cardHead"><Leaf/><span>After intervention</span></div>
+              <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
+              <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
+            </section>
+          </div>
+          <div className="charts" style={{marginTop:24}}>
+            <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
+          </div>
+          <p className="note" style={{marginTop:12}}>Region: {settings.region} — {settings.timePeriod} figures. Change region or time period on the Input page.</p>
+        </main>
+      )}
+
+      {/* ── Eco-label ── */}
+      {page==='ecolabel' && (
+        <main>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
+            <h1 style={{margin:0}}>CEDARS EcoLabel</h1>
+          </div>
+
             <p className="note" style={{marginBottom:16}}>
               Generate a department-level sustainability label for ESG reports, accreditation submissions, or public sustainability disclosures.
               The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department scores well even at a high absolute footprint, while an under-used fleet does not. Benchmarked against published radiology carbon intensity data (Vosshenrich R et al., Curr Opin Urol 2024), following the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
@@ -3562,7 +3557,6 @@ function App() {
                 </pre>
               </section>
             )}
-          </>)}
         </main>
       )}
 
