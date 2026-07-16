@@ -1399,7 +1399,6 @@ function App() {
   const [trainExpanded, setTrainExpanded] = useState(false);
   const [modelExpanded, setModelExpanded] = useState(false);
   // Scenario tab mode + AI model benchmark shortlist
-  const [benchMode,   setBenchMode]   = useState('intervention'); // 'intervention' | 'benchmark'
   const [benchModels, setBenchModels] = useState(() => ['cad','seg3d','report'].map(benchCfgFromLib));
   const addBenchModel = () => setBenchModels(list =>
     list.length >= 6 ? list : [...list, {...pickAiCfg(scen), id: Date.now(),
@@ -2465,7 +2464,7 @@ function App() {
               <span>Cloud CI <b>{ai.cloudCi} kgCO₂e/kWh</b></span>
             </div>
             <div className="aiTabs" style={{marginTop:8}}>
-              {[['model','Model'],['training','Training'],['testing','Testing'],['inference','Inference'],['carbon','Carbon'],['clinical','Clinical'],['infra','Infrastructure']].map(([id,lbl])=>(
+              {[['model','Model'],['training','Training'],['testing','Testing'],['inference','Inference'],['carbon','Carbon'],['clinical','Clinical'],['infra','Infrastructure'],['benchmark','Benchmark']].map(([id,lbl])=>(
                 <button key={id} className={aiTab===id?'on':''} onClick={()=>{
                   setAiTab(id);
                   document.getElementById('ai-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
@@ -2799,21 +2798,106 @@ function App() {
             </p>
           </section>
 
+          {/* ── Model benchmark (moved from Compare) ── */}
+          <section id="ai-benchmark" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:4}}>Model benchmark — accuracy vs carbon</h2>
+            <p className="note" style={{marginBottom:8}}>
+              Compare candidate AI models on the accuracy-vs-carbon trade-off. Every candidate is evaluated under the <strong>same department context</strong> ({settings.region}, your current equipment fleet) — only the model varies.
+            </p>
+            <p className="note" style={{marginBottom:16,fontSize:12}}>
+              Performance values are <strong>user-reported</strong>, not predicted by CEDARS — set the current model's configuration in the tabs above, then add it as a candidate.
+            </p>
+
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
+              <button onClick={addBenchModel} disabled={benchModels.length>=6} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:benchModels.length>=6?0.5:1}}>
+                <Plus size={14}/> Add current model
+              </button>
+              <button onClick={()=>setBenchModels(['cad','seg3d','report'].map(benchCfgFromLib))} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7'}}>
+                Reset to reference set
+              </button>
+              <span style={{fontSize:12,color:'#607d66'}}>{benchModels.length} / 6 candidates{benchModels.length>=6?' (max)':''}</span>
+            </div>
+
+            {benchResults.rows.length === 0 ? (
+              <p className="note">No candidates. Add the current model, or reset to the reference set.</p>
+            ) : (<>
+            <div style={{overflowX:'auto',marginBottom:24}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:760}}>
+                <thead>
+                  <tr style={{borderBottom:'2px solid #c8e6c9',color:'#607d66',textAlign:'left'}}>
+                    <th style={{padding:'8px 10px'}}>Candidate</th>
+                    <th style={{padding:'8px 10px'}}>Size</th>
+                    <th style={{padding:'8px 10px'}}>Reported</th>
+                    <th style={{padding:'8px 10px'}}>Training CO₂e</th>
+                    <th style={{padding:'8px 10px'}}>kWh/study</th>
+                    <th style={{padding:'8px 10px'}}>Net CO₂e/mo</th>
+                    <th style={{padding:'8px 10px'}}>Lifetime CO₂e</th>
+                    <th style={{padding:'8px 10px'}}>Efficiency</th>
+                    <th style={{padding:'8px 10px'}}/>
+                  </tr>
+                </thead>
+                <tbody>
+                  {benchResults.rows.map(r => {
+                    const best = benchResults.best;
+                    const hi = cond => cond ? {color:'#1b5e20',fontWeight:800} : {};
+                    return (
+                      <tr key={r.id} style={{borderBottom:'1px solid #eef7ee',background:r.pareto?'#f3faf3':'white'}}>
+                        <td style={{padding:'7px 10px'}}>
+                          {r.pareto && <span title="Pareto-efficient" style={{color:'#2E7D32',marginRight:4}}>★</span>}
+                          <input value={r.label} onChange={e=>updateBenchLabel(r.id,e.target.value)} style={{width:150,padding:'4px 6px',border:'1px solid #e0e0e0',borderRadius:8,fontSize:12}}/>
+                        </td>
+                        <td style={{padding:'7px 10px',color:'#607d66'}}>{r.paramsM.toLocaleString()}M</td>
+                        <td style={{padding:'7px 10px',...hi(r.accuracyPct===best.accuracyPct)}}>{r.accuracyPct}% <span style={{color:'#90a4ae',fontWeight:400,fontSize:11}}>{r.accuracyMetric}</span></td>
+                        <td style={{padding:'7px 10px',...hi(r.trainCo2===best.trainCo2)}}>{fmtCo2(r.trainCo2)}</td>
+                        <td style={{padding:'7px 10px'}}>{r.kwhPerStudy}</td>
+                        <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
+                        <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
+                        <td style={{padding:'7px 10px',...hi(r.efficiency===best.efficiency)}}>{r.efficiency}</td>
+                        <td style={{padding:'7px 10px'}}>
+                          <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <section style={{marginBottom:16}}>
+              <h2 style={{marginBottom:4}}>Accuracy vs carbon</h2>
+              <p className="note" style={{marginBottom:12}}>Upper-left is best (high performance, low carbon). <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
+              {(()=>{
+                const data = {datasets:[{
+                  label:'Candidates',
+                  data: benchResults.rows.map(r=>({x:r.lifetimeCo2, y:r.accuracyPct, _label:r.label})),
+                  pointBackgroundColor: benchResults.rows.map(r=>r.pareto?'#2E7D32':'#b0bec5'),
+                  pointBorderColor: benchResults.rows.map(r=>r.pareto?'#1b5e20':'#90a4ae'),
+                  pointRadius: benchResults.rows.map(r=>r.pareto?8:6),
+                  pointHoverRadius: 10,
+                }]};
+                const opts = {
+                  responsive:true, maintainAspectRatio:false,
+                  plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y}% · ${fmtCo2(ctx.parsed.x)} lifetime`}}},
+                  scales:{
+                    x:{title:{display:true,text:'Lifetime CO₂e (kg)'}, beginAtZero:true},
+                    y:{title:{display:true,text:'Reported performance (%)'}},
+                  },
+                };
+                return <div style={{height:320}}><Suspense fallback={<div style={{height:320}}/>}><Scatter data={data} options={opts}/></Suspense></div>;
+              })()}
+            </section>
+            <p className="note">Different reported metrics (AUC, Dice, SSIM…) are not directly comparable on the y-axis — compare like-for-like tasks. Carbon uses cloud CI; clinical savings use the {settings.region} grid.</p>
+            </>)}
+          </section>
+
         </main>
       )}
 
-      {/* ── Scenario ── */}
+      {/* ── Interventions ── */}
       {page==='scenario' && (
         <main>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
-            <h1 style={{margin:0}}>Interventions</h1>
-            <div className="aiTabs">
-              <button className={benchMode==='intervention'?'on':''} onClick={()=>setBenchMode('intervention')}>Interventions</button>
-              <button className={benchMode==='benchmark'?'on':''} onClick={()=>setBenchMode('benchmark')}>AI model benchmark</button>
-            </div>
-          </div>
-
-          {benchMode==='intervention' && (<>
+          <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
+          <p className="note" style={{marginBottom:16}}>Model an operational lever and see the projected impact on your footprint. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
           <div className="grid" style={{marginBottom:8}}>
             <Sel label="Intervention"         value={scen.intervention}  options={META.interventions}  onChange={v=>setS('intervention',v)}/>
             <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
@@ -2848,98 +2932,6 @@ function App() {
             <section><h2>Before vs after</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
           </div>
           <p className="note" style={{marginTop:12}}>Region: {settings.region} — {settings.timePeriod} figures. Change region or time period on the Input page.</p>
-          </>)}
-
-          {benchMode==='benchmark' && (<>
-          <p className="note" style={{marginBottom:8}}>
-            Compare candidate AI models on the accuracy-vs-carbon trade-off. Every candidate is evaluated under the
-            <strong> same department context</strong> ({settings.region}, your current equipment fleet) — only the model varies.
-          </p>
-          <p className="note" style={{marginBottom:16,fontSize:12}}>
-            Performance values are <strong>user-reported</strong>, not predicted by CEDARS — edit each candidate's reported metric on the AI dashboard before adding it. Configure a model on the AI dashboard, then add it here.
-          </p>
-
-          <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
-            <button onClick={addBenchModel} disabled={benchModels.length>=6} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:benchModels.length>=6?0.5:1}}>
-              <Plus size={14}/> Add current AI model
-            </button>
-            <button onClick={()=>setBenchModels(['cad','seg3d','report'].map(benchCfgFromLib))} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7'}}>
-              Reset to reference set
-            </button>
-            <span style={{fontSize:12,color:'#607d66'}}>{benchModels.length} / 6 candidates{benchModels.length>=6?' (max)':''}</span>
-          </div>
-
-          {benchResults.rows.length === 0 ? (
-            <p className="note">No candidates. Add the current AI dashboard model, or reset to the reference set.</p>
-          ) : (<>
-          <div style={{overflowX:'auto',marginBottom:24}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:760}}>
-              <thead>
-                <tr style={{borderBottom:'2px solid #c8e6c9',color:'#607d66',textAlign:'left'}}>
-                  <th style={{padding:'8px 10px'}}>Candidate</th>
-                  <th style={{padding:'8px 10px'}}>Size</th>
-                  <th style={{padding:'8px 10px'}}>Reported</th>
-                  <th style={{padding:'8px 10px'}}>Training CO₂e</th>
-                  <th style={{padding:'8px 10px'}}>kWh/study</th>
-                  <th style={{padding:'8px 10px'}}>Net CO₂e/mo</th>
-                  <th style={{padding:'8px 10px'}}>Lifetime CO₂e</th>
-                  <th style={{padding:'8px 10px'}}>Efficiency</th>
-                  <th style={{padding:'8px 10px'}}/>
-                </tr>
-              </thead>
-              <tbody>
-                {benchResults.rows.map(r => {
-                  const best = benchResults.best;
-                  const hi = cond => cond ? {color:'#1b5e20',fontWeight:800} : {};
-                  return (
-                    <tr key={r.id} style={{borderBottom:'1px solid #eef7ee',background:r.pareto?'#f3faf3':'white'}}>
-                      <td style={{padding:'7px 10px'}}>
-                        {r.pareto && <span title="Pareto-efficient" style={{color:'#2E7D32',marginRight:4}}>★</span>}
-                        <input value={r.label} onChange={e=>updateBenchLabel(r.id,e.target.value)} style={{width:150,padding:'4px 6px',border:'1px solid #e0e0e0',borderRadius:8,fontSize:12}}/>
-                      </td>
-                      <td style={{padding:'7px 10px',color:'#607d66'}}>{r.paramsM.toLocaleString()}M</td>
-                      <td style={{padding:'7px 10px',...hi(r.accuracyPct===best.accuracyPct)}}>{r.accuracyPct}% <span style={{color:'#90a4ae',fontWeight:400,fontSize:11}}>{r.accuracyMetric}</span></td>
-                      <td style={{padding:'7px 10px',...hi(r.trainCo2===best.trainCo2)}}>{fmtCo2(r.trainCo2)}</td>
-                      <td style={{padding:'7px 10px'}}>{r.kwhPerStudy}</td>
-                      <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
-                      <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
-                      <td style={{padding:'7px 10px',...hi(r.efficiency===best.efficiency)}}>{r.efficiency}</td>
-                      <td style={{padding:'7px 10px'}}>
-                        <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <section style={{marginBottom:16}}>
-            <h2 style={{marginBottom:4}}>Accuracy vs carbon</h2>
-            <p className="note" style={{marginBottom:12}}>Lower-left is worse, upper-left is best (high performance, low carbon). <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
-            {(()=>{
-              const data = {datasets:[{
-                label:'Candidates',
-                data: benchResults.rows.map(r=>({x:r.lifetimeCo2, y:r.accuracyPct, _label:r.label})),
-                pointBackgroundColor: benchResults.rows.map(r=>r.pareto?'#2E7D32':'#b0bec5'),
-                pointBorderColor: benchResults.rows.map(r=>r.pareto?'#1b5e20':'#90a4ae'),
-                pointRadius: benchResults.rows.map(r=>r.pareto?8:6),
-                pointHoverRadius: 10,
-              }]};
-              const opts = {
-                responsive:true, maintainAspectRatio:false,
-                plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y}% · ${fmtCo2(ctx.parsed.x)} lifetime`}}},
-                scales:{
-                  x:{title:{display:true,text:'Lifetime CO₂e (kg)'}, beginAtZero:true},
-                  y:{title:{display:true,text:'Reported performance (%)'}},
-                },
-              };
-              return <div style={{height:320}}><Suspense fallback={<div style={{height:320}}/>}><Scatter data={data} options={opts}/></Suspense></div>;
-            })()}
-          </section>
-          <p className="note">Different reported metrics (AUC, Dice, SSIM…) are not directly comparable on the y-axis — compare like-for-like tasks. Carbon uses cloud CI; clinical savings use the {settings.region} grid.</p>
-          </>)}
-          </>)}
         </main>
       )}
 
