@@ -2943,7 +2943,7 @@ function App() {
             <h2 style={{marginBottom:8}}>Research label — AI model disclosure</h2>
           <p className="note" style={{marginBottom:8}}>
             Score a single AI model on its own — the standalone research-disclosure label, with no department context.
-            To see how a model affects an imaging operation's footprint, switch to <strong>Radiology department</strong> and attach it under "Deployed AI tools".
+            To see how a deployed model affects an imaging operation's footprint, attach it under <strong>Clinical AI tools</strong> on the Radiology Department tab.
             Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030).
           </p>
           <p className="note" style={{marginBottom:16}}>
