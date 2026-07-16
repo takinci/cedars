@@ -1433,7 +1433,7 @@ function App() {
   const [ecoLabelTab, setEcoLabelTab] = useState('dept');
   const [deptCopied, setDeptCopied] = useState(false);
   const [deptLabel, setDeptLabel] = useState({
-    deptName: '', hospitalName: '', region: 'EU average',
+    deptName: '', hospitalName: '', region: '',
     annualKwh: '', annualStudies: '', renewablePct: '0',
     activeInterventions: [], aiTools: [],
   });
@@ -1675,11 +1675,18 @@ function App() {
   }, [ecoLabel, settings.customCi]);
 
   const deptLabelData = useMemo(() => {
-    const ci = getCI(deptLabel.region, settings.customCi);
+    // Live-by-default: derive from the Radiology Department state; the EcoLabel form
+    // fields are optional OVERRIDES (headline numbers + region) when non-empty.
+    const mult = TIME_MULT[settings.timePeriod] ?? 1;
+    const region = deptLabel.region || settings.region;
+    const ci = getCI(region, settings.customCi);
     const renewablePct = Math.min(100, Math.max(0, parseFloat(deptLabel.renewablePct) || 0));
     const effectiveCi = rnd(ci * (1 - renewablePct / 100), 4);
-    const annualKwh = parseFloat(deptLabel.annualKwh) || 0;
-    const annualStudies = parseFloat(deptLabel.annualStudies) || 0;
+    const liveAnnualKwh     = rnd(dash.totals.kwh / mult * 12, 0);
+    const liveAnnualStudies = efficiency.studiesYr;
+    const annualKwh     = parseFloat(deptLabel.annualKwh)     > 0 ? parseFloat(deptLabel.annualKwh)     : liveAnnualKwh;
+    const annualStudies = parseFloat(deptLabel.annualStudies) > 0 ? parseFloat(deptLabel.annualStudies) : liveAnnualStudies;
+    const isLive = !(parseFloat(deptLabel.annualKwh) > 0) && !(parseFloat(deptLabel.annualStudies) > 0);
     const facilityCo2 = rnd(annualKwh * effectiveCi, 1);
     const kwhPerStudy = annualStudies > 0 ? rnd(annualKwh / annualStudies, 2) : 0;
     // Efficiency of converting energy into delivered care: per-study CO₂ already drives
@@ -1719,7 +1726,7 @@ function App() {
     return {
       deptName: deptLabel.deptName || 'Unnamed Department',
       hospitalName: deptLabel.hospitalName || '',
-      region: deptLabel.region,
+      region, isLive,
       ci, effectiveCi, renewablePct,
       annualKwh, annualStudies, totalAnnualCo2, co2PerStudy, kwhPerStudy,
       fleetCapacityYr, utilPct,
@@ -1733,7 +1740,7 @@ function App() {
       aiNetCo2Yr, aiKwhYr, aiGrossCo2Yr, aiSavingsCo2Yr,
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [deptLabel, settings.customCi, efficiency.capacityYr]);
+  }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash.totals.kwh, efficiency.capacityYr, efficiency.studiesYr]);
 
   // Auto-seed the AI model's training (amortised) + inference as locked compute lines,
   // then layer the user's own Infrastructure-tab workloads on top. Provider/region come
@@ -1818,6 +1825,16 @@ function App() {
             <button key={p} className={page===p?'on':''} onClick={()=>setPage(p)}>{PAGE_LABELS[p] ?? p}</button>
           ))}
         </nav>
+        {/* Ambient EcoLabel — live current grade, follows the user on every tab */}
+        <button onClick={()=>setPage('ecolabel')} title="Your current EcoLabel — click for the full disclosure"
+          style={{display:'inline-flex',alignItems:'center',gap:7,background:deptLabelData.ratingBg,border:`1.5px solid ${deptLabelData.ratingColor}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:'pointer',boxShadow:'none',flexShrink:0}}>
+          <Leaf size={17} style={{color:deptLabelData.ratingColor}} fill={deptLabelData.ratingColor}/>
+          <span style={{fontSize:18,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</span>
+          <span style={{display:'flex',flexDirection:'column',lineHeight:1.1}}>
+            <span style={{fontSize:10,fontWeight:800,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>ECOLABEL</span>
+            <span style={{fontSize:10,color:'#607d66'}}>{deptLabelData.leaves}/5 leaves</span>
+          </span>
+        </button>
       </header>
 
       {/* ── Home / Live Calculator ── */}
@@ -3263,18 +3280,28 @@ function App() {
               <div className="grid grid3">
                 <label>Department name<input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
                 <label>Hospital / institution<input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
-                <Sel label="Grid region" value={deptLabel.region} options={META.regions} onChange={v=>setDept('region',v)}/>
+                <label>Grid region
+                  <select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}>
+                    <option value="">— use current ({settings.region}) —</option>
+                    {META.regions.map(r=><option key={r} value={r}>{r}</option>)}
+                  </select>
+                </label>
               </div>
             </div>
 
             <div className="inputSummary" style={{marginBottom:24}}>
-              <h2 style={{marginTop:0,marginBottom:16,color:'#1b5e20'}}>Energy &amp; imaging volume</h2>
+              <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Energy &amp; imaging volume <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(live from Radiology Department — override only if you have measured figures)</span></h2>
+              <p className="note" style={{marginBottom:12}}>
+                {deptLabelData.isLive
+                  ? <>Currently <strong style={{color:'#2E7D32'}}>live</strong> from your Radiology Department state. Leave blank to keep it live; enter a value to override.</>
+                  : <>Using your <strong>overridden</strong> figures. Clear a field to return it to the live value.</>}
+              </p>
               <div className="grid grid3">
-                <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder="e.g. 480000"/></label>
-                <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder="e.g. 45000"/></label>
+                <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
+                <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder={`live: ${deptLabelData.annualStudies.toLocaleString()}`}/></label>
                 <label>Renewable energy (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
               </div>
-              <p className="note" style={{marginTop:8}}>Use your facility's utility bills or energy management system for the most accurate kWh figure. If unavailable, use the Radiology Dashboard estimated total. Renewable energy % reduces the effective carbon intensity.</p>
+              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Override with utility bills / RIS counts for publication-quality figures.</p>
             </div>
 
             {/* ── Deployed AI tools ── */}
