@@ -1807,8 +1807,8 @@ function App() {
     responsive:true,
   };
 
-  const pages = ['landing','dashboard','ai','scenario','ecolabel'];
-  const PAGE_LABELS = {landing:'Home', dashboard:'Radiology Dashboard', ai:'AI Dashboard', scenario:'Compare', ecolabel:'EcoLabel'};
+  const pages = ['landing','dashboard','ai','ecolabel','scenario'];
+  const PAGE_LABELS = {landing:'Home', dashboard:'Radiology Department', ai:'AI Model & Informatics', ecolabel:'EcoLabel', scenario:'Interventions'};
 
   return (
     <>
@@ -2023,7 +2023,7 @@ function App() {
       {page==='dashboard' && (
         <main>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-            <h1 style={{margin:0}}>Radiology Dashboard <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
+            <h1 style={{margin:0}}>Radiology Department <span className="badge">{settings.region}</span> <span className="badge">{settings.timePeriod}</span></h1>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadCSV(dash)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
               <button className="download" onClick={handlePrint} style={{padding:'8px 14px',fontSize:13}}><Download/>Print / PDF</button>
@@ -2327,7 +2327,7 @@ function App() {
       {page==='ai' && (
         <main>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-            <h1 style={{margin:0}}>AI sustainability dashboard <span className="badge">{settings.region}</span></h1>
+            <h1 style={{margin:0}}>AI Model &amp; Informatics <span className="badge">{settings.region}</span></h1>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadAICSV(ai, scen, settings.region)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
               <button className="download" onClick={handlePrint} style={{padding:'8px 14px',fontSize:13}}><Download/>Print / PDF</button>
@@ -2806,7 +2806,7 @@ function App() {
       {page==='scenario' && (
         <main>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
-            <h1 style={{margin:0}}>Comparison</h1>
+            <h1 style={{margin:0}}>Interventions</h1>
             <div className="aiTabs">
               <button className={benchMode==='intervention'?'on':''} onClick={()=>setBenchMode('intervention')}>Interventions</button>
               <button className={benchMode==='benchmark'?'on':''} onClick={()=>setBenchMode('benchmark')}>AI model benchmark</button>
