@@ -19,7 +19,12 @@
 
 ## What is CEDARS?
 
-CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browser-based tool that quantifies the environmental footprint of a radiology operation **and** of the AI models it deploys, then expresses the result as a standardised **CEDARS Score and Rating** ecolabel for reporting and comparison — all from published literature defaults you can override with your own measured data.
+CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browser-based tool that takes a radiology department **end-to-end**: **measure** your footprint (equipment + deployed clinical AI), **disclose** it as a standardised **CEDARS Score & Rating** ecolabel, and **improve** it by modelling interventions — all from published literature defaults you can override with your own measured data. A **live EcoLabel badge follows you on every tab** and updates as you change inputs.
+
+It deliberately separates two kinds of "AI":
+
+- **Clinical AI** — deployed tools that change imaging *operations* (denoising, protocol shortening, triage, avoided low-value scans). These live in the **Radiology Department**, where their net effect flows into the department's energy, efficiency, contrast, and EcoLabel.
+- **AI model & informatics footprint** — the cost of *building and running* a model (training, inference, cloud/informatics). This has its own tab, for research disclosure and model benchmarking.
 
 No installation. No backend. No data leaves your browser.
 
@@ -29,55 +34,54 @@ No installation. No backend. No data leaves your browser.
 
 ## What can it do?
 
-CEDARS is organised into five pages: **Home · Radiology Dashboard · AI Dashboard · Compare · EcoLabel**.
+Five tabs following a **measure → disclose → improve** journey: **Home · Radiology Department · AI Model & Informatics · EcoLabel · Interventions**. A live EcoLabel badge sits in the header throughout.
 
-### 🔋 Radiology Dashboard
+### 🏠 Home
 
-Build your department by setting the count of each device in your **equipment fleet** (MRI by field strength, CT, PET-CT, X-ray, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations). Every metric reacts to your fleet, region, and time period:
+A numbered **1 → 2 → 3 → 4 walkthrough** so a first-time user sees the whole pathway at a glance: set your equipment fleet, preview AI, see your live EcoLabel grade, and jump to improvements. Equipment is edited right here on the landing page.
 
-| Category | What it tracks |
+### 🔋 Radiology Department
+
+Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations) and everything the department footprint contains:
+
+| Section | What it tracks |
 |---|---|
-| **1. Energy** | Total kWh/MWh, active vs idle breakdown, avoidable idle, energy per scan |
-| **2. Carbon (GHG Scopes)** | Scope 1 (direct) · Scope 2 (electricity) · Scope 3 — embodied hardware, patient travel, **staff commute** (auto-estimated from the device fleet), and **DICOM data transfer** — plus a per-study **Software Carbon Intensity (SCI)** metric (Green Software Foundation) |
-| **3. Infrastructure** | Top idle waster, hardware lifespans, grid carbon intensity, Scope 3 total, top-5 opportunity table |
-| **4. Resource footprint** | Water (cooling), paper, hazardous waste (contrast media) |
-| **5. Real-world equivalencies** | Car km, phone charges, tree-years, short-haul flights, household-electricity years |
+| **Efficiency — energy into healthcare** | Fleet **utilisation** (studies vs capacity), **CO₂ per study** at your actual volume, and **non-productive energy %** — so a busy department scores well even at a high absolute footprint |
+| **Clinical AI tools** | Deploy clinical AI (from the model library, an imported model, or manual entry); each **adds** compute and **subtracts** clinical savings (avoided scans, shorter protocols, contrast reduction), adjusting the *whole* department consistently |
+| **Energy** | Total kWh/MWh, active vs idle, avoidable idle, energy per scan |
+| **Carbon (GHG Scopes)** | Scope 1 · Scope 2 · Scope 3 (embodied hardware, patient travel, **staff commute** auto-estimated from the fleet, **DICOM data transfer**) + per-study **Software Carbon Intensity (SCI)** |
+| **Resource footprint** | Water, paper, hazardous waste, and **contrast media & contamination** (iodinated + gadolinium load to wastewater, contrast wasted) |
+| **Equivalencies** | Car km, flights, tree-years, phone charges, household-electricity years |
 
-The Home page can also **add one or more AI/ML tools** so their footprint is included in the department totals.
+### 🤖 AI Model & Informatics
 
-### 🤖 AI Sustainability Dashboard
+The footprint of building and running a model — R&D / informatics, distinct from clinical effect:
 
-Model the lifecycle footprint of a radiology AI tool with a tabbed, three-phase breakdown plus a built-in cloud-infrastructure view.
-
-- **Task-family model library** — start from an editable, literature-anchored template: Classification/triage, lesion detection, 2D & 3D segmentation, reconstruction/denoising, diffusion synthesis, report generation (LLM/VLM), foundation/prompt models, or Custom.
-- **Advanced model parameters** (progressive disclosure) — parameters, 2D/3D, input resolution, slices; inference energy **scales physically** with `params × resolution² (× slices)`.
-- **GPU training-energy estimator** — derive training kWh from GPU type × count × hours × PUE, or enter a measured value.
-- **Performance is user-owned, never predicted** — you enter the model's reported accuracy (with its metric: AUC, Dice, SSIM…) and any clinical co-benefits; defaults come from the cited reference.
-- **Lifecycle tabs** — Training, Testing/validation, Inference & deployment, Carbon summary, Clinical co-benefits.
-- **Infrastructure tab** — full cloud-carbon accounting (compute, storage, data transfer, monthly totals, cross-region optimisation), with the AI's training + inference auto-seeded; provider/region are shared with the lifecycle math.
-
-### 📊 Compare
-
-Two modes in one tab:
-
-- **Interventions** — pick an evidence-based action (turn scanners off overnight, standby mode, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, smaller AI models, consolidate servers, …) and see the before/after energy and carbon.
-- **AI model benchmark** — shortlist several model configurations, compare them in a table under one department context, and read off the **accuracy-vs-carbon trade-off** on a Pareto scatter (efficient models highlighted).
+- **Task-family model library** — editable, literature-anchored templates: Classification/triage, detection, 2D & 3D segmentation, reconstruction/denoising, diffusion synthesis, report generation (LLM/VLM), foundation/prompt models, Custom.
+- **Advanced parameters** (progressive disclosure) — params, 2D/3D, resolution, slices; inference energy **scales physically** with `params × resolution² (× slices)`.
+- **GPU training-energy estimator** — training kWh from GPU × count × hours × PUE, or a measured value.
+- **Performance is user-owned, never predicted** — reported accuracy (AUC/Dice/SSIM…) and clinical co-benefits are entered, defaulting to the cited reference.
+- **Lifecycle tabs** — Training · Testing · Inference · Carbon · Clinical · **Infrastructure** (full cloud-carbon: compute, storage, transfer, cross-region optimisation).
+- **Benchmark** — shortlist candidate models under one department context; read the **accuracy-vs-carbon trade-off** on a Pareto scatter (efficient models starred).
+- **Research label** — a standalone AI-model disclosure label for manuscript/paper submission.
 
 ### 🏷️ EcoLabel — CEDARS Score & Rating
 
-Turn an estimate into a standardised disclosure, after the design logic of Energy Star and the EU Energy Label:
+The department's clean, citable, **current-state** disclosure, after the design logic of Energy Star and the EU Energy Label:
 
-- **CEDARS Score** — a continuous **0–100** value from the estimated footprint, for precise reporting.
+- **CEDARS Score** — a continuous **0–100** value from the per-study footprint.
 - **CEDARS Rating** — a recognisable **1–5 leaf** badge mapped from the Score.
-- **Disclosure checklist** — the minimum set of items for a reproducible footprint (hardware, energy, grid intensity, cloud/PUE, training–inference split, water, Score+Rating), modelled on CLAIM/DEAL.
-- **Two scopes:**
-  - **AI model only** — a standalone research-disclosure label for a single model.
-  - **Radiology department** — facility energy plus a list of **deployed AI tools**, whose *net* annual CO₂ (compute minus clinical savings) folds into the department's score; import a model from the AI Dashboard in one click or enter one manually.
-- **Export** each label as a PNG badge, a markdown table, or a ready-to-paste paper/ESG paragraph.
+- **Disclosure checklist** — the minimum items for a reproducible footprint (hardware, energy, grid intensity, cloud/PUE, training–inference split, water, Score + Rating), modelled on CLAIM/DEAL.
+- **Live by default** — derived automatically from your Radiology Department state; override the headline figures (annual kWh, studies, region) with measured data for publication.
+- **Export** as a PNG badge, markdown table, or ready-to-paste paper/ESG paragraph.
+
+### 🛠️ Interventions
+
+Model an operational lever (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, …) and see the **Impact on your EcoLabel** — your **current → projected** grade side by side, plus before/after energy and carbon.
 
 ### 📤 Export
 
-Per-dashboard CSV reports, print-to-PDF with a clean layout, and the EcoLabel exports above — all carrying key assumption citations so reports are audit-ready.
+Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all carrying key assumption citations so reports are audit-ready.
 
 ---
 
@@ -86,6 +90,7 @@ Per-dashboard CSV reports, print-to-PDF with a clean layout, and the EcoLabel ex
 Core settings are reflected in the URL hash — copy the link to share your exact configuration:
 
 - **Equipment fleet** — set the count of each device type
+- **Actual imaging studies / year** (optional) — drives fleet utilisation and the live EcoLabel; blank uses the fleet estimate
 - **Region / grid** — Switzerland, France, Germany, United States, United Kingdom, EU average, Global average, or a custom carbon intensity
 - **Time period** — Monthly, Quarterly, Annual
 - **Renewable %** and **custom grid intensity** where applicable
@@ -156,7 +161,7 @@ npm run build   # outputs to ../docs/
 - **Radiologists and clinical leads** — understand your department's footprint and find quick wins
 - **Sustainability officers** — generate Scope 1/2/3 estimates and CEDARS disclosures for ESG reporting
 - **Medical physicists** — benchmark scanner energy against published literature
-- **AI developers and governance teams** — model an AI tool's lifecycle carbon, benchmark candidates on accuracy-vs-carbon, and attach the result to a department
+- **AI developers and governance teams** — model a model's build/run footprint, benchmark candidates on accuracy-vs-carbon, and generate a research-disclosure label; deploy clinical AI to a department to see its net operational effect
 - **Academic researchers** — generate a standardised CEDARS EcoLabel for a manuscript, with a reproducible disclosure checklist
 - **Healthcare executives** — communicate performance in accessible equivalencies
 
