@@ -2205,6 +2205,21 @@ function App() {
             </p>
 
             <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:14}}>
+              <select value="" disabled={(deptLabel.aiTools||[]).length>=5} onChange={e=>{
+                const m = AI_MODEL_BY_KEY[e.target.value];
+                if (!m) return;
+                addDeptAiTool({
+                  id: Date.now(), label: m.label,
+                  inferKwhPerStudy: String(rnd(m.gpuKw * m.inferSec / 3600 * 1.2, 4)), // gpuKw × s/study × PUE
+                  trainKwhTotal: String(Math.round(m.trainMwh * 1000)),
+                  embCo2Kg: String(m.embCo2Kg), deployMonths: '36',
+                  scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
+                  contrastReductPct: '0', studiesShare: '100',
+                });
+              }} style={{padding:'8px 12px',border:'1px solid #c8e6c9',borderRadius:14,background:'white',fontSize:13,fontWeight:700,color:'#2E7D32',cursor:'pointer',opacity:(deptLabel.aiTools||[]).length>=5?0.5:1}}>
+                <option value="">+ Add from model library…</option>
+                {AI_MODEL_LIBRARY.filter(m=>m.key!=='custom').map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
+              </select>
               <button disabled={(deptLabel.aiTools||[]).length>=5} onClick={()=>addDeptAiTool({
                 id: Date.now(), label: AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'AI model',
                 inferKwhPerStudy: String(ai.inference.kwhPerStudy), trainKwhTotal: String(ai.training.kwhTotal),
