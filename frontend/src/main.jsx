@@ -6,7 +6,7 @@ import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Po
 const Bar      = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Bar})));
 const Doughnut = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Doughnut})));
 const Scatter  = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Scatter})));
-import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan} from 'lucide-react';
+import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot} from 'lucide-react';
 import './styles.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
@@ -324,6 +324,10 @@ const AI_ARCHITECTURES = {
     trainFactor: 3.5, inferFactor: 2.5,
     desc: "For image reconstruction, synthesis, and augmentation. Highest energy footprint per inference. Use AMP.",
   },
+  "LLM / Agent (transformer)": {
+    trainFactor: 4.0, inferFactor: 1.5,
+    desc: "Large language / vision-language model, single-pass or agentic (multi-step). Inference energy is token-driven, not GPU-seconds — see the token parameters below.",
+  },
 };
 
 // Annual modality energy benchmarks (kWh/year and kgCO₂e/year at global avg 0.473 kgCO₂e/kWh)
@@ -348,6 +352,8 @@ const MODALITY_BENCHMARKS = [
 // gpuKw, trainMwh) are physically grounded; performance fields (accuracyPct, accuracyMetric,
 // scanTimeReductPct, lowValueReductPct) are the model's REPORTED values from the cited
 // reference — CEDARS never predicts accuracy, it only records what the user enters.
+// LLM / agentic entries carry unit:'tokens' — their inference energy is token-driven
+// (callsPerTask × tokensPerCall × whPer1kTokens), NOT GPU-seconds. See sources.md.
 const AI_MODEL_LIBRARY = [
   {key:'cad',        label:'Classification / triage',          Icon:Target,   reference:'CheXNet (DenseNet-121)',          refCite:'Rajpurkar 2017, arXiv:1711.05225',
    architecture:'CNN / ResNet',                dim:'2D', resolution:224,  slices:1,   paramsM:8,    inferSec:0.4, gpuKw:0.07, trainMwh:0.05, embCo2Kg:40,  accuracyPct:84, accuracyMetric:'AUC',         scanTimeReductPct:0,  lowValueReductPct:12},
@@ -362,7 +368,11 @@ const AI_MODEL_LIBRARY = [
   {key:'synth',      label:'Image synthesis (diffusion)',      Icon:Zap,      reference:'Diffusion model (e.g. MRI→CT)',   refCite:'Kazerouni 2023, Med Image Anal',
    architecture:'Diffusion / Generative AI',   dim:'2D', resolution:256,  slices:1,   paramsM:120,  inferSec:6,   gpuKw:0.3,  trainMwh:8,    embCo2Kg:150, accuracyPct:90, accuracyMetric:'SSIM',        scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'report',     label:'Report generation (LLM / VLM)',    Icon:FileText, reference:'Radiology report-generation LLM', refCite:'Doo 2024, Radiology 10.1148/radiol.240320',
-   architecture:'Vision Transformer (ViT)',    dim:'2D', resolution:512,  slices:1,   paramsM:7000, inferSec:12,  gpuKw:0.35, trainMwh:50,   embCo2Kg:200, accuracyPct:70, accuracyMetric:'RadGraph F1', scanTimeReductPct:0,  lowValueReductPct:5},
+   architecture:'LLM / Agent (transformer)',   dim:'2D', resolution:512,  slices:1,   paramsM:7000, inferSec:12,  gpuKw:0.35, trainMwh:50,   embCo2Kg:200, accuracyPct:70, accuracyMetric:'RadGraph F1', scanTimeReductPct:0,  lowValueReductPct:5,
+   unit:'tokens', whPer1kTokens:0.4, callsPerTask:1,  tokensPerCall:2500},
+  {key:'agentic',    label:'Agentic workflow (LLM orchestration)', Icon:Bot, reference:'Multi-step LLM agent (planning · retrieval · tool use · self-critique)', refCite:'illustrative token-based estimate; see sources.md',
+   architecture:'LLM / Agent (transformer)',   dim:'2D', resolution:512,  slices:1,   paramsM:70000, inferSec:12, gpuKw:0.4,  trainMwh:0,    embCo2Kg:200, accuracyPct:0,  accuracyMetric:'—',           scanTimeReductPct:0,  lowValueReductPct:5,
+   unit:'tokens', whPer1kTokens:0.4, callsPerTask:10, tokensPerCall:4000},
   {key:'foundation', label:'Foundation / prompt model (MedSAM)', Icon:Globe,  reference:'MedSAM (Segment Anything, medical)', refCite:'Ma 2024, Nat Commun',
    architecture:'Vision Transformer (ViT)',    dim:'2D', resolution:1024, slices:1,   paramsM:90,   inferSec:3,   gpuKw:0.3,  trainMwh:5,    embCo2Kg:150, accuracyPct:89, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'custom',     label:'Custom / blank',                   Icon:Cpu,      reference:'User-defined',                    refCite:'—',
@@ -652,6 +662,14 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const ci    = getCI(region, customCi);
   const arch  = AI_ARCHITECTURES[architecture] ?? AI_ARCHITECTURES["CNN / ResNet"];
   const ampF  = PRECISION_FACTOR[precision]    ?? 1.0;
+  // Token-based inference for LLM / agentic models — energy is driven by tokens processed,
+  // not GPU-seconds. tokens/study = calls per task × tokens per call. Wh/1k-token intensity
+  // is a model-tier default (see sources.md). kWh = tokens/1000 × Wh_per_1k ÷ 1000 × PUE.
+  const isToken       = model.unit === 'tokens';
+  const callsPerTask  = Math.max(1, model.callsPerTask  || 1);
+  const tokensPerCall = Math.max(0, model.tokensPerCall || 0);
+  const tokensPerStudy = isToken ? rnd(callsPerTask * tokensPerCall, 0) : 0;
+  const tokenKwhPerStudy = tokensPerStudy / 1000 * (model.whPer1kTokens || 0) / 1000; // pre-PUE kWh/study
   const DEPLOY_MO    = Math.max(1,  parseInt(overrides.deployMonths) || 36);
   const TEST_STUDIES = Math.max(1,  parseInt(overrides.testStudies)  || 500);
   const trainKwhCustom = overrides.trainKwh && parseFloat(overrides.trainKwh) > 0
@@ -678,13 +696,17 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // ── Phase 2: Testing / Validation ────────────────────────────────────────
   // One-time inference run over hold-out test set.
   // Proxy: DLP/CTDIvol dose metrics correlate with net scan energy R²=0.87–0.92 (Schoen et al.)
-  const testKwhTotal   = rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * TEST_STUDIES * cf.pue * ampF, 4);
+  const testKwhTotal   = isToken
+    ? rnd(tokenKwhPerStudy * TEST_STUDIES * cf.pue * ampF, 4)
+    : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * TEST_STUDIES * cf.pue * ampF, 4);
   const testKgCo2e     = rnd(testKwhTotal * cf.ci, 4);
 
   // ── Phase 3: Inference & Deployment ─────────────────────────────────────
   // Inference energy per study; scales with every request — dominant lifetime cost.
   // MRI cooling adds +45% energy overhead during active acquisition (Heye/Vosshenrich)
-  const inferKwhPerStudy = rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * cf.pue * ampF, 6);
+  const inferKwhPerStudy = isToken
+    ? rnd(tokenKwhPerStudy * cf.pue * ampF, 6)
+    : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * cf.pue * ampF, 6);
   const inferKwhMonthly  = rnd(inferKwhPerStudy * STUDIES, 4);
   const inferKwhLifetime = rnd(inferKwhMonthly * DEPLOY_MO, 1);
   const ampSavingPct     = rnd((1 - ampF) * 100, 0);
@@ -725,6 +747,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     accuracy: model.accuracy, accuracyMetric: model.accuracyMetric,
     scanTimeReductPct: model.scanTimeReductPct, lowValueReductPct: model.lowValueReductPct,
     scansAvoided, scanEnergySaved, reboundRisk,
+    unit: isToken ? 'tokens' : 'gpu', tokensPerStudy, callsPerTask, tokensPerCall, whPer1kTokens: model.whPer1kTokens || 0,
   };
 }
 
@@ -749,9 +772,15 @@ function aiResultFor(cfg, region, customCi, equipment) {
   const inferSecDerived = rnd(lib.inferSec * (paramsM / lib.paramsM) * (pixels / basePixels), 3);
   const inferSecManual  = parseFloat(cfg.inferSec) > 0 ? parseFloat(cfg.inferSec) : null;
   const inferSecAuto    = inferSecManual === null;
+  // Token-based (LLM / agentic) fields — only meaningful when the library entry uses tokens.
+  const unit          = lib.unit || 'gpu';
+  const whPer1kTokens = parseFloat(cfg.whPer1kTokens) > 0 ? parseFloat(cfg.whPer1kTokens) : lib.whPer1kTokens;
+  const callsPerTask  = Math.max(1, parseInt(cfg.callsPerTask)  || lib.callsPerTask  || 1);
+  const tokensPerCall = Math.max(0, parseFloat(cfg.tokensPerCall) || lib.tokensPerCall || 0);
   const model = {
     gpuKw: lib.gpuKw, trainMwh: lib.trainMwh, embCo2Kg: lib.embCo2Kg,
     paramsM, dim, resolution, slices,
+    unit, whPer1kTokens, callsPerTask, tokensPerCall,
     inferSec:   inferSecManual ?? inferSecDerived,
     accuracy:   Math.min(1, Math.max(0, (parseFloat(cfg.accuracyPct) || 0) / 100)),
     accuracyMetric: cfg.accuracyMetric || lib.accuracyMetric,
@@ -767,6 +796,7 @@ function aiResultFor(cfg, region, customCi, equipment) {
 // The AI-model config fields snapshotted into a benchmark candidate (department context —
 // region, equipment, customCi — is held constant and applied at compute time).
 const AI_CFG_FIELDS = ['modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec',
+  'whPer1kTokens','callsPerTask','tokensPerCall',
   'accuracyPct','accuracyMetric','scanTimeReductPct','lowValueReductPct',
   'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','testStudies','deployMonths'];
 function pickAiCfg(s) {
@@ -777,6 +807,7 @@ function benchCfgFromLib(key) {
   return {
     id: `ref-${key}`, label: m.label, modelKey: key, architecture: m.architecture, precision: 'float32 (standard)',
     paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '',
+    whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
     accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
     scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
     cloudProvider: 'Local compute', cloudRegion: 'On-premise (Switzerland)',
@@ -1400,6 +1431,7 @@ function App() {
     architecture: "CNN / ResNet",
     precision: "float32 (standard)",
     paramsM: '8', dim: '2D', resolution: '224', slices: '1', inferSec: '',
+    whPer1kTokens: '', callsPerTask: '1', tokensPerCall: '',
     accuracyPct: '84', accuracyMetric: 'AUC',
     scanTimeReductPct: '0', lowValueReductPct: '12',
     trainGpu: '',
@@ -1417,6 +1449,7 @@ function App() {
     setScen(s => ({
       ...s, modelKey: key, architecture: m.architecture,
       paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '',
+      whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
       accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
       scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
     }));
@@ -2233,7 +2266,9 @@ function App() {
                 if (!m) return;
                 addDeptAiTool({
                   id: Date.now(), label: m.label,
-                  inferKwhPerStudy: String(rnd(m.gpuKw * m.inferSec / 3600 * 1.2, 4)), // gpuKw × s/study × PUE
+                  inferKwhPerStudy: String(m.unit==='tokens'
+                    ? rnd((m.callsPerTask||1)*(m.tokensPerCall||0)/1000*(m.whPer1kTokens||0)/1000*1.2, 4) // tokens/study × Wh/1k × PUE
+                    : rnd(m.gpuKw * m.inferSec / 3600 * 1.2, 4)), // gpuKw × s/study × PUE
                   trainKwhTotal: String(Math.round(m.trainMwh * 1000)),
                   embCo2Kg: String(m.embCo2Kg), deployMonths: '36',
                   scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
@@ -2442,7 +2477,9 @@ function App() {
             <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
               <button onClick={()=>setModelExpanded(v=>!v)} style={{background:'none',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:6,width:'100%'}}>
                 <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced model parameters</span>
-                <span style={{fontSize:10,color:'#90a4ae'}}>{scen.paramsM}M params · {scen.resolution}px{scen.dim==='3D'?` × ${scen.slices} slices`:''} · {ai.inferSec}s/study{ai.inferSecAuto?' (auto)':' (manual)'}</span>
+                <span style={{fontSize:10,color:'#90a4ae'}}>{ai.unit==='tokens'
+                  ? `${ai.callsPerTask} call${ai.callsPerTask===1?'':'s'} × ${ai.tokensPerCall.toLocaleString()} tok · ${ai.tokensPerStudy.toLocaleString()} tok/study · ${rnd(ai.inference.kwhPerStudy*1000,2)} Wh`
+                  : `${scen.paramsM}M params · ${scen.resolution}px${scen.dim==='3D'?` × ${scen.slices} slices`:''} · ${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}</span>
                 <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{modelExpanded ? '▴ collapse' : '▾ expand'}</span>
               </button>
               {modelExpanded && (
@@ -2458,6 +2495,7 @@ function App() {
                       Parameters (M)
                       <input type="number" min="0" step="1" value={scen.paramsM} onChange={e=>setS('paramsM',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
+                    {ai.unit!=='tokens' && (
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       Dimensionality
                       <select value={scen.dim} onChange={e=>setS('dim',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}>
@@ -2465,7 +2503,30 @@ function App() {
                         <option value="3D">3D (volume)</option>
                       </select>
                     </label>
+                    )}
                   </div>
+                  {ai.unit==='tokens' ? (
+                  <>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:6}}>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Energy (Wh / 1k tokens)
+                      <input type="number" min="0" step="0.05" value={scen.whPer1kTokens} onChange={e=>setS('whPer1kTokens',e.target.value)} placeholder="0.4" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Model calls / task
+                      <input type="number" min="1" step="1" value={scen.callsPerTask} onChange={e=>setS('callsPerTask',e.target.value)} placeholder="1" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Tokens / call
+                      <input type="number" min="0" step="100" value={scen.tokensPerCall} onChange={e=>setS('tokensPerCall',e.target.value)} placeholder="2500" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
+                  </div>
+                  <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
+                    LLM / agentic energy is <strong>token-driven</strong>: {ai.callsPerTask} call{ai.callsPerTask===1?'':'s'} × {ai.tokensPerCall.toLocaleString()} tokens = <strong>{ai.tokensPerStudy.toLocaleString()} tokens/study</strong> → ≈ <strong>{rnd(ai.inference.kwhPerStudy*1000,2)} Wh/study</strong>. Set <strong>calls/task &gt; 1</strong> for multi-step agents (planning · retrieval · tool use · self-critique · retries). Wh/1k-token intensity is a model-tier estimate — see sources.md.
+                  </p>
+                  </>
+                  ) : (
+                  <>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:6}}>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       Input resolution (px)
@@ -2483,6 +2544,8 @@ function App() {
                   <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
                     Inference time auto-scales with <strong>params × resolution²{scen.dim==='3D'?' × slices':''}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). Enter a measured value to override.
                   </p>
+                  </>
+                  )}
                 </div>
               )}
             </div>

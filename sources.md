@@ -133,11 +133,28 @@ The AI Dashboard ships a library of task-family templates spanning the real spac
 | Volumetric segmentation (3D) | nnU-Net | Isensee F et al. 2021, Nat Methods 18:203–211, DOI: [10.1038/s41592-020-01008-z](https://doi.org/10.1038/s41592-020-01008-z) |
 | Reconstruction / denoising | DL recon (low-dose CT / fast MRI) | Radiology 2023, DOI: [10.1148/radiol.230441](https://doi.org/10.1148/radiol.230441) |
 | Image synthesis (diffusion) | Diffusion model (e.g. MRI→CT) | Kazerouni A et al. 2023, Med Image Anal 88:102846, DOI: [10.1016/j.media.2023.102846](https://doi.org/10.1016/j.media.2023.102846) |
-| Report generation (LLM / VLM) | Radiology report-generation LLM | Doo FX et al. 2024, Radiology, DOI: [10.1148/radiol.240320](https://doi.org/10.1148/radiol.240320) (LLM-Energy) |
+| Report generation (LLM / VLM) † | Radiology report-generation LLM | Doo FX et al. 2024, Radiology, DOI: [10.1148/radiol.240320](https://doi.org/10.1148/radiol.240320) (LLM-Energy) |
+| Agentic workflow (LLM orchestration) † | Multi-step LLM agent (planning · retrieval · tool use · self-critique) | Illustrative; token-based (see below) |
 | Foundation / prompt model | MedSAM (Segment Anything, medical) | Ma J et al. 2024, Nat Commun 15:654, DOI: [10.1038/s41467-024-44824-z](https://doi.org/10.1038/s41467-024-44824-z) |
 | Custom / blank | User-defined | — |
 
+† **Token-based** entries (see next subsection). All other templates are GPU-seconds–based.
+
 Energy-scaling methodology references: `LLM-Energy` (inference energy vs. model size) and `Doo-JACR-2024` §4 (training/testing/inference lifecycle phases), both above. GPU power draw from `GPU_PRESETS` (see GPU hardware specifications section); PUE from `CLOUD` defaults above.
+
+### Token-based inference for LLM and agentic models
+
+Vision models (classification, detection, segmentation, reconstruction) are metered in **GPU-power × seconds**, which is the natural unit for a single forward pass. **Large language models and agentic workflows are not** — their inference energy is driven by the **number of tokens processed**, so CEDARS meters them in tokens instead:
+
+```
+inference kWh/study = (tokens per study ÷ 1000) × (Wh per 1,000 tokens) ÷ 1000 × PUE × precision-factor
+tokens per study    = calls per task × tokens per call
+```
+
+- **Single-pass LLM** (e.g. report generation): `calls per task = 1`; tokens/study = prompt + context in, plus report out (default ≈ 2,500).
+- **Agentic workflow**: one clinical *task* fans out into **multiple** model calls — planning, retrieval (RAG), tool use, self-critique, and retries — each carrying a growing context. Default ≈ **10 calls × 4,000 tokens = 40,000 tokens/study**, ~10–100× a single-pass classification. This multi-call blow-up is the sharpest edge of the "double-edged sword" (Doo 2024) and is invisible to any GPU-seconds model.
+
+**Energy intensity default (`whPer1kTokens` ≈ 0.4 Wh per 1,000 tokens).** Public per-token figures are sparse, contested, and hardware/model-dependent; anchors span roughly 0.1–0.2 (small/efficient), 0.3–0.5 (standard), and 1–3 Wh/1k (large/frontier) models. Primary reference: **Luccioni AS, Jernite Y, Strubell E. Power Hungry Processing: Watts Driving the Cost of AI Deployment? (2024), arXiv:2311.16863** — measured per-inference energy across task types, with generative text far above discriminative tasks. All three token parameters (`whPer1kTokens`, `callsPerTask`, `tokensPerCall`) are **user-editable estimates**, not measurements; enter metered values (e.g. datacentre energy ÷ tokens served) for any reporting of record. The `callsPerTask` multiplier is a pragmatic bridge between a token count and CEDARS' kWh pipeline, not a precise physical model of attention-level compute.
 
 ---
 
