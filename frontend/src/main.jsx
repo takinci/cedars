@@ -59,6 +59,16 @@ const EQUIPMENT_UNITS = {
 
 const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:1, mri_7t:0, ct:1, petct:0, angio:0, fluoro:0, xray:1, ultrasound:1, mammography:0, pacs:1, workstations:4};
 
+// Realistic department archetypes — a quick-start starting fleet; every count stays editable.
+// Illustrative sizes, not authoritative. Only non-zero devices listed; the rest reset to 0 on apply.
+const DEPARTMENT_PRESETS = [
+  {key:'community',  label:'Community hospital',  desc:'Small general hospital',            equipment:{mri_15t:1, ct:1, xray:2, ultrasound:2, mammography:1, pacs:1, workstations:6}},
+  {key:'regional',   label:'Regional hospital',   desc:'Mid-size hospital with IR',         equipment:{mri_15t:1, mri_3t:1, ct:2, fluoro:1, angio:1, xray:3, ultrasound:3, mammography:1, pacs:1, workstations:12}},
+  {key:'academic',   label:'Academic center',     desc:'Large academic medical center',     equipment:{mri_15t:2, mri_3t:2, mri_7t:1, ct:4, petct:1, angio:2, fluoro:2, xray:5, ultrasound:6, mammography:2, pacs:2, workstations:30}},
+  {key:'outpatient', label:'Outpatient imaging',  desc:'Outpatient / ambulatory centre',    equipment:{mri_15t:1, ct:1, xray:2, ultrasound:3, mammography:1, pacs:1, workstations:6}},
+  {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}},
+];
+
 // Estimated FTE per device — derived from NHS/BIR radiology workforce benchmarks.
 // Imaging devices include technologists, radiologist share, nursing/admin; PACS = IT; workstations = reading radiologists.
 const STAFF_PER_DEVICE = {mri_035t:4, mri_15t:5, mri_3t:5, mri_7t:6, ct:4, petct:5, angio:6, fluoro:3, xray:3, ultrasound:2, mammography:2, pacs:2, workstations:1};
@@ -1907,6 +1917,19 @@ function App() {
             {/* Equipment card grid */}
             <div id="landing-equipment" style={{marginBottom:16,scrollMarginTop:90}}>
               <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment in your department</div>
+
+              {/* Subtle department presets — fill a realistic starting fleet; counts stay editable */}
+              <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:6,marginBottom:6}}>
+                <span style={{fontSize:11,color:'#90a4ae',fontWeight:600}}>Quick start:</span>
+                {DEPARTMENT_PRESETS.map(p=>(
+                  <button key={p.key} title={p.desc}
+                    onClick={()=>set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])))}
+                    style={{background:'#f6f8f6',border:'1px solid #e4e9e4',borderRadius:9,padding:'3px 9px',fontSize:11,fontWeight:600,color:'#607d66',cursor:'pointer',boxShadow:'none'}}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <p className="note" style={{fontSize:11,marginTop:0,marginBottom:10}}>Illustrative starting points — adjust any device count below.</p>
 
               {/* MRI section */}
               {[{cards:MRI_CARDS,label:'MRI scanners'},{cards:OTHER_CARDS,label:'Other equipment'}].map(({cards,label})=>(
