@@ -2400,7 +2400,7 @@ function App() {
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls" style={{padding:'12px 16px'}}>
             {/* Model library picker + precision + cloud */}
-            <div style={{display:'grid',gridTemplateColumns:'1.6fr 1fr 1fr',gap:8}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8}}>
               <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>
                 Model <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— task-family template, fully editable</span>
                 <select value={scen.modelKey} onChange={e=>setModel(e.target.value)}>
@@ -2706,6 +2706,8 @@ function App() {
               <h2 style={{marginTop:0, marginBottom:14, color:'#1b5e20', display:'flex', alignItems:'center', gap:8}}><Server style={{width:20,height:20}}/> Compute workloads</h2>
               <p className="note" style={{marginBottom:12}}>AI training &amp; inference (green) are derived from the model config above. Add other instances separately — hours/month max 744, GPU at 100% / CPU at 50% utilisation.</p>
 
+              <div style={{overflowX:'auto'}}>
+              <div style={{minWidth:680}}>
               <div style={{display:'grid', gridTemplateColumns:'1.4fr 2.4fr 0.5fr 0.7fr 0.7fr 0.7fr 32px', gap:8, padding:'0 0 6px', borderBottom:'1px solid #c8e6c9', fontSize:11, fontWeight:700, color:'#607d66'}}>
                 <span>Workload label</span><span>Instance type</span><span>Count</span><span>h/month</span><span>kWh/mo</span><span>kgCO₂e/mo</span><span/>
               </div>
@@ -2741,6 +2743,8 @@ function App() {
                   </button>
                 </div>
               ))}
+              </div>
+              </div>
 
               <button onClick={addComputeLine} style={{marginTop:12, background:'#e8f5e9', color:'#2E7D32', boxShadow:'none', border:'1px dashed #a5d6a7', padding:'8px 16px', fontSize:13, display:'flex', alignItems:'center', gap:6}}>
                 <Plus style={{width:15,height:15}}/> Add compute workload
@@ -2752,6 +2756,8 @@ function App() {
               <h2 style={{marginTop:0, marginBottom:14, color:'#1b5e20', display:'flex', alignItems:'center', gap:8}}><Database style={{width:20,height:20}}/> Storage</h2>
               <p className="note" style={{marginBottom:12}}>Enter provisioned TB. Energy is calculated for 720 h/month regardless of access pattern.</p>
 
+              <div style={{overflowX:'auto'}}>
+              <div style={{minWidth:560}}>
               <div style={{display:'grid', gridTemplateColumns:'1.4fr 2fr 0.8fr 0.8fr 0.8fr 32px', gap:8, padding:'0 0 6px', borderBottom:'1px solid #c8e6c9', fontSize:11, fontWeight:700, color:'#607d66'}}>
                 <span>Label</span><span>Storage type</span><span>TB</span><span>kWh/mo</span><span>kgCO₂e/mo</span><span/>
               </div>
@@ -2770,6 +2776,8 @@ function App() {
                   </button>
                 </div>
               ))}
+              </div>
+              </div>
 
               <button onClick={addStorageLine} style={{marginTop:12, background:'#e8f5e9', color:'#2E7D32', boxShadow:'none', border:'1px dashed #a5d6a7', padding:'8px 16px', fontSize:13, display:'flex', alignItems:'center', gap:6}}>
                 <Plus style={{width:15,height:15}}/> Add storage
