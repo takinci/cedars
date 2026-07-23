@@ -1916,7 +1916,7 @@ function App() {
                     {label}
                     <span style={{flex:1,height:1,background:'#e0e0e0',display:'inline-block'}}/>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8}}>
                     {cards.map(({key, label:cardLabel, sublabel, Icon, tooltip}) => {
                       const count = settings.equipment[key] ?? 0;
                       const active = count > 0;
@@ -2243,7 +2243,7 @@ function App() {
                   <input value={t.label} placeholder="Clinical AI tool name" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{flex:1,padding:'6px 10px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:13,fontWeight:600}}/>
                   <button onClick={()=>removeDeptAiTool(t.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8}}>
                   {[
                     ['Inference kWh/study','inferKwhPerStudy','0.001','e.g. 0.02'],
                     ['Training energy (kWh)','trainKwhTotal','1','e.g. 500'],
@@ -2424,7 +2424,7 @@ function App() {
               </button>
               {modelExpanded && (
                 <div style={{marginTop:8}}>
-                  <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:6,marginBottom:6}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:6,marginBottom:6}}>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       Architecture
                       <select value={scen.architecture} onChange={e=>setS('architecture',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}>
@@ -2443,7 +2443,7 @@ function App() {
                       </select>
                     </label>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:6}}>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       Input resolution (px)
                       <input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
@@ -2486,7 +2486,7 @@ function App() {
                   </button>
                   {trainExpanded && (
                     <div style={{marginTop:8}}>
-                      <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:6,marginBottom:6}}>
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:6,marginBottom:6}}>
                         <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                           Training GPU
                           <select value={scen.trainGpu} onChange={e=>setS('trainGpu',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}>
@@ -2552,7 +2552,7 @@ function App() {
               <p className="note" style={{marginBottom:12,fontSize:12}}>
                 These are <strong>your reported numbers</strong>, not predictions — defaults come from {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} ({AI_MODEL_BY_KEY[scen.modelKey]?.refCite ?? '—'}). Replace with your own validation results.
               </p>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1.2fr 1fr 1fr',gap:10}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
                 <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
                   Performance value (%)
                   <input type="number" min="0" max="100" step="0.1" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
