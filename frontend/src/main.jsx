@@ -1938,19 +1938,19 @@ function App() {
                           {sublabel && (
                             <div style={{fontSize:9,color: active ? '#4CAF50' : '#bdbdbd',textAlign:'center',lineHeight:1.2}}>{sublabel}</div>
                           )}
-                          <select
+                          <input
+                            type="number" min="0" max="999" step="1"
                             value={count}
-                            onChange={e => setEquip(key, Number(e.target.value))}
+                            onChange={e => setEquip(key, Math.max(0, Math.min(999, Math.floor(Number(e.target.value) || 0))))}
+                            aria-label={`Number of ${cardLabel}`}
                             style={{
                               width:'100%', padding:'3px 2px', marginTop:2,
                               border:`1px solid ${active ? '#a5d6a7' : '#e0e0e0'}`,
                               borderRadius:8, fontSize:13, background:'white',
                               color: active ? '#1b5e20' : '#9e9e9e',
-                              fontWeight:700, textAlign:'center', cursor:'pointer',
+                              fontWeight:700, textAlign:'center', boxSizing:'border-box',
                             }}
-                          >
-                            {Array.from({length:21},(_,i)=><option key={i} value={i}>{i === 0 ? '— none' : i}</option>)}
-                          </select>
+                          />
                         </div>
                       );
                     })}
