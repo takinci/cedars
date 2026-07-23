@@ -89,7 +89,7 @@ Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all 
 
 Core settings are reflected in the URL hash — copy the link to share your exact configuration:
 
-- **Equipment fleet** — set the count of each device type
+- **Equipment fleet** — set the count of each device type (or start from a **department preset**, below)
 - **Actual imaging studies / year** (optional) — drives fleet utilisation and the live EcoLabel; blank uses the fleet estimate
 - **Region / grid** — Switzerland, France, Germany, United States, United Kingdom, EU average, Global average, or a custom carbon intensity
 - **Time period** — Monthly, Quarterly, Annual
@@ -97,6 +97,18 @@ Core settings are reflected in the URL hash — copy the link to share your exac
 - **Cloud provider & region** — Local / AWS / Azure / Google Cloud, with per-region grid intensity for AI and infrastructure
 
 Staff-commute headcount is derived automatically from the device fleet (NHS/BIR workforce ratios), so it needs no manual entry.
+
+### Department presets
+
+To avoid building a fleet device-by-device, the Home page offers a subtle **"Quick start"** row that fills a realistic starting fleet — then every count stays editable. Sizes are **illustrative archetypes**, not authoritative; adjust to your department. Selecting a preset resets the other devices to zero.
+
+| Preset | Starting fleet |
+|---|---|
+| **Community hospital** | 1× MRI 1.5T · 1× CT · 2× X-ray · 2× ultrasound · 1× mammography · 1× PACS · 6 workstations |
+| **Regional hospital** | 1× MRI 1.5T · 1× MRI 3T · 2× CT · 1× fluoroscopy · 1× angio/IR · 3× X-ray · 3× ultrasound · 1× mammography · 1× PACS · 12 workstations |
+| **Academic center** | 2× MRI 1.5T · 2× MRI 3T · 1× MRI 7T · 4× CT · 1× PET-CT · 2× angio/IR · 2× fluoroscopy · 5× X-ray · 6× ultrasound · 2× mammography · 2× PACS · 30 workstations |
+| **Outpatient imaging** | 1× MRI 1.5T · 1× CT · 2× X-ray · 3× ultrasound · 1× mammography · 1× PACS · 6 workstations |
+| **Teleradiology hub** | 2× PACS · 15 workstations *(reading/informatics — no scanners)* |
 
 ---
 
