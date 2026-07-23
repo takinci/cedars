@@ -1606,6 +1606,25 @@ function App() {
       accuracyPct: maxBy('accuracyPct'), efficiency: maxBy('efficiency')}};
   }, [benchModels, settings.region, settings.customCi, settings.equipment]);
 
+  // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
+  // agent, all on the SAME department volume — surfaces the token multiplier concretely.
+  const agenticExample = useMemo(() => {
+    const ctx = k => aiResultFor(benchCfgFromLib(k), settings.region, settings.customCi, settings.equipment);
+    const cad = ctx('cad'), report = ctx('report'), agent = ctx('agentic');
+    const whStudy = r => rnd((r.inference.kwhPerStudy || 0) * 1000, 2);
+    const cadWh = whStudy(cad) || 0.001;
+    const mk = (label, r, note) => ({label, note, tokens: r.tokensPerStudy || 0,
+      whStudy: whStudy(r), kwhMo: r.inference.kwhMonthly, fold: Math.max(1, rnd(whStudy(r) / cadWh, 0))});
+    return {
+      studies: report.inference.studies,
+      rows: [
+        mk('Classification / triage', cad,    '1 vision forward-pass'),
+        mk('Report generation (LLM)', report, '1 LLM call'),
+        mk('Agentic workflow',        agent,  `${agent.callsPerTask} LLM calls / study`),
+      ],
+    };
+  }, [settings.region, settings.customCi, settings.equipment]);
+
   const landingAIKwh = useMemo(() => {
     if (!landingAIOpen) return 0;
     return rnd(Object.values(landingAITools).reduce((sum, cfg) => {
@@ -2964,6 +2983,44 @@ function App() {
             <p className="note" style={{marginBottom:16,fontSize:12}}>
               Performance values are <strong>user-reported</strong>, not predicted by CEDARS — set the current model's configuration in the tabs above, then add it as a candidate.
             </p>
+
+            {/* Worked agentic example — the token multiplier */}
+            <div style={{background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16,padding:'14px 18px',marginBottom:20}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,fontWeight:800,color:'#1b5e20',marginBottom:2}}><Bot size={16}/> Why agentic AI costs more — the token multiplier</div>
+              <p className="note" style={{fontSize:12,marginTop:2,marginBottom:10}}>
+                Same department ({settings.region}, {agenticExample.studies.toLocaleString()} studies/mo). A single-pass model runs once per study; an <strong>agent fans out into many LLM calls</strong> (planning · retrieval · tool use · self-critique · retries), so its energy is token-driven and multiplies.
+              </p>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:520}}>
+                  <thead>
+                    <tr style={{borderBottom:'2px solid #c8e6c9',color:'#607d66',textAlign:'left'}}>
+                      <th style={{padding:'6px 10px'}}>Workflow</th>
+                      <th style={{padding:'6px 10px'}}>Tokens/study</th>
+                      <th style={{padding:'6px 10px'}}>Energy/study</th>
+                      <th style={{padding:'6px 10px'}}>If run on all studies/mo</th>
+                      <th style={{padding:'6px 10px'}}>vs 1-pass</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {agenticExample.rows.map((r,i) => {
+                      const isAgent = i === agenticExample.rows.length - 1;
+                      return (
+                        <tr key={i} style={{borderBottom:'1px solid #eef7ee',background:isAgent?'#fffef2':'white'}}>
+                          <td style={{padding:'6px 10px',fontWeight:isAgent?800:600,color:isAgent?'#1b5e20':'#263238'}}>{r.label}<span style={{display:'block',fontWeight:400,fontSize:11,color:'#90a4ae'}}>{r.note}</span></td>
+                          <td style={{padding:'6px 10px',color:'#607d66'}}>{r.tokens ? r.tokens.toLocaleString() : '—'}</td>
+                          <td style={{padding:'6px 10px',fontWeight:isAgent?800:600}}>{r.whStudy} Wh</td>
+                          <td style={{padding:'6px 10px'}}>{fmtKwh(r.kwhMo)}</td>
+                          <td style={{padding:'6px 10px',fontWeight:800,color:isAgent?'#c62828':'#607d66'}}>{r.fold}×</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="note" style={{fontSize:11,marginTop:8,marginBottom:0}}>
+                Illustrative defaults (agent = {agenticExample.rows[2].note}, 4,000 tokens/call, 0.4 Wh/1k). Tune <strong>calls/task</strong> and <strong>tokens/call</strong> under <em>Advanced model parameters</em> after selecting the <strong>Agentic workflow</strong> template. Basis in sources.md.
+              </p>
+            </div>
 
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
               <button onClick={addBenchModel} disabled={benchModels.length>=6} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:benchModels.length>=6?0.5:1}}>
