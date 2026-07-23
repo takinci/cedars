@@ -6,11 +6,15 @@ message: >-
 type: software
 authors:
   - given-names: Tugba
-    family-names: Akinci
+    family-names: "Akinci D'Antonoli"
     email: drtugbaakinci@gmail.com
     # affiliation: "<add affiliation>"
     # orcid: "https://orcid.org/0000-0000-0000-0000"
-  # TODO: add co-authors below — one block each:
+  - given-names: Florence
+    family-names: Doo
+    # affiliation: "<add affiliation>"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+  # TODO: add any further co-authors below — one block each:
   # - given-names: <first>
   #   family-names: <last>
   #   affiliation: "<institution>"
@@ -40,7 +44,9 @@ date-released: "2026-07-23"
 #   title: "<paper title>"
 #   authors:
 #     - given-names: Tugba
-#       family-names: Akinci
+#       family-names: "Akinci D'Antonoli"
+#     - given-names: Florence
+#       family-names: Doo
 #   journal: "<journal>"
 #   year: 2026
 #   doi: "<doi>"
