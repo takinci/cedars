@@ -1,6 +1,7 @@
 {
   "name": "cedars-frontend",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

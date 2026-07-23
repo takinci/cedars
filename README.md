@@ -181,9 +181,23 @@ See [sources.md](./sources.md) for the full assumptions-governance document.
 
 ---
 
+## License & citation
+
+- **Software / source code** — [Apache License 2.0](./LICENSE).
+- **Content, methodology, documentation, and generated labels/badges** — [Creative Commons Attribution 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). Attribute as: *"CEDARS (cedarsleaf.com), CC BY 4.0."*
+- The names **CEDARS**, the leaf mark, and **CEDARS Score / Rating** identify this project; the Apache-2.0 licence does not grant rights to use them (LICENSE §6).
+
+If you use CEDARS, please cite it — GitHub's **"Cite this repository"** button uses [`CITATION.cff`](./CITATION.cff) (and please cite the associated paper once published).
+
+> **Disclaimer.** CEDARS is a research and estimation tool. Figures are literature-based **estimates**, not measured values, and are **not** medical, clinical, financial, or regulatory advice. Provided *as-is*, without warranty. Replace defaults with your own measured data for any reporting of record.
+>
+> **Privacy.** Runs entirely in your browser — no backend, no personal data collected, no cookies, nothing you enter leaves your device.
+
+---
+
 <div align="center">
 
-Built for radiology sustainability research · Evidence-based · Open source
+Built for radiology sustainability research · Evidence-based · Apache-2.0 (code) + CC BY 4.0 (content)
 
 [**→ Open CEDARS**](https://takinci.github.io/cedars/)
 

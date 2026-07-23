@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+title: "CEDARS — Carbon, Energy Diagnostics and Reporting for Sustainability"
+message: >-
+  If you use CEDARS in your work, please cite this software
+  (and the associated paper once it is published).
+type: software
+authors:
+  - given-names: Tugba
+    family-names: Akinci
+    email: drtugbaakinci@gmail.com
+    # affiliation: "<add affiliation>"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+  # TODO: add co-authors below — one block each:
+  # - given-names: <first>
+  #   family-names: <last>
+  #   affiliation: "<institution>"
+  #   orcid: "https://orcid.org/…"
+repository-code: "https://github.com/takinci/cedars"
+url: "https://cedarsleaf.com"
+abstract: >-
+  A browser-based tool that quantifies the environmental footprint of a
+  radiology department and its deployed clinical AI, and expresses the result
+  as a standardised CEDARS Score and Rating ecolabel for reporting and
+  comparison, from published literature defaults that users can override with
+  measured data.
+keywords:
+  - radiology
+  - medical imaging
+  - sustainability
+  - carbon footprint
+  - planetary health
+  - artificial intelligence
+  - ecolabel
+license: Apache-2.0
+version: "1.0.0"
+date-released: "2026-07-23"
+# ── Once the paper is published, fill in and CEDARS will be cited via it: ──
+# preferred-citation:
+#   type: article
+#   title: "<paper title>"
+#   authors:
+#     - given-names: Tugba
+#       family-names: Akinci
+#   journal: "<journal>"
+#   year: 2026
+#   doi: "<doi>"
