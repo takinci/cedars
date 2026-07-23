@@ -1390,6 +1390,10 @@ const getCI = (region, customCi) =>
 
 // URL hash state persistence — encodes/decodes core settings so shared links work
 const HASH_KEYS = {u:'intendedUse', r:'region', m:'metricType', t:'timePeriod', c:'customCi', a:'actualStudiesYear'};
+// Default values of the hash-encoded settings. While every one of these is unchanged the
+// URL is kept clean (no #…) so cedarsleaf.com stays shareable-as-the-base-site; the hash
+// only appears once the user customises a shared setting.
+const HASH_DEFAULTS = {intendedUse:"Estimate annual footprint", region:"Switzerland", metricType:"Energy", timePeriod:"Monthly", customCi:"0.30", actualStudiesYear:''};
 function readHash() {
   try {
     const q = new URLSearchParams(window.location.hash.replace(/^#/,''));
@@ -1399,6 +1403,12 @@ function readHash() {
   } catch { return {}; }
 }
 function writeHash(s) {
+  const atDefaults = Object.entries(HASH_DEFAULTS).every(([field, def]) => String(s[field] ?? '') === String(def));
+  if (atDefaults) {
+    // Keep the link clean at defaults — strip the hash entirely.
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    return;
+  }
   const q = new URLSearchParams();
   for (const [k, field] of Object.entries(HASH_KEYS)) q.set(k, s[field]);
   history.replaceState(null, '', '#' + q.toString());
@@ -1411,13 +1421,8 @@ function App() {
   // Shared settings — drive all calculations; initialised from URL hash if present
   const [settings, setSettings] = useState(() => ({
     equipment: {...DEFAULT_EQUIPMENT},
-    intendedUse: "Estimate annual footprint",
-    region: "Switzerland",
-    metricType: "Energy",
-    timePeriod: "Monthly",
-    customCi: "0.30",
+    ...HASH_DEFAULTS,
     staffCommuteKm: '15',
-    actualStudiesYear: '',
     ...readHash(),
   }));
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
@@ -1443,6 +1448,13 @@ function App() {
 
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
   const setS = (key, val) => setScen(s => ({...s, [key]: val}));
+  // Logo → Home: reset the shared (URL-encoded) settings to defaults so the address bar
+  // returns to a clean cedarsleaf.com, while keeping the user's equipment, AI and EcoLabel work.
+  const resetToHome = () => {
+    setSettings(s => ({...s, ...HASH_DEFAULTS}));
+    setPage('landing');
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  };
   // Load a library entry as an editable starting point — seeds every model field.
   const setModel = key => {
     const m = AI_MODEL_BY_KEY[key] ?? AI_MODEL_LIBRARY[0];
@@ -1912,7 +1924,7 @@ function App() {
   return (
     <>
       <header>
-        <Logo onClick={() => window.location.assign('https://takinci.github.io/cedars/')}/>
+        <Logo onClick={resetToHome}/>
         <nav>
           {pages.map(p => (
             <button key={p} className={page===p?'on':''} onClick={()=>setPage(p)}>{PAGE_LABELS[p] ?? p}</button>
