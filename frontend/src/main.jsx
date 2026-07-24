@@ -544,7 +544,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     totals: {
       kwh: rnd(totalKwh), mwh: rnd(totalKwh / 1000),
       tonnesCo2e: rnd(totalCo2 / 1000, 3),
-      co2Kg: totalCo2,  // raw Scope 2 kg — used by computeScenario to avoid double-rounding
+      co2Kg: totalCo2,  // raw Scope 2 kg — used by computeInterventions to avoid double-rounding
       // divide by imagingScans (MRI/CT/X-ray/US only) not totalScans (which inflates via PACS/WS placeholders)
       energyPerScan: imagingScans > 0 ? rnd(totalKwh / imagingScans, 3) : 0,
       idleWasteKwh: rnd(totalIdle), label,
@@ -577,72 +577,69 @@ const CLOUD_INTERVENTIONS = new Set([
   'Use renewable electricity',
 ]);
 
-function computeScenario(intervention, region, timePeriod, equipment, customCi, cloudProvider, scannerState) {
+// Combined impact of a SET of interventions (the "intervention program"). Single source of
+// truth for both the Interventions tab and the EcoLabel. Computes each lever's dynamic,
+// fleet-based saving, then combines: the two idle-reduction levers overlap on the same
+// avoidable-idle pool (standby ⊇ scanners-off) so we take the deepest ONE rather than summing;
+// all other energy levers add; carbon-% levers stack multiplicatively. Everything floors at 0.
+function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState) {
+  const list  = Array.isArray(names) ? names.filter(n => INTERVENTIONS[n]) : (names && INTERVENTIONS[names] ? [names] : []);
   const ci    = getCI(region, customCi);
   const mult  = TIME_MULT[timePeriod] ?? 1;
-  const eff   = INTERVENTIONS[intervention] ?? {kwh: 0};
   const base  = computeDashboard(region, timePeriod, equipment, customCi);
   const fleet = buildFleet(equipment);
   const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
-
-  // Map scanner state label to the equipment power field
   const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};
   const targetField = STATE_FIELD[scannerState] ?? 'standby_kw';
 
-  let kwhSaved = 0;
-  let co2PctOff = 0;
+  // Per-lever energy saving (kWh, at this period's scale).
+  const leverKwh = name => {
+    if (name === 'Turn MRI/CT scanners off overnight')
+      return rnd(fleet.filter(eq => ['MRI','CT','PET-CT'].includes(eq.modality))
+        .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
+    if (name === 'Use standby mode during inactive periods')
+      return rnd(fleet
+        .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
+    if (name === 'Consolidate servers') {
+      const localPue = CLOUD["Local compute"].pue;
+      const computeKwh = fleet.filter(eq => ['PACS/RIS','Workstation'].includes(eq.modality))
+        .reduce((s, eq) => s + (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult, 0);
+      return rnd(computeKwh * Math.max(0, 1 - cf.pue / localPue));
+    }
+    return rnd((INTERVENTIONS[name]?.kwh ?? 0) * mult);
+  };
+  // Per-lever operational-CO₂ % reduction (multiplicative levers).
+  const leverCo2Pct = name => {
+    if (name === 'Move computation to lower-carbon regions') {
+      const computeCo2 = fleet.filter(eq => ['PACS/RIS','Workstation'].includes(eq.modality))
+        .reduce((s, eq) => s + (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult * ci, 0);
+      const ciDeltaFraction = ci > cf.ci ? (ci - cf.ci) / ci : 0;
+      return base.totals.co2Kg > 0 ? rnd(computeCo2 * ciDeltaFraction / base.totals.co2Kg * 100, 1) : 0;
+    }
+    return INTERVENTIONS[name]?.co2Pct ?? 0;
+  };
 
-  if (intervention === 'Turn MRI/CT scanners off overnight') {
-    // Dynamic: MRI + CT idle → target state during avoidable idle hours
-    kwhSaved = rnd(fleet
-      .filter(eq => ['MRI','CT','PET-CT'].includes(eq.modality))
-      .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
+  const idleLevers  = list.filter(n => SCANNER_STATE_INTERVENTIONS.has(n));
+  const idleSaving  = idleLevers.length ? Math.max(...idleLevers.map(leverKwh)) : 0;      // overlap → deepest one
+  const otherSaving = list.filter(n => !SCANNER_STATE_INTERVENTIONS.has(n)).reduce((s, n) => s + leverKwh(n), 0);
+  const kwhSaved    = rnd(Math.min(base.totals.kwh, idleSaving + otherSaving));
+  const co2Fraction = 1 - list.reduce((f, n) => f * (1 - (leverCo2Pct(n) / 100)), 1);      // stack multiplicatively
 
-  } else if (intervention === 'Use standby mode during inactive periods') {
-    // Dynamic: all equipment idle → target state during avoidable idle hours
-    kwhSaved = rnd(fleet
-      .reduce((s, eq) => s + Math.max(0, eq.idle_kw - (eq[targetField] ?? 0)) * eq.avoidable_idle_h * mult, 0));
-
-  } else if (intervention === 'Move computation to lower-carbon regions') {
-    // CO₂ saving is bounded by the compute portion of total emissions (PACS/WS only)
-    // Moving cloud region doesn't affect on-site MRI/CT scanner grid draw
-    const computeCo2 = fleet
-      .filter(eq => ['PACS/RIS','Workstation'].includes(eq.modality))
-      .reduce((s, eq) => s + (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult * ci, 0);
-    const ciDeltaFraction = ci > cf.ci ? (ci - cf.ci) / ci : 0;
-    // Express as a % of total base CO₂ so the generic formula applies correctly
-    const baseCo2Raw = base.totals.co2Kg;
-    co2PctOff = baseCo2Raw > 0 ? rnd(computeCo2 * ciDeltaFraction / baseCo2Raw * 100, 1) : 0;
-
-  } else if (intervention === 'Consolidate servers') {
-    // Energy savings from improved PUE: compute workload moves to cloud
-    const localPue = CLOUD["Local compute"].pue;
-    const computeKwh = fleet
-      .filter(eq => ['PACS/RIS','Workstation'].includes(eq.modality))
-      .reduce((s, eq) => s + (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult, 0);
-    kwhSaved = rnd(computeKwh * Math.max(0, 1 - cf.pue / localPue));
-
-  } else {
-    // All other interventions: use pre-defined table values
-    kwhSaved  = rnd((eff.kwh ?? 0) * mult);
-    co2PctOff = eff.co2Pct ?? 0;
-  }
-
-  const co2Fraction   = co2PctOff / 100;
-  const projectedKwh  = Math.max(0, rnd(base.totals.kwh - kwhSaved));         // floor at 0
-  const baseCo2kg     = rnd(base.totals.co2Kg, 1);                            // raw kg, not tonnesCo2e*1000
-  const projectedCo2  = Math.max(0, rnd(baseCo2kg * (1 - co2Fraction) - kwhSaved * ci, 1)); // floor at 0
-  const co2Saved      = rnd(baseCo2kg - projectedCo2, 1);
-  const pctEnergy     = base.totals.kwh > 0 ? rnd((kwhSaved / base.totals.kwh) * 100, 1) : 0;
-  const usesScanner   = SCANNER_STATE_INTERVENTIONS.has(intervention);
-  const usesCloud     = CLOUD_INTERVENTIONS.has(intervention);
+  const projectedKwh = Math.max(0, rnd(base.totals.kwh - kwhSaved));
+  const baseCo2kg    = rnd(base.totals.co2Kg, 1);
+  const projectedCo2 = Math.max(0, rnd(baseCo2kg * (1 - co2Fraction) - kwhSaved * ci, 1));
+  const co2Saved     = rnd(baseCo2kg - projectedCo2, 1);
+  const pctEnergy    = base.totals.kwh > 0 ? rnd((kwhSaved / base.totals.kwh) * 100, 1) : 0;
+  const pctCo2       = baseCo2kg > 0 ? rnd((co2Saved / baseCo2kg) * 100, 1) : 0;
 
   return {
-    intervention, timePeriod, note: eff.note ?? "",
-    usesScanner, usesCloud,
+    selected: list, count: list.length, timePeriod,
+    usesScanner: list.some(n => SCANNER_STATE_INTERVENTIONS.has(n)),
+    usesCloud:   list.some(n => CLOUD_INTERVENTIONS.has(n)),
+    monthlyKwhSaved: rnd(kwhSaved / mult, 1),
     baseline:  {kwh: base.totals.kwh, co2: baseCo2kg},
     projected: {kwh: projectedKwh,    co2: projectedCo2},
-    savings:   {kwh: kwhSaved, co2: co2Saved, pctEnergy},
+    savings:   {kwh: kwhSaved, co2: co2Saved, pctEnergy, pctCo2, co2Fraction},
   };
 }
 
@@ -1591,7 +1588,7 @@ function App() {
     return {inferKwhPerStudy, trainKwhMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools]);
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj]);
-  const scenario = useMemo(() => computeScenario(scen.intervention, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState), [scen.intervention, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState]);
+  const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment),
     [scen, settings.region, settings.customCi, settings.equipment]);
 
@@ -1813,16 +1810,13 @@ function App() {
     const co2PerStudy = annualStudies > 0 ? rnd(totalAnnualCo2 / annualStudies, 3) : 0;
     const score = hasData ? cedarsScore(co2PerStudy, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
     const rating = hasData ? cedarsRating(score) : null;
-    const monthlyKwhSaving = deptLabel.activeInterventions.reduce(
-      (s, name) => s + (INTERVENTIONS[name]?.kwh || 0), 0
-    );
-    const annualKwhSaving = monthlyKwhSaving * 12;
-    // Percentage-based CO₂ levers (renewable electricity, lower-carbon region, extend
-    // hardware lifetime) stack multiplicatively and apply to operational CO₂ — mirrors
-    // the Compare tab so a ticked action has the same effect in both places.
-    const co2PctFraction = 1 - deptLabel.activeInterventions.reduce(
-      (f, name) => f * (1 - ((INTERVENTIONS[name]?.co2Pct || 0) / 100)), 1
-    );
+    // Saving potential comes from the SAME unified, overlap-aware model as the Interventions
+    // tab (`scenario` = computeInterventions over deptLabel.activeInterventions), so a ticked
+    // action has identical effect in both places. Energy saving is scaled to annual; the
+    // carbon-% levers apply multiplicatively to this label's own annualKwh / effectiveCi.
+    const monthlyKwhSaving = scenario.monthlyKwhSaved;
+    const annualKwhSaving = rnd(monthlyKwhSaving * 12, 0);
+    const co2PctFraction = scenario.savings.co2Fraction;
     const potentialFacilityCo2 = Math.max(0, annualKwh - annualKwhSaving) * effectiveCi * (1 - co2PctFraction);
     const co2Saving = rnd(facilityCo2 - potentialFacilityCo2, 1);
     const potentialCo2PerStudy = annualStudies > 0
@@ -1845,7 +1839,7 @@ function App() {
       facilityCo2, clinicalToolCount: clinicalAdj.count,
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash.totals.kwh, efficiency.capacityYr, efficiency.studiesYr, clinicalAdj.count]);
+  }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash.totals.kwh, efficiency.capacityYr, efficiency.studiesYr, clinicalAdj.count, scenario.monthlyKwhSaved, scenario.savings.co2Fraction]);
 
   // Auto-seed the AI model's training (amortised) + inference as locked compute lines,
   // then layer the user's own Infrastructure-tab workloads on top. Provider/region come
@@ -1890,7 +1884,7 @@ function App() {
     datasets: [{label:'kgCO₂e', data: dash.byEquipment.map(x => x.kgco2e), backgroundColor: CHART_COLORS}],
   };
   const chartScenario = {
-    labels: ['Baseline', 'After intervention'],
+    labels: ['Baseline', 'After interventions'],
     datasets: [
       {label:`Energy kWh${dash.totals.label}`, data:[scenario.baseline.kwh, scenario.projected.kwh], backgroundColor:['#A5D6A7','#2E7D32']},
       {label:'Carbon kgCO₂e', data:[scenario.baseline.co2, scenario.projected.co2], backgroundColor:['#80CBC4','#26A69A']},
@@ -3404,18 +3398,43 @@ function App() {
       {page==='scenario' && (
         <main>
           <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
-          <p className="note" style={{marginBottom:16}}>Model an operational lever and see the projected impact on your footprint. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
+          <p className="note" style={{marginBottom:16}}>Build your department's <strong>intervention program</strong> — tick every lever you plan to implement and see their <strong>combined</strong> impact. The same ticks appear as your implemented actions on the <strong>EcoLabel</strong> tab. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
+
+          {/* Multi-select intervention program — shared selection with the EcoLabel */}
+          <div className="inputSummary" style={{marginBottom:16}}>
+            <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Choose interventions <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(tick all you plan to implement)</span></h2>
+            <p className="note" style={{marginBottom:12}}>
+              {scenario.count>0
+                ? <><strong style={{color:'#2E7D32'}}>{scenario.count} selected · −{scenario.savings.kwh.toLocaleString()} kWh · −{scenario.savings.co2.toLocaleString()} kgCO₂e{dash.totals.label}</strong> ({scenario.savings.pctEnergy}% energy · {scenario.savings.pctCo2}% carbon)</>
+                : 'No interventions selected yet — tick one or more below to model their combined effect.'}
+            </p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+              {Object.entries(INTERVENTIONS).map(([name, data]) => {
+                const active = deptLabel.activeInterventions.includes(name);
+                return (
+                  <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
+                    <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
+                    <div>
+                      <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
+                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr`:''}{data.co2Pct?` · −${data.co2Pct}% carbon`:''}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Global assumptions — applied to whichever ticked levers use them */}
           <div className="grid" style={{marginBottom:8}}>
-            <Sel label="Intervention"         value={scen.intervention}  options={META.interventions}  onChange={v=>setS('intervention',v)}/>
-            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
-                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
-            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">active</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>not used by this intervention</span>}</span>}
+            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
                  value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
+            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
+                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
           </div>
           <p className="note" style={{marginBottom:16}}>
-            {scenario.note}
-            {scenario.usesScanner && <> · Scanner state target changes how deep the power-down goes (Standby saves less than Off).</>}
-            {scenario.usesCloud   && <> · Cloud provider changes the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
+            Global assumptions applied to whichever ticked levers use them.
+            {scenario.usesScanner && <> Scanner state target sets how deep the overnight/standby power-down goes (Standby saves less than Off).</>}
+            {scenario.usesCloud   && <> Cloud provider sets the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
           </p>
           {/* Impact on your EcoLabel — current → projected */}
           {(()=>{
@@ -3442,12 +3461,14 @@ function App() {
                 <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
                   {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
                   <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
-                  {mkBox(`Projected · ${scen.intervention}`, projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
+                  {mkBox(scenario.count>0?`Projected · ${scenario.count} intervention${scenario.count===1?'':'s'}`:'Projected', projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
                 </div>
                 {projScore != null && (
-                  projScore === cur.score
-                    ? <p className="note" style={{marginTop:8}}>This intervention doesn't move your CEDARS Score band, but still cuts {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
-                    : <p className="note" style={{marginTop:8}}>{scen.intervention} shifts your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
+                  scenario.count === 0
+                    ? <p className="note" style={{marginTop:8}}>Tick one or more interventions above to project their combined impact on your CEDARS Score.</p>
+                    : projScore === cur.score
+                      ? <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} don't move your CEDARS Score band, but still cut {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
+                      : <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} shift your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
                 )}
               </div>
             );
@@ -3467,7 +3488,7 @@ function App() {
               <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
             </section>
             <section className="card">
-              <div className="cardHead"><Leaf/><span>After intervention</span></div>
+              <div className="cardHead"><Leaf/><span>After interventions</span></div>
               <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
               <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
             </section>
@@ -3557,7 +3578,7 @@ function App() {
             <div className="inputSummary" style={{marginBottom:32}}>
               <h2 style={{marginTop:0,marginBottom:8,color:'#1b5e20'}}>Sustainability actions <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(tick implemented interventions)</span></h2>
               <p className="note" style={{marginBottom:16}}>
-                Checking implemented interventions shows your saving potential and strengthens your label documentation.
+                Checking implemented interventions shows your saving potential and strengthens your label documentation. This is the <strong>same selection</strong> as the <strong>Interventions</strong> tab — tick here or there, the combined impact is identical.
                 {deptLabel.activeInterventions.length > 0 && (
                   <> <strong style={{color:'#2E7D32'}}>{deptLabel.activeInterventions.length} selected · saving potential: {deptLabelData.annualKwhSaving.toLocaleString()} kWh/yr ({deptLabelData.co2Saving} kgCO₂e/yr)</strong></>
                 )}
