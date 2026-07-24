@@ -1188,7 +1188,7 @@ function generateDeptText(d) {
     (d.clinicalToolCount > 0 ? ` This figure reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''}, whose net compute and clinical savings are included in the department energy above.` : '') +
     ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
     (d.interventionCount > 0 ? ` The department has implemented ${d.interventionCount} sustainability intervention${d.interventionCount > 1 ? 's' : ''}, with an estimated energy saving potential of ${d.annualKwhSaving.toLocaleString()} kWh/yr (${d.co2Saving} kgCO₂e/yr).` : '') +
-    ` Sustainability metrics were estimated using CEDARS (${d.date}), informed by the framework of Vosshenrich R et al. (Curr Opin Urol 2024, DOI: 10.1097/MOU.0000000000001337) and McKee BJ et al. (Radiology 2024, DOI: 10.1148/radiol.240219).`
+    ` Sustainability metrics were estimated using CEDARS (${d.date}), benchmarked against published radiology carbon-intensity data (e.g. McKee BJ et al., Radiology 2024, DOI: 10.1148/radiol.240219); full methodology and sources: https://github.com/takinci/cedars/blob/main/sources.md.`
   );
 }
 
@@ -3488,7 +3488,7 @@ function App() {
 
             <p className="note" style={{marginBottom:16}}>
               Generate a department-level sustainability label for ESG reports, accreditation submissions, or public sustainability disclosures.
-              The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department scores well even at a high absolute footprint, while an under-used fleet does not. Benchmarked against published radiology carbon intensity data (Vosshenrich R et al., Curr Opin Urol 2024), following the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
+              The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department scores well even at a high absolute footprint, while an under-used fleet does not. Benchmarked against published radiology carbon-intensity data — see the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>full source list</a> — following the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
             </p>
 
             {/* ── Pre-fill from Radiology Dashboard ── */}
@@ -3617,7 +3617,7 @@ function App() {
                   </div>
                 ))}
                 <div style={{background:'#e8f5e9',padding:'8px 18px',fontSize:11,color:'#2E7D32'}}>
-                  Estimated with CEDARS · {deptLabelData.date} · Vosshenrich et al. Curr Opin Urol 2024 · CC BY 4.0
+                  Estimated with CEDARS · {deptLabelData.date} · CC BY 4.0
                 </div>
               </div>
 
