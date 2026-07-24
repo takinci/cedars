@@ -1157,6 +1157,10 @@ function cedarsScore(value, lo, hi) {
 }
 const CEDARS_AI_LO = 1,   CEDARS_AI_HI = 20000;   // total training kgCO₂e: ~1 kg → 100, 20 t → 0
 const CEDARS_DEPT_LO = 0.1, CEDARS_DEPT_HI = 20;  // kgCO₂e per imaging study: 0.1 → 100, 20 → 0
+// AI model in-use footprint — gCO₂e per study (training amortised over deployment + inference).
+// The AI research label grades this efficiency number, not absolute training size, so a big
+// model deployed at scale can still grade well. 0.2 g → 100, 40 g → 0. (Estimate — see sources.md)
+const CEDARS_AIUSE_LO = 0.2, CEDARS_AIUSE_HI = 40;
 
 // Net annual CO₂ a deployed AI tool adds to a department: amortised training + inference +
 // embodied GPU, minus clinical savings (shorter protocols + avoided low-value scans). Net,
@@ -1270,17 +1274,19 @@ function generateEcoMarkdown(d) {
     ['Total GPU-hours',          `${d.totalGpuHours} h`],
     ['Energy per run',           `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : ' (estimated from TDP)'}`],
     ['Total training energy',    `${d.totalEnergyKwh} kWh`],
-    ['Training CO₂e',       `${d.trainCo2} kgCO₂e`],
+    ['Training CO₂e (one-time)', `${d.trainCo2} kgCO₂e`],
     ['Renewable energy',         `${d.renewablePct}%`],
     ['Compute provider / PUE',   `${d.cloudProvider} · PUE ${d.pue}`],
     ['Grid region / CI',         `${d.region} · ${d.ci} kgCO₂e/kWh`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
-    ...(d.hasInference ? [[
-      'Monthly inference',
-      `${d.inferStudies.toLocaleString()} studies · ${d.inferMonthlyKwh} kWh · ${d.inferCo2Month} kgCO₂e`,
-    ]] : []),
-    ['**CEDARS Score**',         d.hasData ? `**${d.score} / 100**` : '—'],
-    ['**CEDARS Rating**',        d.hasData ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**` : '—'],
+    ...(d.perInferCo2g > 0 ? [['Inference CO₂e / study (marginal)', `${d.perInferCo2g} gCO₂e`]] : []),
+    ...(d.hasInference ? [
+      ['Deployment',                  `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo (${d.lifetimeInferences.toLocaleString()} studies)`],
+      ['Effective CO₂e / study',      `${d.effectivePerStudyG} gCO₂e (training amortised + inference)`],
+      ...(d.breakEvenStudies != null ? [['Break-even (training = inference)', `~${d.breakEvenStudies.toLocaleString()} studies`]] : []),
+    ] : []),
+    ['**CEDARS Score**',         d.graded ? `**${d.score} / 100** (${d.gradeBasis === 'amortised' ? 'amortised gCO₂e/study' : 'inference gCO₂e/study'})` : '— (add inference volume to grade)'],
+    ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**` : '—'],
     ['Estimated with',           `CEDARS · ${d.date}`],
   ];
   return [
@@ -1288,8 +1294,8 @@ function generateEcoMarkdown(d) {
     '|:---|:---|',
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
     '',
-    '> Sustainability label generated with [CEDARS](https://takinci.github.io/cedars/).',
-    '> Reporting framework: Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030.',
+    '> AI research label generated with [CEDARS](https://cedarsleaf.com).',
+    '> Reporting framework: Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030. Full sources: cedarsleaf.com → sources.md.',
   ].join('\n');
 }
 
@@ -1308,7 +1314,11 @@ function downloadEcoPNG(d) {
     ['Renewable energy',         `${d.renewablePct}%`],
     ['Compute / grid',           `${d.cloudProvider} · ${d.region} · ${d.ci} kgCO₂e/kWh`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
-    ...(d.hasInference ? [['Monthly inference', `${d.inferStudies.toLocaleString()} studies · ${d.inferMonthlyKwh} kWh`]] : []),
+    ...(d.perInferCo2g > 0 ? [['Inference / study', `${d.perInferCo2g} gCO₂e`]] : []),
+    ...(d.hasInference ? [
+      ['Deployment',        `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo`],
+      ['Effective / study', `${d.effectivePerStudyG} gCO₂e (amortised)`],
+    ] : []),
   ];
   const ROW_H = 26, HEADER_H = 72, RATING_H = 76, FOOTER_H = 28;
   const H = HEADER_H + RATING_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
@@ -1323,23 +1333,27 @@ function downloadEcoPNG(d) {
   ctx.fillStyle = '#1b5e20';
   ctx.beginPath(); ctx.roundRect(1, 1, W - 2, HEADER_H, [13, 13, 0, 0]); ctx.fill();
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 15px sans-serif';
-  ctx.fillText('CEDARS EcoLabel', 16, 26);
+  ctx.fillText('CEDARS AI Research Label', 16, 26);
   ctx.font = '13px sans-serif'; ctx.fillStyle = '#A5D6A7';
   ctx.fillText(d.projectName, 16, 48);
   ctx.font = '10px sans-serif'; ctx.fillStyle = '#81C784';
-  ctx.fillText(`AI/ML Training Report · Radiology · ${d.date}`, 16, 66);
+  ctx.fillText(`AI model footprint disclosure · ${d.date}`, 16, 66);
   // CEDARS Score + Rating band
   ctx.fillStyle = d.ratingBg; ctx.fillRect(2, HEADER_H, W-4, RATING_H);
   ctx.textAlign = 'center';
   ctx.font = 'bold 38px sans-serif'; ctx.fillStyle = d.ratingColor;
-  ctx.fillText(d.hasData ? String(d.score) : '—', 46, HEADER_H + 44);
+  ctx.fillText(d.graded ? String(d.score) : '—', 46, HEADER_H + 44);
   ctx.font = 'bold 9px sans-serif'; ctx.fillText('CEDARS SCORE', 46, HEADER_H + 60);
   ctx.textAlign = 'left';
   for (let i = 0; i < 5; i++) { ctx.fillStyle = i < d.leaves ? d.ratingColor : '#cfd8dc'; ctx.font = '15px sans-serif'; ctx.fillText('●', 100 + i*15, HEADER_H + 28); }
   ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = d.ratingColor;
   ctx.fillText(d.ratingLabel, 100, HEADER_H + 50);
   ctx.font = '10px sans-serif'; ctx.fillStyle = '#263238';
-  ctx.fillText(d.hasData ? `${d.trainCo2} kgCO₂e total training` : 'Enter training data above', 100, HEADER_H + 66);
+  ctx.fillText(
+    d.gradeBasis === 'amortised' ? `${d.effectivePerStudyG} gCO₂e/study (amortised)`
+      : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study`
+      : d.hasData ? 'Add inference to grade' : 'Enter training data above',
+    100, HEADER_H + 66);
   rows.forEach(([k, v], i) => {
     const y = HEADER_H + RATING_H + 4 + i * ROW_H;
     ctx.fillStyle = i % 2 === 0 ? '#f1f8f1' : '#ffffff';
@@ -1353,7 +1367,7 @@ function downloadEcoPNG(d) {
   ctx.fillStyle = '#e8f5e9';
   ctx.beginPath(); ctx.roundRect(2, footerY, W - 4, FOOTER_H, [0, 0, 11, 11]); ctx.fill();
   ctx.fillStyle = '#2E7D32'; ctx.font = '10px sans-serif';
-  ctx.fillText(`CEDARS · ${d.date} · Doo et al. Radiology 2024 · CC BY 4.0`, 14, footerY + 18);
+  ctx.fillText(`CEDARS · ${d.date} · CC BY 4.0`, 14, footerY + 18);
   canvas.toBlob(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1502,6 +1516,7 @@ function App() {
     renewablePct: '0',
     inferStudiesMonth: '',
     inferKwhPerStudy: '',
+    deployMonths: '36',
   });
   const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
   const [deptCopied, setDeptCopied] = useState(false);
@@ -1759,9 +1774,27 @@ function App() {
     const gpuLabel = ecoLabel.gpuModel === 'Custom (enter TDP below)'
       ? `Custom GPU (${ecoLabel.customTdpW || 300} W TDP)`
       : ecoLabel.gpuModel;
+    // ── Two-phase model footprint ────────────────────────────────────────────
+    // Training is a ONE-TIME capital cost; inference is a MARGINAL cost paid on every study.
+    // They behave oppositely, so the label shows both — and grades the amortised combination.
+    const deployMonths = Math.max(1, parseInt(ecoLabel.deployMonths) || 36);
+    const lifetimeInferences = Math.round(inferStudies * deployMonths);       // total studies over deployment
+    const perInferCo2Kg  = inferKwhPerStudy * effectiveCi;                    // kgCO₂e per study (marginal)
+    const perInferCo2g   = rnd(perInferCo2Kg * 1000, 3);                     // gCO₂e per study
+    const hasInferenceData = inferStudies > 0 && inferKwhPerStudy > 0;
+    const trainPerStudyG = lifetimeInferences > 0 ? rnd(trainCo2 * 1000 / lifetimeInferences, 3) : null; // amortised training, g/study
+    const effectivePerStudyG = hasInferenceData ? rnd((trainPerStudyG ?? 0) + perInferCo2g, 3)
+      : (inferKwhPerStudy > 0 ? perInferCo2g : null);                        // effective g/study
+    const breakEvenStudies = perInferCo2Kg > 0 ? Math.round(trainCo2 / perInferCo2Kg) : null; // inference = training
+    const trainFlights = rnd(trainCo2 / 255, 2);                             // short-haul economy seats (ICAO 2023)
     const hasData = totalEnergyKwh > 0;
-    const score = hasData ? cedarsScore(trainCo2, CEDARS_AI_LO, CEDARS_AI_HI) : null;
-    const rating = hasData ? cedarsRating(score) : null;
+    // Grade the amortised effective gCO₂e/study when a deployment volume is given (this folds
+    // training + inference honestly); else the per-inference gCO₂e/study; else disclosure-only.
+    const gradeBasis = hasInferenceData ? 'amortised' : (inferKwhPerStudy > 0 ? 'inference' : 'none');
+    const gradeValueG = gradeBasis === 'none' ? null : effectivePerStudyG;
+    const graded = gradeValueG != null;
+    const score = graded ? cedarsScore(gradeValueG, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI) : null;
+    const rating = graded ? cedarsRating(score) : null;
     return {
       projectName: ecoLabel.projectName || 'Untitled project',
       taskType: ecoLabel.taskType,
@@ -1775,8 +1808,9 @@ function App() {
       hasInference: inferStudies > 0 && inferKwhPerStudy > 0,
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
       energyMeasured: ecoLabel.energyMeasured,
-      hasData, score,
-      leaves: rating?.leaves ?? 0, ratingLabel: rating?.label ?? 'Enter training data above',
+      deployMonths, lifetimeInferences, perInferCo2g, trainPerStudyG, effectivePerStudyG, breakEvenStudies, trainFlights,
+      hasData, graded, gradeBasis, score,
+      leaves: rating?.leaves ?? 0, ratingLabel: rating?.label ?? (hasData ? 'Add inference to grade' : 'Enter training data above'),
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
       date: new Date().toISOString().slice(0, 7),
     };
@@ -3114,7 +3148,7 @@ function App() {
           <section id="ai-ecolabel" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:8}}>Research label — AI model disclosure</h2>
           <p className="note" style={{marginBottom:8}}>
-            Score a single AI model on its own — the standalone research-disclosure label, with no department context.
+            Disclose a single AI model's footprint on its own — no department context. Unlike the department label, an AI model has <strong>two distinct costs</strong>: <strong>training</strong> (a one-time capital cost) and <strong>inference</strong> (a marginal cost paid on every study). The label shows both, then grades the <strong>amortised</strong> efficiency — training spread over the studies served, plus inference — so a large model deployed at scale can still score well.
             To see how a deployed model affects an imaging operation's footprint, attach it under <strong>Clinical AI tools</strong> on the Radiology Department tab.
             Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030).
           </p>
@@ -3233,7 +3267,8 @@ function App() {
           </div>
 
           <div className="inputSummary" style={{marginBottom:32}}>
-            <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Inference / deployment <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(optional)</span></h2>
+            <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Inference / deployment <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(drives the in-use grade)</span></h2>
+            <p className="note" style={{marginBottom:16}}>Training is a one-time cost; inference is paid on every study. Enter your deployment to grade the <strong>amortised</strong> footprint per study (training spread over the studies served + inference). Leave blank to keep a training-only disclosure.</p>
             <div className="grid grid3">
               <label>
                 Monthly study volume
@@ -3242,6 +3277,10 @@ function App() {
               <label>
                 Inference energy per study (kWh)
                 <input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/>
+              </label>
+              <label>
+                Deployment lifetime (months)
+                <input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/>
               </label>
             </div>
           </div>
@@ -3253,24 +3292,45 @@ function App() {
             <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:320, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
               <div style={{background:'#1b5e20', padding:'14px 18px'}}>
                 <div style={{color:'white', fontWeight:700, fontSize:16, display:'flex', alignItems:'center', gap:8}}>
-                  <Leaf style={{width:16,height:16}}/> CEDARS EcoLabel
+                  <Leaf style={{width:16,height:16}}/> CEDARS AI Research Label
                 </div>
                 <div style={{color:'#A5D6A7', fontSize:13, marginTop:4}}>{ecoLabelData.projectName}</div>
-                <div style={{color:'#81C784', fontSize:11, marginTop:2}}>AI/ML Training Report · Radiology · {ecoLabelData.date}</div>
+                <div style={{color:'#81C784', fontSize:11, marginTop:2}}>AI model footprint disclosure · {ecoLabelData.date}</div>
               </div>
               <div style={{background:ecoLabelData.ratingBg, padding:'16px 18px', display:'flex', alignItems:'center', gap:18}}>
                 <div style={{textAlign:'center', flexShrink:0}}>
-                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.hasData ? ecoLabelData.score : '—'}</div>
+                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.graded ? ecoLabelData.score : '—'}</div>
                   <div style={{fontSize:10, fontWeight:700, color:ecoLabelData.ratingColor, letterSpacing:'0.04em'}}>CEDARS SCORE</div>
                 </div>
                 <div>
                   <LeafRating leaves={ecoLabelData.leaves} size={20} color={ecoLabelData.ratingColor}/>
                   <div style={{fontWeight:700, fontSize:14, color:ecoLabelData.ratingColor, marginTop:4}}>{ecoLabelData.ratingLabel}</div>
                   <div style={{fontSize:11, color:'#263238', marginTop:2}}>
-                    {ecoLabelData.hasData ? `${ecoLabelData.trainCo2} kgCO₂e total training` : 'Enter training data above to calculate'}
+                    {ecoLabelData.gradeBasis==='amortised' ? `${ecoLabelData.effectivePerStudyG} gCO₂e / study (in use, amortised)`
+                      : ecoLabelData.gradeBasis==='inference' ? `${ecoLabelData.perInferCo2g} gCO₂e / study (inference)`
+                      : ecoLabelData.hasData ? 'Add inference volume below to grade in-use efficiency' : 'Enter training data above to calculate'}
                   </div>
                 </div>
               </div>
+              {/* Two-phase headline: one-time training vs marginal per-study inference */}
+              <div style={{display:'flex', borderBottom:'1px solid #eef7ee'}}>
+                <div style={{flex:1, padding:'12px 18px', borderRight:'1px solid #eef7ee'}}>
+                  <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Training · one-time</div>
+                  <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.hasData ? `${ecoLabelData.trainCo2} kgCO₂e` : '—'}</div>
+                  <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.totalGpuHours} GPU-h{ecoLabelData.hasData && ecoLabelData.trainFlights>0 ? ` · ≈ ${ecoLabelData.trainFlights} short-haul flights` : ''}</div>
+                </div>
+                <div style={{flex:1, padding:'12px 18px'}}>
+                  <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Inference · per study</div>
+                  <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e` : '—'}</div>
+                  <div style={{fontSize:11, color:'#607d66'}}>marginal · recurring</div>
+                </div>
+              </div>
+              {ecoLabelData.hasInference && (
+                <div style={{padding:'10px 18px', background:'#f1f8f1', fontSize:12, color:'#37474f'}}>
+                  Over {ecoLabelData.lifetimeInferences.toLocaleString()} studies ({ecoLabelData.deployMonths} mo): training adds {ecoLabelData.trainPerStudyG} g/study → <strong>{ecoLabelData.effectivePerStudyG} gCO₂e/study effective</strong>
+                  {ecoLabelData.breakEvenStudies!=null && <> · training = lifetime inference at ~{ecoLabelData.breakEvenStudies.toLocaleString()} studies</>}
+                </div>
+              )}
               {[
                 ['Task type',                ecoLabelData.taskType],
                 ['Architecture',             ecoLabelData.architecture],
@@ -3294,7 +3354,7 @@ function App() {
                 </div>
               ))}
               <div style={{background:'#e8f5e9', padding:'8px 18px', fontSize:11, color:'#2E7D32'}}>
-                Estimated with CEDARS · {ecoLabelData.date} · Doo et al. Radiology 2024 · CC BY 4.0
+                Estimated with CEDARS · {ecoLabelData.date} · CC BY 4.0
               </div>
             </div>
 
@@ -3345,7 +3405,7 @@ function App() {
                 ['4', 'Cloud provider & PUE', `${d.cloudProvider} · PUE ${d.pue}`, !!d.cloudProvider, 'Cloud'],
                 ['5', 'Training vs inference split', `Training ${d.trainCo2} kgCO₂e · Inference ${d.hasInference ? `${d.inferCo2Month} kgCO₂e/mo` : 'not reported'}`, d.hasData, 'AI workload'],
                 ['6', 'Water footprint', d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L` : 'not reported', d.waterLitres > 0, 'Water use'],
-                ['7', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
+                ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'add inference volume to grade', d.graded, 'Score / Rating'],
               ];
               return (
                 <div style={{border:'1px solid #c8e6c9', borderRadius:14, overflow:'hidden'}}>
@@ -3383,9 +3443,14 @@ function App() {
                `(${ecoLabelData.cloudProvider}; grid: ${ecoLabelData.region}, ${ecoLabelData.ci} kgCO₂e/kWh; ` +
                `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
                `The estimated cooling water footprint is ${ecoLabelData.waterLitres.toLocaleString()} L.` +
-               (ecoLabelData.hasInference
-                 ? ` Monthly inference for ${ecoLabelData.inferStudies.toLocaleString()} studies consumes ${ecoLabelData.inferMonthlyKwh} kWh (${ecoLabelData.inferCo2Month} kgCO₂e/month).`
+               (ecoLabelData.perInferCo2g > 0
+                 ? ` Inference costs ${ecoLabelData.perInferCo2g} gCO₂e per study.`
                  : '') +
+               (ecoLabelData.hasInference
+                 ? ` Amortised over ${ecoLabelData.lifetimeInferences.toLocaleString()} studies (${ecoLabelData.deployMonths}-month deployment), the effective footprint is ${ecoLabelData.effectivePerStudyG} gCO₂e per study` +
+                   (ecoLabelData.breakEvenStudies != null ? ` (training-cost break-even at ~${ecoLabelData.breakEvenStudies.toLocaleString()} studies)` : '') + '.'
+                 : '') +
+               (ecoLabelData.graded ? ` This corresponds to a CEDARS Score of ${ecoLabelData.score}/100 (${ecoLabelData.leaves}/5 leaves — ${ecoLabelData.ratingLabel}).` : '') +
                ` Sustainability metrics were estimated using CEDARS (${ecoLabelData.date}), following the framework of Doo FX et al. (Radiology 2024, DOI: 10.1148/radiol.232030).`}
             </pre>
           </section>

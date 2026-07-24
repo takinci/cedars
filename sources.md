@@ -156,6 +156,15 @@ tokens per study    = calls per task × tokens per call
 
 **Energy intensity default (`whPer1kTokens` ≈ 0.4 Wh per 1,000 tokens).** Public per-token figures are sparse, contested, and hardware/model-dependent; anchors span roughly 0.1–0.2 (small/efficient), 0.3–0.5 (standard), and 1–3 Wh/1k (large/frontier) models. Primary reference: **Luccioni AS, Jernite Y, Strubell E. Power Hungry Processing: Watts Driving the Cost of AI Deployment? (2024), arXiv:2311.16863** — measured per-inference energy across task types, with generative text far above discriminative tasks. All three token parameters (`whPer1kTokens`, `callsPerTask`, `tokensPerCall`) are **user-editable estimates**, not measurements; enter metered values (e.g. datacentre energy ÷ tokens served) for any reporting of record. The `callsPerTask` multiplier is a pragmatic bridge between a token count and CEDARS' kWh pipeline, not a precise physical model of attention-level compute.
 
+### AI research label: two-phase footprint and amortised grade
+
+An AI model has two structurally different costs, and the research label reports both rather than collapsing them:
+
+- **Training** — a *one-time capital cost* (`trainCo2`, total kgCO₂e for all runs incl. failed/HPO experiments). Disclosed as an absolute footprint with a human-scale equivalency (short-haul flights, ICAO 2023 ~255 kgCO₂/economy seat). **Not graded on size** — a large one-time research cost is not "bad," and grading it would simply penalise capable/foundation models.
+- **Inference** — a *marginal, recurring cost* paid on every study (`perInferCo2g` = inference kWh/study × effective grid CI). This is the fair, comparable, scalable number.
+
+**Grade basis.** The 0–100 Score grades the **amortised in-use footprint** — `effective gCO₂e/study = (training CO₂ ÷ lifetime studies) + inference CO₂/study`, where `lifetime studies = monthly volume × deployment months`. When no deployment volume is given, the grade falls back to inference-only; with neither, the label is disclosure-only (no grade). A **break-even** point (`training CO₂ ÷ inference CO₂ per study`) marks where cumulative inference equals the training cost. This mirrors the department label's per-study *efficiency* philosophy and rewards models that are deployed at scale rather than merely small. Band constants `CEDARS_AIUSE_LO = 0.2`, `CEDARS_AIUSE_HI = 40` gCO₂e/study are **illustrative anchors**, not a validated standard — replace with measured deployment data for reporting of record. Reporting-field basis: Doo FX et al. *Radiology* 2024 (DOI 10.1148/radiol.232030).
+
 ---
 
 ## Intervention savings defaults
