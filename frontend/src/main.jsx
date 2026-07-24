@@ -1279,6 +1279,7 @@ function generateEcoMarkdown(d) {
     ['Compute provider / PUE',   `${d.cloudProvider} · PUE ${d.pue}`],
     ['Grid region / CI',         `${d.region} · ${d.ci} kgCO₂e/kWh`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
+    ...(d.tokenMode && d.tokensPerStudy > 0 ? [['Inference tokens / study', `${d.tokensPerStudy.toLocaleString()} tokens · ${d.inferKwhPerStudy} kWh`]] : []),
     ...(d.perInferCo2g > 0 ? [['Inference CO₂e / study (marginal)', `${d.perInferCo2g} gCO₂e`]] : []),
     ...(d.hasInference ? [
       ['Deployment',                  `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo (${d.lifetimeInferences.toLocaleString()} studies)`],
@@ -1515,7 +1516,11 @@ function App() {
     region: 'Global average',
     renewablePct: '0',
     inferStudiesMonth: '',
+    inferMode: 'kwh',            // 'kwh' (vision, energy/study) | 'tokens' (LLM/agentic)
     inferKwhPerStudy: '',
+    whPer1kTokens: '0.4',
+    callsPerTask: '1',
+    tokensPerCall: '',
     deployMonths: '36',
   });
   const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
@@ -1768,7 +1773,17 @@ function App() {
     const trainCo2 = rnd(totalEnergyKwh * effectiveCi, 2);
     const waterLitres = Math.round(totalEnergyKwh * WATER_PER_KWH);
     const inferStudies = parseFloat(ecoLabel.inferStudiesMonth) || 0;
-    const inferKwhPerStudy = parseFloat(ecoLabel.inferKwhPerStudy) || 0;
+    // Inference energy per study: a flat kWh (vision models) OR token-driven (LLM / agentic),
+    // reusing the same unit as the model library — tokens/study = calls × tokens/call, at
+    // whPer1kTokens Wh/1k, × deployment PUE.
+    const tokenMode = ecoLabel.inferMode === 'tokens';
+    const inferCallsPerTask  = Math.max(1, parseFloat(ecoLabel.callsPerTask)  || 1);
+    const inferTokensPerCall = Math.max(0, parseFloat(ecoLabel.tokensPerCall) || 0);
+    const inferWhPer1k       = Math.max(0, parseFloat(ecoLabel.whPer1kTokens) || 0);
+    const tokensPerStudy     = tokenMode ? Math.round(inferCallsPerTask * inferTokensPerCall) : 0;
+    const inferKwhPerStudy = tokenMode
+      ? rnd(tokensPerStudy / 1000 * inferWhPer1k / 1000 * cf.pue, 6)
+      : (parseFloat(ecoLabel.inferKwhPerStudy) || 0);
     const inferMonthlyKwh = rnd(inferStudies * inferKwhPerStudy, 4);
     const inferCo2Month = rnd(inferMonthlyKwh * effectiveCi, 4);
     const gpuLabel = ecoLabel.gpuModel === 'Custom (enter TDP below)'
@@ -1809,6 +1824,7 @@ function App() {
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
       energyMeasured: ecoLabel.energyMeasured,
       deployMonths, lifetimeInferences, perInferCo2g, trainPerStudyG, effectivePerStudyG, breakEvenStudies, trainFlights,
+      tokenMode, tokensPerStudy, inferKwhPerStudy: rnd(inferKwhPerStudy, 6),
       hasData, graded, gradeBasis, score,
       leaves: rating?.leaves ?? 0, ratingLabel: rating?.label ?? (hasData ? 'Add inference to grade' : 'Enter training data above'),
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
@@ -3165,13 +3181,19 @@ function App() {
                 'EfficientNet':              'Classification',
                 'Vision Transformer (ViT)':  'Detection',
                 'Diffusion / Generative AI': 'Reconstruction',
+                'LLM / Agent (transformer)': 'Report generation',
               };
+              // If the current AI model is token-based (LLM / agentic), pre-fill the label's
+              // inference in token mode with its calls/tokens; otherwise use flat kWh/study.
+              const tokenPrefill = ai.unit === 'tokens'
+                ? {inferMode:'tokens', whPer1kTokens:String(ai.whPer1kTokens ?? 0.4), callsPerTask:String(ai.callsPerTask ?? 1), tokensPerCall:String(ai.tokensPerCall ?? 0)}
+                : {inferMode:'kwh', ...(ai.inference?.kwhPerStudy != null ? {inferKwhPerStudy: String(ai.inference.kwhPerStudy)} : {})};
               setEcoLabel(e=>({
                 ...e,
                 ...(scen.architecture                 ? {architecture:      scen.architecture}                              : {}),
                 ...(ARCH_TASK[scen.architecture]       ? {taskType:          ARCH_TASK[scen.architecture]}                   : {}),
                 ...(dash.scopes.imagingScans > 0       ? {inferStudiesMonth: String(Math.round(dash.scopes.imagingScans))}   : {}),
-                ...(ai.inference?.kwhPerStudy != null  ? {inferKwhPerStudy:  String(ai.inference.kwhPerStudy)}               : {}),
+                ...tokenPrefill,
               }));
             }} style={{
               display:'inline-flex',alignItems:'center',gap:7,
@@ -3181,7 +3203,7 @@ function App() {
               <ArrowRight size={13}/> Pre-fill from dashboards
             </button>
             <span style={{fontSize:11,color:'#607d66'}}>
-              Copies architecture &amp; task from AI dashboard · Inference studies/month from Radiology dashboard · kWh/study from AI dashboard inference model
+              Copies architecture &amp; task from AI dashboard · Inference studies/month from Radiology dashboard · inference energy from the AI model (token-based for LLM/agentic, kWh/study otherwise)
             </span>
           </div>
 
@@ -3268,21 +3290,51 @@ function App() {
 
           <div className="inputSummary" style={{marginBottom:32}}>
             <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Inference / deployment <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(drives the in-use grade)</span></h2>
-            <p className="note" style={{marginBottom:16}}>Training is a one-time cost; inference is paid on every study. Enter your deployment to grade the <strong>amortised</strong> footprint per study (training spread over the studies served + inference). Leave blank to keep a training-only disclosure.</p>
+            <p className="note" style={{marginBottom:12}}>Training is a one-time cost; inference is paid on every study. Enter your deployment to grade the <strong>amortised</strong> footprint per study (training spread over the studies served + inference). Leave blank to keep a training-only disclosure.</p>
+            {/* Inference energy unit — flat kWh (vision) vs token-driven (LLM / agentic) */}
+            <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+              <span style={{fontSize:12,color:'#607d66',fontWeight:600,alignSelf:'center'}}>Inference energy:</span>
+              <button onClick={()=>setEco('inferMode','kwh')} className={ecoLabel.inferMode!=='tokens'?'on':''} style={{padding:'5px 12px',fontSize:12,borderRadius:12}}>Vision — kWh / study</button>
+              <button onClick={()=>setEco('inferMode','tokens')} className={ecoLabel.inferMode==='tokens'?'on':''} style={{padding:'5px 12px',fontSize:12,borderRadius:12}}>LLM / agentic — token-based</button>
+            </div>
             <div className="grid grid3">
               <label>
                 Monthly study volume
                 <input type="number" min="0" value={ecoLabel.inferStudiesMonth} onChange={e=>setEco('inferStudiesMonth',e.target.value)} placeholder="e.g. 1200"/>
               </label>
-              <label>
-                Inference energy per study (kWh)
-                <input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/>
-              </label>
+              {ecoLabel.inferMode==='tokens' ? (
+                <>
+                  <label>
+                    Energy (Wh / 1k tokens)
+                    <input type="number" min="0" step="0.05" value={ecoLabel.whPer1kTokens} onChange={e=>setEco('whPer1kTokens',e.target.value)} placeholder="0.4"/>
+                  </label>
+                  <label>
+                    Model calls / study
+                    <input type="number" min="1" step="1" value={ecoLabel.callsPerTask} onChange={e=>setEco('callsPerTask',e.target.value)} placeholder="1 (single-pass) · 10 (agent)"/>
+                  </label>
+                  <label>
+                    Tokens / call
+                    <input type="number" min="0" step="100" value={ecoLabel.tokensPerCall} onChange={e=>setEco('tokensPerCall',e.target.value)} placeholder="e.g. 2500"/>
+                  </label>
+                </>
+              ) : (
+                <label>
+                  Inference energy per study (kWh)
+                  <input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/>
+                </label>
+              )}
               <label>
                 Deployment lifetime (months)
                 <input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/>
               </label>
             </div>
+            {ecoLabel.inferMode==='tokens' && (
+              <p className="note" style={{fontSize:11,marginTop:8,marginBottom:0}}>
+                {ecoLabelData.tokensPerStudy>0
+                  ? <>{ecoLabelData.tokensPerStudy.toLocaleString()} tokens/study → <strong>{ecoLabelData.inferKwhPerStudy} kWh/study</strong> ({ecoLabelData.perInferCo2g} gCO₂e). Set calls/study &gt; 1 for agentic workflows. Same token unit as the model library — see sources.md.</>
+                  : <>Enter tokens/call to derive kWh/study. tokens/study = calls × tokens/call; single-pass LLM = 1 call.</>}
+              </p>
+            )}
           </div>
 
           {/* ── Preview ── */}
@@ -3322,7 +3374,7 @@ function App() {
                 <div style={{flex:1, padding:'12px 18px'}}>
                   <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Inference · per study</div>
                   <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e` : '—'}</div>
-                  <div style={{fontSize:11, color:'#607d66'}}>marginal · recurring</div>
+                  <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.tokenMode && ecoLabelData.tokensPerStudy>0 ? `${ecoLabelData.tokensPerStudy.toLocaleString()} tokens/study` : 'marginal · recurring'}</div>
                 </div>
               </div>
               {ecoLabelData.hasInference && (
