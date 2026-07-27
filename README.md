@@ -8,10 +8,10 @@
 
 **Measure the environmental footprint of clinical imaging — energy, carbon, water, and AI — and turn it into a standardised, shareable disclosure, directly in your browser.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-takinci.github.io%2Fcedars-2E7D32?style=for-the-badge&logo=github)](https://takinci.github.io/cedars/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-cedarsleaf.com-2E7D32?style=for-the-badge&logo=github)](https://cedarsleaf.com)
 [![Built with React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?style=flat-square&logo=chartdotjs)](https://www.chartjs.org)
-[![GitHub Pages](https://img.shields.io/badge/Deployed-GitHub%20Pages-222?style=flat-square&logo=github)](https://takinci.github.io/cedars/)
+[![GitHub Pages](https://img.shields.io/badge/Deployed-GitHub%20Pages-222?style=flat-square&logo=github)](https://cedarsleaf.com)
 
 </div>
 
@@ -28,7 +28,7 @@ It deliberately separates two kinds of "AI":
 
 No installation. No backend. No data leaves your browser.
 
-**→ Try it live: [takinci.github.io/cedars](https://takinci.github.io/cedars/)**
+**→ Try it live: [cedarsleaf.com](https://cedarsleaf.com)**
 
 ---
 
@@ -57,13 +57,13 @@ Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ult
 
 The footprint of building and running a model — R&D / informatics, distinct from clinical effect:
 
-- **Task-family model library** — editable, literature-anchored templates: Classification/triage, detection, 2D & 3D segmentation, reconstruction/denoising, diffusion synthesis, report generation (LLM/VLM), foundation/prompt models, Custom.
-- **Advanced parameters** (progressive disclosure) — params, 2D/3D, resolution, slices; inference energy **scales physically** with `params × resolution² (× slices)`.
+- **Task-family model library** — editable, literature-anchored templates: Classification/triage, detection, 2D & 3D segmentation, reconstruction/denoising, diffusion synthesis, report generation (LLM/VLM), **agentic workflow (LLM orchestration)**, foundation/prompt models, Custom.
+- **Two inference units** — vision models scale physically with `params × resolution² (× slices)` in GPU-seconds; **LLM & agentic models are token-driven** (`calls/task × tokens/call × Wh/1k-tokens`), so a multi-step agent's 10–100× footprint is visible rather than hidden.
 - **GPU training-energy estimator** — training kWh from GPU × count × hours × PUE, or a measured value.
 - **Performance is user-owned, never predicted** — reported accuracy (AUC/Dice/SSIM…) and clinical co-benefits are entered, defaulting to the cited reference.
 - **Lifecycle tabs** — Training · Testing · Inference · Carbon · Clinical · **Infrastructure** (full cloud-carbon: compute, storage, transfer, cross-region optimisation).
-- **Benchmark** — shortlist candidate models under one department context; read the **accuracy-vs-carbon trade-off** on a Pareto scatter (efficient models starred).
-- **Research label** — a standalone AI-model disclosure label for manuscript/paper submission.
+- **Benchmark** — shortlist candidate models under one department context; read the **accuracy-vs-carbon trade-off** on a Pareto scatter (efficient models starred), plus a worked **single-pass vs agentic** token-multiplier example.
+- **Research label** — a standalone AI-model disclosure label for manuscript/paper submission, splitting **training (one-time) from inference (per-study)** and grading the **amortised** footprint per study (with token-based inference for LLM/agentic models).
 
 ### 🏷️ EcoLabel — CEDARS Score & Rating
 
@@ -77,7 +77,7 @@ The department's clean, citable, **current-state** disclosure, after the design 
 
 ### 🛠️ Interventions
 
-Model an operational lever (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, …) and see the **Impact on your EcoLabel** — your **current → projected** grade side by side, plus before/after energy and carbon.
+Build an **intervention program** — tick as many operational levers as you plan to implement (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, …) and see their **combined** impact: before/after energy and carbon, and your **current → projected** EcoLabel grade side by side. The selection is **shared with the EcoLabel's Sustainability actions** — tick in either place and the (overlap-aware) numbers stay identical.
 
 ### 📤 Export
 
@@ -211,6 +211,6 @@ If you use CEDARS, please cite it — GitHub's **"Cite this repository"** button
 
 Built for radiology sustainability research · Evidence-based · Apache-2.0 (code) + CC BY 4.0 (content)
 
-[**→ Open CEDARS**](https://takinci.github.io/cedars/)
+[**→ Open CEDARS**](https://cedarsleaf.com)
 
 </div>
