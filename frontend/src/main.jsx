@@ -28,6 +28,21 @@ const CARBON_INTENSITY = {
   "Editable custom":0.30,  // placeholder — replace with measured utility factor
 };
 
+// Commercial/industrial electricity price per region (local currency per kWh). Hospitals pay
+// commercial rates; these are editable ESTIMATES — replace with your actual tariff. Prices are
+// volatile and regional, and cost is decoupled from carbon (a low-carbon grid is not necessarily
+// cheap). Rough 2024–25 commercial rates; sym is the currency symbol.
+const ELECTRICITY_PRICE = {
+  "Switzerland":    {price:0.27, sym:'CHF '},
+  "France":         {price:0.23, sym:'€'},
+  "Germany":        {price:0.28, sym:'€'},
+  "United States":  {price:0.13, sym:'$'},
+  "United Kingdom": {price:0.28, sym:'£'},
+  "EU average":     {price:0.24, sym:'€'},
+  "Global average": {price:0.15, sym:'$'},
+  "Editable custom":{price:0.20, sym:'€'},
+};
+
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
@@ -1384,6 +1399,7 @@ const CHART_COLORS = ['#2E7D32','#26A69A','#66BB6A','#4DB6AC','#A5D6A7','#80CBC4
 // Smart unit formatters — switch unit at sensible thresholds
 const fmtCo2 = kg  => kg  >= 1000 ? `${rnd(kg/1000, 2)} tCO₂e`  : `${Math.round(kg).toLocaleString()} kgCO₂e`;
 const fmtKwh = kwh => kwh >= 1000 ? `${rnd(kwh/1000, 1)} MWh`   : `${Math.round(kwh).toLocaleString()} kWh`;
+const fmtMoney = (amount, sym) => `${sym}${Math.round(amount).toLocaleString()}`;
 const fmtL   = l   => l   >= 1000 ? `${rnd(l/1000, 1)} kL`      : `${Math.round(l).toLocaleString()} L`;
 // Large-number formatter for equivalency cards — readable at a glance
 const fmtBig = n => {
@@ -1399,6 +1415,12 @@ const fmtBig = n => {
 // Resolve effective carbon intensity — uses customCi when region is "Editable custom"
 const getCI = (region, customCi) =>
   region === 'Editable custom' ? (isNaN(parseFloat(customCi)) ? 0.30 : parseFloat(customCi)) : (CARBON_INTENSITY[region] ?? 0.25);
+// Effective electricity price (per kWh): a positive override wins, else the region default.
+const getPrice = (region, override) => {
+  const o = parseFloat(override);
+  return o > 0 ? o : (ELECTRICITY_PRICE[region]?.price ?? 0.20);
+};
+const currencySym = region => ELECTRICITY_PRICE[region]?.sym ?? '€';
 
 // URL hash state persistence — encodes/decodes core settings so shared links work
 const HASH_KEYS = {u:'intendedUse', r:'region', m:'metricType', t:'timePeriod', c:'customCi', a:'actualStudiesYear'};
@@ -1435,6 +1457,7 @@ function App() {
     equipment: {...DEFAULT_EQUIPMENT},
     ...HASH_DEFAULTS,
     staffCommuteKm: '15',
+    electricityPrice: '',   // blank → use the region default; a typed value overrides
     ...readHash(),
   }));
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
@@ -1731,8 +1754,11 @@ function App() {
       ? dash.scopes.scope2Kg + landingAICo2
       : dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2 + landingAICo2;
     const kwh = dash.totals.kwh + landingAIKwh;
+    const price = getPrice(settings.region, settings.electricityPrice);
     return {
       co2, kwh,
+      // Money — kWh-based (electricity cost only)
+      cost: kwh * price, pricePerKwh: price, sym: currencySym(settings.region),
       // Transport — CO₂-based
       car_km:        Math.round(co2 / 0.17),        // avg petrol car DEFRA 2023
       car_years:     rnd(co2 / 2100, 2),            // avg EU car 2.1 tCO₂e/yr (EEA 2023)
@@ -1752,7 +1778,7 @@ function App() {
       barrels_oil:   rnd(co2 / 430, 1),             // crude oil combustion EPA (0.43 tCO₂/barrel)
       tonnes_coal:   rnd(co2 / 2350, 2),            // bituminous coal ~2 350 kgCO₂/tonne (IPCC)
     };
-  }, [dash, equivScope, landingAICo2, landingAIKwh, staffCommuteCo2, networkTransferCo2]);
+  }, [dash, equivScope, landingAICo2, landingAIKwh, staffCommuteCo2, networkTransferCo2, settings.region, settings.electricityPrice]);
 
   const ecoLabelData = useMemo(() => {
     const gpuTdpKw = ecoLabel.gpuModel === 'Custom (enter TDP below)'
@@ -2188,6 +2214,19 @@ function App() {
               {equivScope==='scope2' ? 'Showing Scope 2 (purchased electricity). Best for comparing with published benchmarks.' : 'Showing Scope 1 + 2 + 3 (direct + electricity + embodied + patient travel). Full lifecycle view.'}
               {' '}Change settings on the <button onClick={()=>setPage('landing')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:'0 2px',fontSize:12,fontWeight:600,boxShadow:'none'}}>Home page →</button>
             </p>
+
+            {/* Electricity cost — kWh × regional price (editable). Independent of the carbon toggle. */}
+            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:16,marginBottom:6,padding:'16px 20px',background:'#e8f5e9',border:'1.5px solid #c8e6c9',borderRadius:20}}>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <span style={{fontSize:34,fontWeight:900,color:'#1b5e20',lineHeight:1}}>≈ {fmtMoney(equivData.cost, equivData.sym)}</span>
+                <div style={{fontSize:13,color:'#607d66'}}>in electricity{dash.totals.label}<br/><span style={{fontSize:11}}>at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}</span></div>
+              </div>
+              <label style={{marginLeft:'auto',flexDirection:'row',alignItems:'center',gap:8,fontSize:12,color:'#2E7D32',fontWeight:700}}>
+                Electricity price ({equivData.sym}/kWh)
+                <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)} style={{width:90,padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
+              </label>
+            </div>
+            <p className="note" style={{fontSize:11,marginTop:0,marginBottom:20}}>Electricity cost only — an editable estimate. Commercial tariffs vary by region and contract; enter yours to override the {settings.region} default. Cost and carbon are independent (a low-carbon grid is not necessarily cheap).</p>
 
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:20,marginBottom:32}}>
               {[
@@ -3591,25 +3630,49 @@ function App() {
             );
           })()}
 
-          <h2 style={{marginBottom:8}}>Energy &amp; carbon — before vs after</h2>
-          <div className="scenarioGrid">
-            <section className="card">
-              <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
-              <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
-              <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
-            </section>
-            <section className="card savings">
-              <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
-              <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
-              <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
-              <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
-            </section>
-            <section className="card">
-              <div className="cardHead"><Leaf/><span>After interventions</span></div>
-              <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
-              <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
-            </section>
-          </div>
+          {(()=>{
+            const price = getPrice(settings.region, settings.electricityPrice);
+            const sym   = currencySym(settings.region);
+            const mult  = TIME_MULT[settings.timePeriod] ?? 1;
+            const annualSaved = scenario.savings.kwh / mult * 12 * price;
+            return (
+            <>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
+              <h2 style={{margin:0}}>Energy, carbon &amp; cost — before vs after</h2>
+              <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,color:'#2E7D32',fontWeight:700}}>
+                Electricity price ({sym}/kWh)
+                <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)} style={{width:84,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
+              </label>
+            </div>
+            <div className="scenarioGrid">
+              <section className="card">
+                <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
+                <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
+                <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
+                <p style={{color:'#607d66'}}>{fmtMoney(scenario.baseline.kwh*price, sym)}</p>
+              </section>
+              <section className="card savings">
+                <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
+                <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
+                <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
+                <p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price, sym)}{dash.totals.label}</p>
+                <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
+              </section>
+              <section className="card">
+                <div className="cardHead"><Leaf/><span>After interventions</span></div>
+                <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
+                <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
+                <p style={{color:'#607d66'}}>{fmtMoney(scenario.projected.kwh*price, sym)}</p>
+              </section>
+            </div>
+            {scenario.count>0 && scenario.savings.kwh>0 && (
+              <p className="note" style={{marginTop:12,padding:'10px 14px',background:'#e8f5e9',borderRadius:12,fontSize:13}}>
+                <strong style={{color:'#1b5e20'}}>≈ {fmtMoney(annualSaved, sym)}/year</strong> in avoided electricity cost — most operational levers (overnight power-down, standby) need little or no capital outlay. Electricity cost only; an editable estimate at {sym}{price}/kWh.
+              </p>
+            )}
+            </>
+            );
+          })()}
           <div className="charts" style={{marginTop:24}}>
             <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
           </div>
