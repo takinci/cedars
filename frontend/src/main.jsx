@@ -43,6 +43,16 @@ const ELECTRICITY_PRICE = {
   "Editable custom":{price:0.20, sym:'€'},
 };
 
+// Feedback → pre-filled GitHub issue on the CEDARS repo (no backend; community-visible).
+const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedback&title=' +
+  encodeURIComponent('Feedback: ') + '&body=' + encodeURIComponent(
+    "Thanks for helping improve CEDARS!\n\n" +
+    "**What works well:**\n\n\n" +
+    "**What could be improved (or a bug):**\n\n\n" +
+    "**Suggestion / feature idea:**\n\n\n" +
+    "---\nSubmitted from cedarsleaf.com"
+  );
+
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
@@ -3900,7 +3910,10 @@ function App() {
             {' '}Runs entirely in your browser: no data collected, no cookies, nothing leaves your device.
           </div>
         </div>
-        <a href="https://github.com/takinci/cedars/blob/main/sources.md" style={{color:'#A5D6A7',fontSize:13,whiteSpace:'nowrap'}} target="_blank" rel="noreferrer">All assumptions &amp; citations: sources.md</a>
+        <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
+          <a href="https://github.com/takinci/cedars/blob/main/sources.md" style={{color:'#A5D6A7',fontSize:13,whiteSpace:'nowrap'}} target="_blank" rel="noreferrer">All assumptions &amp; citations: sources.md</a>
+          <a href={FEEDBACK_URL} style={{color:'#A5D6A7',fontSize:13,whiteSpace:'nowrap',display:'inline-flex',alignItems:'center',gap:6}} target="_blank" rel="noreferrer"><Plus size={13}/> Feedback / suggest an improvement ↗</a>
+        </div>
       </footer>
     </>
   );
