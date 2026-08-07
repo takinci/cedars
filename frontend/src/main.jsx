@@ -1527,7 +1527,7 @@ function App() {
       label: `${AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'Model'} (current)`}]);
   const removeBenchModel  = id => setBenchModels(list => list.filter(m => m.id !== id));
   const updateBenchLabel  = (id, label) => setBenchModels(list => list.map(m => m.id === id ? {...m, label} : m));
-  const [dashTab, setDashTab] = useState('equiv');
+  const [dashTab, setDashTab] = useState('overview');
   const [equivScope, setEquivScope] = useState('scope2');
   const [landingAIOpen, setLandingAIOpen] = useState(false);
   const [landingAITools, setLandingAITools] = useState({});
@@ -2199,16 +2199,51 @@ function App() {
               <span>Avoidable idle <b>{fmtKwh(dash.totals.idleWasteKwh)}</b></span>
             </div>
             <div className="aiTabs">
-              {[['equiv','What it means'],['efficiency','Efficiency'],['clinicalai','Clinical AI'],['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources']].map(([id,label])=>(
-                <button key={id} className={dashTab===id?'on':''} onClick={()=>{
-                  setDashTab(id);
-                  document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
-                }}>{label}</button>
+              {[['overview','Overview'],['equiv','What it means'],['efficiency','Efficiency'],['clinicalai','Clinical AI'],['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources']].map(([id,label])=>(
+                <button key={id} className={dashTab===id?'on':''} onClick={()=>{ setDashTab(id); window.scrollTo({top:0,behavior:'smooth'}); }}>{label}</button>
               ))}
             </div>
           </div>
 
-          {/* ── What it means (equivalencies — first) ── */}
+          {/* ── Overview (summary — default) ── */}
+          {dashTab==='overview' && (
+          <section className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
+            <h2 style={{marginBottom:4}}>Overview</h2>
+            <p className="note" style={{marginBottom:16}}>Your department at a glance. Open any area with the tabs above — details stay tucked away until you want them.</p>
+
+            {/* Grade hero */}
+            <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
+              <div style={{textAlign:'center',flexShrink:0}}>
+                <div style={{fontSize:52,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
+                <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+              </div>
+              <div>
+                <LeafRating leaves={deptLabelData.leaves} size={24} color={deptLabelData.ratingColor}/>
+                <div style={{fontWeight:700,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
+                <div style={{fontSize:13,color:'#263238',marginTop:2}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study`:'Set up your fleet on the Home page to calculate.'}</div>
+              </div>
+              <button onClick={()=>setPage('ecolabel')} style={{marginLeft:'auto'}}>Full EcoLabel →</button>
+            </div>
+
+            {/* Hero tiles */}
+            <div className="cards" style={{marginBottom:18}}>
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`} value={fmtKwh(dash.totals.kwh + landingAIKwh)}       sub="All scanners, PACS, workstations."/>
+              <Card icon={<Leaf/>}         title="Carbon (Scope 2)"                          value={fmtCo2(dash.scopes.scope2Kg + landingAICo2)}  sub={`Grid ${dash.ci} kgCO₂e/kWh · ${settings.region}.`}/>
+              <Card icon={<Droplets/>}     title={`Electricity cost ${dash.totals.label}`}   value={fmtMoney(equivData.cost, equivData.sym)}      sub={`At ${equivData.sym}${equivData.pricePerKwh}/kWh. Editable under “What it means”.`}/>
+              <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}             sub="Recoverable by standby / power-off — see Interventions."/>
+            </div>
+
+            {/* Next steps */}
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <button onClick={()=>{setDashTab('equiv');window.scrollTo({top:0});}} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>What it means →</button>
+              <button onClick={()=>{setDashTab('carbon');window.scrollTo({top:0});}} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Energy &amp; carbon detail →</button>
+              <button onClick={()=>setPage('scenario')}><TrendingDown size={15}/> Reduce it — Interventions →</button>
+            </div>
+          </section>
+          )}
+
+          {/* ── What it means (equivalencies) ── */}
+          {dashTab==='equiv' && (
           <section id="dash-equiv" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
             <h2 style={{marginBottom:4}}>What it means in everyday terms</h2>
             <p className="note" style={{marginBottom:16}}>
@@ -2339,7 +2374,10 @@ function App() {
             </p>
           </section>
 
+          )}
+
           {/* ── Efficiency — energy into healthcare ── */}
+          {dashTab==='efficiency' && (
           <section id="dash-efficiency" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4}}>Efficiency — energy into healthcare</h2>
             <p className="note" style={{marginBottom:16}}>
@@ -2376,7 +2414,10 @@ function App() {
             </p>
           </section>
 
+          )}
+
           {/* ── Clinical AI tools (deployed — adjust the whole department) ── */}
+          {dashTab==='clinicalai' && (
           <section id="dash-clinicalai" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI tools <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
             <p className="note" style={{marginBottom:12}}>
@@ -2447,7 +2488,10 @@ function App() {
             {(deptLabel.aiTools||[]).length === 0 && <p className="note" style={{fontSize:12}}>No clinical AI deployed — the department reflects equipment only. Import the current AI model or add one manually to see its net effect.</p>}
           </section>
 
+          )}
+
           {/* ── 1. Energy consumption ── */}
+          {dashTab==='energy' && (
           <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>1. Energy consumption</h2>
             <div className="cards">
@@ -2461,7 +2505,10 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── 2. Carbon emissions ── */}
+          {dashTab==='carbon' && (
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>2. Carbon emissions — GHG Protocol scopes</h2>
             <p className="note" style={{marginBottom:12}}>Scope 1: direct fuel (estimated). Scope 2: purchased electricity. Scope 3: embodied carbon + patient travel + staff commute + DICOM data transfer (all estimated). All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
@@ -2491,13 +2538,19 @@ function App() {
             </section>
           </section>
 
+          )}
+
           {/* ── Charts ── */}
+          {dashTab==='charts' && (
           <div id="dash-charts" className="aiSection charts" style={{marginTop:28}}>
             <section><h2>Energy by equipment</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartEnergy} options={energyBarOptions}/></Suspense></section>
             <section><h2>Carbon (Scope 2) by equipment</h2><Suspense fallback={<div style={{height:200}}/>}><Doughnut data={chartCo2}/></Suspense></section>
           </div>
 
+          )}
+
           {/* ── 3. Infrastructure ── */}
+          {dashTab==='infrastructure' && (
           <section id="dash-infrastructure" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>3. Infrastructure and hardware</h2>
             <div className="cards">
@@ -2530,7 +2583,10 @@ function App() {
             </section>
           </section>
 
+          )}
+
           {/* ── 4. Resource metrics ── */}
+          {dashTab==='resources' && (
           <section id="dash-resources" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>4. Resource footprint</h2>
             <p className="note" style={{marginBottom:12}}>Replace defaults with procurement records, waste manifests, and water bills for publication-quality figures.</p>
@@ -2563,6 +2619,7 @@ function App() {
               Estimates are mass-balance (release ≈ administered dose); contrast-use fractions vary widely by institution — replace with pharmacy/procurement data. Sources: gadolinium & iodinated contrast environmental persistence literature; ESR sustainability guidance.
             </p>
           </section>
+          )}
         </main>
       )}
 
