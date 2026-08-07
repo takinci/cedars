@@ -53,6 +53,10 @@ const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedba
     "---\nSubmitted from cedarsleaf.com"
   );
 
+// Accordion section ids (for expand/collapse-all) on the Radiology Department and AI pages.
+const DASH_SECTIONS = ['equiv','efficiency','clinicalai','energy','carbon','charts','infrastructure','resources'];
+const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark','ecolabel'];
+
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
@@ -1517,7 +1521,8 @@ function App() {
     ...s, cloudProvider: prov,
     cloudRegion: Object.keys(CLOUD_REGIONS[prov]?.regions ?? {})[0] ?? '',
   }));
-  const [aiTab,         setAiTab]         = useState('model');
+  const [aiOpen, setAiOpen] = useState({model:true});
+  const toggleAi = id => setAiOpen(o => ({...o, [id]: !o[id]}));
   const [trainExpanded, setTrainExpanded] = useState(false);
   const [modelExpanded, setModelExpanded] = useState(false);
   // Scenario tab mode + AI model benchmark shortlist
@@ -2238,6 +2243,12 @@ function App() {
           </section>
 
           {/* ── Accordion: detail sections (click to open) ── */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:22,marginBottom:2}}>
+            <h3 style={{margin:0,color:'#2E7D32',fontSize:14}}>Details</h3>
+            <button onClick={()=>{const all=DASH_SECTIONS.every(id=>dashOpen[id]); setDashOpen(all?{}:Object.fromEntries(DASH_SECTIONS.map(id=>[id,true])));}} style={{background:'none',border:'1px solid #c8e6c9',color:'#2E7D32',boxShadow:'none',fontSize:12,padding:'6px 12px'}}>
+              {DASH_SECTIONS.every(id=>dashOpen[id]) ? 'Collapse all' : 'Expand all'}
+            </button>
+          </div>
           {/* ── What it means (equivalencies) ── */}
           <button type="button" className="accHead" onClick={()=>toggleDash('equiv')} aria-expanded={!!dashOpen['equiv']}>
             <span className="accCaret">{dashOpen['equiv']?'▾':'▸'}</span>
@@ -2829,17 +2840,22 @@ function App() {
               <span>Efficiency <b>{ai.efficiencyRatio} acc%/kWh</b></span>
               <span>Cloud CI <b>{ai.cloudCi} kgCO₂e/kWh</b></span>
             </div>
-            <div className="aiTabs" style={{marginTop:8}}>
-              {[['model','Model'],['training','Training'],['testing','Testing'],['inference','Inference'],['carbon','Carbon'],['clinical','Clinical'],['infra','Infrastructure'],['benchmark','Benchmark'],['ecolabel','Research label']].map(([id,lbl])=>(
-                <button key={id} className={aiTab===id?'on':''} onClick={()=>{
-                  setAiTab(id);
-                  document.getElementById('ai-'+id)?.scrollIntoView({behavior:'smooth',block:'start'});
-                }}>{lbl}</button>
-              ))}
-            </div>
+          </div>
+
+          {/* ── Accordion: lifecycle sections (click to open) ── */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',marginTop:4,marginBottom:2}}>
+            <button onClick={()=>{const all=AI_SECTIONS.every(id=>aiOpen[id]); setAiOpen(all?{}:Object.fromEntries(AI_SECTIONS.map(id=>[id,true])));}} style={{background:'none',border:'1px solid #c8e6c9',color:'#2E7D32',boxShadow:'none',fontSize:12,padding:'6px 12px'}}>
+              {AI_SECTIONS.every(id=>aiOpen[id]) ? 'Collapse all' : 'Expand all'}
+            </button>
           </div>
 
           {/* ── Model details ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('model')} aria-expanded={!!aiOpen['model']}>
+            <span className="accCaret">{aiOpen['model']?'▾':'▸'}</span>
+            <span className="accTitle">Model details &amp; reported performance</span>
+            <span className="accVal">{ai.modelSize}</span>
+          </button>
+          {aiOpen['model'] && (
           <section id="ai-model" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
             <h2 style={{marginBottom:12}}>Model details</h2>
             <div className="cards">
@@ -2879,7 +2895,15 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── Phase 1: Training ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('training')} aria-expanded={!!aiOpen['training']}>
+            <span className="accCaret">{aiOpen['training']?'▾':'▸'}</span>
+            <span className="accTitle">Phase 1 — Training</span>
+            <span className="accVal">{ai.training.kgCo2e} kgCO₂e</span>
+          </button>
+          {aiOpen['training'] && (
           <section id="ai-training" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>Phase 1 — Training the model</h2>
             <p className="note" style={{marginBottom:12}}>One-time energy cost. Track with CodeCarbon, EcoLogits, or Carbontracker. (Implementation Guide §4 · Metric 1)</p>
@@ -2891,7 +2915,15 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── Phase 2: Testing ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('testing')} aria-expanded={!!aiOpen['testing']}>
+            <span className="accCaret">{aiOpen['testing']?'▾':'▸'}</span>
+            <span className="accTitle">Phase 2 — Testing &amp; validation</span>
+            <span className="accVal">{ai.testing.kgCo2e} kgCO₂e</span>
+          </button>
+          {aiOpen['testing'] && (
           <section id="ai-testing" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>Phase 2 — Testing and validation</h2>
             <p className="note" style={{marginBottom:12}}>One-time hold-out inference run. Proxy: DLP / CTDIvol correlate with net scan energy R²=0.87–0.92 (Schoen et al.), enabling energy inference from dose reports.</p>
@@ -2903,7 +2935,15 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── Phase 3: Inference ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('inference')} aria-expanded={!!aiOpen['inference']}>
+            <span className="accCaret">{aiOpen['inference']?'▾':'▸'}</span>
+            <span className="accTitle">Phase 3 — Inference &amp; deployment</span>
+            <span className="accVal">{ai.inference.kwhPerStudy} kWh/study</span>
+          </button>
+          {aiOpen['inference'] && (
           <section id="ai-inference" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>Phase 3 — Inference and deployment</h2>
             <p className="note" style={{marginBottom:12}}>Inference scales with every study — this dominates the AI lifecycle energy cost. MRI cooling adds +45% to scanner energy during active acquisition (Heye/Vosshenrich). (Implementation Guide §4 · Metric 2)</p>
@@ -2915,7 +2955,15 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── Carbon ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('carbon')} aria-expanded={!!aiOpen['carbon']}>
+            <span className="accCaret">{aiOpen['carbon']?'▾':'▸'}</span>
+            <span className="accTitle">Carbon — operational &amp; net</span>
+            <span className="accVal">net {ai.netKgCo2e} kgCO₂e/mo</span>
+          </button>
+          {aiOpen['carbon'] && (
           <section id="ai-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>Carbon emissions summary</h2>
             <p className="note" style={{marginBottom:12}}>Operational carbon uses cloud provider CI ({ai.cloudCi} kgCO₂e/kWh). Clinical savings use local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh). Global avg: 0.473 · EU avg: 0.237 (Vosshenrich)</p>
@@ -2949,7 +2997,15 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── Clinical ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('clinical')} aria-expanded={!!aiOpen['clinical']}>
+            <span className="accCaret">{aiOpen['clinical']?'▾':'▸'}</span>
+            <span className="accTitle">Clinical co-benefits</span>
+            <span className="accVal">−{ai.savingsKgCo2e} kgCO₂e/mo</span>
+          </button>
+          {aiOpen['clinical'] && (
           <section id="ai-clinical" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>Clinical sustainability co-benefits</h2>
             <p className="note" style={{marginBottom:12}}>Unnecessary imaging estimated at 20–50% of all scans (Implementation Guide §1). AI decision support targets the Prevent tier of the Recycling Pyramid.</p>
@@ -2961,7 +3017,15 @@ function App() {
             </div>
           </section>
 
+          )}
+
           {/* ── Infrastructure (cloud carbon, merged) ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('infra')} aria-expanded={!!aiOpen['infra']}>
+            <span className="accCaret">{aiOpen['infra']?'▾':'▸'}</span>
+            <span className="accTitle">Infrastructure — cloud carbon</span>
+            <span className="accVal">PUE {ai.pue}</span>
+          </button>
+          {aiOpen['infra'] && (
           <section id="ai-infra" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
               <h2 style={{margin:0}}>Cloud infrastructure footprint</h2>
@@ -3172,7 +3236,15 @@ function App() {
             </p>
           </section>
 
+          )}
+
           {/* ── Model benchmark (moved from Compare) ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('benchmark')} aria-expanded={!!aiOpen['benchmark']}>
+            <span className="accCaret">{aiOpen['benchmark']?'▾':'▸'}</span>
+            <span className="accTitle">Model benchmark — accuracy vs carbon</span>
+            <span className="accVal">Pareto</span>
+          </button>
+          {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4}}>Model benchmark — accuracy vs carbon</h2>
             <p className="note" style={{marginBottom:8}}>
@@ -3302,7 +3374,15 @@ function App() {
             </>)}
           </section>
 
+          )}
+
           {/* ── Research label — AI model disclosure (moved from EcoLabel) ── */}
+          <button type="button" className="accHead" onClick={()=>toggleAi('ecolabel')} aria-expanded={!!aiOpen['ecolabel']}>
+            <span className="accCaret">{aiOpen['ecolabel']?'▾':'▸'}</span>
+            <span className="accTitle">Research label — AI model disclosure</span>
+            <span className="accVal">{ecoLabelData.graded ? `Score ${ecoLabelData.score}` : '—'}</span>
+          </button>
+          {aiOpen['ecolabel'] && (
           <section id="ai-ecolabel" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:8}}>Research label — AI model disclosure</h2>
           <p className="note" style={{marginBottom:8}}>
@@ -3649,6 +3729,7 @@ function App() {
             </pre>
           </section>
           </section>
+          )}
 
         </main>
       )}
