@@ -1527,7 +1527,9 @@ function App() {
       label: `${AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'Model'} (current)`}]);
   const removeBenchModel  = id => setBenchModels(list => list.filter(m => m.id !== id));
   const updateBenchLabel  = (id, label) => setBenchModels(list => list.map(m => m.id === id ? {...m, label} : m));
-  const [dashTab, setDashTab] = useState('overview');
+  const [dashOpen, setDashOpen] = useState({});
+  const toggleDash = id => setDashOpen(o => ({...o, [id]: !o[id]}));
+  const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
   const [equivScope, setEquivScope] = useState('scope2');
   const [landingAIOpen, setLandingAIOpen] = useState(false);
   const [landingAITools, setLandingAITools] = useState({});
@@ -2198,18 +2200,12 @@ function App() {
               {landingAIOpen && Object.keys(landingAITools).length>0 && <span>AI tools ({Object.keys(landingAITools).length}) <b>{fmtCo2(landingAICo2)}</b></span>}
               <span>Avoidable idle <b>{fmtKwh(dash.totals.idleWasteKwh)}</b></span>
             </div>
-            <div className="aiTabs">
-              {[['overview','Overview'],['equiv','What it means'],['efficiency','Efficiency'],['clinicalai','Clinical AI'],['energy','Energy'],['carbon','Carbon'],['charts','Charts'],['infrastructure','Infrastructure'],['resources','Resources']].map(([id,label])=>(
-                <button key={id} className={dashTab===id?'on':''} onClick={()=>{ setDashTab(id); window.scrollTo({top:0,behavior:'smooth'}); }}>{label}</button>
-              ))}
-            </div>
           </div>
 
-          {/* ── Overview (summary — default) ── */}
-          {dashTab==='overview' && (
+          {/* ── Overview (always visible) ── */}
           <section className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
             <h2 style={{marginBottom:4}}>Overview</h2>
-            <p className="note" style={{marginBottom:16}}>Your department at a glance. Open any area with the tabs above — details stay tucked away until you want them.</p>
+            <p className="note" style={{marginBottom:16}}>Your department at a glance. Every area is listed below — click any row to open its detail; it stays tucked away until you want it.</p>
 
             {/* Grade hero */}
             <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
@@ -2235,15 +2231,20 @@ function App() {
 
             {/* Next steps */}
             <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              <button onClick={()=>{setDashTab('equiv');window.scrollTo({top:0});}} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>What it means →</button>
-              <button onClick={()=>{setDashTab('carbon');window.scrollTo({top:0});}} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Energy &amp; carbon detail →</button>
+              <button onClick={()=>openDash('energy')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Open energy detail →</button>
+              <button onClick={()=>openDash('carbon')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Open carbon detail →</button>
               <button onClick={()=>setPage('scenario')}><TrendingDown size={15}/> Reduce it — Interventions →</button>
             </div>
           </section>
-          )}
 
+          {/* ── Accordion: detail sections (click to open) ── */}
           {/* ── What it means (equivalencies) ── */}
-          {dashTab==='equiv' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('equiv')} aria-expanded={!!dashOpen['equiv']}>
+            <span className="accCaret">{dashOpen['equiv']?'▾':'▸'}</span>
+            <span className="accTitle">What it means — everyday equivalents</span>
+            <span className="accVal">≈ {fmtBig(equivData.car_km)} km driven</span>
+          </button>
+          {dashOpen['equiv'] && (
           <section id="dash-equiv" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
             <h2 style={{marginBottom:4}}>What it means in everyday terms</h2>
             <p className="note" style={{marginBottom:16}}>
@@ -2377,7 +2378,12 @@ function App() {
           )}
 
           {/* ── Efficiency — energy into healthcare ── */}
-          {dashTab==='efficiency' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('efficiency')} aria-expanded={!!dashOpen['efficiency']}>
+            <span className="accCaret">{dashOpen['efficiency']?'▾':'▸'}</span>
+            <span className="accTitle">Efficiency — energy into healthcare</span>
+            <span className="accVal">{deptLabelData.co2PerStudy} kgCO₂e/study</span>
+          </button>
+          {dashOpen['efficiency'] && (
           <section id="dash-efficiency" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4}}>Efficiency — energy into healthcare</h2>
             <p className="note" style={{marginBottom:16}}>
@@ -2417,7 +2423,12 @@ function App() {
           )}
 
           {/* ── Clinical AI tools (deployed — adjust the whole department) ── */}
-          {dashTab==='clinicalai' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('clinicalai')} aria-expanded={!!dashOpen['clinicalai']}>
+            <span className="accCaret">{dashOpen['clinicalai']?'▾':'▸'}</span>
+            <span className="accTitle">Clinical AI tools</span>
+            <span className="accVal">{(deptLabel.aiTools||[]).length} deployed</span>
+          </button>
+          {dashOpen['clinicalai'] && (
           <section id="dash-clinicalai" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI tools <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
             <p className="note" style={{marginBottom:12}}>
@@ -2491,7 +2502,12 @@ function App() {
           )}
 
           {/* ── 1. Energy consumption ── */}
-          {dashTab==='energy' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('energy')} aria-expanded={!!dashOpen['energy']}>
+            <span className="accCaret">{dashOpen['energy']?'▾':'▸'}</span>
+            <span className="accTitle">Energy consumption</span>
+            <span className="accVal">{fmtKwh(dash.totals.kwh + landingAIKwh)}</span>
+          </button>
+          {dashOpen['energy'] && (
           <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>1. Energy consumption</h2>
             <div className="cards">
@@ -2508,7 +2524,12 @@ function App() {
           )}
 
           {/* ── 2. Carbon emissions ── */}
-          {dashTab==='carbon' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('carbon')} aria-expanded={!!dashOpen['carbon']}>
+            <span className="accCaret">{dashOpen['carbon']?'▾':'▸'}</span>
+            <span className="accTitle">Carbon emissions — GHG scopes</span>
+            <span className="accVal">{fmtCo2(dash.scopes.scope2Kg + landingAICo2)} Scope 2</span>
+          </button>
+          {dashOpen['carbon'] && (
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>2. Carbon emissions — GHG Protocol scopes</h2>
             <p className="note" style={{marginBottom:12}}>Scope 1: direct fuel (estimated). Scope 2: purchased electricity. Scope 3: embodied carbon + patient travel + staff commute + DICOM data transfer (all estimated). All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
@@ -2541,7 +2562,12 @@ function App() {
           )}
 
           {/* ── Charts ── */}
-          {dashTab==='charts' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('charts')} aria-expanded={!!dashOpen['charts']}>
+            <span className="accCaret">{dashOpen['charts']?'▾':'▸'}</span>
+            <span className="accTitle">Charts — energy &amp; carbon by equipment</span>
+            <span className="accVal">visual</span>
+          </button>
+          {dashOpen['charts'] && (
           <div id="dash-charts" className="aiSection charts" style={{marginTop:28}}>
             <section><h2>Energy by equipment</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartEnergy} options={energyBarOptions}/></Suspense></section>
             <section><h2>Carbon (Scope 2) by equipment</h2><Suspense fallback={<div style={{height:200}}/>}><Doughnut data={chartCo2}/></Suspense></section>
@@ -2550,7 +2576,12 @@ function App() {
           )}
 
           {/* ── 3. Infrastructure ── */}
-          {dashTab==='infrastructure' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('infrastructure')} aria-expanded={!!dashOpen['infrastructure']}>
+            <span className="accCaret">{dashOpen['infrastructure']?'▾':'▸'}</span>
+            <span className="accTitle">Infrastructure &amp; hardware</span>
+            <span className="accVal">Scope 3 {fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)}</span>
+          </button>
+          {dashOpen['infrastructure'] && (
           <section id="dash-infrastructure" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>3. Infrastructure and hardware</h2>
             <div className="cards">
@@ -2586,7 +2617,12 @@ function App() {
           )}
 
           {/* ── 4. Resource metrics ── */}
-          {dashTab==='resources' && (
+          <button type="button" className="accHead" onClick={()=>toggleDash('resources')} aria-expanded={!!dashOpen['resources']}>
+            <span className="accCaret">{dashOpen['resources']?'▾':'▸'}</span>
+            <span className="accTitle">Resource footprint — water, waste, contrast</span>
+            <span className="accVal">{fmtL(dash.resources.waterLitres)} water</span>
+          </button>
+          {dashOpen['resources'] && (
           <section id="dash-resources" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>4. Resource footprint</h2>
             <p className="note" style={{marginBottom:12}}>Replace defaults with procurement records, waste manifests, and water bills for publication-quality figures.</p>
