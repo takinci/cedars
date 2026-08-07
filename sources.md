@@ -274,6 +274,20 @@ Estimates the iodinated (ICM — CT, PET-CT, angiography, fluoroscopy) and gadol
 
 ---
 
+## Data storage & archiving (`MODALITY_MB`, `STORAGE_KWH_PER_TB_*`)
+
+Long-term PACS/archive storage is a growing, frequently-omitted footprint. CEDARS models it fleet-driven: annual data generated = Σ (studies/yr × per-modality file size), held over a retention period at a per-TB/yr energy intensity, added to the department total (so it flows into carbon, cost, water, and the Score).
+
+**Per-modality file sizes (`MODALITY_MB`, MB/study).** Doo FX et al., *J Am Coll Radiol* 2024 (DOI: [10.1016/j.jacr.2023.11.011](https://doi.org/10.1016/j.jacr.2023.11.011)), Fig 2: XR ~10, US ~300, CT ~300, MR ~300, mammography ~10, tomosynthesis ~400, PET-CT ~1700 MB. CT is set to ~700 MB to represent a study **with reformats** (Jia et al., below, median CT-CAP 787 MB all-series vs 290 MB axial-only). All values are editable estimates; file sizes vary widely by site, protocol, slice thickness, and compression.
+
+**Storage energy intensity (`STORAGE_KWH_PER_TB_ONPREM = 600`, `STORAGE_KWH_PER_TB_CLOUD = 360` kWh/TB/yr).** Jia Y et al., *Eur Radiol* 2026 (DOI: [10.1007/s00330-025-12023-z](https://doi.org/10.1007/s00330-025-12023-z)): hardware-centric model — HDD 136 kWh/TB/yr + servers (2059 kWh/server ÷ 12 TB) + network ≈ 335 kWh/TB/yr IT, × PUE 1.8 ≈ 600 on-premises; efficient cloud ≈ 40% lower (their conservative cloud estimate; higher estimates reach 80%).
+
+**Mitigation levers.** (1) *Axial-only* — avoid non-essential CT/PET reformats (factor 0.4 on CT/PET-CT; Jia et al. report up to **69%** less CT storage, zero clinical downside, automatable via workflow). (2) *Cloud archive* — ~40% lower energy at efficient-PUE data centres. (3) *Retention policy* — shorter retention shrinks the held archive (Jia: ~38% from an 8-year policy; combined strategies up to **89%**).
+
+**Boundary / caveats.** Kept **separate** from the flat PACS/reading-server device power and from the per-GB DICOM *transfer* line (Aslan 2018) to avoid double-counting. Excludes security **backups** and **embodied** storage-hardware carbon (both omitted in Jia et al. too), so the figure **undercounts**. `eq.scans` is treated as monthly (× 12 for annual). Cloud service **fees** ($/GB, Doo et al. archival ≈ $0.028/GB/month) are noted in-app but not added to the electricity-cost figure, which reflects energy cost at the user's tariff.
+
+---
+
 ## Cloud Carbon Tracker regional data
 
 | ID | Source | Used for |

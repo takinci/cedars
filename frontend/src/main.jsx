@@ -57,6 +57,15 @@ const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedba
 const DASH_SECTIONS = ['equiv','efficiency','clinicalai','energy','carbon','charts','infrastructure','resources'];
 const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark','ecolabel'];
 
+// Imaging data storage — per-study file sizes (MB) by modality (Doo et al. JACR 2024, Fig 2;
+// CT with reformats from Jia et al. Eur Radiol 2026). Editable estimates; vary by site/compression.
+const MODALITY_MB = {MRI:350, CT:700, 'PET-CT':1700, 'X-ray':10, Ultrasound:300, 'Angio/IR':350, Fluoroscopy:120};
+// Storage energy intensity (kWh per TB per year, all-in incl. servers, network, PUE). Jia et al.
+// 2026: 136 kWh/TB HDD + servers + network ≈ 335 kWh/TB IT × PUE 1.8 ≈ 600 on-prem; efficient
+// cloud ≈ 40% lower (Jia conservative estimate).
+const STORAGE_KWH_PER_TB_ONPREM = 600;
+const STORAGE_KWH_PER_TB_CLOUD  = 360;
+
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
@@ -476,7 +485,7 @@ const META = {
 // ── Calculation functions ─────────────────────────────────────────────────────
 const rnd = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
 
-function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}) {
+function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}) {
   const ci       = getCI(region, customCi);
   const mult     = TIME_MULT[timePeriod] ?? 1;
   const fleet    = buildFleet(equipment);
@@ -528,6 +537,19 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   const clinicalMeta = {aiKwh: _aiKwh, scannerSavedKwh: rnd(_scannerSaved, 1),
     avoidedPct: rnd(_avoid*100, 0), scanTimePct: rnd(_scanT*100, 0), contrastPct: rnd(_contrast*100, 0),
     active: _aiKwh > 0 || _scannerSaved > 0};
+
+  // ── Data storage & archiving (Jia et al. 2026; Doo et al. 2024) ──────────────
+  // Fleet-driven: annual data = Σ (studies/yr × MB/study); held for `retentionYears` at a per-TB/yr
+  // energy intensity (on-prem or cloud). Axial-only avoids non-essential CT/PET reformats. The
+  // period-scaled result is added to the department totals, so it flows into carbon, cost, and grade.
+  const _retention  = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
+  const _reformat   = mod => (storage.reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
+  const _annualDataTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * _reformat(eq.modality), 0) / 1e6;
+  const _storedTB   = _annualDataTB * _retention;
+  const _storageInt = storage.cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM;
+  const storageKwh  = rnd(_storedTB * _storageInt * mult / 12, 2);   // annual → period
+  totalKwh = rnd(totalKwh + storageKwh, 2);
+  totalCo2 = totalKwh * ci;
 
   // GHG Protocol scope breakdown
   // Scope 1: direct fuel/gas estimated at 8% of Scope 2 (backup generators, medical gas) — McKee 2024
@@ -583,6 +605,9 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     },
     scopes:    {scope1Kg, scope2Kg, scope3EmbKg, scope3TravelKg, scope3Kg, imagingScans},
     resources: {waterLitres, paperKg, hazardousKg, contrast},
+    storage:   {kwh: storageKwh, storedTB: rnd(_storedTB, 1), annualDataTB: rnd(_annualDataTB, 2),
+      retentionYears: _retention, cloud: !!storage.cloud, reformats: storage.reformats || 'all',
+      co2: rnd(storageKwh * ci, 1), intensity: _storageInt},
     clinicalMeta,
     equivalencies: {
       car_km:          rnd(totalCo2 / 0.17,   0),
@@ -1472,6 +1497,9 @@ function App() {
     ...HASH_DEFAULTS,
     staffCommuteKm: '15',
     electricityPrice: '',   // blank → use the region default; a typed value overrides
+    storageRetentionYears: '10',
+    storageCloud: false,
+    storageReformats: 'all',   // 'all' | 'axial' (avoid non-essential CT/PET reformats)
     ...readHash(),
   }));
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
@@ -1647,7 +1675,7 @@ function App() {
     });
     return {inferKwhPerStudy, trainKwhMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools]);
-  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj]);
+  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats}), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats]);
   const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment),
     [scen, settings.region, settings.customCi, settings.equipment]);
@@ -2601,6 +2629,38 @@ function App() {
               <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
               <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + staff commute + DICOM data transfer. Often larger than Scope 2 in a full lifecycle view."/>
             </div>
+
+            {/* Data storage & archiving — fleet-driven long-term PACS/archive footprint */}
+            <div className="inputSummary" style={{marginTop:16}}>
+              <h3 style={{marginTop:0,marginBottom:6,color:'#1b5e20',fontSize:15}}>Data storage &amp; archiving</h3>
+              <p className="note" style={{marginBottom:12,fontSize:12}}>
+                Long-term PACS/archive footprint, derived from your fleet's study volumes × per-modality file sizes, held over the retention period and added to the department total above. Separate from the PACS/reading servers and from DICOM transfer. Editable estimates — Jia et al. <em>Eur Radiol</em> 2026; Doo et al. <em>JACR</em> 2024.
+              </p>
+              <div style={{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>
+                <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,fontWeight:700,color:'#2E7D32'}}>
+                  Retention (years)
+                  <input type="number" min="0" step="1" value={settings.storageRetentionYears} onChange={e=>set('storageRetentionYears',e.target.value)} style={{width:70,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
+                </label>
+                <div style={{display:'flex',gap:6}}>
+                  <button onClick={()=>set('storageCloud',false)} className={!settings.storageCloud?'on':''} style={{padding:'6px 12px',fontSize:12,borderRadius:12}}>On-premises</button>
+                  <button onClick={()=>set('storageCloud',true)} className={settings.storageCloud?'on':''} style={{padding:'6px 12px',fontSize:12,borderRadius:12}}>Cloud archive</button>
+                </div>
+                <div style={{display:'flex',gap:6}}>
+                  <button onClick={()=>set('storageReformats','all')} className={settings.storageReformats!=='axial'?'on':''} style={{padding:'6px 12px',fontSize:12,borderRadius:12}}>Store all series</button>
+                  <button onClick={()=>set('storageReformats','axial')} className={settings.storageReformats==='axial'?'on':''} style={{padding:'6px 12px',fontSize:12,borderRadius:12}}>Axial-only</button>
+                </div>
+              </div>
+              <div className="cards">
+                <Card icon={<HardDrive/>}    title="Data generated / year" value={`${dash.storage.annualDataTB} TB`} sub="Σ studies/yr × per-modality file size (Doo 2024)."/>
+                <Card icon={<Database/>}     title="Archive held"          value={`${dash.storage.storedTB} TB`}   sub={`${dash.storage.retentionYears}-yr retention · ${dash.storage.cloud?'cloud':'on-premises'} (${dash.storage.intensity} kWh/TB/yr).`}/>
+                <Card icon={<Zap/>}          title={`Storage energy ${dash.totals.label}`} value={fmtKwh(dash.storage.kwh)} sub={`Included in the department total. ${fmtCo2(dash.storage.co2)}.`}/>
+                <Card icon={<Droplets/>}     title={`Storage cost ${dash.totals.label}`}   value={fmtMoney(dash.storage.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub="Electricity cost at your tariff; cloud service fees billed separately."/>
+              </div>
+              <p className="note" style={{marginTop:8,fontSize:11}}>
+                Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
+              </p>
+            </div>
+
             <section style={{marginTop:12}}>
               <h2>Top 5 improvement opportunities — idle energy</h2>
               {dash.topOpportunities.map((x,i) => (
