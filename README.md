@@ -42,7 +42,7 @@ A numbered **1 → 2 → 3 → 4 walkthrough** so a first-time user sees the who
 
 ### 🔋 Radiology Department
 
-Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations) and everything the department footprint contains:
+Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations) and everything the department footprint contains. The page opens on a compact **Overview** (grade + headline tiles); each area below is an **expand-in-place row** (with expand/collapse-all) so the whole picture is visible without a wall of detail:
 
 | Section | What it tracks |
 |---|---|
@@ -50,8 +50,9 @@ Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ult
 | **Clinical AI tools** | Deploy clinical AI (from the model library, an imported model, or manual entry); each **adds** compute and **subtracts** clinical savings (avoided scans, shorter protocols, contrast reduction), adjusting the *whole* department consistently |
 | **Energy** | Total kWh/MWh, active vs idle, avoidable idle, energy per scan |
 | **Carbon (GHG Scopes)** | Scope 1 · Scope 2 · Scope 3 (embodied hardware, patient travel, **staff commute** auto-estimated from the fleet, **DICOM data transfer**) + per-study **Software Carbon Intensity (SCI)** |
+| **Infrastructure — incl. data storage & archiving** | Idle-waste opportunities, modality benchmarks, and a fleet-driven **data storage** footprint: annual data (Σ studies × per-modality file size) held over a retention period at a per-TB/yr intensity — with **axial-only / cloud / retention** levers (Jia *Eur Radiol* 2026; Doo *JACR* 2024) |
 | **Resource footprint** | Water, paper, hazardous waste, and **contrast media & contamination** (iodinated + gadolinium load to wastewater, contrast wasted) |
-| **Equivalencies** | Car km, flights, tree-years, phone charges, household-electricity years |
+| **Equivalencies + cost** | Car km, flights, tree-years, charges, household-electricity years, **and an editable electricity-cost estimate** (kWh × regional commercial tariff) |
 
 ### 🤖 AI Model & Informatics
 
@@ -77,11 +78,11 @@ The department's clean, citable, **current-state** disclosure, after the design 
 
 ### 🛠️ Interventions
 
-Build an **intervention program** — tick as many operational levers as you plan to implement (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, …) and see their **combined** impact: before/after energy and carbon, and your **current → projected** EcoLabel grade side by side. The selection is **shared with the EcoLabel's Sustainability actions** — tick in either place and the (overlap-aware) numbers stay identical.
+Build an **intervention program** — tick as many operational levers as you plan to implement (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, plus **data-storage levers**: store axial-only, migrate archive to cloud, apply a data-retention policy) and see their **combined** impact: before/after energy, carbon, **and cost (annual € /$ saved)**, with your **current → projected** EcoLabel grade side by side. The selection is **shared with the EcoLabel's Sustainability actions** — tick in either place and the (overlap-aware) numbers stay identical. Storage levers are modelled as a *change from* your current storage setup, so they never double-count.
 
 ### 📤 Export
 
-Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all carrying key assumption citations so reports are audit-ready.
+Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all carrying key assumption citations so reports are audit-ready. A **Feedback** link in the footer opens a pre-filled GitHub issue for bugs and suggestions.
 
 ---
 
@@ -95,6 +96,8 @@ Core settings are reflected in the URL hash — copy the link to share your exac
 - **Time period** — Monthly, Quarterly, Annual
 - **Renewable %** and **custom grid intensity** where applicable
 - **Cloud provider & region** — Local / AWS / Azure / Google Cloud, with per-region grid intensity for AI and infrastructure
+- **Electricity price** — a regional commercial default (editable) that turns energy into an approximate cost
+- **Data storage** — retention years, on-premises vs cloud, and store-all-series vs axial-only
 
 Staff-commute headcount is derived automatically from the device fleet (NHS/BIR workforce ratios), so it needs no manual entry.
 

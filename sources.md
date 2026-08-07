@@ -288,6 +288,12 @@ Long-term PACS/archive storage is a growing, frequently-omitted footprint. CEDAR
 
 ---
 
+## Electricity price (`ELECTRICITY_PRICE`)
+
+Cost = energy (kWh) × electricity price, mirroring the carbon calculation (kWh × grid intensity). Per-region **commercial/industrial** defaults (hospitals pay commercial, not residential, rates) with a currency symbol; blank input falls back to the region default, a typed value overrides. Rough 2024–25 commercial rates: Switzerland CHF 0.27, France €0.23, Germany €0.28, United States $0.13, United Kingdom £0.28, EU average €0.24, Global $0.15 per kWh. These are **volatile, region- and contract-specific estimates** — enter your actual tariff. Cost is **decoupled** from carbon (a low-carbon grid is not necessarily cheap); the two are reported separately. Cost appears on the equivalencies page, the Interventions before/after (annual saving), and the data-storage element. Only **electricity** cost is modelled (not hardware capital, staff, or cloud service fees).
+
+---
+
 ## Cloud Carbon Tracker regional data
 
 | ID | Source | Used for |
