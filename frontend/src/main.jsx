@@ -214,6 +214,10 @@ const INTERVENTIONS = {
   "Consolidate servers":                     {kwh:  500, note: "Virtualisation reduces physical server count. (Doo 2024, Clinical-AI)"},
   // lighter models use less inference compute (LLM-Energy PDF)
   "Use smaller or more efficient AI models": {kwh:   80, note: "Lighter AI models use less inference compute. (LLM-Energy PDF)"},
+  // data storage levers — savings computed dynamically against the storage footprint (Jia 2026; Doo 2024)
+  "Store only acquired axial series (avoid reformats)": {kwh: 0, note: "Avoid storing non-essential CT/PET reformats — up to ~69% less CT storage, automatable, no clinical downside. (Jia 2026)"},
+  "Migrate imaging archive to cloud":                   {kwh: 0, note: "Efficient cloud data centres cut archive storage energy ~40%. (Jia 2026; Doo 2024)"},
+  "Apply an imaging data-retention policy":             {kwh: 0, note: "Move older studies to deep / low-power archive after ~8 years, shrinking the live archive. (Jia 2026)"},
 };
 
 // Cloud provider PUE and global fleet carbon intensity defaults.
@@ -630,17 +634,23 @@ const CLOUD_INTERVENTIONS = new Set([
   'Consolidate servers',
   'Use renewable electricity',
 ]);
+// Data-storage levers — savings computed dynamically against the archive footprint (delta from
+// the user's current storage config, so they never double-count the storage-module toggles).
+const STORAGE_AXIAL_LEVER     = 'Store only acquired axial series (avoid reformats)';
+const STORAGE_CLOUD_LEVER     = 'Migrate imaging archive to cloud';
+const STORAGE_RETENTION_LEVER = 'Apply an imaging data-retention policy';
+const STORAGE_INTERVENTIONS   = new Set([STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER]);
 
 // Combined impact of a SET of interventions (the "intervention program"). Single source of
 // truth for both the Interventions tab and the EcoLabel. Computes each lever's dynamic,
 // fleet-based saving, then combines: the two idle-reduction levers overlap on the same
 // avoidable-idle pool (standby ⊇ scanners-off) so we take the deepest ONE rather than summing;
 // all other energy levers add; carbon-% levers stack multiplicatively. Everything floors at 0.
-function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState) {
+function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}) {
   const list  = Array.isArray(names) ? names.filter(n => INTERVENTIONS[n]) : (names && INTERVENTIONS[names] ? [names] : []);
   const ci    = getCI(region, customCi);
   const mult  = TIME_MULT[timePeriod] ?? 1;
-  const base  = computeDashboard(region, timePeriod, equipment, customCi);
+  const base  = computeDashboard(region, timePeriod, equipment, customCi, {}, storage);
   const fleet = buildFleet(equipment);
   const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
   const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};
@@ -673,10 +683,27 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
     return INTERVENTIONS[name]?.co2Pct ?? 0;
   };
 
+  // Data-storage levers: recompute archive energy under the selected strategies vs the current
+  // config, and take the delta — so ticking a lever the storage module already applies saves 0.
+  const stgRet   = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
+  const stgCloud = !!storage.cloud;
+  const stgRef   = storage.reformats === 'axial' ? 'axial' : 'all';
+  const storageKwhFor = (cloud, reformats, retention) => {
+    const rf = mod => (reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
+    const annualTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * rf(eq.modality), 0) / 1e6;
+    return annualTB * retention * (cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM) * mult / 12;
+  };
+  const stgCurrent = storageKwhFor(stgCloud, stgRef, stgRet);
+  const stgAfter   = storageKwhFor(
+    list.includes(STORAGE_CLOUD_LEVER)     ? true : stgCloud,
+    list.includes(STORAGE_AXIAL_LEVER)     ? 'axial' : stgRef,
+    list.includes(STORAGE_RETENTION_LEVER) ? Math.min(stgRet, 8) : stgRet);
+  const storageSaving = rnd(Math.max(0, stgCurrent - stgAfter), 2);
+
   const idleLevers  = list.filter(n => SCANNER_STATE_INTERVENTIONS.has(n));
   const idleSaving  = idleLevers.length ? Math.max(...idleLevers.map(leverKwh)) : 0;      // overlap → deepest one
-  const otherSaving = list.filter(n => !SCANNER_STATE_INTERVENTIONS.has(n)).reduce((s, n) => s + leverKwh(n), 0);
-  const kwhSaved    = rnd(Math.min(base.totals.kwh, idleSaving + otherSaving));
+  const otherSaving = list.filter(n => !SCANNER_STATE_INTERVENTIONS.has(n) && !STORAGE_INTERVENTIONS.has(n)).reduce((s, n) => s + leverKwh(n), 0);
+  const kwhSaved    = rnd(Math.min(base.totals.kwh, idleSaving + otherSaving + storageSaving));
   const co2Fraction = 1 - list.reduce((f, n) => f * (1 - (leverCo2Pct(n) / 100)), 1);      // stack multiplicatively
 
   const projectedKwh = Math.max(0, rnd(base.totals.kwh - kwhSaved));
@@ -1676,7 +1703,7 @@ function App() {
     return {inferKwhPerStudy, trainKwhMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools]);
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats}), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats]);
-  const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState]);
+  const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats}), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment),
     [scen, settings.region, settings.customCi, settings.equipment]);
 
@@ -2657,7 +2684,7 @@ function App() {
                 <Card icon={<Droplets/>}     title={`Storage cost ${dash.totals.label}`}   value={fmtMoney(dash.storage.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub="Electricity cost at your tariff; cloud service fees billed separately."/>
               </div>
               <p className="note" style={{marginTop:8,fontSize:11}}>
-                Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
+                These toggles set your <strong>current</strong> storage practice. The same three strategies also appear as tickable actions on the <strong>Interventions</strong> and <strong>EcoLabel</strong> tabs, where their savings are modelled as a <em>change from</em> this current setup (so they never double-count). Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
               </p>
             </div>
 
