@@ -1218,11 +1218,14 @@ function downloadCloudCSV(result, tracker) {
 // Standardised environmental disclosure, after Energy Star / EU Energy Label A–G
 // (Regulation EU 2021/341): a continuous 0–100 Score paired with a categorical
 // 1–5 leaf Rating. Higher Score = lower footprint. Rating bands per Table 3.
+// Rating bands = equal quintiles of the 0–100 Score (80/60/40/20). The Score is already a
+// log-scale transform of footprint intensity, so the non-linearity lives there; the bands add
+// no second, unjustified skew. Provisional, open to consensus revision.
 const CEDARS_RATINGS = [
-  {leaves:5, min:90, label:'Very low footprint',      color:'#1b5e20', bg:'#e6f4ed', desc:'Carbon-aware design, clean energy, efficient hardware lifecycle.'},
-  {leaves:4, min:75, label:'Low footprint',           color:'#2b6e2c', bg:'#eaf3d8', desc:'Low footprint with good mitigation.'},
-  {leaves:3, min:60, label:'Moderate footprint',      color:'#7a6a00', bg:'#fbf6d6', desc:'Moderate footprint; clear room to improve.'},
-  {leaves:2, min:40, label:'Above-average footprint', color:'#8a4a00', bg:'#fdeccc', desc:'Above-average footprint; mitigation recommended.'},
+  {leaves:5, min:80, label:'Very low footprint',      color:'#1b5e20', bg:'#e6f4ed', desc:'Carbon-aware design, clean energy, efficient hardware lifecycle.'},
+  {leaves:4, min:60, label:'Low footprint',           color:'#2b6e2c', bg:'#eaf3d8', desc:'Low footprint with good mitigation.'},
+  {leaves:3, min:40, label:'Moderate footprint',      color:'#7a6a00', bg:'#fbf6d6', desc:'Moderate footprint; clear room to improve.'},
+  {leaves:2, min:20, label:'Above-average footprint', color:'#8a4a00', bg:'#fdeccc', desc:'Above-average footprint; mitigation recommended.'},
   {leaves:1, min:0,  label:'High footprint',          color:'#9b1515', bg:'#fbe0e0', desc:'High footprint / limited mitigation.'},
 ];
 function cedarsRating(score) {
@@ -3745,7 +3748,7 @@ function App() {
                   <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:ecoLabelData.leaves===r.leaves?700:400,color:ecoLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
                     <LeafRating leaves={r.leaves} size={12} color={r.color}/>
                     <span>{r.label}</span>
-                    <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'90–100',4:'75–89',3:'60–74',2:'40–59',1:'< 40'})[r.leaves]}</span>
+                    <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'< 20'})[r.leaves]}</span>
                   </div>
                 ))}
                 <p className="note" style={{fontSize:10,marginTop:6}}>Continuous Score (0–100) from the estimated footprint, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
@@ -4110,7 +4113,7 @@ function App() {
                     <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:deptLabelData.leaves===r.leaves?700:400,color:deptLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
                       <LeafRating leaves={r.leaves} size={12} color={r.color}/>
                       <span>{r.label}</span>
-                      <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'90–100',4:'75–89',3:'60–74',2:'40–59',1:'< 40'})[r.leaves]}</span>
+                      <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'< 20'})[r.leaves]}</span>
                     </div>
                   ))}
                   <p className="note" style={{fontSize:10,marginTop:6}}>Continuous Score (0–100) from the per-study footprint, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
