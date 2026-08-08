@@ -95,7 +95,9 @@ const EQUIPMENT_UNITS = {
   fluoro:      {name:"Fluoroscopy Unit",  modality:"Fluoroscopy", active_kw:3.1, idle_kw:2.8, standby_kw:0.6, off_kw:0.6, active_h:107, idle_h:118, standby_h:0, off_h:505, avoidable_idle_h:90,  scans:120},
 };
 
-const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:1, mri_7t:0, ct:1, petct:0, angio:0, fluoro:0, xray:1, ultrasound:1, mammography:0, pacs:1, workstations:4};
+// Start empty — no equipment preselected, so the landing page reads as a blank, editable form
+// (nothing is "already computed") until the user adds devices or picks a Quick-start preset.
+const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:0, mri_7t:0, ct:0, petct:0, angio:0, fluoro:0, xray:0, ultrasound:0, mammography:0, pacs:0, workstations:0};
 
 // Realistic department archetypes — a quick-start starting fleet; every count stays editable.
 // Illustrative sizes, not authoritative. Only non-zero devices listed; the rest reset to 0 on apply.
@@ -1555,10 +1557,23 @@ function App() {
 
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
   const setS = (key, val) => setScen(s => ({...s, [key]: val}));
-  // Logo → Home: reset the shared (URL-encoded) settings to defaults so the address bar
-  // returns to a clean cedarsleaf.com, while keeping the user's equipment, AI and EcoLabel work.
+  // Logo / brand → Home & start over: clear the department inputs and label back to blank,
+  // return to a clean cedarsleaf.com (hash strips at defaults), and scroll to the top.
   const resetToHome = () => {
-    setSettings(s => ({...s, ...HASH_DEFAULTS}));
+    setSettings({
+      equipment: {...DEFAULT_EQUIPMENT},
+      ...HASH_DEFAULTS,
+      staffCommuteKm: '15',
+      electricityPrice: '',
+      storageRetentionYears: '10',
+      storageCloud: false,
+      storageReformats: 'all',
+    });
+    setDeptLabel({
+      deptName: '', hospitalName: '', region: '',
+      annualKwh: '', annualStudies: '', renewablePct: '0',
+      activeInterventions: [], aiTools: [],
+    });
     setPage('landing');
     if (typeof window !== 'undefined') window.scrollTo(0, 0);
   };
