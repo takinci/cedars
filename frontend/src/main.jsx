@@ -1574,6 +1574,28 @@ function App() {
       annualKwh: '', annualStudies: '', renewablePct: '0',
       activeInterventions: [], aiTools: [],
     });
+    // Also wipe the AI Model & Informatics page (model config, research label, cloud workloads).
+    setScen({
+      intervention: "Turn MRI/CT scanners off overnight",
+      cloudProvider: "Local compute", cloudRegion: "On-premise (Switzerland)", scannerState: "Standby",
+      modelKey: 'cad', architecture: "CNN / ResNet", precision: "float32 (standard)",
+      paramsM: '8', dim: '2D', resolution: '224', slices: '1', inferSec: '',
+      whPer1kTokens: '', callsPerTask: '1', tokensPerCall: '',
+      accuracyPct: '84', accuracyMetric: 'AUC', scanTimeReductPct: '0', lowValueReductPct: '12',
+      trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500', deployMonths: '36',
+    });
+    setEcoLabel({
+      projectName: '', taskType: 'Classification', architecture: '', paramsMillion: '', datasetSize: '',
+      gpuModel: 'NVIDIA A100 (80GB SXM4)', customTdpW: '300', gpuCount: '1', trainingHoursPerRun: '',
+      numRuns: '1', energyMeasured: false, energyKwhPerRun: '', cloudProvider: 'Local compute',
+      region: 'Global average', renewablePct: '0', inferStudiesMonth: '', inferMode: 'kwh',
+      inferKwhPerStudy: '', whPer1kTokens: '0.4', callsPerTask: '1', tokensPerCall: '', deployMonths: '36',
+    });
+    setCloudTracker({
+      renewablePct: '0', computeLines: [],
+      storageLines: [{id: 1, label: 'PACS archive', type: 'HDD (object storage — S3 / Blob)', tb: '10'}],
+      networkingGb: '500',
+    });
     setPage('landing');
     if (typeof window !== 'undefined') window.scrollTo(0, 0);
   };
@@ -2187,7 +2209,8 @@ function App() {
                           )}
                           <input
                             type="number" min="0" max="999" step="1"
-                            value={count}
+                            value={count || ''}
+                            placeholder="0"
                             onChange={e => setEquip(key, Math.max(0, Math.min(999, Math.floor(Number(e.target.value) || 0))))}
                             aria-label={`Number of ${cardLabel}`}
                             style={{
