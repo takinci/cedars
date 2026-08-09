@@ -3691,7 +3691,7 @@ function App() {
           <h2>Label preview</h2>
           <div style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Visual card */}
-            <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:320, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
+            <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
               <div style={{background:'#1b5e20', padding:'14px 18px'}}>
                 <div style={{color:'white', fontWeight:700, fontSize:16, display:'flex', alignItems:'center', gap:8}}>
                   <Leaf style={{width:16,height:16}}/> CEDARS AI Research Label
@@ -4093,7 +4093,7 @@ function App() {
 
             <h2>Label preview</h2>
             <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
-              <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:320,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
+              <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
                 <div style={{background:'#1b5e20',padding:'14px 18px'}}>
                   <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
                   <div style={{color:'#A5D6A7',fontSize:13,marginTop:4}}>{deptLabelData.deptName}</div>
