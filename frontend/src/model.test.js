@@ -41,6 +41,19 @@ describe('computeDashboard — FLEET, Germany, Annual', () => {
     expect(d.scopes.scope2Kg).toBeCloseTo(373380.45, 1);
     expect(d.scopes.scope3TravelKg).toBe(697680); // 205200 × 20 × 0.17
   });
+  it('Scope 3 embodied scales with the unit count of each device type', () => {
+    // Σ EMBODIED_KG_MO[modality] × count × 12: (139·2 + 389·1 + 33·3 + 12·2 + 30·1 + 5·5) × 12
+    expect(d.scopes.scope3EmbKg).toBe(10140);
+  });
+});
+
+describe('computeDashboard — embodied carbon per unit', () => {
+  it('four CT scanners embody 4× a single CT (not 1×)', () => {
+    const one = computeDashboard('Germany', 'Monthly', { ct: 1 }).scopes.scope3EmbKg;
+    const four = computeDashboard('Germany', 'Monthly', { ct: 4 }).scopes.scope3EmbKg;
+    expect(one).toBe(139);
+    expect(four).toBe(556); // 139 × 4
+  });
 });
 
 describe('computeInterventions — FLEET, delta from current config', () => {

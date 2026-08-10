@@ -59,6 +59,7 @@ function buildFleet(equipment) {
       if (!u) return null;
       return {
         ...u,
+        count:      n,                    // unit count — used to scale embodied carbon per device
         name:       n > 1 ? `${n}× ${u.name}` : u.name,
         active_kw:  u.active_kw  * n,
         idle_kw:    u.idle_kw    * n,
@@ -226,7 +227,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // Scope 3 travel: patient travel at PATIENT_KM_RT × CAR_CO2_KG_KM (DEFRA 2023)
   const scope2Kg       = rnd(totalCo2);
   const scope1Kg       = rnd(scope2Kg * 0.08);
-  const scope3EmbKg    = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * mult, 0));
+  const scope3EmbKg    = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0));
   const scope3TravelKg = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
   const scope3Kg       = rnd(scope3EmbKg + scope3TravelKg);
 

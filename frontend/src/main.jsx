@@ -253,17 +253,26 @@ const AI_ARCHITECTURES = {
   },
 };
 
-// Annual modality energy benchmarks (kWh/year and kgCO₂e/year at global avg 0.473 kgCO₂e/kWh)
+// Annual modality energy benchmarks — reference values for comparison only (NOT used in the
+// footprint calculation, which always uses the user's selected grid factor). Energy (kWh/yr) is the
+// exact value reported by each source publication; the CO₂ column is normalised at render to a
+// single common factor (BENCHMARK_CI) so the rows are directly comparable. The source publications
+// themselves reported CO₂ at varying local grids (~0.20–0.24 kgCO₂e/kWh), which is why their
+// original CO₂ figures are not directly comparable and are recomputed here.
 // Source: Vosshenrich et al. (Implementation Guide); Heye JMRI 2023 (10.1002/jmri.28994); Klein 2024
 const MODALITY_BENCHMARKS = [
-  {modality: "MRI 1.5T superconducting",   kwhYear: 269400, co2Year: 59000,  note: "Idle >50% of total. Vosshenrich; Heye 2023"},
-  {modality: "MRI 3T (state-of-the-art)",  kwhYear: 125000, co2Year: 29625,  note: "Range 80 000–170 000 kWh/yr. Heye 2023"},
-  {modality: "MRI 0.35T permanent magnet", kwhYear: 16100,  co2Year: 3526,   note: "Lowest-field option. Klein 2024; 51% PV self-sufficiency achievable"},
-  {modality: "CT scanner",                 kwhYear: 37800,  co2Year: 8278,   note: "Idle up to 66% of total (Schoen et al.)"},
-  {modality: "PET-CT",                     kwhYear: 66150,  co2Year: 15677,  note: "Range 56 700–75 600 kWh/yr; idle 1.5–2× CT"},
-  {modality: "Ultrasound",                 kwhYear: 2500,   co2Year: 500,    note: "Lowest-energy modality; consider as alternative to CT/MRI"},
-  {modality: "PC workstations (×10)",      kwhYear: 27500,  co2Year: 6000,   note: "Walters: auto-off saves 17 MWh/yr per 88 units = 3.4 tCO₂e"},
+  {modality: "MRI 1.5T superconducting",   kwhYear: 269400, note: "Idle >50% of total. Vosshenrich; Heye 2023"},
+  {modality: "MRI 3T (state-of-the-art)",  kwhYear: 125000, note: "Range 80 000–170 000 kWh/yr. Heye 2023"},
+  {modality: "MRI 0.35T permanent magnet", kwhYear: 16100,  note: "Lowest-field option. Klein 2024; 51% PV self-sufficiency achievable"},
+  {modality: "CT scanner",                 kwhYear: 37800,  note: "Idle up to 66% of total (Schoen et al.)"},
+  {modality: "PET-CT",                     kwhYear: 66150,  note: "Range 56 700–75 600 kWh/yr; idle 1.5–2× CT"},
+  {modality: "Ultrasound",                 kwhYear: 2500,   note: "Lowest-energy modality; consider as alternative to CT/MRI"},
+  {modality: "PC workstations (×10)",      kwhYear: 27500,  note: "Walters: auto-off saves 17 MWh/yr per 88 units = 3.4 tCO₂e"},
 ];
+// Single normalisation factor for the benchmark CO₂ column (global-average grid) — reuses the same
+// global-average constant as the rest of CEDARS so the value can never drift. CO₂ is derived, not
+// stored, so it stays internally consistent.
+const BENCHMARK_CI = CARBON_INTENSITY['Global average']; // 0.473 kgCO₂e/kWh
 
 // ── AI model library ─────────────────────────────────────────────────────────
 // GPU power, inference latency, and training energy from LLM-Energy PDF and Doo 2024.
@@ -2284,12 +2293,12 @@ function App() {
             </section>
             <section style={{marginTop:20}}>
               <h2>Modality energy benchmarks</h2>
-              <p className="note" style={{marginBottom:12}}>Annual reference values from Vosshenrich et al. Idle accounts for 50–66% of total energy (Schoen et al.: idle offers 14.9× more savings potential than active state).</p>
-              <div className="row" style={{fontWeight:700,color:'#2E7D32'}}><span>Modality</span><span>kWh / year</span><span style={{fontSize:12}}>Note</span></div>
+              <p className="note" style={{marginBottom:12}}>Annual reference values from Vosshenrich et al. Idle accounts for 50–66% of total energy (Schoen et al.: idle offers 14.9× more savings potential than active state). Energy is as reported by each source; CO₂ is normalised to the global-average grid ({BENCHMARK_CI} kgCO₂e/kWh) so rows are comparable — the source publications used varying local grids (~0.20–0.24).</p>
+              <div className="row" style={{fontWeight:700,color:'#2E7D32'}}><span>Modality</span><span>kWh / year · kgCO₂e / year</span><span style={{fontSize:12}}>Note</span></div>
               {MODALITY_BENCHMARKS.map((m,i)=>(
                 <div key={i} className="row">
                   <b>{m.modality}</b>
-                  <span>{m.kwhYear.toLocaleString()} kWh · {m.co2Year.toLocaleString()} kg CO₂e</span>
+                  <span>{m.kwhYear.toLocaleString()} kWh · {Math.round(m.kwhYear * BENCHMARK_CI).toLocaleString()} kg CO₂e</span>
                   <small>{m.note}</small>
                 </div>
               ))}
