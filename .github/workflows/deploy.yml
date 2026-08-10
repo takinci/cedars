@@ -36,7 +36,7 @@ jobs:
         run: npm install --include=dev
         working-directory: frontend
 
-      - name: Reference tests (calc.test.js)
+      - name: Reference tests (calc + model)
         run: npm test
         working-directory: frontend
 
