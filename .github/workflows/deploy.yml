@@ -35,7 +35,7 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Reference tests (calc + model)
+      - name: Reference tests (calc + model + url)
         run: npm test
         working-directory: frontend
 

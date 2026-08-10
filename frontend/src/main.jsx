@@ -9,6 +9,7 @@ const Scatter  = React.lazy(() => import('react-chartjs-2').then(m => ({default:
 import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot} from 'lucide-react';
 import './styles.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_AI_LO, CEDARS_AI_HI, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
+import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
 
@@ -1081,97 +1082,45 @@ const fmtBig = n => {
 
 // getCI / getPrice / currencySym are imported from ./calc.js (single source of truth).
 
-// URL hash state persistence — encodes/decodes core settings so shared links work
-const HASH_KEYS = {u:'intendedUse', r:'region', m:'metricType', t:'timePeriod', c:'customCi', a:'actualStudiesYear'};
-// Default values of the hash-encoded settings. While every one of these is unchanged the
-// URL is kept clean (no #…) so cedarsleaf.com stays shareable-as-the-base-site; the hash
-// only appears once the user customises a shared setting.
-const HASH_DEFAULTS = {intendedUse:"Estimate annual footprint", region:"Switzerland", metricType:"Energy", timePeriod:"Monthly", customCi:"0.30", actualStudiesYear:''};
-function readHash() {
-  try {
-    const q = new URLSearchParams(window.location.hash.replace(/^#/,''));
-    const out = {};
-    for (const [k, field] of Object.entries(HASH_KEYS)) { if (q.has(k)) out[field] = q.get(k); }
-    return out;
-  } catch { return {}; }
-}
-function writeHash(s) {
-  const atDefaults = Object.entries(HASH_DEFAULTS).every(([field, def]) => String(s[field] ?? '') === String(def));
-  if (atDefaults) {
-    // Keep the link clean at defaults — strip the hash entirely.
-    history.replaceState(null, '', window.location.pathname + window.location.search);
-    return;
-  }
-  const q = new URLSearchParams();
-  for (const [k, field] of Object.entries(HASH_KEYS)) q.set(k, s[field]);
-  history.replaceState(null, '', '#' + q.toString());
-}
+// URL hash state persistence lives in ./urlstate.js (encodeConfig / decodeConfig): it serialises
+// the full configuration — department settings + equipment + storage + cost, the AI scenario, and
+// the selected interventions — so a shared link reproduces the whole setup. SETTINGS_DEFAULTS and
+// SCEN_DEFAULTS are the single source of truth for the initial `settings` / `scen` state below.
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const [page, setPage] = useState('landing');
 
-  // Shared settings — drive all calculations; initialised from URL hash if present
+  // Decode a shared link once: the full configuration (settings + equipment + scenario +
+  // interventions) is restored into the relevant state objects below.
+  const initCfg = useMemo(() => (typeof window !== 'undefined' ? decodeConfig(window.location.hash) : {}), []);
+  const { equipment: initEquip, ...initSettings } = initCfg.settings || {};
+
+  // Shared settings — drive all calculations; initialised from the URL hash if present.
+  // (storageReformats: 'all' | 'axial' — axial avoids non-essential CT/PET reformats.)
   const [settings, setSettings] = useState(() => ({
-    equipment: {...DEFAULT_EQUIPMENT},
-    ...HASH_DEFAULTS,
-    staffCommuteKm: '15',
-    electricityPrice: '',   // blank → use the region default; a typed value overrides
-    storageRetentionYears: '10',
-    storageCloud: false,
-    storageReformats: 'all',   // 'all' | 'axial' (avoid non-essential CT/PET reformats)
-    ...readHash(),
+    ...SETTINGS_DEFAULTS,
+    equipment: {...DEFAULT_EQUIPMENT, ...(initEquip || {})},
+    ...initSettings,
   }));
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
-  const [scen, setScen] = useState({
-    intervention: "Turn MRI/CT scanners off overnight",
-    cloudProvider: "Local compute",
-    cloudRegion: "On-premise (Switzerland)",
-    scannerState: "Standby",
-    // AI model — seeded from the library (classification/triage entry); all fields are editable.
-    modelKey: 'cad',
-    architecture: "CNN / ResNet",
-    precision: "float32 (standard)",
-    paramsM: '8', dim: '2D', resolution: '224', slices: '1', inferSec: '',
-    whPer1kTokens: '', callsPerTask: '1', tokensPerCall: '',
-    accuracyPct: '84', accuracyMetric: 'AUC',
-    scanTimeReductPct: '0', lowValueReductPct: '12',
-    trainGpu: '',
-    trainNumGpus: '1',
-    trainHours: '',
-    testStudies: '500',
-    deployMonths: '36',
-  });
+  // AI scenario (model spec + cloud + scanner state). SCEN_DEFAULTS is the single source of truth
+  // (shared with urlstate.js); restored from a shared link when present.
+  const [scen, setScen] = useState(() => ({...SCEN_DEFAULTS, ...(initCfg.scen || {})}));
 
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
   const setS = (key, val) => setScen(s => ({...s, [key]: val}));
   // Logo / brand → Home & start over: clear the department inputs and label back to blank,
   // return to a clean cedarsleaf.com (hash strips at defaults), and scroll to the top.
   const resetToHome = () => {
-    setSettings({
-      equipment: {...DEFAULT_EQUIPMENT},
-      ...HASH_DEFAULTS,
-      staffCommuteKm: '15',
-      electricityPrice: '',
-      storageRetentionYears: '10',
-      storageCloud: false,
-      storageReformats: 'all',
-    });
+    setSettings({...SETTINGS_DEFAULTS, equipment: {...DEFAULT_EQUIPMENT}});
     setDeptLabel({
       deptName: '', hospitalName: '', region: '',
       annualKwh: '', annualStudies: '', renewablePct: '0',
       activeInterventions: [], aiTools: [],
     });
     // Also wipe the AI Model & Informatics page (model config, research label, cloud workloads).
-    setScen({
-      intervention: "Turn MRI/CT scanners off overnight",
-      cloudProvider: "Local compute", cloudRegion: "On-premise (Switzerland)", scannerState: "Standby",
-      modelKey: 'cad', architecture: "CNN / ResNet", precision: "float32 (standard)",
-      paramsM: '8', dim: '2D', resolution: '224', slices: '1', inferSec: '',
-      whPer1kTokens: '', callsPerTask: '1', tokensPerCall: '',
-      accuracyPct: '84', accuracyMetric: 'AUC', scanTimeReductPct: '0', lowValueReductPct: '12',
-      trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500', deployMonths: '36',
-    });
+    setScen({...SCEN_DEFAULTS});
     setEcoLabel({
       projectName: '', taskType: 'Classification', architecture: '', paramsMillion: '', datasetSize: '',
       gpuModel: 'NVIDIA A100 (80GB SXM4)', customTdpW: '300', gpuCount: '1', trainingHoursPerRun: '',
@@ -1248,11 +1197,11 @@ function App() {
   });
   const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
   const [deptCopied, setDeptCopied] = useState(false);
-  const [deptLabel, setDeptLabel] = useState({
+  const [deptLabel, setDeptLabel] = useState(() => ({
     deptName: '', hospitalName: '', region: '',
     annualKwh: '', annualStudies: '', renewablePct: '0',
-    activeInterventions: [], aiTools: [],
-  });
+    activeInterventions: initCfg.activeInterventions || [], aiTools: [],
+  }));
   const setDept = (key, val) => setDeptLabel(d => ({...d, [key]: val}));
   const toggleIntervention = name => setDeptLabel(d => ({
     ...d,
@@ -1285,8 +1234,14 @@ function App() {
 
   const handlePrint = () => { window.print(); };
 
-  // Persist settings to URL hash so links are shareable
-  useEffect(() => { writeHash(settings); }, [settings]);
+  // Persist the full configuration to the URL hash so links reproduce the whole setup — department
+  // settings + equipment + storage + cost, the AI scenario, and the selected interventions. The
+  // hash is stripped whenever everything is back at defaults, keeping cedarsleaf.com clean.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const qs = encodeConfig({ settings, scen, activeInterventions: deptLabel.activeInterventions });
+    history.replaceState(null, '', qs ? '#' + qs : window.location.pathname + window.location.search);
+  }, [settings, scen, deptLabel.activeInterventions]);
 
   // Convert Chart.js canvases to static PNG images before printing so they
   // appear in PDF output (canvas elements are often blank in print renderers).

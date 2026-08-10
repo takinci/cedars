@@ -88,7 +88,11 @@ Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all 
 
 ## Configurable inputs
 
-Core settings are reflected in the URL hash — copy the link to share your exact configuration:
+The full calculator configuration is encoded in the URL hash — **copy the link from the address bar to share your exact setup**. A recipient opening the link reproduces it precisely: the equipment inventory, region/grid and time period, storage and cost/commute assumptions, the AI scenario (model spec, cloud provider/region, scanner state), and the selected interventions. The link stays clean (no `#…`) while everything is at its defaults, and only the values you changed are stored, so shared links stay compact.
+
+_Not carried in the URL (they are document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name), the deployed-AI-tools list, the separate AI research-label form, and the Infrastructure tab's custom compute/storage line items._
+
+Configurable inputs include:
 
 - **Equipment fleet** — set the count of each device type (or start from a **department preset**, below)
 - **Actual imaging studies / year** (optional) — drives fleet utilisation and the live EcoLabel; blank uses the fleet estimate
