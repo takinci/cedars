@@ -29,10 +29,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # Reproducible install straight from the committed lockfile (fails if it ever drifts from
-      # package.json). Installs devDependencies too, so vitest is available for the test gate.
+      # Install from the committed lockfile (pins versions → reproducible). Using `npm install`,
+      # not `npm ci`: the lockfile was generated with --package-lock-only and is missing
+      # resolved/integrity for some transitive packages, which npm ci rejects. npm install honors
+      # the pinned versions and backfills integrity from the registry. To restore strict `npm ci`,
+      # regenerate with a full `npm install` on a clean (non-iCloud-corrupted) node_modules.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --include=dev
         working-directory: frontend
 
       - name: Reference tests (calc + model + url)
