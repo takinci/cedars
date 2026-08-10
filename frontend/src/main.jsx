@@ -8,6 +8,7 @@ const Doughnut = React.lazy(() => import('react-chartjs-2').then(m => ({default:
 const Scatter  = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Scatter})));
 import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot} from 'lucide-react';
 import './styles.css';
+import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_AI_LO, CEDARS_AI_HI, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
 
@@ -17,31 +18,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElemen
 // https://ourworldindata.org/grapher/carbon-intensity-electricity
 // Global average (0.473) and EU average (0.237) from Vosshenrich et al. (cited in Implementation Guide).
 // Replace with local utility/Eurostat data where available.
-const CARBON_INTENSITY = {
-  "Switzerland":    0.10,  // hydro + nuclear dominant; OWID 2023
-  "France":         0.06,  // ~70 % nuclear; OWID 2023
-  "Germany":        0.36,  // coal/gas/renewable mix; OWID 2023
-  "United States":  0.38,  // national grid average; OWID 2023
-  "United Kingdom": 0.20,  // gas + offshore wind; OWID 2023
-  "EU average":     0.237, // Vosshenrich et al. / Eurostat 2022
-  "Global average": 0.473, // Vosshenrich et al. — use for conservative global estimates
-  "Editable custom":0.30,  // placeholder — replace with measured utility factor
-};
-
-// Commercial/industrial electricity price per region (local currency per kWh). Hospitals pay
-// commercial rates; these are editable ESTIMATES — replace with your actual tariff. Prices are
-// volatile and regional, and cost is decoupled from carbon (a low-carbon grid is not necessarily
-// cheap). Rough 2024–25 commercial rates; sym is the currency symbol.
-const ELECTRICITY_PRICE = {
-  "Switzerland":    {price:0.27, sym:'CHF '},
-  "France":         {price:0.23, sym:'€'},
-  "Germany":        {price:0.28, sym:'€'},
-  "United States":  {price:0.13, sym:'$'},
-  "United Kingdom": {price:0.28, sym:'£'},
-  "EU average":     {price:0.24, sym:'€'},
-  "Global average": {price:0.15, sym:'$'},
-  "Editable custom":{price:0.20, sym:'€'},
-};
+// CARBON_INTENSITY and ELECTRICITY_PRICE (with getCI/getPrice/currencySym) live in ./calc.js.
 
 // Feedback → pre-filled GitHub issue on the CEDARS repo (no backend; community-visible).
 const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedback&title=' +
@@ -1223,30 +1200,8 @@ function downloadCloudCSV(result, tracker) {
 // Rating bands = equal quintiles of the 0–100 Score (80/60/40/20). The Score is already a
 // log-scale transform of footprint intensity, so the non-linearity lives there; the bands add
 // no second, unjustified skew. Provisional, open to consensus revision.
-const CEDARS_RATINGS = [
-  {leaves:5, min:80, label:'Very low footprint',      color:'#1b5e20', bg:'#e6f4ed', desc:'Carbon-aware design, clean energy, efficient hardware lifecycle.'},
-  {leaves:4, min:60, label:'Low footprint',           color:'#2b6e2c', bg:'#eaf3d8', desc:'Low footprint with good mitigation.'},
-  {leaves:3, min:40, label:'Moderate footprint',      color:'#7a6a00', bg:'#fbf6d6', desc:'Moderate footprint; clear room to improve.'},
-  {leaves:2, min:20, label:'Above-average footprint', color:'#8a4a00', bg:'#fdeccc', desc:'Above-average footprint; mitigation recommended.'},
-  {leaves:1, min:0,  label:'High footprint',          color:'#9b1515', bg:'#fbe0e0', desc:'High footprint / limited mitigation.'},
-];
-function cedarsRating(score) {
-  return CEDARS_RATINGS.find(r => score >= r.min) ?? CEDARS_RATINGS[CEDARS_RATINGS.length - 1];
-}
-// Footprint (kgCO₂e) → 0–100 Score on a log scale: lo → 100 (greenest), hi → 0 (worst).
-// Anchors are aligned with published reference footprints.
-function cedarsScore(value, lo, hi) {
-  const x = Math.max(parseFloat(value) || 0, 1e-6);
-  if (x <= lo) return 100;
-  if (x >= hi) return 0;
-  return Math.round(100 * (Math.log10(hi) - Math.log10(x)) / (Math.log10(hi) - Math.log10(lo)));
-}
-const CEDARS_AI_LO = 1,   CEDARS_AI_HI = 20000;   // total training kgCO₂e: ~1 kg → 100, 20 t → 0
-const CEDARS_DEPT_LO = 0.1, CEDARS_DEPT_HI = 20;  // kgCO₂e per imaging study: 0.1 → 100, 20 → 0
-// AI model in-use footprint — gCO₂e per study (training amortised over deployment + inference).
-// The AI research label grades this efficiency number, not absolute training size, so a big
-// model deployed at scale can still grade well. 0.2 g → 100, 40 g → 0. (Estimate — see sources.md)
-const CEDARS_AIUSE_LO = 0.2, CEDARS_AIUSE_HI = 40;
+// CEDARS_RATINGS, cedarsRating, cedarsScore, and the Score anchors (CEDARS_AI/DEPT/AIUSE_LO/HI)
+// live in ./calc.js (imported above) and are covered by reference tests in calc.test.js.
 
 // Net annual CO₂ a deployed AI tool adds to a department: amortised training + inference +
 // embodied GPU, minus clinical savings (shorter protocols + avoided low-value scans). Net,
@@ -1483,15 +1438,7 @@ const fmtBig = n => {
   return n < 0.001 ? '< 0.001' : n.toFixed(3);
 };
 
-// Resolve effective carbon intensity — uses customCi when region is "Editable custom"
-const getCI = (region, customCi) =>
-  region === 'Editable custom' ? (isNaN(parseFloat(customCi)) ? 0.30 : parseFloat(customCi)) : (CARBON_INTENSITY[region] ?? 0.25);
-// Effective electricity price (per kWh): a positive override wins, else the region default.
-const getPrice = (region, override) => {
-  const o = parseFloat(override);
-  return o > 0 ? o : (ELECTRICITY_PRICE[region]?.price ?? 0.20);
-};
-const currencySym = region => ELECTRICITY_PRICE[region]?.sym ?? '€';
+// getCI / getPrice / currencySym are imported from ./calc.js (single source of truth).
 
 // URL hash state persistence — encodes/decodes core settings so shared links work
 const HASH_KEYS = {u:'intendedUse', r:'region', m:'metricType', t:'timePeriod', c:'customCi', a:'actualStudiesYear'};
