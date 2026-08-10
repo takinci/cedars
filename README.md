@@ -50,7 +50,7 @@ Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ult
 | **Clinical AI tools** | Deploy clinical AI (from the model library, an imported model, or manual entry); each **adds** compute and **subtracts** clinical savings (avoided scans, shorter protocols, contrast reduction), adjusting the *whole* department consistently |
 | **Energy** | Total kWh/MWh, active vs idle, avoidable idle, energy per scan |
 | **Carbon (GHG Scopes)** | Scope 1 · Scope 2 · Scope 3 (embodied hardware, patient travel, **staff commute** auto-estimated from the fleet, **DICOM data transfer**) + per-study **Software Carbon Intensity (SCI)** |
-| **Infrastructure — incl. data storage & archiving** | Idle-waste opportunities, modality benchmarks, and a fleet-driven **data storage** footprint: annual data (Σ studies × per-modality file size) held over a retention period at a per-TB/yr intensity — with **axial-only / cloud / retention** levers (Jia *Eur Radiol* 2026; Doo *JACR* 2024) |
+| **Infrastructure — incl. data storage & archiving** | Idle-waste opportunities, **modality energy benchmarks** (published energy as reported; CO₂ normalised to a common grid factor for comparability), and a fleet-driven **data storage** footprint: annual data (Σ studies × per-modality file size) held over a retention period at a per-TB/yr intensity — with **axial-only / cloud / retention** levers (Jia *Eur Radiol* 2026; Doo *JACR* 2024) |
 | **Resource footprint** | Water, paper, hazardous waste, and **contrast media & contamination** (iodinated + gadolinium load to wastewater, contrast wasted) |
 | **Equivalencies + cost** | Car km, flights, tree-years, charges, household-electricity years, **and an editable electricity-cost estimate** (kWh × regional commercial tariff) |
 
@@ -152,6 +152,12 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173).
 
+Run the reference tests (see [Reproducibility & testing](#reproducibility--testing)):
+
+```bash
+npm test        # Vitest — pins the calculation core to known outputs
+```
+
 To build for deployment:
 
 ```bash
@@ -170,8 +176,23 @@ npm run build   # outputs to ../docs/
 | Build tool | Vite 5 |
 | Charts | Chart.js 4 + react-chartjs-2 |
 | Icons | Lucide React |
+| Testing | Vitest (reference tests, CI-gated) |
 | Hosting | GitHub Pages (static, no backend) |
 | CI/CD | GitHub Actions |
+
+---
+
+## Reproducibility & testing
+
+The calculation core is factored into small, **dependency-free modules** so results are a single source of truth (the app and its tests run the *same* code) and can be verified in isolation:
+
+| Module | Responsibility |
+|---|---|
+| **`calc.js`** | CEDARS Score & Rating, grid carbon-intensity and electricity-price helpers |
+| **`model.js`** | The department engine — `buildFleet`, `computeDashboard`, `computeInterventions` — plus the pure data tables it reads |
+| **`urlstate.js`** | Encode/decode of the full shareable-URL configuration |
+
+Each has **reference tests** (`*.test.js`, Vitest) that pin **fixed inputs to known outputs**: the Score/Rating and cost logic, the department energy / carbon / GHG-scope math (including per-unit embodied carbon), and a URL **round-trip** proving a shared link restores exactly what was shared. **GitHub Actions runs `npm test` before every deploy**, so a change in the calculation results fails the build. A committed **`package-lock.json`** pins dependency versions for reproducible installs.
 
 ---
 
