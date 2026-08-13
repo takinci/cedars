@@ -42,7 +42,7 @@ A numbered **1 → 2 → 3 → 4 walkthrough** so a first-time user sees the who
 
 ### 🔋 Radiology Department
 
-Your equipment fleet (MRI by field strength, CT, PET-CT, X-ray, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations) and everything the department footprint contains. The page opens on a compact **Overview** (grade + headline tiles); each area below is an **expand-in-place row** (with expand/collapse-all) so the whole picture is visible without a wall of detail:
+Your equipment fleet (MRI by field strength, CT, PET-CT, radiography, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations) and everything the department footprint contains. The page opens on a compact **Overview** (grade + headline tiles); each area below is an **expand-in-place row** (with expand/collapse-all) so the whole picture is visible without a wall of detail:
 
 | Section | What it tracks |
 |---|---|
@@ -111,10 +111,10 @@ To avoid building a fleet device-by-device, the Home page offers a subtle **"Qui
 
 | Preset | Starting fleet |
 |---|---|
-| **Community hospital** | 1× MRI 1.5T · 1× CT · 2× X-ray · 2× ultrasound · 1× mammography · 1× PACS · 6 workstations |
-| **Regional hospital** | 1× MRI 1.5T · 1× MRI 3T · 2× CT · 1× fluoroscopy · 1× angio/IR · 3× X-ray · 3× ultrasound · 1× mammography · 1× PACS · 12 workstations |
-| **Academic center** | 2× MRI 1.5T · 2× MRI 3T · 1× MRI 7T · 4× CT · 1× PET-CT · 2× angio/IR · 2× fluoroscopy · 5× X-ray · 6× ultrasound · 2× mammography · 2× PACS · 30 workstations |
-| **Outpatient imaging** | 1× MRI 1.5T · 1× CT · 2× X-ray · 3× ultrasound · 1× mammography · 1× PACS · 6 workstations |
+| **Community hospital** | 1× MRI 1.5T · 1× CT · 2× radiography · 2× ultrasound · 1× mammography · 1× PACS · 6 workstations |
+| **Regional hospital** | 1× MRI 1.5T · 1× MRI 3T · 2× CT · 1× fluoroscopy · 1× angio/IR · 3× radiography · 3× ultrasound · 1× mammography · 1× PACS · 12 workstations |
+| **Academic center** | 2× MRI 1.5T · 2× MRI 3T · 1× MRI 7T · 4× CT · 1× PET-CT · 2× angio/IR · 2× fluoroscopy · 5× radiography · 6× ultrasound · 2× mammography · 2× PACS · 30 workstations |
+| **Outpatient imaging** | 1× MRI 1.5T · 1× CT · 2× radiography · 3× ultrasound · 1× mammography · 1× PACS · 6 workstations |
 | **Teleradiology hub** | 2× PACS · 15 workstations *(reading/informatics — no scanners)* |
 
 ---

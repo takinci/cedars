@@ -101,7 +101,7 @@ const OTHER_CARDS = [
   {key:'petct',       label:'PET-CT',          Icon:Cpu,      tooltip:PETCT_TOOLTIP},
   {key:'angio',       label:'Angio / IR Suite',Icon:Heart,    sublabel:'Interventional suite',   tooltip:ANGIO_TOOLTIP},
   {key:'fluoro',      label:'Fluoroscopy',     Icon:Scan,     sublabel:'Diagnostic / basic IR',  tooltip:FLUORO_TOOLTIP},
-  {key:'xray',        label:'X-ray',           Icon:Zap,      tooltip:XRAY_TOOLTIP},
+  {key:'xray',        label:'Radiography',           Icon:Zap,      tooltip:XRAY_TOOLTIP},
   {key:'ultrasound',  label:'Ultrasound',      Icon:Droplets, tooltip:ULTRASOUND_TOOLTIP},
   {key:'mammography', label:'Mammography',     Icon:Target,   tooltip:MAMMO_TOOLTIP},
   {key:'pacs',        label:'PACS/Servers',    Icon:Server,   tooltip:PACS_TOOLTIP},
@@ -331,7 +331,7 @@ const PRECISION_FACTOR = {
 
 const NET_KWH_PER_GB   = 0.001; // kWh/GB fixed-line data-centre average (Aslan et al. 2018)
 const STAFF_DAYS_PER_MO = 22;  // standard working days per month
-const AVG_STUDY_GB     = 0.3;  // weighted avg DICOM study: MRI ~1 GB, CT ~0.5 GB, X-ray ~0.05 GB
+const AVG_STUDY_GB     = 0.3;  // weighted avg DICOM study: MRI ~1 GB, CT ~0.5 GB, Radiography ~0.05 GB
 
 
 const META = {
@@ -1392,7 +1392,7 @@ function App() {
   // studies: underused fleets → high per-study footprint; busy fleets → low, even at
   // high absolute CO₂. Utilisation = actual studies ÷ fleet's typical throughput.
   const efficiency = useMemo(() => {
-    const IMAGING_MOD = new Set(["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","X-ray","Ultrasound"]);
+    const IMAGING_MOD = new Set(["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","Radiography","Ultrasound"]);
     const capacityYr = Object.entries(settings.equipment).reduce((s, [key, n]) => {
       const u = EQUIPMENT_UNITS[key];
       return s + ((u && IMAGING_MOD.has(u.modality)) ? Math.max(0, n || 0) * u.scans * 12 : 0);
@@ -2253,7 +2253,7 @@ function App() {
             <h2 style={{marginBottom:12}}>3. Infrastructure and hardware</h2>
             <div className="cards">
               <Card icon={<Cpu/>}          title="Top idle waster"    value={dash.topOpportunities[0]?.equipment ?? '—'}          sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
-              <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="X-ray 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
+              <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="Radiography 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
               <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
               <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + staff commute + DICOM data transfer. Often larger than Scope 2 in a full lifecycle view."/>
             </div>

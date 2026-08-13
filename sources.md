@@ -229,7 +229,7 @@ Staff commute headcount is derived automatically from the equipment configuratio
 | PET-CT | 5 | Specialist techs + radiologist + physicist |
 | Angio / IR suite | 6 | Radiologist + 2–3 techs/nurses + scrub |
 | Fluoroscopy | 3 | Shared tech + radiologist |
-| X-ray room | 3 | 1–2 radiographers + shared radiologist |
+| Radiography room | 3 | 1–2 radiographers + shared radiologist |
 | Ultrasound | 2 | Sonographer + shared radiologist |
 | Mammography | 2 | Radiographer + shared radiologist |
 | PACS / Servers | 2 | IT support staff |

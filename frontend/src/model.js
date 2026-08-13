@@ -7,7 +7,7 @@ import { getCI, CARBON_INTENSITY } from './calc.js';
 
 // Imaging data storage — per-study file sizes (MB) by modality (Doo et al. JACR 2024, Fig 2;
 // CT with reformats from Jia et al. Eur Radiol 2026). Editable estimates; vary by site/compression.
-const MODALITY_MB = {MRI:350, CT:700, 'PET-CT':1700, 'X-ray':10, Ultrasound:300, 'Angio/IR':350, Fluoroscopy:120};
+const MODALITY_MB = {MRI:350, CT:700, 'PET-CT':1700, 'Radiography':10, Ultrasound:300, 'Angio/IR':350, Fluoroscopy:120};
 
 // Storage energy intensity (kWh per TB per year, all-in incl. servers, network, PUE). Jia et al.
 // 2026: 136 kWh/TB HDD + servers + network ≈ 335 kWh/TB IT × PUE 1.8 ≈ 600 on-prem; efficient
@@ -34,9 +34,9 @@ const EQUIPMENT_UNITS = {
   mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:1.0,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
   ct:          {name:"CT Scanner",     modality:"CT",         active_kw:60,  idle_kw:8,   standby_kw:3,   off_kw:0.2,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
   petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:100, scans:400},
-  xray:        {name:"X-ray Room",     modality:"X-ray",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
+  xray:        {name:"Radiography Room",     modality:"Radiography",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
-  mammography: {name:"Mammography",    modality:"X-ray",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
+  mammography: {name:"Mammography",    modality:"Radiography",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
   pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
   workstations:{name:"Workstations",   modality:"Workstation",active_kw:2,   idle_kw:0.8, standby_kw:0.2, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
   // Interventional imaging — power from direct sensor measurements (Vosshenrich et al., AJR 2024, 10.2214/AJR.24.30988).
@@ -123,10 +123,10 @@ const WATER_PER_KWH = 1.8;
 
 // Embodied carbon amortised over hardware lifespan (kgCO₂e / month)
 // MRI 3T: ~70 tCO₂e manufacturing / 15-yr lifespan (ESR PP 2025, Radiol 10.1148/radiol.240398)
-// CT: ~20 tCO₂e / 12 yr; X-ray: ~4 tCO₂e / 10 yr; Ultrasound: ~1 tCO₂e / 7 yr
+// CT: ~20 tCO₂e / 12 yr; Radiography: ~4 tCO₂e / 10 yr; Ultrasound: ~1 tCO₂e / 7 yr
 const EMBODIED_KG_MO = {
   "MRI": 389, "CT": 139, "PET-CT": 278, "Angio/IR": 200, "Fluoroscopy": 80,
-  "X-ray": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
+  "Radiography": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
 };
 
 const PATIENT_KM_RT    = 20;   // avg round-trip patient travel km — replace with local data (ESR sustainability guidance)
@@ -167,7 +167,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     const kgco2e       = kwh * ci;
     const idleWasteKwh = eq.idle_kw * eq.avoidable_idle_h * mult;
     const scans        = eq.scans * mult;
-    const isImaging    = ["MRI","CT","PET-CT","X-ray","Ultrasound"].includes(eq.modality);
+    const isImaging    = ["MRI","CT","PET-CT","Radiography","Ultrasound"].includes(eq.modality);
     return {equipment: eq.name, modality: eq.modality,
             kwh: rnd(kwh), activeKwh: rnd(activeKwh), idleKwh: rnd(idleKwh),
             kgco2e: rnd(kgco2e), scans,
@@ -184,9 +184,9 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   const totalIdle      = byEquipment.reduce((s, e) => s + e.idleWasteKwh, 0);
   const label          = TIME_LABEL[timePeriod];
 
-  // Patient-generating imaging scans only (MRI/CT/X-ray/US) — excludes PACS and Workstation rows
+  // Patient-generating imaging scans only (MRI/CT/Radiography/US) — excludes PACS and Workstation rows
   let imagingScans = fleet
-    .filter(e => ["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","X-ray","Ultrasound"].includes(e.modality))
+    .filter(e => ["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","Radiography","Ultrasound"].includes(e.modality))
     .reduce((s, e) => s + e.scans * mult, 0);
 
   // ── Deployed clinical AI adjustment ──────────────────────────────────────────
@@ -266,7 +266,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
       kwh: rnd(totalKwh), mwh: rnd(totalKwh / 1000),
       tonnesCo2e: rnd(totalCo2 / 1000, 3),
       co2Kg: totalCo2,  // raw Scope 2 kg — used by computeInterventions to avoid double-rounding
-      // divide by imagingScans (MRI/CT/X-ray/US only) not totalScans (which inflates via PACS/WS placeholders)
+      // divide by imagingScans (MRI/CT/Radiography/US only) not totalScans (which inflates via PACS/WS placeholders)
       energyPerScan: imagingScans > 0 ? rnd(totalKwh / imagingScans, 3) : 0,
       idleWasteKwh: rnd(totalIdle), label,
       activeKwh: rnd(totalActiveKwh), idleKwh: rnd(totalIdleKwh),

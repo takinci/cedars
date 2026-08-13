@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildFleet, computeDashboard, computeInterventions } from './model.js';
 
-// One reference department: 2 CT, 1 MRI 1.5T, 3 X-ray, 2 Ultrasound, 1 PACS, 5 workstations.
+// One reference department: 2 CT, 1 MRI 1.5T, 3 Radiography, 2 Ultrasound, 1 PACS, 5 workstations.
 const FLEET = { ct: 2, mri_15t: 1, xray: 3, ultrasound: 2, pacs: 1, workstations: 5 };
 
 describe('buildFleet — scales specs by count', () => {
