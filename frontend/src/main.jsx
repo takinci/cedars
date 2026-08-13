@@ -661,6 +661,8 @@ function downloadCSV(dash) {
     row(['ENERGY TOTALS']),
     row(['Metric', 'Value', 'Unit']),
     row(['Total electricity',   dash.totals.kwh,         'kWh']),
+    row(['  of which equipment', rnd(dash.totals.kwh - dash.storage.kwh, 2), 'kWh']),
+    row(['  of which data storage / archive', dash.storage.kwh, 'kWh']),
     row(['Active scanning',     dash.totals.activeKwh,   'kWh']),
     row(['Idle + standby',      dash.totals.idleKwh,     'kWh']),
     row(['Avoidable idle',      dash.totals.idleWasteKwh,'kWh']),
@@ -697,6 +699,10 @@ function downloadCSV(dash) {
     ...dash.byEquipment.map(r =>
       row([r.equipment, r.modality, r.kwh, r.kgco2e, r.scans, r.energyPerScan ?? 'N/A', r.idleWasteKwh, r.confidence])
     ),
+    // Data storage/archive is part of the total electricity but is not a device — list it so the
+    // breakdown reconciles with Total electricity above.
+    row([`Data storage / archive (${dash.storage.storedTB} TB over ${dash.storage.retentionYears} yr, ${dash.storage.cloud ? 'cloud' : 'on-prem'})`,
+      'Storage', dash.storage.kwh, dash.storage.co2, '', 'N/A', '', 'estimated']),
   ];
 
   const blob = new Blob([lines.join('\n')], {type: 'text/csv'});
@@ -2170,10 +2176,11 @@ function App() {
           <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>1. Energy consumption</h2>
             <div className="cards">
-              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh + landingAIKwh)}  sub={`All scanners, PACS, workstations${landingAIOpen?' and AI tools':''}.`} style={{gridColumn:'span 4'}}/>
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh + landingAIKwh)}  sub={`Scanners, PACS, workstations${dash.storage.kwh>0?', and data storage':''}${landingAIOpen?', and AI tools':''}.`} style={{gridColumn:'span 4'}}/>
               <Card icon={<Activity/>}     title={`Active scanning ${dash.totals.label}`}    value={fmtKwh(dash.totals.activeKwh)}            sub={`${dash.totals.activePct}% of total — energy during actual scan acquisition.`}/>
               <Card icon={<TrendingDown/>} title={`Idle + standby ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleKwh)}              sub={`${dash.totals.idlePct}% of total — between scans and overnight. Primary optimisation target.`}/>
               <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}         sub="Recoverable by standby / power-off policies."/>
+              {dash.storage.kwh > 0 && <Card icon={<Database/>} title={`Data storage / archive ${dash.totals.label}`} value={fmtKwh(dash.storage.kwh)} sub={`${dash.storage.storedTB} TB held over ${dash.storage.retentionYears} yr (${dash.storage.cloud?'cloud':'on-prem'}) at ${dash.storage.intensity} kWh/TB/yr. Part of the total above — configure in Infrastructure.`}/>}
               <Card icon={<Activity/>}     title="Energy per imaging scan"                   value={`${dash.totals.energyPerScan} kWh`}       sub="Total ÷ all scans. Use for modality benchmarking and protocol optimisation."/>
               {landingAIOpen && Object.keys(landingAITools).length>0 && <Card icon={<Cpu/>} title={`AI tools estimate ${dash.totals.label}`} value={fmtKwh(landingAIKwh)} sub={`${Object.keys(landingAITools).length} tool(s): ${Object.keys(landingAITools).map(k=>AI_PRESETS.find(p=>p.key===k)?.label??k).join(', ')}. For full analysis use AI Dashboard.`}/>}
               {sciPerStudy !== null && <Card icon={<Target/>} title="SCI — carbon per imaging study" value={`${sciPerStudy} kgCO₂e`} sub={`Software Carbon Intensity (Green Software Foundation): operational CO₂ (${dash.totals.energyPerScan} kWh × ${dash.ci} CI) + embodied carbon per study. Lower is better. (Doo et al. JACR 2024)`} style={{gridColumn:'span 4'}}/>}
@@ -2230,6 +2237,7 @@ function App() {
           <div id="dash-charts" className="aiSection charts" style={{marginTop:28}}>
             <section><h2>Energy by equipment</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartEnergy} options={energyBarOptions}/></Suspense></section>
             <section><h2>Carbon (Scope 2) by equipment</h2><Suspense fallback={<div style={{height:200}}/>}><Doughnut data={chartCo2}/></Suspense></section>
+            {dash.storage.kwh > 0 && <p className="note" style={{gridColumn:'1/-1',marginTop:4}}>Device bars sum to equipment energy only; the total also includes {fmtKwh(dash.storage.kwh)} of data storage/archive (shown separately in Energy consumption and Infrastructure).</p>}
           </div>
 
           )}
