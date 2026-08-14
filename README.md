@@ -125,6 +125,7 @@ Every default value is sourced from peer-reviewed literature and listed in **[so
 
 | Area | Source |
 |---|---|
+| Sustainability framework & policy (multi-society) | Rockall et al. *J Am Coll Radiol* 2025 · DOI [10.1016/j.jacr.2025.02.009](https://doi.org/10.1016/j.jacr.2025.02.009) |
 | MRI active power (≈30 kW, 3T) | Heye et al. *J Magn Reson Imaging* 2023 · DOI [10.1002/jmri.28994](https://doi.org/10.1002/jmri.28994) |
 | CT active power (40–80 kW) | Acra 2024 · DOI [10.1016/j.acra.2024.05.004](https://doi.org/10.1016/j.acra.2024.05.004) |
 | Interventional imaging power (direct sensor) | Vosshenrich et al. *AJR* 2024 · DOI [10.2214/AJR.24.30988](https://doi.org/10.2214/AJR.24.30988) |
