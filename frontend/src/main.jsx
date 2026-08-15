@@ -394,9 +394,12 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // ── Phase 1: Training ────────────────────────────────────────────────────
   // trainKwhCustom: GPU-derived energy (tdpKw × n × hours × PUE) — arch factor already baked in.
   // Default: literature estimate scaled by architecture and model size (arch.trainFactor).
+  // Default training estimate scales with model size × input elements vs the library reference,
+  // consistent with inference (Green AI). Unedited library configs have ratio 1 → unchanged.
+  const trainSizeRatio = model.trainSizeRatio || 1;
   const trainKwhTotal = trainKwhCustom !== null
     ? rnd(trainKwhCustom, 0)
-    : rnd(trainMwhBase * 1000 * arch.trainFactor, 0);
+    : rnd(trainMwhBase * 1000 * arch.trainFactor * trainSizeRatio, 0);
   const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
   const trainGpuHours  = rnd(trainKwhTotal / model.gpuKw, 0); // estimated GPU compute time
   const trainKwhMonth  = rnd(trainKwhTotal / DEPLOY_MO, 2);   // amortised over deployment
@@ -477,7 +480,11 @@ function aiResultFor(cfg, region, customCi, equipment) {
   const baseSlices = lib.dim === '3D' ? lib.slices : 1;
   const basePixels = lib.resolution * lib.resolution * baseSlices;
   const pixels     = resolution * resolution * slices;
-  const inferSecDerived = rnd(lib.inferSec * (paramsM / lib.paramsM) * (pixels / basePixels), 3);
+  // Size ratio vs the library reference: model size × number of processed elements (pixels for 2D,
+  // voxels for 3D). Scales BOTH inference and the default training estimate, consistently
+  // (Green AI: FLOPs ∝ params × input elements). Unedited library configs have ratio 1.
+  const sizeRatio  = (paramsM / lib.paramsM) * (pixels / basePixels);
+  const inferSecDerived = rnd(lib.inferSec * sizeRatio, 3);
   const inferSecManual  = parseFloat(cfg.inferSec) > 0 ? parseFloat(cfg.inferSec) : null;
   const inferSecAuto    = inferSecManual === null;
   // Token-based (LLM / agentic) fields — only meaningful when the library entry uses tokens.
@@ -486,7 +493,7 @@ function aiResultFor(cfg, region, customCi, equipment) {
   const callsPerTask  = Math.max(1, parseInt(cfg.callsPerTask)  || lib.callsPerTask  || 1);
   const tokensPerCall = Math.max(0, parseFloat(cfg.tokensPerCall) || lib.tokensPerCall || 0);
   const model = {
-    gpuKw: lib.gpuKw, trainMwh: lib.trainMwh, embCo2Kg: lib.embCo2Kg,
+    gpuKw: lib.gpuKw, trainMwh: lib.trainMwh, embCo2Kg: lib.embCo2Kg, trainSizeRatio: sizeRatio,
     paramsM, dim, resolution, slices,
     unit, whPer1kTokens, callsPerTask, tokensPerCall,
     inferSec:   inferSecManual ?? inferSecDerived,
