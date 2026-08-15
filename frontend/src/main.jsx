@@ -727,7 +727,8 @@ function downloadAICSV(ai, scen, region) {
     row(['Model template', AI_MODEL_BY_KEY[scen.modelKey]?.label ?? scen.modelKey, 'Reference', AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? '']),
     row(['Architecture', scen.architecture, 'Model size', ai.modelSize]),
     row(['Parameters (M)', ai.paramsM, 'Dimensionality', ai.dim]),
-    row(['Input resolution (px)', ai.resolution, 'Slices', ai.dim==='3D' ? ai.slices : 'n/a']),
+    row([ai.dim==='3D'?'In-plane resolution (px)':'Input resolution (px)', ai.resolution, ai.dim==='3D'?'Through-plane slices':'Slices', ai.dim==='3D' ? ai.slices : 'n/a']),
+    ...(ai.dim==='3D' ? [row(['Input volume (voxels)', Math.round((parseFloat(ai.resolution)||0)**2 * (parseFloat(ai.slices)||0))])] : []),
     row(['Precision / AMP', scen.precision, 'Cloud CI (kgCO2e/kWh)', ai.cloudCi]),
     row(['PUE', ai.pue]),
     blank,
@@ -2395,7 +2396,7 @@ function App() {
                 <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced model parameters</span>
                 <span style={{fontSize:10,color:'#90a4ae'}}>{ai.unit==='tokens'
                   ? `${ai.callsPerTask} call${ai.callsPerTask===1?'':'s'} × ${ai.tokensPerCall.toLocaleString()} tok · ${ai.tokensPerStudy.toLocaleString()} tok/study · ${rnd(ai.inference.kwhPerStudy*1000,2)} Wh`
-                  : `${scen.paramsM}M params · ${scen.resolution}px${scen.dim==='3D'?` × ${scen.slices} slices`:''} · ${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}</span>
+                  : `${scen.paramsM}M params · ${scen.dim==='3D'?`${scen.resolution}×${scen.resolution}×${scen.slices} voxels`:`${scen.resolution}px`} · ${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}</span>
                 <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{modelExpanded ? '▴ collapse' : '▾ expand'}</span>
               </button>
               {modelExpanded && (
@@ -2445,11 +2446,11 @@ function App() {
                   <>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:6}}>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
-                      Input resolution (px)
+                      {scen.dim==='3D' ? 'In-plane resolution (px/side)' : 'Input resolution (px)'}
                       <input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11,opacity:scen.dim==='3D'?1:0.5}}>
-                      Slices / volume
+                      {scen.dim==='3D' ? 'Through-plane slices' : 'Slices (3D only)'}
                       <input type="number" min="1" value={scen.slices} disabled={scen.dim!=='3D'} onChange={e=>setS('slices',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:scen.dim==='3D'?'white':'#f5f5f5'}}/>
                     </label>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
@@ -2457,8 +2458,12 @@ function App() {
                       <input type="number" min="0" step="0.1" value={scen.inferSec} onChange={e=>setS('inferSec',e.target.value)} placeholder={`auto: ${ai.inferSecDerived}`} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
                   </div>
+                  {scen.dim==='3D' && (() => {
+                    const r = parseFloat(scen.resolution)||0, s = parseFloat(scen.slices)||0, v = r*r*s;
+                    return <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>Volume <strong>{r} × {r} × {s}</strong> ≈ <strong>{v>=1e6?(v/1e6).toFixed(1)+'M':Math.round(v).toLocaleString()} voxels</strong>. Energy scales with voxel count (Green AI 2020; Selvan et al. 2022).</p>;
+                  })()}
                   <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
-                    Inference time auto-scales with <strong>params × resolution²{scen.dim==='3D'?' × slices':''}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). Enter a measured value to override.
+                    Inference time auto-scales with <strong>params × {scen.dim==='3D'?'in-plane² × slices (voxels)':'resolution²'}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). Enter a measured value to override.
                   </p>
                   </>
                   )}
@@ -2548,7 +2553,7 @@ function App() {
             <h2 style={{marginBottom:12}}>Model details</h2>
             <div className="cards">
               <Card icon={<Brain/>}      title="Architecture"         value={scen.architecture}                         sub={ai.archDesc}/>
-              <Card icon={<Cpu/>}        title="Model size"           value={ai.modelSize}                              sub={`${ai.paramsM.toLocaleString()}M params · ${ai.dim}${ai.dim==='3D'?` · ${ai.slices} slices`:''} · ${ai.resolution}px input.`}/>
+              <Card icon={<Cpu/>}        title="Model size"           value={ai.modelSize}                              sub={`${ai.paramsM.toLocaleString()}M params · ${ai.dim} · ${ai.dim==='3D'?`${ai.resolution}×${ai.resolution}×${ai.slices} voxels`:`${ai.resolution}px input`}.`}/>
               <Card icon={<Target/>}     title={`Reported ${ai.accuracyMetric}`} value={`${rnd(ai.accuracy*100,1)}%`}     sub={`Your reported value — default from ${AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'reference'}. Edit below. CEDARS does not predict performance.`}/>
               <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub={`Reported ${ai.accuracyMetric} % per monthly inference kWh. Use to compare models. (Green AI metric)`}/>
             </div>
