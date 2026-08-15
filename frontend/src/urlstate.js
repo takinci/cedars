@@ -35,7 +35,7 @@ export const SCEN_DEFAULTS = {
   resolution: '224', slices: '1', inferSec: '', whPer1kTokens: '', callsPerTask: '1',
   tokensPerCall: '', accuracyPct: '84', accuracyMetric: 'AUC', scanTimeReductPct: '0',
   lowValueReductPct: '12', trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500',
-  deployMonths: '36',
+  deployMonths: '36', datasetSize: '', epochs: '',
 };
 
 // short key ↔ field name. Keys must stay unique across BOTH maps (they share one query string).
@@ -50,6 +50,7 @@ const SCEN_KEYS = {
   is: 'inferSec', wt: 'whPer1kTokens', ct: 'callsPerTask', tc: 'tokensPerCall', ap: 'accuracyPct',
   am: 'accuracyMetric', st: 'scanTimeReductPct', lv: 'lowValueReductPct', tg: 'trainGpu',
   tn: 'trainNumGpus', th: 'trainHours', ts: 'testStudies', dp: 'deployMonths',
+  ds: 'datasetSize', ne: 'epochs',
 };
 
 // equipment: `eq=ct~2-mri_15t~1` (non-zero devices only; `~` = count sep, `-` = item sep — both

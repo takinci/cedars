@@ -466,6 +466,10 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
 // candidate) under a given department context. Shared by the AI dashboard and the
 // benchmark so both use identical math. Returns the computeAI object plus the derived
 // inference time and a lifetime-CO₂ roll-up convenient for comparison.
+// Reference training scale that the library `trainMwh` estimates implicitly assume — used to
+// (optionally) rescale the DEFAULT training energy when the user supplies a dataset size + epochs.
+const TRAIN_REF_IMAGES = 50000;   // ~typical medical-imaging training set
+const TRAIN_REF_EPOCHS = 100;     // ~typical epoch count
 function aiResultFor(cfg, region, customCi, equipment) {
   const gpuPreset = GPU_PRESETS[cfg.trainGpu];
   const trainH    = parseFloat(cfg.trainHours) || 0;
@@ -485,6 +489,13 @@ function aiResultFor(cfg, region, customCi, equipment) {
   // (Green AI: FLOPs ∝ params × input elements). Unedited library configs have ratio 1.
   const sizeRatio  = (paramsM / lib.paramsM) * (pixels / basePixels);
   const inferSecDerived = rnd(lib.inferSec * sizeRatio, 3);
+  // Optional: scale the DEFAULT training estimate by dataset size × epochs vs the reference the
+  // library trainMwh assumes. Both blank → ratio 1 (no change). Inference is unaffected.
+  const dsImages = parseFloat(cfg.datasetSize) || 0;
+  const dsEpochs = parseFloat(cfg.epochs) || 0;
+  const dataEpochRatio = (dsImages > 0 && dsEpochs > 0)
+    ? (dsImages * dsEpochs) / (TRAIN_REF_IMAGES * TRAIN_REF_EPOCHS)
+    : 1;
   const inferSecManual  = parseFloat(cfg.inferSec) > 0 ? parseFloat(cfg.inferSec) : null;
   const inferSecAuto    = inferSecManual === null;
   // Token-based (LLM / agentic) fields — only meaningful when the library entry uses tokens.
@@ -493,7 +504,7 @@ function aiResultFor(cfg, region, customCi, equipment) {
   const callsPerTask  = Math.max(1, parseInt(cfg.callsPerTask)  || lib.callsPerTask  || 1);
   const tokensPerCall = Math.max(0, parseFloat(cfg.tokensPerCall) || lib.tokensPerCall || 0);
   const model = {
-    gpuKw: lib.gpuKw, trainMwh: lib.trainMwh, embCo2Kg: lib.embCo2Kg, trainSizeRatio: sizeRatio,
+    gpuKw: lib.gpuKw, trainMwh: lib.trainMwh, embCo2Kg: lib.embCo2Kg, trainSizeRatio: sizeRatio * dataEpochRatio,
     paramsM, dim, resolution, slices,
     unit, whPer1kTokens, callsPerTask, tokensPerCall,
     inferSec:   inferSecManual ?? inferSecDerived,
@@ -2494,7 +2505,7 @@ function App() {
                     <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Training assumptions</span>
                     {estKwh !== null
                       ? <span style={{fontSize:10,background:'#e8f5e9',color:'#2E7D32',padding:'1px 8px',borderRadius:8,fontWeight:700}}>{estKwh} kWh</span>
-                      : <span style={{fontSize:10,color:'#90a4ae'}}>model default · {(ai.trainMwhBase * 1000).toLocaleString()} kWh</span>
+                      : <span style={{fontSize:10,color:'#90a4ae'}}>model default · {ai.training.kwhTotal.toLocaleString()} kWh</span>
                     }
                     <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{trainExpanded ? '▴ collapse' : '▾ expand'}</span>
                   </button>
@@ -2517,6 +2528,16 @@ function App() {
                           <input type="number" min="0" step="0.5" value={scen.trainHours} onChange={e=>setS('trainHours',e.target.value)} placeholder="e.g. 48" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                         </label>
                       </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:6}}>
+                        <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                          Training set (images) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
+                          <input type="number" min="0" value={scen.datasetSize} onChange={e=>setS('datasetSize',e.target.value)} placeholder={`ref ${TRAIN_REF_IMAGES.toLocaleString()}`} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                        </label>
+                        <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                          Epochs <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
+                          <input type="number" min="0" value={scen.epochs} onChange={e=>setS('epochs',e.target.value)} placeholder={`ref ${TRAIN_REF_EPOCHS}`} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                        </label>
+                      </div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                         <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                           Test set (studies)
@@ -2527,7 +2548,7 @@ function App() {
                           <input type="number" min="1" value={scen.deployMonths} onChange={e=>setS('deployMonths',e.target.value)} placeholder="36" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                         </label>
                       </div>
-                      <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>GPU TDP × count × hours × PUE. PUE from cloud/deployment above. Lifespan affects amortisation.</p>
+                      <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>Measured path: GPU TDP × count × hours × PUE. Otherwise the model-default estimate scales with params × voxels — and, when you fill <strong>training set × epochs</strong>, by (images × epochs) ÷ ({TRAIN_REF_IMAGES.toLocaleString()} × {TRAIN_REF_EPOCHS}) too. Lifespan affects amortisation.</p>
                     </div>
                   )}
                 </div>
