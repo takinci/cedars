@@ -8,6 +8,7 @@ export const CARBON_INTENSITY = {
   "France":         0.06,  // ~70 % nuclear; OWID 2023
   "Germany":        0.36,  // coal/gas/renewable mix; OWID 2023
   "United States":  0.38,  // national grid average; OWID 2023
+  "US SERC-TVA (Tennessee Valley)": 0.41, // EPA eGRID2023 subregion SRTV — total output ≈903 lbCO₂e/MWh
   "United Kingdom": 0.20,  // gas + offshore wind; OWID 2023
   "EU average":     0.237, // Vosshenrich et al. / Eurostat 2022
   "Global average": 0.473, // Vosshenrich et al. — conservative global estimate
@@ -21,6 +22,7 @@ export const ELECTRICITY_PRICE = {
   "France":         {price:0.23, sym:'€'},
   "Germany":        {price:0.28, sym:'€'},
   "United States":  {price:0.13, sym:'$'},
+  "US SERC-TVA (Tennessee Valley)": {price:0.12, sym:'$'}, // Southeast/TVA commercial estimate (editable)
   "United Kingdom": {price:0.28, sym:'£'},
   "EU average":     {price:0.24, sym:'€'},
   "Global average": {price:0.15, sym:'$'},

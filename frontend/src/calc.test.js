@@ -43,6 +43,7 @@ describe('Carbon intensity — getCI', () => {
   it('returns the regional default', () => {
     expect(getCI('France')).toBe(0.06);
     expect(getCI('Global average')).toBe(0.473);
+    expect(getCI('US SERC-TVA (Tennessee Valley)')).toBe(0.41); // EPA eGRID2023 SRTV
   });
   it('uses the custom value only for "Editable custom"', () => {
     expect(getCI('Editable custom', '0.5')).toBe(0.5);

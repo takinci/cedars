@@ -9,6 +9,7 @@ CEDARS stores uncertain literature values as transparent, editable defaults with
 | ID | Source | Used for |
 |----|--------|----------|
 | OWID-CI | Our World in Data. *Carbon Intensity of Electricity*. https://ourworldindata.org/grapher/carbon-intensity-electricity | Regional kgCO₂e/kWh defaults in `CARBON_INTENSITY` |
+| eGRID-2023 | US EPA. *Emissions & Generation Resource Integrated Database (eGRID2023).* https://www.epa.gov/egrid | US subregion grid intensity — SERC Tennessee Valley (SRTV) total output rate ≈903 lbCO₂e/MWh = **0.41 kgCO₂e/kWh** (the `US SERC-TVA` option, for US-Southeast validation) |
 | GPP | GlobalPetrolPrices. *Electricity Prices*. https://www.globalpetrolprices.com/electricity_prices/ | Optional future cost module |
 
 **Notes on `CARBON_INTENSITY` defaults (all kgCO₂e/kWh, OWID 2022–2023):**
@@ -16,6 +17,7 @@ CEDARS stores uncertain literature values as transparent, editable defaults with
 - France 0.06 — ~70 % nuclear
 - Germany 0.36 — mixed fossil/renewable transition
 - United States 0.38 — national average
+- US SERC-TVA (Tennessee Valley / SRTV) 0.41 — EPA eGRID2023 subregion total output rate (≈903 lbCO₂e/MWh); added for validation against US-Southeast studies (e.g. Thiel et al. 2024). Other SERC subregions for reference: SRVC (Virginia/Carolina) 0.27, SRSO (South) 0.38, SRMV (Mississippi Valley) 0.34
 - United Kingdom 0.20 — gas + growing offshore wind
 - EU average 0.25 — Eurostat/EEA mean
 - Editable custom 0.30 — placeholder; replace with local utility data
