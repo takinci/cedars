@@ -3202,7 +3202,8 @@ function App() {
               <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={v=>setEco('cloudProvider',v)}/>
               <label style={{opacity:0.9}}>
                 Grid region <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>(follows this page)</span>
-                <input type="text" value={settings.region} readOnly title="The label uses the grid selected for the AI & Informatics page — change it in the region selector at the top / Radiology Department." style={{background:'#f5f5f5',cursor:'not-allowed'}}/>
+                <input type="text" value={settings.region} readOnly title="Change the grid region on the Home page." style={{background:'#f5f5f5',cursor:'not-allowed'}}/>
+                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>To change it, set <strong>Region / grid</strong> on the <strong>Home</strong> page — the whole tool (this label included) uses that one grid.</span>
               </label>
               <label>
                 Renewable energy (%)
