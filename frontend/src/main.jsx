@@ -1456,7 +1456,7 @@ function App() {
       ? (parseFloat(ecoLabel.customTdpW) || 300) / 1000
       : (GPU_PRESETS[ecoLabel.gpuModel]?.tdpKw ?? 0.3);
     const cf = CLOUD[ecoLabel.cloudProvider] ?? CLOUD['Local compute'];
-    const ci = getCI(ecoLabel.region, settings.customCi);
+    const ci = getCI(settings.region, settings.customCi); // grid follows the AI & Informatics page region
     const gpuCount = Math.max(1, parseInt(ecoLabel.gpuCount) || 1);
     const hoursPerRun = parseFloat(ecoLabel.trainingHoursPerRun) || 0;
     const numRuns = Math.max(1, parseInt(ecoLabel.numRuns) || 1);
@@ -1515,7 +1515,7 @@ function App() {
       datasetSize: ecoLabel.datasetSize ? `${parseFloat(ecoLabel.datasetSize).toLocaleString()} studies` : '—',
       gpuHardware: gpuCount > 1 ? `${gpuCount}× ${gpuLabel}` : gpuLabel,
       totalGpuHours, numRuns, energyPerRunKwh, totalEnergyKwh, trainCo2,
-      renewablePct, cloudProvider: ecoLabel.cloudProvider, region: ecoLabel.region,
+      renewablePct, cloudProvider: ecoLabel.cloudProvider, region: settings.region,
       ci, effectiveCi, waterLitres, pue: cf.pue,
       hasInference: inferStudies > 0 && inferKwhPerStudy > 0,
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
@@ -1527,7 +1527,7 @@ function App() {
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [ecoLabel, settings.customCi]);
+  }, [ecoLabel, settings.region, settings.customCi]);
 
   const deptLabelData = useMemo(() => {
     // Live-by-default: derive from the Radiology Department state; the EcoLabel form
@@ -3107,6 +3107,12 @@ function App() {
                 ...e,
                 ...(scen.architecture                 ? {architecture:      scen.architecture}                              : {}),
                 ...(ARCH_TASK[scen.architecture]       ? {taskType:          ARCH_TASK[scen.architecture]}                   : {}),
+                ...(scen.paramsM                       ? {paramsMillion:     String(scen.paramsM)}                           : {}),
+                ...(GPU_PRESETS[scen.trainGpu]         ? {gpuModel:          scen.trainGpu}                                  : {}),
+                ...(parseInt(scen.trainNumGpus) > 0    ? {gpuCount:          String(parseInt(scen.trainNumGpus))}            : {}),
+                ...(parseFloat(scen.trainHours) > 0    ? {trainingHoursPerRun: String(scen.trainHours)}                     : {}),
+                ...(scen.cloudProvider                 ? {cloudProvider:     scen.cloudProvider}                             : {}),
+                ...(parseInt(scen.deployMonths) > 0    ? {deployMonths:      String(parseInt(scen.deployMonths))}            : {}),
                 ...(dash.scopes.imagingScans > 0       ? {inferStudiesMonth: String(Math.round(dash.scopes.imagingScans))}   : {}),
                 ...tokenPrefill,
               }));
@@ -3118,7 +3124,7 @@ function App() {
               <ArrowRight size={13}/> Pre-fill from dashboards
             </button>
             <span style={{fontSize:11,color:'#607d66'}}>
-              Copies architecture &amp; task from AI dashboard · Inference studies/month from Radiology dashboard · inference energy from the AI model (token-based for LLM/agentic, kWh/study otherwise)
+              Copies the model specs (architecture, task, parameters, GPU/training, cloud, deployment) and inference energy from the AI model above · inference studies/month from the Radiology dashboard · grid region follows this page
             </span>
           </div>
 
@@ -3194,7 +3200,10 @@ function App() {
             <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Deployment context</h2>
             <div className="grid grid3">
               <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={v=>setEco('cloudProvider',v)}/>
-              <Sel label="Grid region" value={ecoLabel.region} options={META.regions} onChange={v=>setEco('region',v)}/>
+              <label style={{opacity:0.9}}>
+                Grid region <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>(follows this page)</span>
+                <input type="text" value={settings.region} readOnly title="The label uses the grid selected for the AI & Informatics page — change it in the region selector at the top / Radiology Department." style={{background:'#f5f5f5',cursor:'not-allowed'}}/>
+              </label>
               <label>
                 Renewable energy (%)
                 <input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/>
