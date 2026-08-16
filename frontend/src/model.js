@@ -72,12 +72,13 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // mri_7t idle_kw/off_kw unchanged — Woolen's study didn't include 7T (research-only) scanners,
 // and higher idle/off draw is physically plausible for their larger, more complex cryo/RF systems.
 // 0.35T (mri_035t) is unaffected — permanent magnet, no cryocooler, off ≈ idle already holds.
-// Workstations: corrected from an earlier 2 kW/0.8 kW/0.2 kW/0.05 kW default that overstated
-// Thiel-2024's own reported figure by ~12×. Thiel et al. 2024 (Radiol-240398 — the same paper
-// cited here) states reading-room workstations were modelled at 170 W active with 60% daily
-// use; idle/standby/off below are that 170 W scaled down by the SAME proportions as the old
-// (uncorrected) default, since Thiel's own methodology only reports one active figure, not a
-// 4-state breakdown — treat idle/standby/off as a rougher extrapolation than active_kw itself.
+// Workstations: corrected 2026-08 from an earlier 2 kW/0.8 kW/0.2 kW/0.05 kW default (which was
+// ~24x too high) to values directly measured by Büttner et al. 2021 (Eur J Radiol Open, "Switching
+// off for future" — direct power measurement of a real reading workstation): 117.4 W powered on,
+// 54.2 W standby, 18.2 W off. Deliberately NOT sourced from any paper used as a validation
+// benchmark elsewhere for this tool — see sources.md. Büttner's model doesn't distinguish "idle"
+// from "on" (a workstation not yet in standby draws the same whether actively used or just
+// sitting there), so idle_kw = active_kw here.
 const EQUIPMENT_UNITS = {
   mri_035t:    {name:"MRI (0.35T)",    modality:"MRI",        active_kw:6,   idle_kw:1.5, standby_kw:0.5, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:80,  scans:800},
   mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:15,  standby_kw:7.5, off_kw:10,   active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1000},
@@ -89,7 +90,7 @@ const EQUIPMENT_UNITS = {
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   mammography: {name:"Mammography",    modality:"Radiography",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
   pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
-  workstations:{name:"Workstations",   modality:"Workstation",active_kw:0.17, idle_kw:0.068, standby_kw:0.017, off_kw:0.005, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
+  workstations:{name:"Workstations",   modality:"Workstation",active_kw:0.1174, idle_kw:0.1174, standby_kw:0.0542, off_kw:0.0182, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
   // Interventional imaging — power from direct sensor measurements (Vosshenrich et al., AJR 2024, 10.2214/AJR.24.30988).
   // Hours from paper Table 3 annual projections ÷ 12. No distinct standby mode; standby_kw = off_kw.
   // IR suite = Artis pheno (monoplanar). Fluoroscopy = Artis zee multipurpose. Chiller not included in sensor.
@@ -160,8 +161,8 @@ const INTERVENTIONS = {
   "Move computation to lower-carbon regions":{kwh:    0, co2Pct: 30, note: "Same energy, lower-carbon grid. (OWID carbon intensity data)"},
   // Scope 2 elimination via green tariff or PPA (ESR Green Imaging)
   "Use renewable electricity":               {kwh:    0, co2Pct: 80, note: "Scope 2 decarbonisation via green tariff or PPA. (ESR Green Imaging)"},
-  // film processor and laser printer loads (Radiol 2024, 10.1148/radiol.240398)
-  "Reduce paper and film printing":          {kwh:  120, note: "Printer and film processor elimination. (Radiol 2024)"},
+  // film processor and laser printer loads — uncited, editable estimate
+  "Reduce paper and film printing":          {kwh:  120, note: "Printer and film processor elimination."},
   // embodied carbon amortised over more years (ESR PP 2025, Scope 3)
   "Extend hardware lifetime":                {kwh:    0, co2Pct: 15, note: "Amortises embodied carbon over more years. (ESR PP 2025)"},
   // virtualisation / right-sizing (Clinical-AI PDF, Doo 2024)
@@ -189,7 +190,7 @@ const CLOUD = {
 const WATER_PER_KWH = 1.8;
 
 // Embodied carbon amortised over hardware lifespan (kgCO₂e / month)
-// MRI 3T: ~70 tCO₂e manufacturing / 15-yr lifespan (ESR PP 2025, Radiol 10.1148/radiol.240398)
+// MRI 3T: ~70 tCO₂e manufacturing / 15-yr lifespan (ESR PP 2025)
 // CT: ~20 tCO₂e / 12 yr; Radiography: ~4 tCO₂e / 10 yr; Ultrasound: ~1 tCO₂e / 7 yr
 const EMBODIED_KG_MO = {
   "MRI": 389, "CT": 139, "PET-CT": 278, "Angio/IR": 200, "Fluoroscopy": 80,
