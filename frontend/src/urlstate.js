@@ -9,7 +9,7 @@
 //  - Interventions are encoded as indices into ALL_INTERVENTIONS (stable order; append new ones at
 //    the end) to keep URLs compact rather than embedding long human-readable strings.
 import {
-  DEFAULT_EQUIPMENT, INTERVENTIONS,
+  DEFAULT_EQUIPMENT, INTERVENTIONS, OVERRIDABLE_FIELDS,
   STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER,
 } from './model.js';
 
@@ -27,6 +27,7 @@ export const SETTINGS_DEFAULTS = {
   intendedUse: "Estimate annual footprint", region: "Switzerland", metricType: "Energy",
   timePeriod: "Monthly", customCi: "0.30", actualStudiesYear: '', staffCommuteKm: '15',
   electricityPrice: '', storageRetentionYears: '10', storageCloud: false, storageReformats: 'all',
+  storageIntensityCustom: '',
 };
 export const SCEN_DEFAULTS = {
   intervention: "Turn MRI/CT scanners off overnight", cloudProvider: "Local compute",
@@ -42,8 +43,8 @@ export const SCEN_DEFAULTS = {
 const SETTINGS_KEYS = {
   u: 'intendedUse', r: 'region', m: 'metricType', t: 'timePeriod', c: 'customCi',
   a: 'actualStudiesYear', km: 'staffCommuteKm', ep: 'electricityPrice',
-  sy: 'storageRetentionYears', sf: 'storageReformats',
-}; // storageCloud (boolean) + equipment handled specially below.
+  sy: 'storageRetentionYears', sf: 'storageReformats', sti: 'storageIntensityCustom',
+}; // storageCloud (boolean) + equipment + equipmentOverrides handled specially below.
 const SCEN_KEYS = {
   si: 'intervention', cp: 'cloudProvider', cr: 'cloudRegion', ss: 'scannerState', mk: 'modelKey',
   ar: 'architecture', pr: 'precision', pm: 'paramsM', dm: 'dim', rs: 'resolution', sl: 'slices',
@@ -71,6 +72,37 @@ const decodeEquip = str => {
   return out;
 };
 
+// equipmentOverrides: `eo=ct:active_kw=45,scans=1200|workstations:active_kw=0.6` — measured-data
+// overrides for a device's power/scan-volume fields (see OVERRIDABLE_FIELDS in model.js). `|`
+// separates devices, `:` splits key from its field list, `,` separates fields, `=` splits
+// field=value. URLSearchParams escapes these automatically, so no manual encoding needed.
+const encodeEquipOverrides = ov => Object.entries(ov || {})
+  .map(([key, fields]) => {
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_EQUIPMENT, key)) return null;
+    const fieldsStr = OVERRIDABLE_FIELDS
+      .filter(f => fields?.[f] != null && fields[f] !== '' && !isNaN(parseFloat(fields[f])))
+      .map(f => `${f}=${fields[f]}`).join(',');
+    return fieldsStr ? `${key}:${fieldsStr}` : null;
+  })
+  .filter(Boolean).join('|');
+const decodeEquipOverrides = str => {
+  const out = {};
+  if (!str) return out;
+  for (const devicePart of str.split('|')) {
+    const [key, fieldsStr] = devicePart.split(':');
+    if (!key || !fieldsStr || !Object.prototype.hasOwnProperty.call(DEFAULT_EQUIPMENT, key)) continue;
+    const fields = {};
+    for (const pair of fieldsStr.split(',')) {
+      const [f, v] = pair.split('=');
+      if (f && OVERRIDABLE_FIELDS.includes(f) && v !== undefined && v !== '' && !isNaN(parseFloat(v))) {
+        fields[f] = parseFloat(v);
+      }
+    }
+    if (Object.keys(fields).length) out[key] = fields;
+  }
+  return out;
+};
+
 const encodeInterv = names => (names || [])
   .map(n => ALL_INTERVENTIONS.indexOf(n)).filter(i => i >= 0).join('-');
 const decodeInterv = str => !str ? []
@@ -88,6 +120,8 @@ export function encodeConfig({ settings = {}, scen = {}, activeInterventions = [
     q.set('sc', settings.storageCloud ? '1' : '0');
   const eqStr = encodeEquip(settings.equipment);
   if (eqStr) q.set('eq', eqStr);
+  const eoStr = encodeEquipOverrides(settings.equipmentOverrides);
+  if (eoStr) q.set('eo', eoStr);
   for (const [k, f] of Object.entries(SCEN_KEYS)) {
     const v = scen[f];
     if (v !== undefined && String(v) !== String(SCEN_DEFAULTS[f])) q.set(k, v);
@@ -106,6 +140,7 @@ export function decodeConfig(hashOrStr) {
   for (const [k, f] of Object.entries(SETTINGS_KEYS)) if (q.has(k)) settings[f] = q.get(k);
   if (q.has('sc')) settings.storageCloud = q.get('sc') === '1';
   if (q.has('eq')) settings.equipment = decodeEquip(q.get('eq'));
+  if (q.has('eo')) settings.equipmentOverrides = decodeEquipOverrides(q.get('eo'));
   for (const [k, f] of Object.entries(SCEN_KEYS)) if (q.has(k)) scen[f] = q.get(k);
   const out = {};
   if (Object.keys(settings).length) out.settings = settings;

@@ -357,7 +357,7 @@ const META = {
 // `model` is the effective spec built from the library entry + the user's edits:
 // {gpuKw, inferSec, trainMwh, embCo2Kg, paramsM, dim, resolution, slices,
 //  accuracy (0–1), accuracyMetric, scanTimeReductPct, lowValueReductPct}.
-function computeAI(cloudProvider, region, model, precision, architecture, customCi, equipment, overrides = {}) {
+function computeAI(cloudProvider, region, model, precision, architecture, customCi, equipment, overrides = {}, equipOverrides = {}) {
   // Cloud carbon: use the specific deployment region's grid CI when given (shared with the
   // Infrastructure tab), falling back to the provider's coarse average.
   const baseCf   = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
@@ -386,8 +386,10 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const trainMwhBase = !trainKwhCustom
     ? model.trainMwh
     : null;
-  // Derive scan volume and per-scan energy from the user's equipment fleet
-  const profileDash  = computeDashboard(region, 'Monthly', equipment, customCi);
+  // Derive scan volume and per-scan energy from the user's equipment fleet (respecting any
+  // measured-data equipment overrides, so AI energy-per-scan stays consistent with the
+  // Department dashboard rather than silently reverting to literature defaults).
+  const profileDash  = computeDashboard(region, 'Monthly', equipment, customCi, {}, {}, equipOverrides);
   const STUDIES      = profileDash.scopes.imagingScans;               // imaging scans/month for this profile
   const AVG_SCAN_KWH = profileDash.totals.energyPerScan || 0.5;       // kWh/scan from this profile (fallback 0.5)
 
@@ -470,7 +472,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
 // (optionally) rescale the DEFAULT training energy when the user supplies a dataset size + epochs.
 const TRAIN_REF_IMAGES = 50000;   // ~typical medical-imaging training set
 const TRAIN_REF_EPOCHS = 100;     // ~typical epoch count
-function aiResultFor(cfg, region, customCi, equipment) {
+function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
   const gpuPreset = GPU_PRESETS[cfg.trainGpu];
   const trainH    = parseFloat(cfg.trainHours) || 0;
   const trainN    = Math.max(1, parseInt(cfg.trainNumGpus) || 1);
@@ -480,8 +482,11 @@ function aiResultFor(cfg, region, customCi, equipment) {
   const paramsM    = parseFloat(cfg.paramsM)    || lib.paramsM;
   const dim        = cfg.dim || lib.dim;
   const resolution = parseFloat(cfg.resolution) || lib.resolution;
-  const slices     = dim === '3D' ? (parseFloat(cfg.slices) || lib.slices) : 1;
-  const baseSlices = lib.dim === '3D' ? lib.slices : 1;
+  // Slices/passes per study — independent of architecture dim. A 2D-input model applied
+  // slice-by-slice over a volume (e.g. per-slice CT/MRI segmentation) still processes many
+  // elements per study, same as a true 3D model; only the library default (1 for 2D refs) differs.
+  const slices     = parseFloat(cfg.slices) || lib.slices || 1;
+  const baseSlices = lib.slices || 1;
   const basePixels = lib.resolution * lib.resolution * baseSlices;
   const pixels     = resolution * resolution * slices;
   // Size ratio vs the library reference: model size × number of processed elements (pixels for 2D,
@@ -514,7 +519,7 @@ function aiResultFor(cfg, region, customCi, equipment) {
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion});
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion}, equipOverrides);
   const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
@@ -745,8 +750,8 @@ function downloadAICSV(ai, scen, region) {
     row(['Model template', AI_MODEL_BY_KEY[scen.modelKey]?.label ?? scen.modelKey, 'Reference', AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? '']),
     row(['Architecture', scen.architecture, 'Model size', ai.modelSize]),
     row(['Parameters (M)', ai.paramsM, 'Dimensionality', ai.dim]),
-    row([ai.dim==='3D'?'In-plane resolution (px)':'Input resolution (px)', ai.resolution, ai.dim==='3D'?'Through-plane slices':'Slices', ai.dim==='3D' ? ai.slices : 'n/a']),
-    ...(ai.dim==='3D' ? [row(['Input volume (voxels)', Math.round((parseFloat(ai.resolution)||0)**2 * (parseFloat(ai.slices)||0))])] : []),
+    row([ai.dim==='3D'?'In-plane resolution (px)':'Input resolution (px)', ai.resolution, ai.dim==='3D'?'Through-plane slices':'Slices / passes per study', ai.slices]),
+    ...(ai.slices > 1 ? [row(['Per-study elements (px/voxels)', Math.round((parseFloat(ai.resolution)||0)**2 * (parseFloat(ai.slices)||0))])] : []),
     row(['Precision / AMP', scen.precision, 'Cloud CI (kgCO2e/kWh)', ai.cloudCi]),
     row(['PUE', ai.pue]),
     blank,
@@ -1128,16 +1133,23 @@ function App() {
   // Decode a shared link once: the full configuration (settings + equipment + scenario +
   // interventions) is restored into the relevant state objects below.
   const initCfg = useMemo(() => (typeof window !== 'undefined' ? decodeConfig(window.location.hash) : {}), []);
-  const { equipment: initEquip, ...initSettings } = initCfg.settings || {};
+  const { equipment: initEquip, equipmentOverrides: initEquipOverrides, ...initSettings } = initCfg.settings || {};
 
   // Shared settings — drive all calculations; initialised from the URL hash if present.
   // (storageReformats: 'all' | 'axial' — axial avoids non-essential CT/PET reformats.)
   const [settings, setSettings] = useState(() => ({
     ...SETTINGS_DEFAULTS,
     equipment: {...DEFAULT_EQUIPMENT, ...(initEquip || {})},
+    equipmentOverrides: initEquipOverrides || {},
     ...initSettings,
   }));
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
+  // Measured-data override for one field of one device type (active_kw/idle_kw/standby_kw/
+  // off_kw/scans) — see OVERRIDABLE_FIELDS in model.js. Blank clears back to the default.
+  const setEquipOverride = (key, field, val) => set('equipmentOverrides', {
+    ...settings.equipmentOverrides,
+    [key]: {...(settings.equipmentOverrides[key] || {}), [field]: val},
+  });
   // AI scenario (model spec + cloud + scanner state). SCEN_DEFAULTS is the single source of truth
   // (shared with urlstate.js); restored from a shared link when present.
   const [scen, setScen] = useState(() => ({...SCEN_DEFAULTS, ...(initCfg.scen || {})}));
@@ -1147,7 +1159,7 @@ function App() {
   // Logo / brand → Home & start over: clear the department inputs and label back to blank,
   // return to a clean cedarsleaf.com (hash strips at defaults), and scroll to the top.
   const resetToHome = () => {
-    setSettings({...SETTINGS_DEFAULTS, equipment: {...DEFAULT_EQUIPMENT}});
+    setSettings({...SETTINGS_DEFAULTS, equipment: {...DEFAULT_EQUIPMENT}, equipmentOverrides: {}});
     setDeptLabel({
       deptName: '', hospitalName: '', region: '',
       annualKwh: '', annualStudies: '', renewablePct: '0',
@@ -1191,6 +1203,7 @@ function App() {
   const toggleAi = id => setAiOpen(o => ({...o, [id]: !o[id]}));
   const [trainExpanded, setTrainExpanded] = useState(false);
   const [modelExpanded, setModelExpanded] = useState(false);
+  const [advEquipExpanded, setAdvEquipExpanded] = useState(false);
   // Scenario tab mode + AI model benchmark shortlist
   const [benchModels, setBenchModels] = useState(() => ['cad','seg3d','report'].map(benchCfgFromLib));
   const addBenchModel = () => setBenchModels(list =>
@@ -1319,16 +1332,17 @@ function App() {
     });
     return {inferKwhPerStudy, trainKwhMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools]);
-  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats}), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats]);
-  const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats}), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats]);
-  const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment),
-    [scen, settings.region, settings.customCi, settings.equipment]);
+  const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom};
+  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
+  const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
+  const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
+    [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Benchmark: every candidate computed under the SAME department context, so only the
   // model varies. Pareto-efficient = no other candidate is both more accurate and lower-carbon.
   const benchResults = useMemo(() => {
     const rows = benchModels.map(cfg => {
-      const r = aiResultFor(cfg, settings.region, settings.customCi, settings.equipment);
+      const r = aiResultFor(cfg, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides);
       return {
         id: cfg.id, label: cfg.label, sizeLabel: r.modelSize, paramsM: r.paramsM,
         accuracyPct: rnd(r.accuracy * 100, 1), accuracyMetric: r.accuracyMetric,
@@ -1345,12 +1359,12 @@ function App() {
     const maxBy = key => rows.length ? Math.max(...rows.map(r => r[key])) : 0;
     return {rows, best: {trainCo2: minBy('trainCo2'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
       accuracyPct: maxBy('accuracyPct'), efficiency: maxBy('efficiency')}};
-  }, [benchModels, settings.region, settings.customCi, settings.equipment]);
+  }, [benchModels, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
   // agent, all on the SAME department volume — surfaces the token multiplier concretely.
   const agenticExample = useMemo(() => {
-    const ctx = k => aiResultFor(benchCfgFromLib(k), settings.region, settings.customCi, settings.equipment);
+    const ctx = k => aiResultFor(benchCfgFromLib(k), settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides);
     const cad = ctx('cad'), report = ctx('report'), agent = ctx('agentic');
     const whStudy = r => rnd((r.inference.kwhPerStudy || 0) * 1000, 2);
     const cadWh = whStudy(cad) || 0.001;
@@ -1364,7 +1378,7 @@ function App() {
         mk('Agentic workflow',        agent,  `${agent.callsPerTask} LLM calls / study`),
       ],
     };
-  }, [settings.region, settings.customCi, settings.equipment]);
+  }, [settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   const landingAIKwh = useMemo(() => {
     if (!landingAIOpen) return 0;
@@ -1414,7 +1428,9 @@ function App() {
     const IMAGING_MOD = new Set(["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","Radiography","Ultrasound"]);
     const capacityYr = Object.entries(settings.equipment).reduce((s, [key, n]) => {
       const u = EQUIPMENT_UNITS[key];
-      return s + ((u && IMAGING_MOD.has(u.modality)) ? Math.max(0, n || 0) * u.scans * 12 : 0);
+      if (!u || !IMAGING_MOD.has(u.modality)) return s;
+      const scansPerMo = settings.equipmentOverrides?.[key]?.scans ?? u.scans; // respect measured-volume override
+      return s + Math.max(0, n || 0) * scansPerMo * 12;
     }, 0);
     const entered   = parseFloat(settings.actualStudiesYear) > 0 ? parseFloat(settings.actualStudiesYear) : null;
     const studiesYr = entered ?? capacityYr;                 // blank → fleet estimate (utilisation 100%)
@@ -1436,7 +1452,7 @@ function App() {
       nonProductivePct: rnd(Math.max(0, 100 - dash.totals.activePct * util), 0),
       band,
     };
-  }, [settings.equipment, settings.actualStudiesYear, dash.totals.energyPerScan, dash.totals.activePct, dash.ci]);
+  }, [settings.equipment, settings.equipmentOverrides, settings.actualStudiesYear, dash.totals.energyPerScan, dash.totals.activePct, dash.ci]);
 
   const equivData = useMemo(() => {
     const co2 = equivScope === 'scope2'
@@ -1805,6 +1821,66 @@ function App() {
                 </div>
               ))}
             </div>
+
+            {/* Collapsible advanced equipment parameters — override literature defaults with
+                measured data (scanner logs, utility bills, a published benchmark). Only shown
+                per device type the user has actually added; blank field = literature default. */}
+            <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee',marginBottom:16}}>
+              <button onClick={()=>setAdvEquipExpanded(v=>!v)} style={{background:'none',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:6,width:'100%'}}>
+                <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced equipment parameters</span>
+                <span style={{fontSize:10,color:'#90a4ae'}}>{Object.keys(settings.equipmentOverrides).length
+                  ? `${Object.keys(settings.equipmentOverrides).length} device type${Object.keys(settings.equipmentOverrides).length===1?'':'s'} overridden`
+                  : 'optional — override with measured data'}</span>
+                <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{advEquipExpanded ? '▴ collapse' : '▾ expand'}</span>
+              </button>
+              {advEquipExpanded && (
+                <div style={{marginTop:8}}>
+                  {Object.entries(settings.equipment).filter(([,n])=>n>0).length === 0 ? (
+                    <p className="note" style={{fontSize:11,margin:0}}>Add equipment above first — overrides apply per device type you've added.</p>
+                  ) : (
+                    <>
+                    <p className="note" style={{fontSize:11,marginTop:0,marginBottom:8}}>Blank = literature default (shown as placeholder). Enter your own scanner logs, utility-bill readings, or a published benchmark to override active/idle/standby/off power draw and monthly study volume per device type.</p>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+                        <thead>
+                          <tr style={{textAlign:'left',color:'#607d66'}}>
+                            <th style={{padding:'4px 6px'}}>Device</th>
+                            <th style={{padding:'4px 6px'}}>Active kW</th>
+                            <th style={{padding:'4px 6px'}}>Idle kW</th>
+                            <th style={{padding:'4px 6px'}}>Standby kW</th>
+                            <th style={{padding:'4px 6px'}}>Off kW</th>
+                            <th style={{padding:'4px 6px'}}>Scans/mo</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(settings.equipment).filter(([,n])=>n>0).map(([key,n]) => {
+                            const u = EQUIPMENT_UNITS[key];
+                            if (!u) return null;
+                            const ov = settings.equipmentOverrides[key] || {};
+                            const cell = field => (
+                              <td key={field} style={{padding:'3px 6px'}}>
+                                <input type="number" min="0" step="0.01" value={ov[field] ?? ''} placeholder={String(u[field])}
+                                  onChange={e=>setEquipOverride(key, field, e.target.value)}
+                                  aria-label={`${field} override for ${u.name}`}
+                                  style={{width:70,padding:'4px 6px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                              </td>
+                            );
+                            return (
+                              <tr key={key}>
+                                <td style={{padding:'3px 6px',fontWeight:700,color:'#1b5e20',whiteSpace:'nowrap'}}>{n}× {u.name}</td>
+                                {['active_kw','idle_kw','standby_kw','off_kw','scans'].map(cell)}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Region + time period row */}
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
               <Sel label="Region / grid"   value={settings.region}     options={META.regions}     onChange={v=>set('region',v)}/>
@@ -2296,7 +2372,14 @@ function App() {
                   <button onClick={()=>set('storageReformats','all')} className={settings.storageReformats!=='axial'?'on':''} style={{padding:'6px 12px',fontSize:12,borderRadius:12}}>Store all series</button>
                   <button onClick={()=>set('storageReformats','axial')} className={settings.storageReformats==='axial'?'on':''} style={{padding:'6px 12px',fontSize:12,borderRadius:12}}>Axial-only</button>
                 </div>
+                <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,fontWeight:700,color:'#2E7D32'}}>
+                  Custom intensity (kWh/TB/yr)
+                  <input type="number" min="0" step="1" value={settings.storageIntensityCustom} onChange={e=>set('storageIntensityCustom',e.target.value)} placeholder={settings.storageCloud ? String(STORAGE_KWH_PER_TB_CLOUD) : String(STORAGE_KWH_PER_TB_ONPREM)} style={{width:80,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
+                </label>
               </div>
+              {settings.storageIntensityCustom && parseFloat(settings.storageIntensityCustom) > 0 && (
+                <p className="note" style={{marginTop:-8,marginBottom:12,fontSize:11}}>Custom intensity overrides the on-prem/cloud default above — enter your own server-density/PUE figure (e.g. matching a published site architecture). Clear to go back to the default.</p>
+              )}
               <div className="cards">
                 <Card icon={<HardDrive/>}    title="Data generated / year" value={`${dash.storage.annualDataTB} TB`} sub="Σ studies/yr × per-modality file size (Doo 2024)."/>
                 <Card icon={<Database/>}     title="Archive held"          value={`${dash.storage.storedTB} TB`}   sub={`${dash.storage.retentionYears}-yr retention · ${dash.storage.cloud?'cloud':'on-premises'} (${dash.storage.intensity} kWh/TB/yr).`}/>
@@ -2414,7 +2497,7 @@ function App() {
                 <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced model parameters</span>
                 <span style={{fontSize:10,color:'#90a4ae'}}>{ai.unit==='tokens'
                   ? `${ai.callsPerTask} call${ai.callsPerTask===1?'':'s'} × ${ai.tokensPerCall.toLocaleString()} tok · ${ai.tokensPerStudy.toLocaleString()} tok/study · ${rnd(ai.inference.kwhPerStudy*1000,2)} Wh`
-                  : `${scen.paramsM}M params · ${scen.dim==='3D'?`${scen.resolution}×${scen.resolution}×${scen.slices} voxels`:`${scen.resolution}px`} · ${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}</span>
+                  : `${scen.paramsM}M params · ${scen.slices>1?`${scen.resolution}×${scen.resolution}×${scen.slices} px`:`${scen.resolution}px`} · ${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}</span>
                 <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{modelExpanded ? '▴ collapse' : '▾ expand'}</span>
               </button>
               {modelExpanded && (
@@ -2467,21 +2550,21 @@ function App() {
                       {scen.dim==='3D' ? 'In-plane resolution (px/side)' : 'Input resolution (px)'}
                       <input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
-                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11,opacity:scen.dim==='3D'?1:0.5}}>
-                      {scen.dim==='3D' ? 'Through-plane slices' : 'Slices (3D only)'}
-                      <input type="number" min="1" value={scen.slices} disabled={scen.dim!=='3D'} onChange={e=>setS('slices',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:scen.dim==='3D'?'white':'#f5f5f5'}}/>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      {scen.dim==='3D' ? 'Through-plane slices' : 'Slices / passes per study'}
+                      <input type="number" min="1" value={scen.slices} onChange={e=>setS('slices',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       Inference time (s/study)
                       <input type="number" min="0" step="0.1" value={scen.inferSec} onChange={e=>setS('inferSec',e.target.value)} placeholder={`auto: ${ai.inferSecDerived}`} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
                   </div>
-                  {scen.dim==='3D' && (() => {
+                  {scen.slices > 1 && (() => {
                     const r = parseFloat(scen.resolution)||0, s = parseFloat(scen.slices)||0, v = r*r*s;
-                    return <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>Volume <strong>{r} × {r} × {s}</strong> ≈ <strong>{v>=1e6?(v/1e6).toFixed(1)+'M':Math.round(v).toLocaleString()} voxels</strong>. Energy scales with voxel count (Green AI 2020; Selvan et al. 2022).</p>;
+                    return <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>{scen.dim==='3D' ? 'Volume' : 'Per-study elements'} <strong>{r} × {r} × {s}</strong> ≈ <strong>{v>=1e6?(v/1e6).toFixed(1)+'M':Math.round(v).toLocaleString()} {scen.dim==='3D'?'voxels':'pixels'}</strong>. Energy scales with element count (Green AI 2020; Selvan et al. 2022). {scen.dim!=='3D' && 'A 2D model applied slice-by-slice over a volume still processes this many elements per study — set slices to your per-study slice count, not just 1.'}</p>;
                   })()}
                   <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
-                    Inference time auto-scales with <strong>params × {scen.dim==='3D'?'in-plane² × slices (voxels)':'resolution²'}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). Enter a measured value to override.
+                    Inference time auto-scales with <strong>params × resolution²{scen.dim==='3D'?' × slices':' × slices/passes'}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). Enter a measured value to override.
                   </p>
                   </>
                   )}
@@ -2581,7 +2664,7 @@ function App() {
             <h2 style={{marginBottom:12}}>Model details</h2>
             <div className="cards">
               <Card icon={<Brain/>}      title="Architecture"         value={scen.architecture}                         sub={ai.archDesc}/>
-              <Card icon={<Cpu/>}        title="Model size"           value={ai.modelSize}                              sub={`${ai.paramsM.toLocaleString()}M params · ${ai.dim} · ${ai.dim==='3D'?`${ai.resolution}×${ai.resolution}×${ai.slices} voxels`:`${ai.resolution}px input`}.`}/>
+              <Card icon={<Cpu/>}        title="Model size"           value={ai.modelSize}                              sub={`${ai.paramsM.toLocaleString()}M params · ${ai.dim} · ${ai.slices>1?`${ai.resolution}×${ai.resolution}×${ai.slices} px/study`:`${ai.resolution}px input`}.`}/>
               <Card icon={<Target/>}     title={`Reported ${ai.accuracyMetric}`} value={`${rnd(ai.accuracy*100,1)}%`}     sub={`Your reported value — default from ${AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'reference'}. Edit below. CEDARS does not predict performance.`}/>
               <Card icon={<BarChart3/>}  title="Efficiency ratio"     value={`${ai.efficiencyRatio} acc%/kWh`}          sub={`Reported ${ai.accuracyMetric} % per monthly inference kWh. Use to compare models. (Green AI metric)`}/>
             </div>

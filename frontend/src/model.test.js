@@ -82,3 +82,50 @@ describe('computeInterventions — FLEET, delta from current config', () => {
     expect(iv.projected.kwh).toBeCloseTo(iv.baseline.kwh, 2);
   });
 });
+
+// Measured-data overrides (active_kw/idle_kw/standby_kw/off_kw/scans per device, and a custom
+// storage kWh/TB/yr) — the "Advanced equipment parameters" mechanism. Blank/absent fields keep
+// the EQUIPMENT_UNITS literature default; only fields explicitly set in `overrides` change.
+describe('buildFleet — per-device overrides', () => {
+  it('an overridden field replaces the default (post-count-scaling); untouched fields and count scaling are unaffected', () => {
+    const f = buildFleet({ ct: 2 }, { ct: { active_kw: 45 } });
+    expect(f[0].active_kw).toBe(90);  // 45 kW × 2 units, not the 60 kW default
+    expect(f[0].idle_kw).toBe(16);    // untouched field: 8 kW default × 2 units
+    expect(f[0].overridden).toBe(true);
+  });
+  it('no override for a device → overridden is falsy, values equal the plain default', () => {
+    const f = buildFleet({ ct: 2 });
+    expect(f[0].overridden).toBeFalsy();
+    expect(f[0].active_kw).toBe(120); // 60 kW default × 2
+  });
+});
+
+describe('computeDashboard — override effects on confidence, scans, and storage', () => {
+  it('an overridden row is flagged confidence:"measured"; untouched rows stay "estimated"', () => {
+    const d = computeDashboard('Germany', 'Monthly', { ct: 1, workstations: 1 }, undefined, {}, {}, { ct: { active_kw: 45 } });
+    expect(d.byEquipment.find(r => r.modality === 'CT').confidence).toBe('measured');
+    expect(d.byEquipment.find(r => r.modality === 'Workstation').confidence).toBe('estimated');
+  });
+  it('overriding scans (study volume) changes imagingScans and the storage archive size', () => {
+    const dDefault  = computeDashboard('Germany', 'Monthly', { ct: 1 });
+    const dOverride = computeDashboard('Germany', 'Monthly', { ct: 1 }, undefined, {}, {}, { ct: { scans: 900 } });
+    expect(dDefault.scopes.imagingScans).toBe(1800);
+    expect(dOverride.scopes.imagingScans).toBe(900); // half the default 1800 scans/month
+  });
+  it('a custom storage intensity fully overrides the on-prem/cloud default, scaling storage kWh proportionally', () => {
+    const dCustom  = computeDashboard('Germany', 'Annual', { ct: 5 }, undefined, {}, { intensityCustom: 1000 });
+    const dDefault = computeDashboard('Germany', 'Annual', { ct: 5 }, undefined, {}, {}); // on-prem default 600
+    expect(dCustom.storage.intensity).toBe(1000);
+    expect(dDefault.storage.intensity).toBe(600);
+    expect(dCustom.storage.kwh).toBeCloseTo(dDefault.storage.kwh * (1000 / 600), 1);
+  });
+});
+
+describe('computeInterventions — overrides flow into the baseline used for savings', () => {
+  it('baseline.kwh matches computeDashboard totals under the same overrides', () => {
+    const overrides = { ct: { active_kw: 45 } };
+    const base = computeDashboard('Germany', 'Annual', FLEET, undefined, {}, {}, overrides);
+    const iv   = computeInterventions([], 'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby', {}, overrides);
+    expect(iv.baseline.kwh).toBeCloseTo(base.totals.kwh, 2);
+  });
+});

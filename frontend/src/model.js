@@ -50,13 +50,28 @@ const EQUIPMENT_UNITS = {
 // (nothing is "already computed") until the user adds devices or picks a Quick-start preset.
 const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:0, mri_7t:0, ct:0, petct:0, angio:0, fluoro:0, xray:0, ultrasound:0, mammography:0, pacs:0, workstations:0};
 
+// Per-device fields a user can override with their own measured data (scanner logs, utility
+// bills, published benchmarks) — anything not present in `overrides[key]` keeps the
+// EQUIPMENT_UNITS literature default. Hours (active_h/idle_h/standby_h/off_h) are not yet
+// overridable — deferred; the plumbing below is field-agnostic so it's a one-line extension.
+const OVERRIDABLE_FIELDS = ['active_kw', 'idle_kw', 'standby_kw', 'off_kw', 'scans'];
+
 // Build a fleet array from equipment counts — scales power by count, hours stay per-unit.
-function buildFleet(equipment) {
+// `overrides` is a sparse {deviceKey: {field: value}} map (see OVERRIDABLE_FIELDS); devices/
+// fields absent from it keep the EQUIPMENT_UNITS default. Rows with an active override are
+// flagged `overridden: true` so computeDashboard can report confidence:"measured" for them.
+function buildFleet(equipment, overrides = {}) {
   return Object.entries(equipment ?? DEFAULT_EQUIPMENT)
     .filter(([, n]) => typeof n === 'number' && n > 0)
     .map(([key, n]) => {
-      const u = EQUIPMENT_UNITS[key];
-      if (!u) return null;
+      const base = EQUIPMENT_UNITS[key];
+      if (!base) return null;
+      const ov = (overrides ?? {})[key] ?? {};
+      const setFields = OVERRIDABLE_FIELDS.filter(f => ov[f] != null && ov[f] !== '' && !isNaN(parseFloat(ov[f])));
+      const overridden = setFields.length > 0;
+      const u = overridden
+        ? {...base, ...Object.fromEntries(setFields.map(f => [f, parseFloat(ov[f])]))}
+        : base;
       return {
         ...u,
         count:      n,                    // unit count — used to scale embodied carbon per device
@@ -66,6 +81,7 @@ function buildFleet(equipment) {
         standby_kw: u.standby_kw * n,
         off_kw:     u.off_kw     * n,
         scans:      u.scans      * n,
+        overridden,
       };
     })
     .filter(Boolean);
@@ -155,10 +171,10 @@ const ICM_MODALITIES = ["CT", "PET-CT", "Angio/IR", "Fluoroscopy"];
 // ── Calculation functions ─────────────────────────────────────────────────────
 const rnd = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
 
-function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}) {
+function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}, overrides = {}) {
   const ci       = getCI(region, customCi);
   const mult     = TIME_MULT[timePeriod] ?? 1;
-  const fleet    = buildFleet(equipment);
+  const fleet    = buildFleet(equipment, overrides);
 
   const byEquipment = fleet.map(eq => {
     const kwh          = (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult;
@@ -173,7 +189,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
             kgco2e: rnd(kgco2e), scans,
             // energyPerScan only meaningful for patient-imaging rows; null for PACS/Workstation
             energyPerScan: isImaging ? rnd(kwh / scans, 3) : null,
-            idleWasteKwh: rnd(idleWasteKwh), confidence: "estimated"};
+            idleWasteKwh: rnd(idleWasteKwh), confidence: eq.overridden ? "measured" : "estimated"};
   });
 
   let   totalKwh       = byEquipment.reduce((s, e) => s + e.kwh, 0);
@@ -216,7 +232,10 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   const _reformat   = mod => (storage.reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
   const _annualDataTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * _reformat(eq.modality), 0) / 1e6;
   const _storedTB   = _annualDataTB * _retention;
-  const _storageInt = storage.cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM;
+  // Custom intensity (measured server density/PUE) fully overrides whichever on-prem/cloud
+  // default would otherwise apply — see sources.md Data storage section.
+  const _customInt  = parseFloat(storage.intensityCustom);
+  const _storageInt = _customInt > 0 ? _customInt : (storage.cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM);
   const storageKwh  = rnd(_storedTB * _storageInt * mult / 12, 2);   // annual → period
   totalKwh = rnd(totalKwh + storageKwh, 2);
   totalCo2 = totalKwh * ci;
@@ -317,12 +336,12 @@ const STORAGE_INTERVENTIONS   = new Set([STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVE
 // fleet-based saving, then combines: the two idle-reduction levers overlap on the same
 // avoidable-idle pool (standby ⊇ scanners-off) so we take the deepest ONE rather than summing;
 // all other energy levers add; carbon-% levers stack multiplicatively. Everything floors at 0.
-function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}) {
+function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}, overrides = {}) {
   const list  = Array.isArray(names) ? names.filter(n => INTERVENTIONS[n]) : (names && INTERVENTIONS[names] ? [names] : []);
   const ci    = getCI(region, customCi);
   const mult  = TIME_MULT[timePeriod] ?? 1;
-  const base  = computeDashboard(region, timePeriod, equipment, customCi, {}, storage);
-  const fleet = buildFleet(equipment);
+  const base  = computeDashboard(region, timePeriod, equipment, customCi, {}, storage, overrides);
+  const fleet = buildFleet(equipment, overrides);
   const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
   const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};
   const targetField = STATE_FIELD[scannerState] ?? 'standby_kw';
@@ -356,13 +375,15 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
 
   // Data-storage levers: recompute archive energy under the selected strategies vs the current
   // config, and take the delta — so ticking a lever the storage module already applies saves 0.
-  const stgRet   = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
-  const stgCloud = !!storage.cloud;
-  const stgRef   = storage.reformats === 'axial' ? 'axial' : 'all';
+  const stgRet    = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
+  const stgCloud  = !!storage.cloud;
+  const stgRef    = storage.reformats === 'axial' ? 'axial' : 'all';
+  const stgCustom = parseFloat(storage.intensityCustom);
   const storageKwhFor = (cloud, reformats, retention) => {
     const rf = mod => (reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
     const annualTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * rf(eq.modality), 0) / 1e6;
-    return annualTB * retention * (cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM) * mult / 12;
+    const intensity = stgCustom > 0 ? stgCustom : (cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM);
+    return annualTB * retention * intensity * mult / 12;
   };
   const stgCurrent = storageKwhFor(stgCloud, stgRef, stgRet);
   const stgAfter   = storageKwhFor(
@@ -403,6 +424,7 @@ export {
   TIME_LABEL,
   EQUIPMENT_UNITS,
   DEFAULT_EQUIPMENT,
+  OVERRIDABLE_FIELDS,
   buildFleet,
   INTERVENTIONS,
   CLOUD,

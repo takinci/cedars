@@ -64,6 +64,24 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     expect(enc).toBe('in=0-2');                       // indices, not the long labels
     expect(decodeConfig('#' + enc).activeInterventions).toEqual(names);
   });
+
+  it('equipmentOverrides and storageIntensityCustom survive encode → decode', () => {
+    const settings = {
+      ...SETTINGS_DEFAULTS,
+      storageIntensityCustom: '1000',
+      equipment: { ct: 1, workstations: 5 },
+      equipmentOverrides: { ct: { active_kw: 45, scans: 1200 }, workstations: { active_kw: 0.6 } },
+    };
+    const decoded = decodeConfig('#' + encodeConfig({ settings }));
+    expect({ ...SETTINGS_DEFAULTS, ...decoded.settings }).toEqual(settings);
+  });
+
+  it('equipmentOverrides drops unrecognized fields and non-numeric values on decode', () => {
+    // 'notafield' isn't in OVERRIDABLE_FIELDS and 'scans=abc' isn't numeric — both dropped;
+    // a device left with no valid fields (workstations) is omitted entirely.
+    const decoded = decodeConfig('#eo=ct:active_kw=45,notafield=9|workstations:scans=abc');
+    expect(decoded.settings.equipmentOverrides).toEqual({ ct: { active_kw: 45 } });
+  });
 });
 
 describe('backward compatibility', () => {
