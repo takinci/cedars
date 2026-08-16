@@ -22,8 +22,9 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
 // Per-unit equipment specs — one row = one machine/set. Power values from literature (see sources.md).
 // MRI specs calibrated to MODALITY_BENCHMARKS annual kWh (Heye JMRI 2023, Vosshenrich 2024, Klein 2024):
-//   0.35T permanent magnet → ≈18 MWh/yr. 1.5T superconducting (high cryocooler idle) → ≈233 MWh/yr.
-//   3T → ≈127 MWh/yr. 7T research → ≈190 MWh/yr.
+//   0.35T permanent magnet → ≈18 MWh/yr. 1.5T superconducting (high cryocooler idle) → ≈242 MWh/yr.
+//   3T → ≈131 MWh/yr. 7T research → ≈196 MWh/yr. (1.5T/3T/7T revised +3-4% 2026-08 for corrected
+//   off_kw — see below; MODALITY_BENCHMARKS targets predate that fix and are that much lower.)
 // CT: corrected 2026-08 from an earlier 60/8/3/0.2 kW default that cited Acra-2024/CJRS-2022 as
 //   supporting "40-80 kW active" — checking both papers directly, neither reports anything near
 //   that for any state they measure (Acra-2024: idle ≈2.6 kW, low-power ≈0.89 kW, off <0.01 kW;
@@ -36,6 +37,13 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // PET-CT: 22 kW active + 5 kW idle calibrated exactly to MODALITY_BENCHMARKS 66,150 kWh/yr.
 // PACS/servers was NOT cross-checked against an annual-kWh benchmark (no MODALITY_BENCHMARKS
 // entry) and its citation doesn't hold up under scrutiny either — see sources.md, unverified.
+// MRI off_kw (1.5T/3T/7T only — superconducting): corrected 2026-08 from 1.5/0.5/1.0 kW to
+// 24/11.25/16.5 kW. A superconducting magnet's cryocooler cannot be switched off without risking
+// magnet quench (helium boil-off), so "off" still draws most of "idle" power — Woolen et al. 2023
+// (Radiol-230441), direct power-meter data on 4 real scanners, measured "off" at 7.3–9.7 kW vs
+// "idle" at 9.5–14.5 kW (≈65–100% ratio; 75% used here). Only changes off_h (34 h/month), so the
+// annual-kWh calibration targets above shift by just +3–4%, not enough to invalidate them.
+// 0.35T (mri_035t) is unaffected — permanent magnet, no cryocooler, off ≈ idle already holds.
 // Workstations: corrected from an earlier 2 kW/0.8 kW/0.2 kW/0.05 kW default that overstated
 // Thiel-2024's own reported figure by ~12×. Thiel et al. 2024 (Radiol-240398 — the same paper
 // cited here) states reading-room workstations were modelled at 170 W active with 60% daily
@@ -44,9 +52,9 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // 4-state breakdown — treat idle/standby/off as a rougher extrapolation than active_kw itself.
 const EQUIPMENT_UNITS = {
   mri_035t:    {name:"MRI (0.35T)",    modality:"MRI",        active_kw:6,   idle_kw:1.5, standby_kw:0.5, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:80,  scans:800},
-  mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:32,  standby_kw:25,  off_kw:1.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1000},
-  mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1200},
-  mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:1.0,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
+  mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:32,  standby_kw:25,  off_kw:24,   active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1000},
+  mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:11.25,active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1200},
+  mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:16.5, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
   ct:          {name:"CT Scanner",     modality:"CT",         active_kw:3,   idle_kw:1.5, standby_kw:1.0, off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
   petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:100, scans:400},
   xray:        {name:"Radiography Room",     modality:"Radiography",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
