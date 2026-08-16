@@ -407,13 +407,15 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     ? rnd(trainKwhCustom, 0)
     : rnd(trainMwhBase * 1000 * arch.trainFactor * trainSizeRatio, 0);
   const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
-  // "Estimated GPU compute time" divisor: prefer the training GPU the user actually selected
-  // (even if Hours was left blank, so no measured trainKwh bypass engaged) over model.gpuKw,
-  // which anchors the template's INFERENCE/deployment hardware — often much lower-power than
-  // real training hardware, which previously inflated this readout whenever only a GPU preset
-  // (no Hours) was chosen.
+  // "Estimated GPU compute time": when the user has told us the actual Hours × #GPUs directly
+  // (the measured path), echo that back exactly — no PUE factor, since PUE scales facility
+  // energy overhead, not wall-clock GPU runtime. Only fall back to back-solving hours from
+  // energy ÷ power (which DOES need a GPU-power assumption, preferring the selected training
+  // GPU's TDP over the template's own inference-anchored gpuKw) when Hours wasn't given at all.
   const trainGpuKw     = parseFloat(overrides.trainGpuKw) > 0 ? parseFloat(overrides.trainGpuKw) : model.gpuKw;
-  const trainGpuHours  = rnd(trainKwhTotal / trainGpuKw, 0); // estimated GPU compute time
+  const trainGpuHours  = overrides.trainGpuHoursMeasured != null
+    ? overrides.trainGpuHoursMeasured
+    : rnd(trainKwhTotal / trainGpuKw, 0); // estimated GPU compute time
   const trainKwhMonth  = rnd(trainKwhTotal / DEPLOY_MO, 2);   // amortised over deployment
 
   // A measured inference kWh/study fully overrides BOTH the testing total and the per-study
@@ -478,6 +480,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     testing:   {kwhTotal: testKwhTotal,  kgCo2e: testKgCo2e,  studies: TEST_STUDIES},
     inference: {kwhPerStudy: inferKwhPerStudy, kwhMonthly: inferKwhMonthly, kwhLifetime: inferKwhLifetime, studies: STUDIES},
     inferKwhMeasured: inferKwhCustom !== null,
+    trainMeasured: trainKwhCustom !== null,
     monthly:   {kwh: totalMonthlyKwh, co2: rnd(totalMonthlyKwh * cf.ci, 3)},
     ampSavingPct, grossKgCo2e, embGpuKgCo2e, savingsKgCo2e, netKgCo2e,
     pue: cf.pue, cloudCi: cf.ci, waterLitres, efficiencyRatio,
@@ -503,6 +506,9 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
   const customPue = parseFloat(cfg.customPue);
   const pue       = customPue > 0 ? customPue : (CLOUD[cfg.cloudProvider]?.pue ?? 1.5);
   const trainKwh  = gpuPreset && trainH > 0 ? rnd(gpuPreset.tdpKw * trainN * trainH * pue, 1) : 0;
+  // Actual GPU-hours the user told us directly (Hours × #GPUs, no PUE) — the "Estimated GPU
+  // compute" readout should echo this exactly rather than re-deriving it from PUE-inclusive energy.
+  const trainGpuHoursMeasured = gpuPreset && trainH > 0 ? rnd(trainH * trainN, 2) : null;
   const lib = AI_MODEL_BY_KEY[cfg.modelKey] ?? AI_MODEL_LIBRARY[0];
   const paramsM    = parseFloat(cfg.paramsM)    || lib.paramsM;
   const dim        = cfg.dim || lib.dim;
@@ -544,7 +550,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw, customPue: cfg.customPue, inferKwh: cfg.inferKwh}, equipOverrides);
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw, trainGpuHoursMeasured, customPue: cfg.customPue, inferKwh: cfg.inferKwh}, equipOverrides);
   const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
@@ -785,7 +791,7 @@ function downloadAICSV(ai, scen, region) {
     row(['Metric', 'Value', 'Unit']),
     row(['Training energy',              ai.training.kwhTotal,    'kWh']),
     row(['Training CO2e',                ai.training.kgCo2e,      'kgCO2e']),
-    row(['Estimated GPU compute',        ai.training.gpuHours,    'h']),
+    row([ai.trainMeasured ? 'GPU compute (measured)' : 'Estimated GPU compute', ai.training.gpuHours, 'h']),
     row(['Amortised training / month',   ai.training.kwhAmortised,'kWh/mo (36-month deployment)']),
     blank,
 
@@ -2762,7 +2768,7 @@ function App() {
             <div className="cards">
               <Card icon={<Zap/>}        title="Total training energy"    value={`${ai.training.kwhTotal.toLocaleString()} kWh`}  sub={`One-time. Scaled by architecture (${scen.architecture}) and model size. (LLM-Energy PDF)`}/>
               <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
-              <Card icon={<Gauge/>}      title="Estimated GPU compute"    value={`~${ai.training.gpuHours.toLocaleString()} h`}  sub={GPU_PRESETS[scen.trainGpu] ? `Estimated GPU hours at the selected ${scen.trainGpu} power draw. Actual depends on parallelism.` : "Estimated GPU hours at this template's power draw — pick a Training GPU below for a hardware-specific estimate."}/>
+              <Card icon={<Gauge/>}      title={ai.trainMeasured ? "GPU compute (measured)" : "Estimated GPU compute"}    value={`${ai.trainMeasured ? '' : '~'}${ai.training.gpuHours.toLocaleString()} h`}  sub={ai.trainMeasured ? `Your entered Hours × #GPUs, exactly as typed below — not derived from energy, so PUE doesn't affect it.` : GPU_PRESETS[scen.trainGpu] ? `Estimated GPU hours at the selected ${scen.trainGpu} power draw. Actual depends on parallelism.` : "Estimated GPU hours at this template's power draw — pick a Training GPU below for a hardware-specific estimate."}/>
               <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
             </div>
           </section>
