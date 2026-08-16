@@ -30,15 +30,15 @@ describe('computeDashboard — FLEET, Germany, Annual', () => {
     expect(d.scopes.imagingScans).toBe(205200); // (2·1800 + 1000 + 3·2500 + 2·2500) × 12
   });
   it('total energy, carbon, and energy-per-scan', () => {
-    expect(d.totals.kwh).toBeCloseTo(615919.92, 2);
-    expect(d.totals.co2Kg).toBeCloseTo(221731.17, 1);
-    expect(d.totals.energyPerScan).toBeCloseTo(3.002, 3); // kWh ÷ scans
+    expect(d.totals.kwh).toBeCloseTo(300093.78, 2);
+    expect(d.totals.co2Kg).toBeCloseTo(108033.76, 1);
+    expect(d.totals.energyPerScan).toBeCloseTo(1.462, 3); // kWh ÷ scans
   });
   it('carbon = total energy × Germany grid intensity (0.36 kgCO₂e/kWh)', () => {
     expect(d.totals.co2Kg).toBeCloseTo(d.totals.kwh * 0.36, 0);
   });
   it('GHG scopes: Scope 2 = operational carbon; Scope 3 travel = scans × 20 km × 0.17 kg/km', () => {
-    expect(d.scopes.scope2Kg).toBeCloseTo(221731.17, 1);
+    expect(d.scopes.scope2Kg).toBeCloseTo(108033.76, 1);
     expect(d.scopes.scope3TravelKg).toBe(697680); // 205200 × 20 × 0.17
   });
   it('Scope 3 embodied scales with the unit count of each device type', () => {
@@ -62,18 +62,18 @@ describe('computeInterventions — FLEET, delta from current config', () => {
       ['Turn MRI/CT scanners off overnight', 'Reduce low-value imaging'],
       'Germany', 'Annual', FLEET, undefined, 'AWS', 'Standby', {});
     expect(iv.count).toBe(2);
-    expect(iv.baseline.kwh).toBeCloseTo(615919.92, 2);
+    expect(iv.baseline.kwh).toBeCloseTo(300093.78, 2);
     expect(iv.savings.kwh).toBe(21840);              // overnight 12240 + low-value 9600
-    expect(iv.projected.kwh).toBeCloseTo(594079.92, 2);
-    expect(iv.savings.pctEnergy).toBeCloseTo(3.5, 1);
+    expect(iv.projected.kwh).toBeCloseTo(278253.78, 2);
+    expect(iv.savings.pctEnergy).toBeCloseTo(7.3, 1);
   });
   it('storage axial-only lever saves the reformats delta vs current all-reformats config', () => {
     const iv = computeInterventions(
       ['Store only acquired axial series (avoid reformats)'],
       'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby',
       { reformats: 'all', cloud: false, retentionYears: 10 });
-    expect(iv.savings.kwh).toBe(108864);
-    expect(iv.savings.pctEnergy).toBeCloseTo(17.7, 1);
+    expect(iv.savings.kwh).toBeCloseTo(1433.38, 1);
+    expect(iv.savings.pctEnergy).toBeCloseTo(0.5, 1);
   });
   it('no levers selected → zero savings, projection equals baseline', () => {
     const iv = computeInterventions([], 'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby', {});
@@ -114,10 +114,10 @@ describe('computeDashboard — override effects on confidence, scans, and storag
   });
   it('a custom storage intensity fully overrides the on-prem/cloud default, scaling storage kWh proportionally', () => {
     const dCustom  = computeDashboard('Germany', 'Annual', { ct: 5 }, undefined, {}, { intensityCustom: 1000 });
-    const dDefault = computeDashboard('Germany', 'Annual', { ct: 5 }, undefined, {}, {}); // on-prem default 600
+    const dDefault = computeDashboard('Germany', 'Annual', { ct: 5 }, undefined, {}, {}); // on-prem default 7.9
     expect(dCustom.storage.intensity).toBe(1000);
-    expect(dDefault.storage.intensity).toBe(600);
-    expect(dCustom.storage.kwh).toBeCloseTo(dDefault.storage.kwh * (1000 / 600), 1);
+    expect(dDefault.storage.intensity).toBe(7.9);
+    expect(dCustom.storage.kwh).toBeCloseTo(dDefault.storage.kwh * (1000 / 7.9), 1);
   });
 });
 

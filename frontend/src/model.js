@@ -9,12 +9,23 @@ import { getCI, CARBON_INTENSITY } from './calc.js';
 // CT with reformats from Jia et al. Eur Radiol 2026). Editable estimates; vary by site/compression.
 const MODALITY_MB = {MRI:350, CT:700, 'PET-CT':1700, 'Radiography':10, Ultrasound:300, 'Angio/IR':350, Fluoroscopy:120};
 
-// Storage energy intensity (kWh per TB per year, all-in incl. servers, network, PUE). Jia et al.
-// 2026: 136 kWh/TB HDD + servers + network ≈ 335 kWh/TB IT × PUE 1.8 ≈ 600 on-prem; efficient
-// cloud ≈ 40% lower (Jia conservative estimate).
-const STORAGE_KWH_PER_TB_ONPREM = 600;
+// Storage energy intensity (kWh per TB per year, all-in incl. servers, network, PUE) — corrected
+// 2026-08. Jia et al. 2026's own formula (HDD + servers ÷ TB/server + network ÷ TB/server, × PUE)
+// gave 600 kWh/TB/yr on-prem, but that used a 136 kWh/TB HDD figure and 12 TB/server density
+// implying older/smaller drives and a small dense-compute-style server, not a real bulk archive.
+// Re-run with concretely-sourced modern hardware instead: Seagate Exos X24 (24 TB nearline HDD,
+// exactly Jia's "HDD" category) datasheet power 6.3-8.9 W — ≈2.74 kWh/TB/yr blended, ~50x lower
+// than Jia's 136; Backblaze's published Storage Pod design (60 drives/4U, a real high-density
+// archive-server architecture, not a guess) → 1,440 TB/server, giving ≈1.43 kWh/TB/yr for the
+// server term (unchanged 2059 kWh/server/yr from Jia) and ≈0.22 for network. IT total ≈4.39
+// kWh/TB/yr, × Jia's own PUE 1.8 (kept for methodological consistency — this is a hardware/
+// density fix, not a PUE argument) ≈ 7.9 on-prem. Cloud uses PUE 1.1 (matches CEDARS's own
+// Google Cloud PUE default) ≈ 4.8. See sources.md for the full derivation and its residual
+// uncertainty (server density and PUE choice are reasoned assumptions, not one directly-reported
+// end-to-end figure — no single paper publishes a modern bulk-medical-archive kWh/TB number).
+const STORAGE_KWH_PER_TB_ONPREM = 7.9;
 
-const STORAGE_KWH_PER_TB_CLOUD  = 360;
+const STORAGE_KWH_PER_TB_CLOUD  = 4.8;
 
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 
