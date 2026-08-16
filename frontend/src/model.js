@@ -24,21 +24,36 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // MRI specs calibrated to MODALITY_BENCHMARKS annual kWh (Heye JMRI 2023, Vosshenrich 2024, Klein 2024):
 //   0.35T permanent magnet → ≈18 MWh/yr. 1.5T superconducting (high cryocooler idle) → ≈233 MWh/yr.
 //   3T → ≈127 MWh/yr. 7T research → ≈190 MWh/yr.
-// CT: Acra-2024, CJRS-2022 40–80 kW range, mid-point 60 kW. Benchmark covers conventional CT only —
-//   photon-counting and dual-source DECT not yet stratified in the sustainability literature.
+// CT: corrected 2026-08 from an earlier 60/8/3/0.2 kW default that cited Acra-2024/CJRS-2022 as
+//   supporting "40-80 kW active" — checking both papers directly, neither reports anything near
+//   that for any state they measure (Acra-2024: idle ≈2.6 kW, low-power ≈0.89 kW, off <0.01 kW;
+//   CJRS-2022, a real 128-slice CT: "System ON" ≈3 kW, "Computer ON" ≈1.5 kW, shutdown ≈0.5 kW).
+//   60 kW was very likely a peak/instantaneous X-ray-exposure spec misapplied as a sustained
+//   active-hours average. Now anchored directly to CJRS-2022's measured states (active≈"System
+//   ON", idle≈"Computer ON", off≈shutdown; standby interpolated, no 4th measured state exists).
+//   These are overnight/non-operational measurements, so active_kw likely still somewhat
+//   understates true daytime per-scan throughput — see sources.md.
 // PET-CT: 22 kW active + 5 kW idle calibrated exactly to MODALITY_BENCHMARKS 66,150 kWh/yr.
+// PACS/servers was NOT cross-checked against an annual-kWh benchmark (no MODALITY_BENCHMARKS
+// entry) and its citation doesn't hold up under scrutiny either — see sources.md, unverified.
+// Workstations: corrected from an earlier 2 kW/0.8 kW/0.2 kW/0.05 kW default that overstated
+// Thiel-2024's own reported figure by ~12×. Thiel et al. 2024 (Radiol-240398 — the same paper
+// cited here) states reading-room workstations were modelled at 170 W active with 60% daily
+// use; idle/standby/off below are that 170 W scaled down by the SAME proportions as the old
+// (uncorrected) default, since Thiel's own methodology only reports one active figure, not a
+// 4-state breakdown — treat idle/standby/off as a rougher extrapolation than active_kw itself.
 const EQUIPMENT_UNITS = {
   mri_035t:    {name:"MRI (0.35T)",    modality:"MRI",        active_kw:6,   idle_kw:1.5, standby_kw:0.5, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:80,  scans:800},
   mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:32,  standby_kw:25,  off_kw:1.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1000},
   mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1200},
   mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:1.0,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
-  ct:          {name:"CT Scanner",     modality:"CT",         active_kw:60,  idle_kw:8,   standby_kw:3,   off_kw:0.2,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
+  ct:          {name:"CT Scanner",     modality:"CT",         active_kw:3,   idle_kw:1.5, standby_kw:1.0, off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
   petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:100, scans:400},
   xray:        {name:"Radiography Room",     modality:"Radiography",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   mammography: {name:"Mammography",    modality:"Radiography",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
   pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
-  workstations:{name:"Workstations",   modality:"Workstation",active_kw:2,   idle_kw:0.8, standby_kw:0.2, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
+  workstations:{name:"Workstations",   modality:"Workstation",active_kw:0.17, idle_kw:0.068, standby_kw:0.017, off_kw:0.005, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
   // Interventional imaging — power from direct sensor measurements (Vosshenrich et al., AJR 2024, 10.2214/AJR.24.30988).
   // Hours from paper Table 3 annual projections ÷ 12. No distinct standby mode; standby_kw = off_kw.
   // IR suite = Artis pheno (monoplanar). Fluoroscopy = Artis zee multipurpose. Chiller not included in sensor.

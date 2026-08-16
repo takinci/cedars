@@ -18,8 +18,8 @@ describe('buildFleet — scales specs by count', () => {
   it('power and scan volume scale linearly with count', () => {
     const ct = f.find(r => r.modality === 'CT');
     expect(ct.name).toBe('2× CT Scanner');
-    expect(ct.active_kw).toBe(120); // 60 kW × 2
-    expect(ct.idle_kw).toBe(16);    // 8 kW × 2
+    expect(ct.active_kw).toBe(6);   // 3 kW × 2
+    expect(ct.idle_kw).toBe(3);     // 1.5 kW × 2
     expect(ct.scans).toBe(3600);    // 1800 × 2
   });
 });
@@ -30,15 +30,15 @@ describe('computeDashboard — FLEET, Germany, Annual', () => {
     expect(d.scopes.imagingScans).toBe(205200); // (2·1800 + 1000 + 3·2500 + 2·2500) × 12
   });
   it('total energy, carbon, and energy-per-scan', () => {
-    expect(d.totals.kwh).toBeCloseTo(1037167.92, 2);
-    expect(d.totals.co2Kg).toBeCloseTo(373380.45, 1);
-    expect(d.totals.energyPerScan).toBeCloseTo(5.054, 3); // kWh ÷ scans
+    expect(d.totals.kwh).toBeCloseTo(726151.92, 2);
+    expect(d.totals.co2Kg).toBeCloseTo(261414.69, 1);
+    expect(d.totals.energyPerScan).toBeCloseTo(3.539, 3); // kWh ÷ scans
   });
   it('carbon = total energy × Germany grid intensity (0.36 kgCO₂e/kWh)', () => {
     expect(d.totals.co2Kg).toBeCloseTo(d.totals.kwh * 0.36, 0);
   });
   it('GHG scopes: Scope 2 = operational carbon; Scope 3 travel = scans × 20 km × 0.17 kg/km', () => {
-    expect(d.scopes.scope2Kg).toBeCloseTo(373380.45, 1);
+    expect(d.scopes.scope2Kg).toBeCloseTo(261414.69, 1);
     expect(d.scopes.scope3TravelKg).toBe(697680); // 205200 × 20 × 0.17
   });
   it('Scope 3 embodied scales with the unit count of each device type', () => {
@@ -62,10 +62,10 @@ describe('computeInterventions — FLEET, delta from current config', () => {
       ['Turn MRI/CT scanners off overnight', 'Reduce low-value imaging'],
       'Germany', 'Annual', FLEET, undefined, 'AWS', 'Standby', {});
     expect(iv.count).toBe(2);
-    expect(iv.baseline.kwh).toBeCloseTo(1037167.92, 2);
-    expect(iv.savings.kwh).toBe(34080);              // overnight 24480 + low-value 9600
-    expect(iv.projected.kwh).toBeCloseTo(1003087.92, 2);
-    expect(iv.savings.pctEnergy).toBeCloseTo(3.3, 1);
+    expect(iv.baseline.kwh).toBeCloseTo(726151.92, 2);
+    expect(iv.savings.kwh).toBe(21120);              // overnight 11520 + low-value 9600
+    expect(iv.projected.kwh).toBeCloseTo(705031.92, 2);
+    expect(iv.savings.pctEnergy).toBeCloseTo(2.9, 1);
   });
   it('storage axial-only lever saves the reformats delta vs current all-reformats config', () => {
     const iv = computeInterventions(
@@ -73,7 +73,7 @@ describe('computeInterventions — FLEET, delta from current config', () => {
       'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby',
       { reformats: 'all', cloud: false, retentionYears: 10 });
     expect(iv.savings.kwh).toBe(108864);
-    expect(iv.savings.pctEnergy).toBeCloseTo(10.5, 1);
+    expect(iv.savings.pctEnergy).toBeCloseTo(15, 1);
   });
   it('no levers selected → zero savings, projection equals baseline', () => {
     const iv = computeInterventions([], 'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby', {});
@@ -89,14 +89,14 @@ describe('computeInterventions — FLEET, delta from current config', () => {
 describe('buildFleet — per-device overrides', () => {
   it('an overridden field replaces the default (post-count-scaling); untouched fields and count scaling are unaffected', () => {
     const f = buildFleet({ ct: 2 }, { ct: { active_kw: 45 } });
-    expect(f[0].active_kw).toBe(90);  // 45 kW × 2 units, not the 60 kW default
-    expect(f[0].idle_kw).toBe(16);    // untouched field: 8 kW default × 2 units
+    expect(f[0].active_kw).toBe(90);  // 45 kW × 2 units, not the 3 kW default
+    expect(f[0].idle_kw).toBe(3);     // untouched field: 1.5 kW default × 2 units
     expect(f[0].overridden).toBe(true);
   });
   it('no override for a device → overridden is falsy, values equal the plain default', () => {
     const f = buildFleet({ ct: 2 });
     expect(f[0].overridden).toBeFalsy();
-    expect(f[0].active_kw).toBe(120); // 60 kW default × 2
+    expect(f[0].active_kw).toBe(6);   // 3 kW default × 2
   });
 });
 
