@@ -403,7 +403,13 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     ? rnd(trainKwhCustom, 0)
     : rnd(trainMwhBase * 1000 * arch.trainFactor * trainSizeRatio, 0);
   const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
-  const trainGpuHours  = rnd(trainKwhTotal / model.gpuKw, 0); // estimated GPU compute time
+  // "Estimated GPU compute time" divisor: prefer the training GPU the user actually selected
+  // (even if Hours was left blank, so no measured trainKwh bypass engaged) over model.gpuKw,
+  // which anchors the template's INFERENCE/deployment hardware — often much lower-power than
+  // real training hardware, which previously inflated this readout whenever only a GPU preset
+  // (no Hours) was chosen.
+  const trainGpuKw     = parseFloat(overrides.trainGpuKw) > 0 ? parseFloat(overrides.trainGpuKw) : model.gpuKw;
+  const trainGpuHours  = rnd(trainKwhTotal / trainGpuKw, 0); // estimated GPU compute time
   const trainKwhMonth  = rnd(trainKwhTotal / DEPLOY_MO, 2);   // amortised over deployment
 
   // ── Phase 2: Testing / Validation ────────────────────────────────────────
@@ -519,7 +525,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion}, equipOverrides);
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw}, equipOverrides);
   const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
@@ -2611,6 +2617,9 @@ function App() {
                           <input type="number" min="0" step="0.5" value={scen.trainHours} onChange={e=>setS('trainHours',e.target.value)} placeholder="e.g. 48" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                         </label>
                       </div>
+                      {gp && !(h > 0) && (
+                        <p className="note" style={{fontSize:10,marginTop:0,marginBottom:6}}>A GPU is selected but <strong>Hours</strong> is blank — the training <strong>energy</strong> total still uses the literature default (model default · {ai.training.kwhTotal.toLocaleString()} kWh) until both are filled in. The selected GPU's power draw is already used for the <strong>Estimated GPU compute</strong> readout below, though.</p>
+                      )}
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:6}}>
                         <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                           Training set (images) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
@@ -2714,7 +2723,7 @@ function App() {
             <div className="cards">
               <Card icon={<Zap/>}        title="Total training energy"    value={`${ai.training.kwhTotal.toLocaleString()} kWh`}  sub={`One-time. Scaled by architecture (${scen.architecture}) and model size. (LLM-Energy PDF)`}/>
               <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
-              <Card icon={<Gauge/>}      title="Estimated GPU compute"    value={`~${ai.training.gpuHours.toLocaleString()} h`}  sub="Estimated GPU hours at model GPU power draw. Actual depends on parallelism and hardware."/>
+              <Card icon={<Gauge/>}      title="Estimated GPU compute"    value={`~${ai.training.gpuHours.toLocaleString()} h`}  sub={GPU_PRESETS[scen.trainGpu] ? `Estimated GPU hours at the selected ${scen.trainGpu} power draw. Actual depends on parallelism.` : "Estimated GPU hours at this template's power draw — pick a Training GPU below for a hardware-specific estimate."}/>
               <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
             </div>
           </section>
