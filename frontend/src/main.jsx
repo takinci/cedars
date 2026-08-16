@@ -416,12 +416,23 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const trainGpuHours  = rnd(trainKwhTotal / trainGpuKw, 0); // estimated GPU compute time
   const trainKwhMonth  = rnd(trainKwhTotal / DEPLOY_MO, 2);   // amortised over deployment
 
+  // A measured inference kWh/study fully overrides BOTH the testing total and the per-study
+  // deployment figure below — the single source of truth for "what does one inference actually
+  // cost," bypassing model.inferSec × gpuKw × PUE entirely (that formula assumes 100% GPU
+  // utilisation for the full inferSec duration, which overstates energy whenever inferSec is a
+  // wall-clock/end-to-end latency figure rather than pure GPU-active compute time — see sources.md).
+  const inferKwhCustom = overrides.inferKwh && parseFloat(overrides.inferKwh) > 0
+    ? parseFloat(overrides.inferKwh)
+    : null;
+
   // ── Phase 2: Testing / Validation ────────────────────────────────────────
   // One-time inference run over hold-out test set.
   // Proxy: DLP/CTDIvol dose metrics correlate with net scan energy R²=0.87–0.92 (Schoen et al.)
   const testKwhTotal   = isToken
     ? rnd(tokenKwhPerStudy * TEST_STUDIES * cf.pue * ampF, 4)
-    : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * TEST_STUDIES * cf.pue * ampF, 4);
+    : inferKwhCustom !== null
+      ? rnd(inferKwhCustom * TEST_STUDIES, 4)
+      : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * TEST_STUDIES * cf.pue * ampF, 4);
   const testKgCo2e     = rnd(testKwhTotal * cf.ci, 4);
 
   // ── Phase 3: Inference & Deployment ─────────────────────────────────────
@@ -429,7 +440,9 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // MRI cooling adds +45% energy overhead during active acquisition (Heye/Vosshenrich)
   const inferKwhPerStudy = isToken
     ? rnd(tokenKwhPerStudy * cf.pue * ampF, 6)
-    : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * cf.pue * ampF, 6);
+    : inferKwhCustom !== null
+      ? inferKwhCustom
+      : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * cf.pue * ampF, 6);
   const inferKwhMonthly  = rnd(inferKwhPerStudy * STUDIES, 4);
   const inferKwhLifetime = rnd(inferKwhMonthly * DEPLOY_MO, 1);
   const ampSavingPct     = rnd((1 - ampF) * 100, 0);
@@ -464,6 +477,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     training:  {kwhTotal: trainKwhTotal, kgCo2e: trainKgCo2e, gpuHours: trainGpuHours, kwhAmortised: trainKwhMonth},
     testing:   {kwhTotal: testKwhTotal,  kgCo2e: testKgCo2e,  studies: TEST_STUDIES},
     inference: {kwhPerStudy: inferKwhPerStudy, kwhMonthly: inferKwhMonthly, kwhLifetime: inferKwhLifetime, studies: STUDIES},
+    inferKwhMeasured: inferKwhCustom !== null,
     monthly:   {kwh: totalMonthlyKwh, co2: rnd(totalMonthlyKwh * cf.ci, 3)},
     ampSavingPct, grossKgCo2e, embGpuKgCo2e, savingsKgCo2e, netKgCo2e,
     pue: cf.pue, cloudCi: cf.ci, waterLitres, efficiencyRatio,
@@ -530,14 +544,14 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw, customPue: cfg.customPue}, equipOverrides);
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw, customPue: cfg.customPue, inferKwh: cfg.inferKwh}, equipOverrides);
   const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
 
 // The AI-model config fields snapshotted into a benchmark candidate (department context —
 // region, equipment, customCi — is held constant and applied at compute time).
-const AI_CFG_FIELDS = ['modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec',
+const AI_CFG_FIELDS = ['modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec','inferKwh',
   'whPer1kTokens','callsPerTask','tokensPerCall',
   'accuracyPct','accuracyMetric','scanTimeReductPct','lowValueReductPct',
   'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','testStudies','deployMonths','customPue'];
@@ -1183,7 +1197,7 @@ function App() {
       gpuModel: 'NVIDIA A100 (80GB SXM4)', customTdpW: '300', gpuCount: '1', trainingHoursPerRun: '',
       numRuns: '1', energyMeasured: false, energyKwhPerRun: '', cloudProvider: 'Local compute',
       region: 'Global average', renewablePct: '0', inferStudiesMonth: '', inferMode: 'kwh',
-      inferKwhPerStudy: '', whPer1kTokens: '0.4', callsPerTask: '1', tokensPerCall: '', deployMonths: '36',
+      inferKwhPerStudy: '', whPer1kTokens: '0.4', callsPerTask: '1', tokensPerCall: '', deployMonths: '36', customPue: '',
     });
     setCloudTracker({
       renewablePct: '0', computeLines: [],
@@ -1198,7 +1212,7 @@ function App() {
     const m = AI_MODEL_BY_KEY[key] ?? AI_MODEL_LIBRARY[0];
     setScen(s => ({
       ...s, modelKey: key, architecture: m.architecture,
-      paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '',
+      paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '', inferKwh: '',
       whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
       accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
       scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
@@ -1252,6 +1266,7 @@ function App() {
     callsPerTask: '1',
     tokensPerCall: '',
     deployMonths: '36',
+    customPue: '',
   });
   const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
   const [deptCopied, setDeptCopied] = useState(false);
@@ -1500,7 +1515,9 @@ function App() {
     const gpuTdpKw = ecoLabel.gpuModel === 'Custom (enter TDP below)'
       ? (parseFloat(ecoLabel.customTdpW) || 300) / 1000
       : (GPU_PRESETS[ecoLabel.gpuModel]?.tdpKw ?? 0.3);
-    const cf = CLOUD[ecoLabel.cloudProvider] ?? CLOUD['Local compute'];
+    const baseCf = CLOUD[ecoLabel.cloudProvider] ?? CLOUD['Local compute'];
+    const ecoCustomPue = parseFloat(ecoLabel.customPue);
+    const cf = {...baseCf, pue: ecoCustomPue > 0 ? ecoCustomPue : baseCf.pue};
     const ci = getCI(settings.region, settings.customCi); // grid follows the AI & Informatics page region
     const gpuCount = Math.max(1, parseInt(ecoLabel.gpuCount) || 1);
     const hoursPerRun = parseFloat(ecoLabel.trainingHoursPerRun) || 0;
@@ -2508,7 +2525,7 @@ function App() {
                 <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced model parameters</span>
                 <span style={{fontSize:10,color:'#90a4ae'}}>{ai.unit==='tokens'
                   ? `${ai.callsPerTask} call${ai.callsPerTask===1?'':'s'} × ${ai.tokensPerCall.toLocaleString()} tok · ${ai.tokensPerStudy.toLocaleString()} tok/study · ${rnd(ai.inference.kwhPerStudy*1000,2)} Wh`
-                  : `${scen.paramsM}M params · ${scen.slices>1?`${scen.resolution}×${scen.resolution}×${scen.slices} px`:`${scen.resolution}px`} · ${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}</span>
+                  : `${scen.paramsM}M params · ${scen.slices>1?`${scen.resolution}×${scen.resolution}×${scen.slices} px`:`${scen.resolution}px`} · ${ai.inferKwhMeasured ? `${rnd(ai.inference.kwhPerStudy*1000,3)} Wh/study (measured)` : `${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}`}</span>
                 <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{modelExpanded ? '▴ collapse' : '▾ expand'}</span>
               </button>
               {modelExpanded && (
@@ -2576,14 +2593,24 @@ function App() {
                       Inference time (s/study)
                       <input type="number" min="0" step="0.1" value={scen.inferSec} onChange={e=>setS('inferSec',e.target.value)} placeholder={`auto: ${ai.inferSecDerived}`} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Inference energy (kWh/study) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>measured, optional</span>
+                      <input type="number" min="0" step="0.0001" value={scen.inferKwh} onChange={e=>setS('inferKwh',e.target.value)} placeholder="e.g. 0.001427" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
                   </div>
-                  {scen.slices > 1 && (() => {
+                  {scen.slices > 1 && !(parseFloat(scen.inferKwh) > 0) && (() => {
                     const r = parseFloat(scen.resolution)||0, s = parseFloat(scen.slices)||0, v = r*r*s;
                     return <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>{scen.dim==='3D' ? 'Volume' : 'Per-study elements'} <strong>{r} × {r} × {s}</strong> ≈ <strong>{v>=1e6?(v/1e6).toFixed(1)+'M':Math.round(v).toLocaleString()} {scen.dim==='3D'?'voxels':'pixels'}</strong>. Energy scales with element count (Green AI 2020; Selvan et al. 2022). {scen.dim!=='3D' && 'A 2D model applied slice-by-slice over a volume still processes this many elements per study — set slices to your per-study slice count, not just 1.'}</p>;
                   })()}
-                  <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
-                    Inference time auto-scales with <strong>params × resolution²{scen.dim==='3D'?' × slices':' × slices/passes'}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). Enter a measured value to override.
-                  </p>
+                  {parseFloat(scen.inferKwh) > 0 ? (
+                    <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
+                      <strong>Inference energy (kWh/study)</strong> is set — this now drives both <strong>Testing/Validation</strong> and <strong>per-study deployment</strong> energy directly, bypassing the time × GPU-power × PUE formula entirely (so <strong>Inference time</strong> above no longer affects energy — it stays only as an informational readout). Use this whenever a paper reports energy/study directly, or when its reported inference *time* is end-to-end wall-clock latency (I/O, pre/post-processing) rather than pure GPU-active compute time — feeding wall-clock time into the formula above would overstate energy.
+                    </p>
+                  ) : (
+                    <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
+                      Inference time auto-scales with <strong>params × resolution²{scen.dim==='3D'?' × slices':' × slices/passes'}</strong> relative to {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} (≈ {ai.inferSecDerived}s/study{ai.inferSecAuto?', in use':''}). This assumes 100% GPU utilisation for the full duration — if a paper's reported per-case time includes I/O/pre/post-processing (common for volumetric pipelines), it will overstate energy; enter the paper's own <strong>kWh/study</strong> above instead of deriving it from time.
+                    </p>
+                  )}
                   </>
                   )}
                 </div>
@@ -2753,7 +2780,7 @@ function App() {
             <h2 style={{marginBottom:12}}>Phase 2 — Testing and validation</h2>
             <p className="note" style={{marginBottom:12}}>One-time hold-out inference run. Proxy: DLP / CTDIvol correlate with net scan energy R²=0.87–0.92 (Schoen et al.), enabling energy inference from dose reports.</p>
             <div className="cards">
-              <Card icon={<Zap/>}        title="Test set energy"          value={`${ai.testing.kwhTotal} kWh`}                   sub={`${ai.testing.studies} studies. One-time cost; small fraction of training energy.`}/>
+              <Card icon={<Zap/>}        title="Test set energy"          value={`${ai.testing.kwhTotal} kWh`}                   sub={ai.inferKwhMeasured ? `${ai.testing.studies} studies × your measured kWh/study.` : `${ai.testing.studies} studies. One-time cost; small fraction of training energy.`}/>
               <Card icon={<Leaf/>}       title="Test set CO₂e"            value={`${ai.testing.kgCo2e} kgCO₂e`}                 sub={`At ${ai.cloudCi} kgCO₂e/kWh. Include in model carbon disclosure.`}/>
               <Card icon={<Target/>}     title="Test set size"            value={`${ai.testing.studies} studies`}               sub="Default hold-out set. Larger sets improve accuracy estimates but increase energy cost."/>
               <Card icon={<BarChart3/>}  title="Precision mode"           value={scen.precision}                                 sub={`AMP (float16) saves ${ai.ampSavingPct}% inference energy with minimal accuracy loss. Apply to both test and inference.`}/>
@@ -2773,7 +2800,7 @@ function App() {
             <h2 style={{marginBottom:12}}>Phase 3 — Inference and deployment</h2>
             <p className="note" style={{marginBottom:12}}>Inference scales with every study — this dominates the AI lifecycle energy cost. MRI cooling adds +45% to scanner energy during active acquisition (Heye/Vosshenrich). (Implementation Guide §4 · Metric 2)</p>
             <div className="cards">
-              <Card icon={<Activity/>}   title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub="Per-inference energy including PUE and AMP factor. Scales with every request."/>
+              <Card icon={<Activity/>}   title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub={ai.inferKwhMeasured ? "Your measured kWh/study, entered directly — not derived from time × GPU power." : "Per-inference energy including PUE and AMP factor. Scales with every request."}/>
               <Card icon={<Zap/>}        title="Monthly inference energy" value={`${ai.inference.kwhMonthly} kWh`}               sub={`Across ${ai.inference.studies.toLocaleString()} studies/month at ${scen.cloudProvider}.`}/>
               <Card icon={<Gauge/>}      title="Lifetime inference total" value={`${ai.inference.kwhLifetime.toLocaleString()} kWh`} sub="36-month deployment. Inference typically exceeds training energy within 1–3 months."/>
               <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh cooling estimate. Often overlooked environmental cost.`}/>
@@ -3246,6 +3273,7 @@ function App() {
                 ...(scen.cloudProvider                 ? {cloudProvider:     scen.cloudProvider}                             : {}),
                 ...(parseInt(scen.deployMonths) > 0    ? {deployMonths:      String(parseInt(scen.deployMonths))}            : {}),
                 ...(dash.scopes.imagingScans > 0       ? {inferStudiesMonth: String(Math.round(dash.scopes.imagingScans))}   : {}),
+                ...(parseFloat(scen.customPue) > 0     ? {customPue:         String(scen.customPue)}                        : {customPue: ''}),
                 ...tokenPrefill,
               }));
             }} style={{
@@ -3332,6 +3360,11 @@ function App() {
             <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Deployment context</h2>
             <div className="grid grid3">
               <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={v=>setEco('cloudProvider',v)}/>
+              <label>
+                Custom PUE <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>optional — overrides {ecoLabel.cloudProvider} default ({CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5})</span>
+                <input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5} default`}/>
+                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>This label has its own independent PUE — it does not follow the AI Model page's Custom PUE. Set to <strong>1.0</strong> to reproduce a single lab GPU measurement (e.g. CodeCarbon) with no data-centre overhead.</span>
+              </label>
               <label style={{opacity:0.9}}>
                 Grid region <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>(follows this page)</span>
                 <input type="text" value={settings.region} readOnly title="Change the grid region on the Home page." style={{background:'#f5f5f5',cursor:'not-allowed'}}/>

@@ -33,7 +33,7 @@ export const SCEN_DEFAULTS = {
   intervention: "Turn MRI/CT scanners off overnight", cloudProvider: "Local compute",
   cloudRegion: "On-premise (Switzerland)", scannerState: "Standby", modelKey: 'cad',
   architecture: "CNN / ResNet", precision: "float32 (standard)", paramsM: '8', dim: '2D',
-  resolution: '224', slices: '1', inferSec: '', whPer1kTokens: '', callsPerTask: '1',
+  resolution: '224', slices: '1', inferSec: '', inferKwh: '', whPer1kTokens: '', callsPerTask: '1',
   tokensPerCall: '', accuracyPct: '84', accuracyMetric: 'AUC', scanTimeReductPct: '0',
   lowValueReductPct: '12', trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500',
   deployMonths: '36', datasetSize: '', epochs: '', customPue: '',
@@ -48,7 +48,7 @@ const SETTINGS_KEYS = {
 const SCEN_KEYS = {
   si: 'intervention', cp: 'cloudProvider', cr: 'cloudRegion', ss: 'scannerState', mk: 'modelKey',
   ar: 'architecture', pr: 'precision', pm: 'paramsM', dm: 'dim', rs: 'resolution', sl: 'slices',
-  is: 'inferSec', wt: 'whPer1kTokens', ct: 'callsPerTask', tc: 'tokensPerCall', ap: 'accuracyPct',
+  is: 'inferSec', ik: 'inferKwh', wt: 'whPer1kTokens', ct: 'callsPerTask', tc: 'tokensPerCall', ap: 'accuracyPct',
   am: 'accuracyMetric', st: 'scanTimeReductPct', lv: 'lowValueReductPct', tg: 'trainGpu',
   tn: 'trainNumGpus', th: 'trainHours', ts: 'testStudies', dp: 'deployMonths',
   ds: 'datasetSize', ne: 'epochs', pu: 'customPue',

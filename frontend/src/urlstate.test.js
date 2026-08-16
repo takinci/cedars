@@ -82,6 +82,12 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
   });
 
+  it('inferKwh (measured inference energy override) survives encode → decode', () => {
+    const scen = { ...SCEN_DEFAULTS, inferKwh: '0.001427' };
+    const decoded = decodeConfig('#' + encodeConfig({ scen }));
+    expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
+  });
+
   it('equipmentOverrides drops unrecognized fields and non-numeric values on decode', () => {
     // 'notafield' isn't in OVERRIDABLE_FIELDS and 'scans=abc' isn't numeric — both dropped;
     // a device left with no valid fields (workstations) is omitted entirely.
