@@ -363,8 +363,12 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const baseCf   = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
   const provData = CLOUD_REGIONS[cloudProvider];
   const regionCi = (provData && overrides.cloudRegion != null) ? provData.regions[overrides.cloudRegion] : undefined;
+  const customPue = parseFloat(overrides.customPue);
   const cf    = {
-    pue: provData?.pue ?? baseCf.pue,
+    // Custom PUE overrides the provider default — e.g. reproducing a paper that measured a
+    // single lab GPU directly rather than a colocated data-centre rack (no distribution/cooling
+    // overhead in that setup, so PUE ≈ 1.0 there vs the ~1.5 CEDARS assumes for "Local compute").
+    pue: customPue > 0 ? customPue : (provData?.pue ?? baseCf.pue),
     ci:  (regionCi != null) ? regionCi : baseCf.ci,
   };
   const ci    = getCI(region, customCi);
@@ -482,7 +486,8 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
   const gpuPreset = GPU_PRESETS[cfg.trainGpu];
   const trainH    = parseFloat(cfg.trainHours) || 0;
   const trainN    = Math.max(1, parseInt(cfg.trainNumGpus) || 1);
-  const pue       = CLOUD[cfg.cloudProvider]?.pue ?? 1.5;
+  const customPue = parseFloat(cfg.customPue);
+  const pue       = customPue > 0 ? customPue : (CLOUD[cfg.cloudProvider]?.pue ?? 1.5);
   const trainKwh  = gpuPreset && trainH > 0 ? rnd(gpuPreset.tdpKw * trainN * trainH * pue, 1) : 0;
   const lib = AI_MODEL_BY_KEY[cfg.modelKey] ?? AI_MODEL_LIBRARY[0];
   const paramsM    = parseFloat(cfg.paramsM)    || lib.paramsM;
@@ -525,7 +530,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw}, equipOverrides);
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw, customPue: cfg.customPue}, equipOverrides);
   const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
@@ -535,7 +540,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
 const AI_CFG_FIELDS = ['modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec',
   'whPer1kTokens','callsPerTask','tokensPerCall',
   'accuracyPct','accuracyMetric','scanTimeReductPct','lowValueReductPct',
-  'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','testStudies','deployMonths'];
+  'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','testStudies','deployMonths','customPue'];
 function pickAiCfg(s) {
   return AI_CFG_FIELDS.reduce((o, k) => (o[k] = s[k], o), {});
 }
@@ -2519,6 +2524,10 @@ function App() {
                       Parameters (M)
                       <input type="number" min="0" step="1" value={scen.paramsM} onChange={e=>setS('paramsM',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                     </label>
+                    <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                      Custom PUE <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
+                      <input type="number" min="1" step="0.05" value={scen.customPue} onChange={e=>setS('customPue',e.target.value)} placeholder={`${CLOUD[scen.cloudProvider]?.pue ?? 1.5} default`} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                    </label>
                     {ai.unit!=='tokens' && (
                     <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       Dimensionality
@@ -2529,6 +2538,9 @@ function App() {
                     </label>
                     )}
                   </div>
+                  {parseFloat(scen.customPue) > 0 && (
+                    <p className="note" style={{fontSize:10,marginTop:0,marginBottom:6}}>Overrides the {scen.cloudProvider} default PUE ({CLOUD[scen.cloudProvider]?.pue ?? 1.5}) everywhere on this page (training, testing, and inference energy). Useful when reproducing a paper that measured a single lab GPU directly (CodeCarbon, <code>nvidia-smi</code>) rather than a colocated data-centre rack — set to <strong>1.0</strong> to remove data-centre power-distribution/cooling overhead that likely wasn't present in that setup.</p>
+                  )}
                   {ai.unit==='tokens' ? (
                   <>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:6}}>
@@ -2583,7 +2595,7 @@ function App() {
               const gp = GPU_PRESETS[scen.trainGpu];
               const h  = parseFloat(scen.trainHours) || 0;
               const n  = Math.max(1, parseInt(scen.trainNumGpus) || 1);
-              const pue = CLOUD[scen.cloudProvider]?.pue ?? 1.5;
+              const pue = parseFloat(scen.customPue) > 0 ? parseFloat(scen.customPue) : (CLOUD[scen.cloudProvider]?.pue ?? 1.5);
               const estKwh = gp && h > 0 ? rnd(gp.tdpKw * n * h * pue, 1) : null;
               return (
                 <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
