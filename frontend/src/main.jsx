@@ -946,6 +946,19 @@ function generateDeptText(d) {
   );
 }
 
+// Shared label-card row height: both PNG label cards (Department EcoLabel, AI Research Label)
+// share the same fixed width but have very different row counts (7-9 vs 10-13), so a fixed
+// ROW_H previously gave them noticeably different aspect ratios (~1.34 vs ~0.97). Instead, both
+// aim for the same TARGET_H by shrinking/growing row height within a readable range — short
+// cards get roomier rows, long cards get tighter ones, and both land close to the same overall
+// card shape. LABEL_CHROME_H is the fixed (non-row) vertical space: header + score/rating band +
+// margins + footer, identical in both card layouts.
+const LABEL_TARGET_H = 460, LABEL_MIN_ROW_H = 20, LABEL_MAX_ROW_H = 32, LABEL_CHROME_H = 72 + 84 + 4 + 6 + 28 + 4;
+function labelRowH(numRows) {
+  const ideal = (LABEL_TARGET_H - LABEL_CHROME_H) / Math.max(1, numRows);
+  return Math.min(LABEL_MAX_ROW_H, Math.max(LABEL_MIN_ROW_H, ideal));
+}
+
 function downloadDeptPNG(d) {
   const W = 510;
   const rows = [
@@ -959,7 +972,7 @@ function downloadDeptPNG(d) {
     ['Grid region',          d.region],
     ...(d.interventionCount > 0 ? [['Active interventions', `${d.interventionCount} implemented \xb7 ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved`]] : []),
   ];
-  const ROW_H = 26, HEADER_H = 72, TIER_H = 84, FOOTER_H = 28;
+  const ROW_H = labelRowH(rows.length), HEADER_H = 72, TIER_H = 84, FOOTER_H = 28;
   const H = HEADER_H + TIER_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
   const canvas = document.createElement('canvas');
   canvas.width = W * 2; canvas.height = H * 2;
@@ -991,14 +1004,15 @@ function downloadDeptPNG(d) {
   ctx.fillText(`${d.ratingLabel}`, 100, HEADER_H + 52);
   ctx.font = '11px sans-serif'; ctx.fillStyle = '#263238';
   ctx.fillText(`${d.co2PerStudy} kgCO₂e per imaging study`, 100, HEADER_H + 70);
+  const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
   rows.forEach(([k, v], i) => {
     const y = HEADER_H + TIER_H + 4 + i * ROW_H;
     ctx.fillStyle = i%2===0 ? '#f1f8f1' : '#ffffff';
     ctx.fillRect(2, y, W-4, ROW_H);
     ctx.fillStyle = '#607d66'; ctx.font = '11px sans-serif';
-    ctx.fillText(k, 14, y+17);
+    ctx.fillText(k, 14, y+rowTextY);
     ctx.fillStyle = '#263238'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(String(v), 200, y+17);
+    ctx.fillText(String(v), 200, y+rowTextY);
   });
   const footerY = HEADER_H + TIER_H + 4 + rows.length * ROW_H + 6;
   ctx.fillStyle = '#e8f5e9';
@@ -1074,7 +1088,7 @@ function downloadEcoPNG(d) {
       ['Effective / study', `${d.effectivePerStudyG} gCO₂e (amortised)`],
     ] : []),
   ];
-  const ROW_H = 26, HEADER_H = 72, RATING_H = 76, FOOTER_H = 28;
+  const ROW_H = labelRowH(rows.length), HEADER_H = 72, RATING_H = 84, FOOTER_H = 28;
   const H = HEADER_H + RATING_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
   const canvas = document.createElement('canvas');
   canvas.width = W * 2; canvas.height = H * 2;
@@ -1108,14 +1122,15 @@ function downloadEcoPNG(d) {
       : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study`
       : d.hasData ? 'Add inference to grade' : 'Enter training data above',
     100, HEADER_H + 66);
+  const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
   rows.forEach(([k, v], i) => {
     const y = HEADER_H + RATING_H + 4 + i * ROW_H;
     ctx.fillStyle = i % 2 === 0 ? '#f1f8f1' : '#ffffff';
     ctx.fillRect(2, y, W - 4, ROW_H);
     ctx.fillStyle = '#607d66'; ctx.font = '11px sans-serif';
-    ctx.fillText(k, 14, y + 17);
+    ctx.fillText(k, 14, y + rowTextY);
     ctx.fillStyle = '#263238'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(String(v), 210, y + 17);
+    ctx.fillText(String(v), 210, y + rowTextY);
   });
   const footerY = HEADER_H + RATING_H + 4 + rows.length * ROW_H + 6;
   ctx.fillStyle = '#e8f5e9';
