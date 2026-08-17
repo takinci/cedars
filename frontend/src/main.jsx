@@ -959,8 +959,95 @@ function labelRowH(numRows) {
   return Math.min(LABEL_MAX_ROW_H, Math.max(LABEL_MIN_ROW_H, ideal));
 }
 
-function downloadDeptPNG(d) {
+// Lucide "Leaf" icon path data (v0.511.0, 24x24 viewBox) — drawn directly in canvas so the PNG
+// label exports use the exact same leaf glyph as the <LeafRating> component in the live UI,
+// rather than a plain bullet/dot standing in for CEDARS's actual rating symbol.
+const LEAF_PATH_BLOB = "M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z";
+const LEAF_PATH_STEM = "M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12";
+function drawLeaf(ctx, x, y, size, filled, color) {
+  const s = size / 24;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = color;
+  const blob = new Path2D(LEAF_PATH_BLOB);
+  if (filled) { ctx.fillStyle = color; ctx.fill(blob); }
+  ctx.stroke(blob);
+  ctx.stroke(new Path2D(LEAF_PATH_STEM));
+  ctx.restore();
+}
+
+// Single shared renderer for both PNG label cards. Both cards previously duplicated this whole
+// layout with small, easy-to-drift inconsistencies (score font 40px vs 38px, leaf-row spacing
+// 16px vs 15px, row-value column 200 vs 210, footer text "CEDARS Score & Rating..." vs "CEDARS
+// ..."). Routing both through one function makes that kind of drift structurally impossible —
+// the two cards can now only differ in the data passed in (title, rows, colours), never in layout.
+function drawLabelCard({title, name, contextLine, scoreDisplay, leaves, ratingColor, ratingBg, ratingLabel, subtext, rows, footerText}) {
   const W = 510;
+  const ROW_H = labelRowH(rows.length), HEADER_H = 72, BAND_H = 84, FOOTER_H = 28;
+  const H = HEADER_H + BAND_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
+  const canvas = document.createElement('canvas');
+  canvas.width = W * 2; canvas.height = H * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.roundRect(0, 0, W, H, 14); ctx.fill();
+  ctx.strokeStyle = ratingColor; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(1, 1, W-2, H-2, 13); ctx.stroke();
+  ctx.fillStyle = '#1b5e20';
+  ctx.beginPath(); ctx.roundRect(1, 1, W-2, HEADER_H, [13,13,0,0]); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 15px sans-serif';
+  ctx.fillText(title, 16, 26);
+  ctx.font = '13px sans-serif'; ctx.fillStyle = '#A5D6A7';
+  ctx.fillText(name, 16, 48);
+  ctx.font = '10px sans-serif'; ctx.fillStyle = '#81C784';
+  ctx.fillText(contextLine, 16, 66);
+  ctx.fillStyle = ratingBg;
+  ctx.fillRect(2, HEADER_H, W-4, BAND_H);
+  // CEDARS Score (big number) + Rating (5 leaves — matches the UI's LeafRating component)
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = ratingColor;
+  ctx.fillText(scoreDisplay, 46, HEADER_H + 48);
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText('CEDARS SCORE', 46, HEADER_H + 64);
+  ctx.textAlign = 'left';
+  for (let i = 0; i < 5; i++) drawLeaf(ctx, 100 + i*18, HEADER_H + 15, 16, i < leaves, i < leaves ? ratingColor : '#cfd8dc');
+  ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = ratingColor;
+  ctx.fillText(ratingLabel, 100, HEADER_H + 53);
+  ctx.font = '11px sans-serif'; ctx.fillStyle = '#263238';
+  ctx.fillText(subtext, 100, HEADER_H + 70);
+  const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
+  rows.forEach(([k, v], i) => {
+    const y = HEADER_H + BAND_H + 4 + i * ROW_H;
+    ctx.fillStyle = i%2===0 ? '#f1f8f1' : '#ffffff';
+    ctx.fillRect(2, y, W-4, ROW_H);
+    ctx.fillStyle = '#607d66'; ctx.font = '11px sans-serif';
+    ctx.fillText(k, 14, y+rowTextY);
+    ctx.fillStyle = '#263238'; ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(String(v), 210, y+rowTextY);
+  });
+  const footerY = HEADER_H + BAND_H + 4 + rows.length * ROW_H + 6;
+  ctx.fillStyle = '#e8f5e9';
+  ctx.beginPath(); ctx.roundRect(2, footerY, W-4, FOOTER_H, [0,0,11,11]); ctx.fill();
+  ctx.fillStyle = '#2E7D32'; ctx.font = '10px sans-serif';
+  ctx.fillText(footerText, 14, footerY+18);
+  return canvas;
+}
+
+function downloadCanvasPNG(canvas, filename) {
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+}
+
+function downloadDeptPNG(d) {
   const rows = [
     ['Annual electricity',   `${d.annualKwh.toLocaleString()} kWh`],
     ['Annual CO₂e',    `${d.totalAnnualCo2.toLocaleString()} kgCO₂e`],
@@ -972,61 +1059,17 @@ function downloadDeptPNG(d) {
     ['Grid region',          d.region],
     ...(d.interventionCount > 0 ? [['Active interventions', `${d.interventionCount} implemented \xb7 ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved`]] : []),
   ];
-  const ROW_H = labelRowH(rows.length), HEADER_H = 72, TIER_H = 84, FOOTER_H = 28;
-  const H = HEADER_H + TIER_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
-  const canvas = document.createElement('canvas');
-  canvas.width = W * 2; canvas.height = H * 2;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.roundRect(0, 0, W, H, 14); ctx.fill();
-  ctx.strokeStyle = d.ratingColor; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(1, 1, W-2, H-2, 13); ctx.stroke();
-  ctx.fillStyle = '#1b5e20';
-  ctx.beginPath(); ctx.roundRect(1, 1, W-2, HEADER_H, [13,13,0,0]); ctx.fill();
-  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 15px sans-serif';
-  ctx.fillText('CEDARS Department EcoLabel', 16, 26);
-  ctx.font = '13px sans-serif'; ctx.fillStyle = '#A5D6A7';
-  ctx.fillText(d.deptName, 16, 48);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#81C784';
-  ctx.fillText(`${d.hospitalName ? d.hospitalName + ' \xb7 ' : ''}${d.region} \xb7 ${d.date}`, 16, 66);
-  ctx.fillStyle = d.ratingBg;
-  ctx.fillRect(2, HEADER_H, W-4, TIER_H);
-  // CEDARS Score (big number) + Rating (5 leaves)
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = d.ratingColor;
-  ctx.fillText(String(d.score), 46, HEADER_H + 48);
-  ctx.font = 'bold 9px sans-serif';
-  ctx.fillText('CEDARS SCORE', 46, HEADER_H + 64);
-  ctx.textAlign = 'left';
-  for (let i = 0; i < 5; i++) { ctx.fillStyle = i < d.leaves ? d.ratingColor : '#cfd8dc'; ctx.font = '16px sans-serif'; ctx.fillText('●', 100 + i*16, HEADER_H + 30); }
-  ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = d.ratingColor;
-  ctx.fillText(`${d.ratingLabel}`, 100, HEADER_H + 52);
-  ctx.font = '11px sans-serif'; ctx.fillStyle = '#263238';
-  ctx.fillText(`${d.co2PerStudy} kgCO₂e per imaging study`, 100, HEADER_H + 70);
-  const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
-  rows.forEach(([k, v], i) => {
-    const y = HEADER_H + TIER_H + 4 + i * ROW_H;
-    ctx.fillStyle = i%2===0 ? '#f1f8f1' : '#ffffff';
-    ctx.fillRect(2, y, W-4, ROW_H);
-    ctx.fillStyle = '#607d66'; ctx.font = '11px sans-serif';
-    ctx.fillText(k, 14, y+rowTextY);
-    ctx.fillStyle = '#263238'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(String(v), 200, y+rowTextY);
+  const canvas = drawLabelCard({
+    title: 'CEDARS Department EcoLabel',
+    name: d.deptName,
+    contextLine: `${d.hospitalName ? d.hospitalName + ' \xb7 ' : ''}${d.region} \xb7 ${d.date}`,
+    scoreDisplay: String(d.score),
+    leaves: d.leaves, ratingColor: d.ratingColor, ratingBg: d.ratingBg, ratingLabel: d.ratingLabel,
+    subtext: `${d.co2PerStudy} kgCO₂e per imaging study`,
+    rows,
+    footerText: `CEDARS Score & Rating \xb7 ${d.date} \xb7 CC BY 4.0`,
   });
-  const footerY = HEADER_H + TIER_H + 4 + rows.length * ROW_H + 6;
-  ctx.fillStyle = '#e8f5e9';
-  ctx.beginPath(); ctx.roundRect(2, footerY, W-4, FOOTER_H, [0,0,11,11]); ctx.fill();
-  ctx.fillStyle = '#2E7D32'; ctx.font = '10px sans-serif';
-  ctx.fillText(`CEDARS Score & Rating \xb7 ${d.date} \xb7 CC BY 4.0`, 14, footerY+18);
-  canvas.toBlob(blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cedars_dept_label_${(d.deptName||'department').replace(/\W+/g,'_')}.png`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-  });
+  downloadCanvasPNG(canvas, `cedars_dept_label_${(d.deptName||'department').replace(/\W+/g,'_')}.png`);
 }
 
 function generateEcoMarkdown(d) {
@@ -1068,7 +1111,6 @@ function generateEcoMarkdown(d) {
 }
 
 function downloadEcoPNG(d) {
-  const W = 510;
   const rows = [
     ['Task type',                d.taskType],
     ['Architecture',             d.architecture],
@@ -1088,63 +1130,20 @@ function downloadEcoPNG(d) {
       ['Effective / study', `${d.effectivePerStudyG} gCO₂e (amortised)`],
     ] : []),
   ];
-  const ROW_H = labelRowH(rows.length), HEADER_H = 72, RATING_H = 84, FOOTER_H = 28;
-  const H = HEADER_H + RATING_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
-  const canvas = document.createElement('canvas');
-  canvas.width = W * 2; canvas.height = H * 2;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.roundRect(0, 0, W, H, 14); ctx.fill();
-  ctx.strokeStyle = d.ratingColor; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(1, 1, W - 2, H - 2, 13); ctx.stroke();
-  ctx.fillStyle = '#1b5e20';
-  ctx.beginPath(); ctx.roundRect(1, 1, W - 2, HEADER_H, [13, 13, 0, 0]); ctx.fill();
-  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 15px sans-serif';
-  ctx.fillText('CEDARS AI Research Label', 16, 26);
-  ctx.font = '13px sans-serif'; ctx.fillStyle = '#A5D6A7';
-  ctx.fillText(d.projectName, 16, 48);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#81C784';
-  ctx.fillText(`AI model footprint disclosure · ${d.date}`, 16, 66);
-  // CEDARS Score + Rating band
-  ctx.fillStyle = d.ratingBg; ctx.fillRect(2, HEADER_H, W-4, RATING_H);
-  ctx.textAlign = 'center';
-  ctx.font = 'bold 38px sans-serif'; ctx.fillStyle = d.ratingColor;
-  ctx.fillText(d.graded ? String(d.score) : '—', 46, HEADER_H + 44);
-  ctx.font = 'bold 9px sans-serif'; ctx.fillText('CEDARS SCORE', 46, HEADER_H + 60);
-  ctx.textAlign = 'left';
-  for (let i = 0; i < 5; i++) { ctx.fillStyle = i < d.leaves ? d.ratingColor : '#cfd8dc'; ctx.font = '15px sans-serif'; ctx.fillText('●', 100 + i*15, HEADER_H + 28); }
-  ctx.font = 'bold 14px sans-serif'; ctx.fillStyle = d.ratingColor;
-  ctx.fillText(d.ratingLabel, 100, HEADER_H + 50);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#263238';
-  ctx.fillText(
-    d.gradeBasis === 'amortised' ? `${d.effectivePerStudyG} gCO₂e/study (amortised)`
-      : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study`
-      : d.hasData ? 'Add inference to grade' : 'Enter training data above',
-    100, HEADER_H + 66);
-  const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
-  rows.forEach(([k, v], i) => {
-    const y = HEADER_H + RATING_H + 4 + i * ROW_H;
-    ctx.fillStyle = i % 2 === 0 ? '#f1f8f1' : '#ffffff';
-    ctx.fillRect(2, y, W - 4, ROW_H);
-    ctx.fillStyle = '#607d66'; ctx.font = '11px sans-serif';
-    ctx.fillText(k, 14, y + rowTextY);
-    ctx.fillStyle = '#263238'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(String(v), 210, y + rowTextY);
+  const canvas = drawLabelCard({
+    title: 'CEDARS AI Research Label',
+    name: d.projectName,
+    contextLine: `AI model footprint disclosure \xb7 ${d.date}`,
+    scoreDisplay: d.graded ? String(d.score) : '—',
+    leaves: d.leaves, ratingColor: d.ratingColor, ratingBg: d.ratingBg, ratingLabel: d.ratingLabel,
+    subtext:
+      d.gradeBasis === 'amortised' ? `${d.effectivePerStudyG} gCO₂e/study (amortised)`
+        : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study`
+        : d.hasData ? 'Add inference to grade' : 'Enter training data above',
+    rows,
+    footerText: `CEDARS Score & Rating \xb7 ${d.date} \xb7 CC BY 4.0`,
   });
-  const footerY = HEADER_H + RATING_H + 4 + rows.length * ROW_H + 6;
-  ctx.fillStyle = '#e8f5e9';
-  ctx.beginPath(); ctx.roundRect(2, footerY, W - 4, FOOTER_H, [0, 0, 11, 11]); ctx.fill();
-  ctx.fillStyle = '#2E7D32'; ctx.font = '10px sans-serif';
-  ctx.fillText(`CEDARS · ${d.date} · CC BY 4.0`, 14, footerY + 18);
-  canvas.toBlob(blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cedars_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-  });
+  downloadCanvasPNG(canvas, `cedars_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
 }
 
 const CHART_COLORS = ['#2E7D32','#26A69A','#66BB6A','#4DB6AC','#A5D6A7','#80CBC4'];
