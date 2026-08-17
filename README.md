@@ -165,7 +165,7 @@ To build for deployment:
 npm run build   # outputs to ../docs/
 ```
 
-> Requires Node 20+ (Vite 5).
+> Requires Node 22+ (Vite 5).
 
 ---
 
