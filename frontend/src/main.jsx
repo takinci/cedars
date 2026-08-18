@@ -2784,6 +2784,7 @@ function App() {
               <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
               <Card icon={<Gauge/>}      title={ai.trainMeasured ? "GPU compute (measured)" : "Estimated GPU compute"}    value={`${ai.trainMeasured ? '' : '~'}${ai.training.gpuHours.toLocaleString()} h`}  sub={ai.trainMeasured ? `Your entered Hours × #GPUs, exactly as typed below — not derived from energy, so PUE doesn't affect it.` : GPU_PRESETS[scen.trainGpu] ? `Estimated GPU hours at the selected ${scen.trainGpu} power draw. Actual depends on parallelism.` : "Estimated GPU hours at this template's power draw — pick a Training GPU below for a hardware-specific estimate."}/>
               <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
+              <Card icon={<Droplets/>}   title="Training electricity cost" value={fmtMoney(ai.training.kwhTotal * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`One-time, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh. Editable under Home → Department settings.`}/>
             </div>
           </section>
 
@@ -2824,6 +2825,7 @@ function App() {
               <Card icon={<Zap/>}        title="Monthly inference energy" value={`${ai.inference.kwhMonthly} kWh`}               sub={`Across ${ai.inference.studies.toLocaleString()} studies/month at ${scen.cloudProvider}.`}/>
               <Card icon={<Gauge/>}      title="Lifetime inference total" value={`${ai.inference.kwhLifetime.toLocaleString()} kWh`} sub="36-month deployment. Inference typically exceeds training energy within 1–3 months."/>
               <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh cooling estimate. Often overlooked environmental cost.`}/>
+              <Card icon={<Gauge/>}      title="Monthly electricity cost" value={fmtMoney(ai.monthly.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`Inference + amortised training, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh.`}/>
             </div>
           </section>
 
