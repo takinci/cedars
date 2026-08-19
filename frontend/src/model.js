@@ -63,12 +63,16 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // A superconducting magnet's cryocooler cannot be switched off without risking magnet quench
 // (helium boil-off), so "off" still draws substantial power — this is why off_kw (7–10 kW) is so
 // much higher than a simple "powered down" assumption, not because off_h itself is large.
-// Separately worth flagging: Woolen et al. report MRI "off" state alone consumes 35-47 MWh/yr
-// (31-38% of annual total) — with off_kw≈10 kW that implies ~3,500-4,700 off-hours/year
-// (~290-390 h/month), far above this table's off_h=34/month. That's a much bigger, cross-cutting
-// change (the 160/300/250/34 hour split is shared by nearly every EQUIPMENT_UNITS row, not just
-// MRI) and is NOT applied here — flagging for a dedicated follow-up rather than folding into this
-// power-value fix.
+// Separately worth flagging: the earlier version of this note miscited "MRI off state consumes
+// 35-47 MWh/yr (31-38% of annual total)" to Woolen et al. — that figure is actually from Heye et
+// al. 2020 (Radiology 295:593-605), an independent, earlier study Woolen's own Discussion cites
+// for comparison, not Woolen's own result (see sources.md, corrected 2026-08). Woolen's own
+// Table 3 shows off-mode duration is highly variable (2.5%-59.5% of time across their 4
+// scanners, driven by site policy, not a physical constant) — the one unit actually run in off
+// mode implies ~434 h/month, far above this table's off_h=34/month, but there's no single
+// Woolen-derived default to replace it with. That's a much bigger, cross-cutting change (the
+// 160/300/250/34 hour split is shared by nearly every EQUIPMENT_UNITS row, not just MRI) and is
+// NOT applied here — flagging for a dedicated follow-up rather than folding into this power-value fix.
 // mri_7t idle_kw/off_kw unchanged — Woolen's study didn't include 7T (research-only) scanners,
 // and higher idle/off draw is physically plausible for their larger, more complex cryo/RF systems.
 // 0.35T (mri_035t) is unaffected — permanent magnet, no cryocooler, off ≈ idle already holds.
