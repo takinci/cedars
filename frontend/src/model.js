@@ -92,7 +92,15 @@ const EQUIPMENT_UNITS = {
   petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:100, scans:400},
   xray:        {name:"Radiography Room",     modality:"Radiography",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
-  mammography: {name:"Mammography",    modality:"Radiography",      active_kw:5,   idle_kw:1,   standby_kw:0.3, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
+  // Corrected 2026-08 (was active 5 kW / idle 1 kW / standby 0.3 kW / off 0.1 kW — implied
+  // ~10,190 kWh/yr, 4-6x above real measurement). Rossini et al. 2026 (Eur Radiol, 3 real
+  // mammography units, minute-by-minute power monitoring) report ~1660-2300 kWh/yr per
+  // machine and net (incremental exposure) energy of only 0.05-0.09 kWh/exam — mammography's
+  // x-ray exposure itself is brief and low-power, unlike CT/MRI. The paper measures two states
+  // (net/active vs. blended baseload), not CEDARS's 4-state model, so active_kw/idle_kw/
+  // standby_kw/off_kw here are back-solved to reproduce the real annual total at this table's
+  // own hour split and scan volume — see sources.md for the derivation.
+  mammography: {name:"Mammography",    modality:"Radiography",      active_kw:0.5, idle_kw:0.2, standby_kw:0.15, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
   pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
   workstations:{name:"Workstations",   modality:"Workstation",active_kw:0.1174, idle_kw:0.1174, standby_kw:0.0542, off_kw:0.0182, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
   // Interventional imaging — power from direct sensor measurements (Vosshenrich et al., AJR 2024, 10.2214/AJR.24.30988).
