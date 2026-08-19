@@ -32,7 +32,7 @@ const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
 // Per-unit equipment specs — one row = one machine/set. Power values from literature (see sources.md).
-// MRI specs originally calibrated to MODALITY_BENCHMARKS annual kWh (Heye JMRI 2023, Vosshenrich
+// MRI specs originally calibrated to MODALITY_BENCHMARKS annual kWh (Chaban JMRI 2023, Vosshenrich
 //   2024, Klein 2024): 0.35T permanent magnet → ≈18 MWh/yr (unaffected, still holds). 1.5T and 3T
 //   were revised 2026-08 against directly-measured power-state data (Woolen et al. 2023,
 //   Radiol-230441 — see idle_kw/off_kw note below) and no longer match the original
