@@ -212,8 +212,17 @@ const HAZ_WASTE_G_SCAN = 50;   // g hazardous waste per imaging scan — contras
 // Contrast media — fixed literature-default parameters (institution-dependent; editable in future).
 // Iodinated (ICM) for CT/PET-CT/angio/fluoro; gadolinium (GBCA) for MRI. Excreted contrast passes
 // through wastewater treatment largely unremoved (esp. gadolinium) → environmental contamination.
+// Verified 2026-08 (see sources.md "Contrast media and contamination" for full citations/gaps):
+// CT 40% ~matches Goldfarb 2023 (36.2% in 2013 Medicare claims, rising trend since); PET-CT 30% is
+// a rough midpoint of a genuinely bimodal international-survey distribution (~30% of sites <20%
+// ceCT, ~30% >80% ceCT) — real institutional practice clusters at the extremes, not the middle;
+// MRI raised 0.35→0.40 (low end of the 40-50% range in Iyad et al. 2023, itself a review's
+// secondary figure, not primary measured data — weakest-tier evidence). Angio/IR (90%) and
+// Fluoroscopy (50%) have NO located literature source — retained as clinically-grounded expert
+// estimates, not literature-sourced values; flagged as such in sources.md rather than presented
+// as verified.
 const CONTRAST = {
-  fraction:      {CT: 0.40, "PET-CT": 0.30, "Angio/IR": 0.90, Fluoroscopy: 0.50, MRI: 0.35}, // % of exams using contrast
+  fraction:      {CT: 0.40, "PET-CT": 0.30, "Angio/IR": 0.90, Fluoroscopy: 0.50, MRI: 0.40}, // % of exams using contrast
   icmMlPerExam:  100,   // mL iodinated contrast per enhanced exam
   iodineMgPerMl: 350,   // mgI/mL (typical 300–370)
   gbcaMlPerExam: 15,    // mL gadolinium agent per enhanced MRI (0.5 M)
