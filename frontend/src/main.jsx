@@ -267,8 +267,8 @@ const AI_ARCHITECTURES = {
 // original CO₂ figures are not directly comparable and are recomputed here.
 // Source: Vosshenrich et al. (Implementation Guide); Chaban JMRI 2023 (10.1002/jmri.28994); Klein 2024
 const MODALITY_BENCHMARKS = [
-  {modality: "MRI 1.5T superconducting",   kwhYear: 269400, note: "Idle >50% of total. Vosshenrich; Chaban 2023"},
-  {modality: "MRI 3T (state-of-the-art)",  kwhYear: 125000, note: "Range 80 000–170 000 kWh/yr. Chaban 2023"},
+  {modality: "MRI 1.5T superconducting",   kwhYear: 122800, note: "Idle >50% of total. CEDARS EQUIPMENT_UNITS model (Woolen 2023)"},
+  {modality: "MRI 3T (state-of-the-art)",  kwhYear: 130700, note: "Range 80 000–170 000 kWh/yr (Vosshenrich 2025). CEDARS EQUIPMENT_UNITS model (Woolen 2023)"},
   {modality: "MRI 0.35T permanent magnet", kwhYear: 16100,  note: "Lowest-field option. Klein 2024; 51% PV self-sufficiency achievable"},
   {modality: "CT scanner",                 kwhYear: 37800,  note: "Idle up to 66% of total (Schoen et al.)"},
   {modality: "PET-CT",                     kwhYear: 66150,  note: "Range 56 700–75 600 kWh/yr; idle 1.5–2× CT"},
