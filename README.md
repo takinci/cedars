@@ -103,7 +103,7 @@ Configurable inputs include:
 - **Electricity price** — a regional commercial default (editable) that turns energy into an approximate cost
 - **Data storage** — retention years, on-premises vs cloud, and store-all-series vs axial-only
 
-Staff-commute headcount is derived automatically from the device fleet (NHS/BIR workforce ratios), so it needs no manual entry.
+Staff-commute headcount is derived automatically from the device fleet (illustrative FTE-per-device estimate, not a literature-sourced ratio — see `sources.md`), so it needs no manual entry.
 
 ### Department presets
 

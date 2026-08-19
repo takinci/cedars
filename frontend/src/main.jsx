@@ -52,7 +52,13 @@ const DEPARTMENT_PRESETS = [
   {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}},
 ];
 
-// Estimated FTE per device — derived from NHS/BIR radiology workforce benchmarks.
+// Estimated FTE per device — illustrative expert estimate, not a literature-sourced figure
+// (one exception: `angio`, partially corroborated by RCR Census 2023's 1:6 IR consultant rota
+// recommendation for a 24/7 service). Corrected 2026-08: no per-device-unit whole-department FTE
+// benchmark exists in the published literature (checked directly against the UK RCR workforce
+// census, NHS DID, and a dedicated radiographer-staffing methodology paper) — see sources.md
+// "Staff count estimation from device fleet" for the full research trail. Replace with your own
+// department's HR/rostering data.
 // Imaging devices include technologists, radiologist share, nursing/admin; PACS = IT; workstations = reading radiologists.
 const STAFF_PER_DEVICE = {mri_035t:4, mri_15t:5, mri_3t:5, mri_7t:6, ct:4, petct:5, angio:6, fluoro:3, xray:3, ultrasound:2, mammography:2, pacs:2, workstations:1};
 
@@ -2344,7 +2350,7 @@ function App() {
             <p className="note" style={{marginBottom:12}}>Scope 1: direct fuel (estimated). Scope 2: purchased electricity. Scope 3: embodied carbon + patient travel + staff commute + DICOM data transfer (all estimated). All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14,background:'#f1f8f1',borderRadius:12,padding:'8px 16px',flexWrap:'wrap'}}>
               <span style={{fontSize:12,color:'#607d66'}}>
-                Staff commute — <strong style={{color:'#263238'}}>{derivedStaffCount} FTE estimated</strong> from {Object.values(settings.equipment).reduce((s,n)=>s+(n||0),0)} devices (NHS/BIR workforce ratios)
+                Staff commute — <strong style={{color:'#263238'}}>{derivedStaffCount} FTE estimated</strong> from {Object.values(settings.equipment).reduce((s,n)=>s+(n||0),0)} devices (illustrative estimate — see sources.md)
               </span>
               <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32',marginLeft:'auto'}}>
                 Avg one-way commute
