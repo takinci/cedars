@@ -1124,12 +1124,12 @@ function generateEcoMarkdown(d) {
     ['GPU hardware',             d.gpuHardware],
     ['Training runs',            `${d.numRuns} experiment${d.numRuns > 1 ? 's' : ''}`],
     ['Total GPU-hours',          `${d.totalGpuHours} h`],
-    ['Energy per run',           `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : ' (estimated from TDP)'}`],
-    ['Total training energy',    `${d.totalEnergyKwh} kWh`],
+    ['Energy per run',           `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : d.energyLive ? ' (from AI Model tab)' : ' (estimated from TDP)'}`],
+    ['Total training energy',    `${d.totalEnergyKwh} kWh${d.energyLive ? ' (from AI Model tab)' : ''}`],
     ['Training CO₂e (one-time)', `${d.trainCo2} kgCO₂e`],
     ['Renewable energy',         `${d.renewablePct}%`],
     ['Compute provider / PUE',   `${d.cloudProvider} · PUE ${d.pue}`],
-    ['Grid region / CI',         `${d.region} · ${d.ci} kgCO₂e/kWh`],
+    ['Cloud grid CI',            `${d.ci} kgCO₂e/kWh (${d.ciSource})`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
     ...(d.tokenMode && d.tokensPerStudy > 0 ? [['Inference tokens / study', `${d.tokensPerStudy.toLocaleString()} tokens · ${d.inferKwhPerStudy} kWh`]] : []),
     ...(d.perInferCo2g > 0 ? [['Inference CO₂e / study (marginal)', `${d.perInferCo2g} gCO₂e`]] : []),
@@ -1160,11 +1160,11 @@ function downloadEcoPNG(d) {
     ['Training dataset',         d.datasetSize],
     ['GPU hardware',             d.gpuHardware],
     ['Training runs',            `${d.numRuns} exp · ${d.totalGpuHours} GPU-h total`],
-    ['Energy / run',             `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : ' (est.)'}`],
-    ['Total training energy',    `${d.totalEnergyKwh} kWh`],
+    ['Energy / run',             `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : d.energyLive ? ' (AI tab)' : ' (est.)'}`],
+    ['Total training energy',    `${d.totalEnergyKwh} kWh${d.energyLive ? ' (AI tab)' : ''}`],
     [`Training CO₂e`,       `${d.trainCo2} kgCO₂e`],
     ['Renewable energy',         `${d.renewablePct}%`],
-    ['Compute / grid',           `${d.cloudProvider} · ${d.region} · ${d.ci} kgCO₂e/kWh`],
+    ['Compute / grid',           `${d.cloudProvider} · ${d.ciSource} · ${d.ci} kgCO₂e/kWh`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
     ...(d.perInferCo2g > 0 ? [['Inference / study', `${d.perInferCo2g} gCO₂e`]] : []),
     ...(d.hasInference ? [
@@ -1616,10 +1616,18 @@ function App() {
     const numRuns = Math.max(1, parseInt(ecoLabel.numRuns) || 1);
     const renewablePct = Math.min(100, Math.max(0, parseFloat(ecoLabel.renewablePct) || 0));
     const totalGpuHours = rnd(gpuCount * hoursPerRun * numRuns, 1);
-    const energyPerRunKwh = ecoLabel.energyMeasured
+    // GPU-hours-based estimate (TDP × count × hours × PUE) — a genuinely different method from
+    // the AI tab's own training total (ai.training.kwhTotal, a literature/architecture-scaled
+    // estimate that ignores GPU hardware specifics unless the AI tab has its own measured
+    // override). The two don't converge just because gpuModel/gpuCount/hoursPerRun happen to be
+    // auto-synced — they're different formulas over the same inputs. So while untouched, adopt
+    // ai.training.kwhTotal directly (matching the AI tab and its CSV export exactly) and only
+    // use the bottom-up GPU-hours calc once the user has taken over the disclosure manually.
+    const gpuHoursEnergyPerRunKwh = ecoLabel.energyMeasured
       ? (parseFloat(ecoLabel.energyKwhPerRun) || 0)
       : rnd(gpuTdpKw * gpuCount * hoursPerRun * cf.pue, 2);
-    const totalEnergyKwh = rnd(energyPerRunKwh * numRuns, 2);
+    const totalEnergyKwh = ecoLabelTouched ? rnd(gpuHoursEnergyPerRunKwh * numRuns, 2) : rnd(ai.training.kwhTotal, 2);
+    const energyPerRunKwh = ecoLabelTouched ? gpuHoursEnergyPerRunKwh : rnd(totalEnergyKwh / numRuns, 2);
     const effectiveCi = rnd(ci * (1 - renewablePct / 100), 4);
     const trainCo2 = rnd(totalEnergyKwh * effectiveCi, 2);
     const waterLitres = Math.round(totalEnergyKwh * WATER_PER_KWH);
@@ -1675,6 +1683,7 @@ function App() {
       hasInference: inferStudies > 0 && inferKwhPerStudy > 0,
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
       energyMeasured: ecoLabel.energyMeasured,
+      energyLive: !ecoLabelTouched,
       deployMonths, lifetimeInferences, perInferCo2g, trainPerStudyG, effectivePerStudyG, breakEvenStudies, trainFlights,
       tokenMode, tokensPerStudy, inferKwhPerStudy: rnd(inferKwhPerStudy, 6),
       hasData, graded, gradeBasis, score,
@@ -1682,7 +1691,7 @@ function App() {
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [ecoLabel]);
+  }, [ecoLabel, ecoLabelTouched, ai.training.kwhTotal]);
 
   // Live AI-tab grade preview — deliberately independent of `ecoLabelData` above. The AI
   // Research Label is a standalone disclosure ("no department context", its own PUE/region),
@@ -3797,7 +3806,9 @@ function App() {
               )}
               {!ecoLabel.energyMeasured && (
                 <p className="note" style={{marginTop:8}}>
-                  Energy estimated from GPU TDP × count × hours × PUE. Use measured values for higher accuracy.
+                  {ecoLabelTouched
+                    ? 'Energy estimated from GPU TDP × count × hours × PUE. Use measured values for higher accuracy.'
+                    : "Energy currently mirrors the AI Model tab's own training total (its literature/architecture-scaled estimate, or its own measured override if set) — not the GPU TDP × hours calculation below. Edit any field above to switch to that calculation."}
                 </p>
               )}
             </div>
@@ -3932,8 +3943,8 @@ function App() {
                 ['GPU hardware',             ecoLabelData.gpuHardware],
                 ['Training runs',            `${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns > 1 ? 's' : ''}`],
                 ['Total GPU-hours',          `${ecoLabelData.totalGpuHours} h`],
-                ['Energy per run',           `${ecoLabelData.energyPerRunKwh} kWh${ecoLabelData.energyMeasured ? ' (measured)' : ' (est. from TDP)'}`],
-                ['Total training energy',    `${ecoLabelData.totalEnergyKwh} kWh`],
+                ['Energy per run',           `${ecoLabelData.energyPerRunKwh} kWh${ecoLabelData.energyMeasured ? ' (measured)' : ecoLabelData.energyLive ? ' (from AI Model tab)' : ' (est. from TDP)'}`],
+                ['Total training energy',    `${ecoLabelData.totalEnergyKwh} kWh${ecoLabelData.energyLive ? ' (from AI Model tab)' : ''}`],
                 ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
                 ['Renewable energy',         `${ecoLabelData.renewablePct}%`],
                 ['Compute / PUE',            `${ecoLabelData.cloudProvider} · PUE ${ecoLabelData.pue}`],
@@ -3994,7 +4005,7 @@ function App() {
               const items = [
                 ['1', 'Compute hardware (type, count)', d.gpuHardware, d.gpuHardware !== '—', 'AI workload'],
                 ['2', 'Total energy (kWh) / GPU-hours', d.hasData ? `${d.totalEnergyKwh.toLocaleString()} kWh · ${d.totalGpuHours} GPU-h` : '—', d.hasData, 'AI workload'],
-                ['3', 'Grid carbon intensity, location, source', `${d.ci} kgCO₂e/kWh · ${d.region} · ${d.renewablePct}% renewable`, !!d.region, 'AI + cloud'],
+                ['3', 'Grid carbon intensity, location, source', `${d.ci} kgCO₂e/kWh · ${d.ciSource} · ${d.renewablePct}% renewable`, !!d.ciSource, 'AI + cloud'],
                 ['4', 'Cloud provider & PUE', `${d.cloudProvider} · PUE ${d.pue}`, !!d.cloudProvider, 'Cloud'],
                 ['5', 'Training vs inference split', `Training ${d.trainCo2} kgCO₂e · Inference ${d.hasInference ? `${d.inferCo2Month} kgCO₂e/mo` : 'not reported'}`, d.hasData, 'AI workload'],
                 ['6', 'Water footprint', d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L` : 'not reported', d.waterLitres > 0, 'Water use'],
@@ -4031,7 +4042,7 @@ function App() {
               {`Environmental impact. ${ecoLabelData.projectName} was trained using ${ecoLabelData.gpuHardware} ` +
                `for ${ecoLabelData.totalGpuHours} GPU-hours across ${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns>1?'s':''}. ` +
                `Total training energy consumption was ${ecoLabelData.totalEnergyKwh} kWh ` +
-               `(${ecoLabelData.energyPerRunKwh} kWh per run${ecoLabelData.energyMeasured ? ', directly measured' : ', estimated from GPU TDP'}), ` +
+               `(${ecoLabelData.energyPerRunKwh} kWh per run${ecoLabelData.energyMeasured ? ', directly measured' : ecoLabelData.energyLive ? ', from the AI Model tab' : ', estimated from GPU TDP'}), ` +
                `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e ` +
                `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh, ${ecoLabelData.ciSource}; ` +
                `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
