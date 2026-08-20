@@ -1621,32 +1621,23 @@ function App() {
   // Research Label is a standalone disclosure ("no department context", its own PUE/region),
   // only synced to the live Model tab via the manual "Pre-fill from dashboards" button — so it
   // can't drive a hero card that's supposed to move as the user edits the AI Model tab. This
-  // memo re-derives the same amortised-grade logic directly from the live `ai` result instead.
+  // memo re-derives the same live `ai` result instead. Self-contained on purpose: grades on
+  // per-study inference footprint alone (same fallback basis the standalone label itself uses
+  // when no deployment volume is given), NOT on the Department tab's configured fleet — the AI
+  // tab must not depend on Department state. "Custom / blank" template with no params entered
+  // is the one case that legitimately starts at "—"; every real template grades immediately.
   const aiLiveGrade = useMemo(() => {
-    const deployMonths = Math.max(1, parseInt(scen.deployMonths) || 36);
-    // Master gate: no score until there's an actual configured department fleet (imagingScans
-    // > 0 — same signal the Department tab's own hero uses). Without this, the hero would show
-    // a score from day one using the pre-selected default template's per-study footprint alone,
-    // even before the user has added equipment or touched a single AI parameter — "starts from
-    // null, updates as parameters are added" means the fleet (and thus inference volume) has to
-    // be real, not a template placeholder.
-    const hasFleet = ai.inference.studies > 0;
     const perInferCo2g = rnd(ai.inference.kwhPerStudy * ai.cloudCi * 1000, 3);
-    const lifetimeInferences = Math.round(ai.inference.studies * deployMonths);
-    const hasInferenceData = hasFleet && ai.inference.kwhPerStudy > 0;
-    const trainPerStudyG = lifetimeInferences > 0 ? rnd(ai.training.kgCo2e * 1000 / lifetimeInferences, 3) : null;
-    const effectivePerStudyG = hasInferenceData ? rnd((trainPerStudyG ?? 0) + perInferCo2g, 3) : null;
-    const gradeBasis = hasInferenceData ? 'amortised' : 'none';
-    const graded = hasInferenceData && effectivePerStudyG != null;
-    const score = graded ? cedarsScore(effectivePerStudyG, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI) : null;
+    const graded = ai.inference.kwhPerStudy > 0;
+    const score = graded ? cedarsScore(perInferCo2g, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI) : null;
     const rating = graded ? cedarsRating(score) : null;
     return {
-      graded, gradeBasis, score, effectivePerStudyG, perInferCo2g, hasFleet,
+      graded, gradeBasis: graded ? 'inference' : 'none', score, perInferCo2g,
       leaves: rating?.leaves ?? 0,
-      ratingLabel: rating?.label ?? (hasFleet ? 'Configure a model above to calculate.' : 'Add equipment on the Home page to calculate.'),
+      ratingLabel: rating?.label ?? 'Select a model above to calculate.',
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5',
     };
-  }, [ai, scen.deployMonths]);
+  }, [ai]);
 
   const deptLabelData = useMemo(() => {
     // Live-by-default: derive from the Radiology Department state; the EcoLabel form
@@ -2570,9 +2561,8 @@ function App() {
               <LeafRating leaves={aiLiveGrade.leaves} size={24} color={aiLiveGrade.ratingColor}/>
               <div style={{fontWeight:700,fontSize:16,color:aiLiveGrade.ratingColor,marginTop:4}}>{aiLiveGrade.ratingLabel}</div>
               <div style={{fontSize:13,color:'#263238',marginTop:2}}>
-                {aiLiveGrade.gradeBasis==='amortised' ? `${aiLiveGrade.effectivePerStudyG} gCO₂e/study (amortised)`
-                  : aiLiveGrade.hasFleet ? 'Configure a model above to calculate'
-                  : 'Add equipment on the Home page to calculate'}
+                {aiLiveGrade.graded ? `${aiLiveGrade.perInferCo2g} gCO₂e/study`
+                  : 'Select a model above to calculate'}
               </div>
             </div>
             <button onClick={()=>{ setPage('ecolabel'); setTimeout(()=>document.getElementById('ai-ecolabel')?.scrollIntoView({behavior:'smooth',block:'start'}), 50); }} style={{marginLeft:'auto'}}>Full AI Research Label →</button>
