@@ -446,9 +446,12 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // Default training estimate scales with model size × input elements vs the library reference,
   // consistent with inference (Green AI). Unedited library configs have ratio 1 → unchanged.
   const trainSizeRatio = model.trainSizeRatio || 1;
+  // Rounded to 2 decimals, not 0 — a small GPU-hours-measured job (e.g. 1.66 kWh, this session's
+  // reported bug) was rounding to the nearest WHOLE kWh here, silently discarding ~20% of the
+  // value and disagreeing with every other display of the same number (which all use 2 decimals).
   const trainKwhTotal = trainKwhCustom !== null
-    ? rnd(trainKwhCustom, 0)
-    : rnd(trainMwhBase * 1000 * arch.trainFactor * trainSizeRatio, 0);
+    ? rnd(trainKwhCustom, 2)
+    : rnd(trainMwhBase * 1000 * arch.trainFactor * trainSizeRatio, 2);
   const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
   // "Estimated GPU compute time": when the user has told us the actual Hours × #GPUs directly
   // (the measured path), echo that back exactly — no PUE factor, since PUE scales facility
@@ -556,7 +559,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
   const trainN    = Math.max(1, parseInt(cfg.trainNumGpus) || 1);
   const customPue = parseFloat(cfg.customPue);
   const pue       = customPue > 0 ? customPue : (CLOUD[cfg.cloudProvider]?.pue ?? 1.5);
-  const trainKwh  = trainGpuTdpKw != null && trainH > 0 ? rnd(trainGpuTdpKw * trainN * trainH * pue, 1) : 0;
+  const trainKwh  = trainGpuTdpKw != null && trainH > 0 ? rnd(trainGpuTdpKw * trainN * trainH * pue, 3) : 0;
   // Actual GPU-hours the user told us directly (Hours × #GPUs, no PUE) — the "Estimated GPU
   // compute" readout should echo this exactly rather than re-deriving it from PUE-inclusive energy.
   const trainGpuHoursMeasured = trainGpuTdpKw != null && trainH > 0 ? rnd(trainH * trainN, 2) : null;
@@ -2777,7 +2780,7 @@ function App() {
               const h  = parseFloat(scen.trainHours) || 0;
               const n  = Math.max(1, parseInt(scen.trainNumGpus) || 1);
               const pue = parseFloat(scen.customPue) > 0 ? parseFloat(scen.customPue) : (CLOUD[scen.cloudProvider]?.pue ?? 1.5);
-              const estKwh = gpTdpKw != null && h > 0 ? rnd(gpTdpKw * n * h * pue, 1) : null;
+              const estKwh = gpTdpKw != null && h > 0 ? rnd(gpTdpKw * n * h * pue, 2) : null;
               return (
                 <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
                   <button onClick={()=>setTrainExpanded(v=>!v)} style={{
