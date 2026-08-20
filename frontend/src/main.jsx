@@ -1222,7 +1222,7 @@ function App() {
       projectName: '', taskType: 'Classification', architecture: '', paramsMillion: '', datasetSize: '',
       gpuModel: 'NVIDIA A100 (80GB SXM4)', customTdpW: '300', gpuCount: '1', trainingHoursPerRun: '',
       numRuns: '1', energyMeasured: false, energyKwhPerRun: '', cloudProvider: 'Local compute',
-      region: 'Global average', renewablePct: '0', inferStudiesMonth: '', inferMode: 'kwh',
+      renewablePct: '0', inferStudiesMonth: '', inferMode: 'kwh',
       inferKwhPerStudy: '', whPer1kTokens: '0.4', callsPerTask: '1', tokensPerCall: '', deployMonths: '36', customPue: '',
     });
     setCloudTracker({
@@ -1283,7 +1283,6 @@ function App() {
     energyMeasured: false,
     energyKwhPerRun: '',
     cloudProvider: 'Local compute',
-    region: 'Global average',
     renewablePct: '0',
     inferStudiesMonth: '',
     inferMode: 'kwh',            // 'kwh' (vision, energy/study) | 'tokens' (LLM/agentic)
@@ -1544,7 +1543,14 @@ function App() {
     const baseCf = CLOUD[ecoLabel.cloudProvider] ?? CLOUD['Local compute'];
     const ecoCustomPue = parseFloat(ecoLabel.customPue);
     const cf = {...baseCf, pue: ecoCustomPue > 0 ? ecoCustomPue : baseCf.pue};
-    const ci = getCI(settings.region, settings.customCi); // grid follows the AI & Informatics page region
+    // Cloud-provider average CI — NOT the department's local grid. Matches how the live AI tab
+    // itself grades operational carbon (computeAI uses cf.ci, not getCI(settings.region,...) —
+    // see the note on the AI Model & Informatics tab: "Operational carbon uses cloud provider CI
+    // ... Clinical savings use local grid"). Using the department's region here instead (as an
+    // earlier version of this memo did) made this label disagree with the AI tab's own live hero
+    // for the exact same model, since AWS/Azure/Google's average CI and a hospital's local grid
+    // CI can differ by 2x or more.
+    const ci = cf.ci;
     const gpuCount = Math.max(1, parseInt(ecoLabel.gpuCount) || 1);
     const hoursPerRun = parseFloat(ecoLabel.trainingHoursPerRun) || 0;
     const numRuns = Math.max(1, parseInt(ecoLabel.numRuns) || 1);
@@ -1603,7 +1609,7 @@ function App() {
       datasetSize: ecoLabel.datasetSize ? `${parseFloat(ecoLabel.datasetSize).toLocaleString()} studies` : '—',
       gpuHardware: gpuCount > 1 ? `${gpuCount}× ${gpuLabel}` : gpuLabel,
       totalGpuHours, numRuns, energyPerRunKwh, totalEnergyKwh, trainCo2,
-      renewablePct, cloudProvider: ecoLabel.cloudProvider, region: settings.region,
+      renewablePct, cloudProvider: ecoLabel.cloudProvider,
       ci, effectiveCi, waterLitres, pue: cf.pue,
       hasInference: inferStudies > 0 && inferKwhPerStudy > 0,
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
@@ -1615,7 +1621,7 @@ function App() {
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [ecoLabel, settings.region, settings.customCi]);
+  }, [ecoLabel]);
 
   // Live AI-tab grade preview — deliberately independent of `ecoLabelData` above. The AI
   // Research Label is a standalone disclosure ("no department context", its own PUE/region),
@@ -3891,7 +3897,7 @@ function App() {
                 ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
                 ['Renewable energy',         `${ecoLabelData.renewablePct}%`],
                 ['Compute / PUE',            `${ecoLabelData.cloudProvider} · PUE ${ecoLabelData.pue}`],
-                ['Grid region / CI',         `${ecoLabelData.region} · ${ecoLabelData.ci} kgCO₂e/kWh`],
+                ['Cloud grid CI',            `${ecoLabelData.ci} kgCO₂e/kWh (${ecoLabelData.cloudProvider} average)`],
                 ['Water footprint',          `${ecoLabelData.waterLitres.toLocaleString()} L`],
                 ...(ecoLabelData.hasInference ? [['Monthly inference', `${ecoLabelData.inferStudies.toLocaleString()} studies · ${ecoLabelData.inferMonthlyKwh} kWh · ${ecoLabelData.inferCo2Month} kgCO₂e`]] : []),
               ].map(([k, v], i) => (
@@ -3987,7 +3993,7 @@ function App() {
                `Total training energy consumption was ${ecoLabelData.totalEnergyKwh} kWh ` +
                `(${ecoLabelData.energyPerRunKwh} kWh per run${ecoLabelData.energyMeasured ? ', directly measured' : ', estimated from GPU TDP'}), ` +
                `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e ` +
-               `(${ecoLabelData.cloudProvider}; grid: ${ecoLabelData.region}, ${ecoLabelData.ci} kgCO₂e/kWh; ` +
+               `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh; ` +
                `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
                `The estimated cooling water footprint is ${ecoLabelData.waterLitres.toLocaleString()} L.` +
                (ecoLabelData.perInferCo2g > 0
