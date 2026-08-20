@@ -33,7 +33,7 @@ const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedba
 
 // Accordion section ids (for expand/collapse-all) on the Radiology Department and AI pages.
 const DASH_SECTIONS = ['equiv','efficiency','clinicalai','energy','carbon','charts','infrastructure','resources'];
-const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark','ecolabel'];
+const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark'];
 
 import {
   MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, rnd, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
@@ -2527,6 +2527,24 @@ function App() {
           </div>
           <p className="note" style={{marginBottom:16}}>Recycling Pyramid priority: Prevent unnecessary scans → Reduce scan energy → Recover/recycle prior data. (Implementation Guide §1)</p>
 
+          {/* ── AI Grade hero (always visible, mirrors the Radiology Department overview) ── */}
+          <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
+            <div style={{textAlign:'center',flexShrink:0}}>
+              <div style={{fontSize:52,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
+              <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+            </div>
+            <div>
+              <LeafRating leaves={ecoLabelData.leaves} size={24} color={ecoLabelData.ratingColor}/>
+              <div style={{fontWeight:700,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.ratingLabel}</div>
+              <div style={{fontSize:13,color:'#263238',marginTop:2}}>
+                {ecoLabelData.gradeBasis==='amortised' ? `${ecoLabelData.effectivePerStudyG} gCO₂e/study (amortised)`
+                  : ecoLabelData.gradeBasis==='inference' ? `${ecoLabelData.perInferCo2g} gCO₂e/study`
+                  : ecoLabelData.hasData ? 'Add inference volume to grade' : 'Configure a model above to calculate.'}
+              </div>
+            </div>
+            <button onClick={()=>setPage('ecolabel')} style={{marginLeft:'auto'}}>Full AI Research Label →</button>
+          </div>
+
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls" style={{padding:'12px 16px'}}>
             {/* Model library picker + precision + cloud */}
@@ -3256,13 +3274,349 @@ function App() {
 
           )}
 
-          {/* ── Research label — AI model disclosure (moved from EcoLabel) ── */}
-          <button type="button" className="accHead" onClick={()=>toggleAi('ecolabel')} aria-expanded={!!aiOpen['ecolabel']}>
-            <span className="accCaret">{aiOpen['ecolabel']?'▾':'▸'}</span>
-            <span className="accTitle">Research label — AI model disclosure</span>
-            <span className="accVal">{ecoLabelData.graded ? `Score ${ecoLabelData.score}` : '—'}</span>
-          </button>
-          {aiOpen['ecolabel'] && (
+        </main>
+      )}
+
+      {/* ── Interventions ── */}
+      {page==='scenario' && (
+        <main>
+          <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
+          <p className="note" style={{marginBottom:16}}>Build your department's <strong>intervention program</strong> — tick every lever you plan to implement and see their <strong>combined</strong> impact. The same ticks appear as your implemented actions on the <strong>EcoLabel</strong> tab. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
+
+          {/* Multi-select intervention program — shared selection with the EcoLabel */}
+          <div className="inputSummary" style={{marginBottom:16}}>
+            <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Choose interventions <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(tick all you plan to implement)</span></h2>
+            <p className="note" style={{marginBottom:12}}>
+              {scenario.count>0
+                ? <><strong style={{color:'#2E7D32'}}>{scenario.count} selected · −{scenario.savings.kwh.toLocaleString()} kWh · −{scenario.savings.co2.toLocaleString()} kgCO₂e{dash.totals.label}</strong> ({scenario.savings.pctEnergy}% energy · {scenario.savings.pctCo2}% carbon)</>
+                : 'No interventions selected yet — tick one or more below to model their combined effect.'}
+            </p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+              {Object.entries(INTERVENTIONS).map(([name, data]) => {
+                const active = deptLabel.activeInterventions.includes(name);
+                return (
+                  <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
+                    <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
+                    <div>
+                      <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
+                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr`:''}{data.co2Pct?` · −${data.co2Pct}% carbon`:''}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Global assumptions — applied to whichever ticked levers use them */}
+          <div className="grid" style={{marginBottom:8}}>
+            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
+                 value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
+            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
+                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
+          </div>
+          <p className="note" style={{marginBottom:16}}>
+            Global assumptions applied to whichever ticked levers use them.
+            {scenario.usesScanner && <> Scanner state target sets how deep the overnight/standby power-down goes (Standby saves less than Off).</>}
+            {scenario.usesCloud   && <> Cloud provider sets the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
+          </p>
+          {/* Impact on your EcoLabel — current → projected */}
+          {(()=>{
+            const cur = deptLabelData;
+            const frac = scenario.baseline.co2 > 0 ? scenario.savings.co2 / scenario.baseline.co2 : 0;
+            const projCo2Study = rnd(cur.co2PerStudy * (1 - frac), 3);
+            const projScore = cur.hasData ? cedarsScore(projCo2Study, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
+            const projRating = projScore != null ? cedarsRating(projScore) : null;
+            const mkBox = (title, score, leaves, color, bg, label) => (
+              <div style={{flex:1,minWidth:210,background:bg,border:`2px solid ${color}`,borderRadius:16,padding:'14px 18px'}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#607d66',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>{title}</div>
+                <div style={{display:'flex',alignItems:'center',gap:14}}>
+                  <div style={{fontSize:42,fontWeight:900,color,lineHeight:1}}>{score ?? '—'}</div>
+                  <div>
+                    <LeafRating leaves={leaves} size={16} color={color}/>
+                    <div style={{fontSize:13,fontWeight:700,color,marginTop:3}}>{label}</div>
+                  </div>
+                </div>
+              </div>
+            );
+            return (
+              <div style={{marginBottom:24}}>
+                <h2 style={{marginBottom:8}}>Impact on your EcoLabel</h2>
+                <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                  {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
+                  <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
+                  {mkBox(scenario.count>0?`Projected · ${scenario.count} intervention${scenario.count===1?'':'s'}`:'Projected', projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
+                </div>
+                {projScore != null && (
+                  scenario.count === 0
+                    ? <p className="note" style={{marginTop:8}}>Tick one or more interventions above to project their combined impact on your CEDARS Score.</p>
+                    : projScore === cur.score
+                      ? <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} don't move your CEDARS Score band, but still cut {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
+                      : <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} shift your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
+                )}
+              </div>
+            );
+          })()}
+
+          {(()=>{
+            const price = getPrice(settings.region, settings.electricityPrice);
+            const sym   = currencySym(settings.region);
+            const mult  = TIME_MULT[settings.timePeriod] ?? 1;
+            const annualSaved = scenario.savings.kwh / mult * 12 * price;
+            return (
+            <>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
+              <h2 style={{margin:0}}>Energy, carbon &amp; cost — before vs after</h2>
+              <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,color:'#2E7D32',fontWeight:700}}>
+                Electricity price ({sym}/kWh)
+                <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)} style={{width:84,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
+              </label>
+            </div>
+            <div className="scenarioGrid">
+              <section className="card">
+                <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
+                <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
+                <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
+                <p style={{color:'#607d66'}}>{fmtMoney(scenario.baseline.kwh*price, sym)}</p>
+              </section>
+              <section className="card savings">
+                <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
+                <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
+                <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
+                <p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price, sym)}{dash.totals.label}</p>
+                <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
+              </section>
+              <section className="card">
+                <div className="cardHead"><Leaf/><span>After interventions</span></div>
+                <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
+                <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
+                <p style={{color:'#607d66'}}>{fmtMoney(scenario.projected.kwh*price, sym)}</p>
+              </section>
+            </div>
+            {scenario.count>0 && scenario.savings.kwh>0 && (
+              <p className="note" style={{marginTop:12,padding:'10px 14px',background:'#e8f5e9',borderRadius:12,fontSize:13}}>
+                <strong style={{color:'#1b5e20'}}>≈ {fmtMoney(annualSaved, sym)}/year</strong> in avoided electricity cost — most operational levers (overnight power-down, standby) need little or no capital outlay. Electricity cost only; an editable estimate at {sym}{price}/kWh.
+              </p>
+            )}
+            </>
+            );
+          })()}
+          <div className="charts" style={{marginTop:24}}>
+            <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
+          </div>
+          <p className="note" style={{marginTop:12}}>Region: {settings.region} — {settings.timePeriod} figures. Change region or time period on the Input page.</p>
+        </main>
+      )}
+
+      {/* ── Eco-label ── */}
+      {page==='ecolabel' && (
+        <main>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
+            <h1 style={{margin:0}}>CEDARS EcoLabel</h1>
+          </div>
+
+            <p className="note" style={{marginBottom:16}}>
+              Generate a department-level sustainability label for ESG reports, accreditation submissions, or public sustainability disclosures.
+              The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department scores well even at a high absolute footprint, while an under-used fleet does not. Benchmarked against published radiology carbon-intensity data — see the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>full source list</a> — following the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
+            </p>
+
+            {/* ── Pre-fill from Radiology Dashboard ── */}
+            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:24,padding:'12px 16px',background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16}}>
+              <button onClick={()=>{
+                const mult = TIME_MULT[settings.timePeriod] ?? 1;
+                const monthlyKwh = dash.totals.kwh / mult;
+                // Use the actual imaging volume entered on the Efficiency tab if set;
+                // otherwise fall back to the fleet's typical throughput.
+                const annualStudies = efficiency.studiesYr;
+                setDeptLabel(d=>({
+                  ...d,
+                  region: settings.region,
+                  ...(monthlyKwh > 0    ? {annualKwh:     String(Math.round(monthlyKwh * 12))} : {}),
+                  ...(annualStudies > 0 ? {annualStudies:  String(annualStudies)}              : {}),
+                }));
+              }} style={{
+                display:'inline-flex',alignItems:'center',gap:7,
+                background:'#2E7D32',color:'white',border:'none',borderRadius:10,
+                padding:'7px 16px',cursor:'pointer',fontSize:12,fontWeight:700,
+              }}>
+                <ArrowRight size={13}/> Pre-fill from dashboards
+              </button>
+              <span style={{fontSize:11,color:'#607d66'}}>
+                Copies grid region · electricity (kWh) · and imaging studies/year ({efficiency.isEstimate ? 'fleet estimate' : 'your actual volume from the Efficiency tab'})
+              </span>
+            </div>
+
+            <div className="inputSummary" style={{marginBottom:24}}>
+              <h2 style={{marginTop:0,marginBottom:16,color:'#1b5e20'}}>Department identity</h2>
+              <div className="grid grid3">
+                <label>Department name<input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
+                <label>Hospital / institution<input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
+                <label>Grid region
+                  <select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}>
+                    <option value="">— use current ({settings.region}) —</option>
+                    {META.regions.map(r=><option key={r} value={r}>{r}</option>)}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div className="inputSummary" style={{marginBottom:24}}>
+              <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Energy &amp; imaging volume <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(live from Radiology Department — override only if you have measured figures)</span></h2>
+              <p className="note" style={{marginBottom:12}}>
+                {deptLabelData.isLive
+                  ? <>Currently <strong style={{color:'#2E7D32'}}>live</strong> from your Radiology Department state. Leave blank to keep it live; enter a value to override.</>
+                  : <>Using your <strong>overridden</strong> figures. Clear a field to return it to the live value.</>}
+              </p>
+              <div className="grid grid3">
+                <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
+                <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder={`live: ${deptLabelData.annualStudies.toLocaleString()}`}/></label>
+                <label>Renewable energy (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
+              </div>
+              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Override with utility bills / RIS counts for publication-quality figures.</p>
+            </div>
+
+            {/* Clinical AI tools now live on the Radiology Department tab */}
+            <p className="note" style={{marginBottom:24,padding:'10px 14px',background:'#f1f8f1',borderRadius:12}}>
+              <Brain size={14} style={{verticalAlign:'-2px',marginRight:6}}/>
+              {deptLabelData.clinicalToolCount > 0
+                ? <>{deptLabelData.clinicalToolCount} clinical AI tool{deptLabelData.clinicalToolCount>1?'s':''} deployed — configured on the <strong>Radiology Department</strong> tab, and already reflected in the energy and score above.</>
+                : <>Deploy clinical AI tools on the <strong>Radiology Department</strong> tab to see their effect on this label.</>}
+            </p>
+
+            <div className="inputSummary" style={{marginBottom:32}}>
+              <h2 style={{marginTop:0,marginBottom:8,color:'#1b5e20'}}>Sustainability actions <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(tick implemented interventions)</span></h2>
+              <p className="note" style={{marginBottom:16}}>
+                Checking implemented interventions shows your saving potential and strengthens your label documentation. This is the <strong>same selection</strong> as the <strong>Interventions</strong> tab — tick here or there, the combined impact is identical.
+                {deptLabel.activeInterventions.length > 0 && (
+                  <> <strong style={{color:'#2E7D32'}}>{deptLabel.activeInterventions.length} selected · saving potential: {deptLabelData.annualKwhSaving.toLocaleString()} kWh/yr ({deptLabelData.co2Saving} kgCO₂e/yr)</strong></>
+                )}
+              </p>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+                {Object.entries(INTERVENTIONS).map(([name, data]) => {
+                  const active = deptLabel.activeInterventions.includes(name);
+                  return (
+                    <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
+                      <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
+                      <div>
+                        <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
+                        <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr saving`:''}</div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <h2>Label preview</h2>
+            <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
+              <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
+                <div style={{background:'#1b5e20',padding:'14px 18px'}}>
+                  <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
+                  <div style={{color:'#A5D6A7',fontSize:13,marginTop:4}}>{deptLabelData.deptName}</div>
+                  <div style={{color:'#81C784',fontSize:11,marginTop:2}}>{deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}{deptLabelData.region} · {deptLabelData.date}</div>
+                </div>
+                <div style={{background:deptLabelData.ratingBg,padding:'16px 18px',display:'flex',alignItems:'center',gap:18}}>
+                  <div style={{textAlign:'center',flexShrink:0}}>
+                    <div style={{fontSize:48,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+                  </div>
+                  <div>
+                    <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
+                    <div style={{fontWeight:700,fontSize:15,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
+                    <div style={{fontSize:12,color:'#263238',marginTop:2}}>{deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e per imaging study` : 'Enter data above to calculate'}</div>
+                    {deptLabelData.interventionCount>0 && deptLabelData.potentialLeaves!==deptLabelData.leaves && (
+                      <div style={{fontSize:12,color:'#2E7D32',marginTop:3}}>With active interventions → potential Score {deptLabelData.potentialScore} ({deptLabelData.potentialLeaves}/5 leaves)</div>
+                    )}
+                  </div>
+                </div>
+                {[
+                  ['Annual electricity',   deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'],
+                  ['Annual CO₂e',         deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
+                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI tools', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
+                  ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
+                  ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
+                  ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
+                  ['Effective grid CI',    `${deptLabelData.effectiveCi} kgCO₂e/kWh (${deptLabelData.renewablePct}% renewable)`],
+                  ['Grid region',          deptLabelData.region],
+                  ...(deptLabelData.interventionCount>0 ? [['Active interventions', `${deptLabelData.interventionCount} implemented · ${deptLabelData.annualKwhSaving.toLocaleString()} kWh/yr saving`]] : []),
+                ].map(([k,v],i)=>(
+                  <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 18px',background:i%2===0?'#f1f8f1':'white',fontSize:13,gap:12}}>
+                    <span style={{color:'#607d66',flexShrink:0}}>{k}</span>
+                    <span style={{fontWeight:700,color:'#263238',textAlign:'right'}}>{v}</span>
+                  </div>
+                ))}
+                <div style={{background:'#e8f5e9',padding:'8px 18px',fontSize:11,color:'#2E7D32'}}>
+                  Estimated with CEDARS · {deptLabelData.date} · CC BY 4.0
+                </div>
+              </div>
+
+              <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
+                <button className="download" onClick={()=>downloadDeptPNG(deptLabelData)} disabled={deptLabelData.annualStudies===0}>
+                  <Download/> Download PNG badge
+                </button>
+                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} disabled={deptLabelData.annualStudies===0} style={deptCopied?{background:'#26A69A'}:undefined}>
+                  <FileText/> {deptCopied ? 'Copied!' : 'Copy ESG paragraph'}
+                </button>
+                <p className="note" style={{maxWidth:220,fontSize:12,margin:0}}>
+                  PNG badge: embed in sustainability reports, posters, or accreditation submissions.<br/><br/>
+                  ESG paragraph: paste into your hospital's annual sustainability report or ESR Green Imaging self-assessment.
+                </p>
+                <div style={{marginTop:8}}>
+                  <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
+                  {CEDARS_RATINGS.map(r=>(
+                    <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:deptLabelData.leaves===r.leaves?700:400,color:deptLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
+                      <LeafRating leaves={r.leaves} size={12} color={r.color}/>
+                      <span>{r.label}</span>
+                      <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'< 20'})[r.leaves]}</span>
+                    </div>
+                  ))}
+                  <p className="note" style={{fontSize:10,marginTop:6}}>Continuous Score (0–100) from the per-study footprint, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── CEDARS disclosure checklist (department) ── */}
+            <section style={{marginBottom:24}}>
+              <h2 style={{marginBottom:4}}>CEDARS disclosure checklist</h2>
+              <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible department footprint — a reporting standard modelled on CLAIM/DEAL.</p>
+              {(()=>{
+                const d = deptLabelData;
+                const items = [
+                  ['1', 'Imaging operation (studies / year)', d.hasData ? `${d.annualStudies.toLocaleString()} studies/yr` : '—', d.hasData, 'Department'],
+                  ['2', 'Total energy (kWh / year)', d.annualKwh > 0 ? `${d.annualKwh.toLocaleString()} kWh` : '—', d.annualKwh > 0, 'Department'],
+                  ['3', 'Grid carbon intensity, location, source', `${d.effectiveCi} kgCO₂e/kWh · ${d.region} · ${d.renewablePct}% renewable`, !!d.region, 'Grid'],
+                  ['4', 'Annual carbon footprint (facility + AI)', d.totalAnnualCo2 > 0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—', d.totalAnnualCo2 > 0, 'Department'],
+                  ['5', 'Clinical AI tools deployed', d.clinicalToolCount > 0 ? `${d.clinicalToolCount} (net effect in dept energy)` : 'none deployed', d.clinicalToolCount > 0, 'Clinical AI'],
+                  ['6', 'Active mitigation / interventions', d.interventionCount > 0 ? `${d.interventionCount} · ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved` : 'none reported', d.interventionCount > 0, 'Interventions'],
+                  ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
+                  ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
+                ];
+                return (
+                  <div style={{border:'1px solid #c8e6c9', borderRadius:14, overflow:'hidden'}}>
+                    {items.map(([n, item, val, ok, mod], i)=>(
+                      <div key={n} style={{display:'grid', gridTemplateColumns:'28px 1.6fr 2fr 110px', gap:10, alignItems:'center', padding:'9px 14px', background:i%2===0?'#f1f8f1':'white', fontSize:13}}>
+                        <span style={{color: ok ? '#2E7D32' : '#bdbdbd', fontWeight:900}}>{ok ? '✓' : '○'}</span>
+                        <span style={{color:'#263238', fontWeight:600}}>{item}</span>
+                        <span style={{color:'#607d66'}}>{val}</span>
+                        <span style={{fontSize:11, color:'#90a4ae', textAlign:'right'}}>{mod}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </section>
+
+            {deptLabelData.annualStudies>0 && (
+              <section style={{marginTop:0}}>
+                <h2>Ready-to-paste ESG paragraph</h2>
+                <p className="note" style={{marginBottom:8}}>Copy into your hospital's annual sustainability report, ESR Green Imaging self-assessment, or accreditation documentation.</p>
+                <pre style={{background:'#f1f8f1',borderRadius:14,padding:'16px 20px',fontSize:12,lineHeight:1.8,border:'1px solid #c8e6c9',fontFamily:'monospace',whiteSpace:'pre-wrap'}}>
+                  {generateDeptText(deptLabelData)}
+                </pre>
+              </section>
+            )}
+
+            <hr style={{margin:'40px 0',border:'none',borderTop:'2px solid #e8f5e9'}}/>
+
           <section id="ai-ecolabel" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:8}}>Research label — AI model disclosure</h2>
           <p className="note" style={{marginBottom:8}}>
@@ -3625,348 +3979,6 @@ function App() {
             </pre>
           </section>
           </section>
-          )}
-
-        </main>
-      )}
-
-      {/* ── Interventions ── */}
-      {page==='scenario' && (
-        <main>
-          <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
-          <p className="note" style={{marginBottom:16}}>Build your department's <strong>intervention program</strong> — tick every lever you plan to implement and see their <strong>combined</strong> impact. The same ticks appear as your implemented actions on the <strong>EcoLabel</strong> tab. (The AI-model benchmark now lives on the <strong>AI Model &amp; Informatics</strong> tab.)</p>
-
-          {/* Multi-select intervention program — shared selection with the EcoLabel */}
-          <div className="inputSummary" style={{marginBottom:16}}>
-            <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Choose interventions <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(tick all you plan to implement)</span></h2>
-            <p className="note" style={{marginBottom:12}}>
-              {scenario.count>0
-                ? <><strong style={{color:'#2E7D32'}}>{scenario.count} selected · −{scenario.savings.kwh.toLocaleString()} kWh · −{scenario.savings.co2.toLocaleString()} kgCO₂e{dash.totals.label}</strong> ({scenario.savings.pctEnergy}% energy · {scenario.savings.pctCo2}% carbon)</>
-                : 'No interventions selected yet — tick one or more below to model their combined effect.'}
-            </p>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
-              {Object.entries(INTERVENTIONS).map(([name, data]) => {
-                const active = deptLabel.activeInterventions.includes(name);
-                return (
-                  <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
-                    <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
-                    <div>
-                      <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
-                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr`:''}{data.co2Pct?` · −${data.co2Pct}% carbon`:''}</div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Global assumptions — applied to whichever ticked levers use them */}
-          <div className="grid" style={{marginBottom:8}}>
-            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
-                 value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
-            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
-                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
-          </div>
-          <p className="note" style={{marginBottom:16}}>
-            Global assumptions applied to whichever ticked levers use them.
-            {scenario.usesScanner && <> Scanner state target sets how deep the overnight/standby power-down goes (Standby saves less than Off).</>}
-            {scenario.usesCloud   && <> Cloud provider sets the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
-          </p>
-          {/* Impact on your EcoLabel — current → projected */}
-          {(()=>{
-            const cur = deptLabelData;
-            const frac = scenario.baseline.co2 > 0 ? scenario.savings.co2 / scenario.baseline.co2 : 0;
-            const projCo2Study = rnd(cur.co2PerStudy * (1 - frac), 3);
-            const projScore = cur.hasData ? cedarsScore(projCo2Study, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
-            const projRating = projScore != null ? cedarsRating(projScore) : null;
-            const mkBox = (title, score, leaves, color, bg, label) => (
-              <div style={{flex:1,minWidth:210,background:bg,border:`2px solid ${color}`,borderRadius:16,padding:'14px 18px'}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#607d66',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>{title}</div>
-                <div style={{display:'flex',alignItems:'center',gap:14}}>
-                  <div style={{fontSize:42,fontWeight:900,color,lineHeight:1}}>{score ?? '—'}</div>
-                  <div>
-                    <LeafRating leaves={leaves} size={16} color={color}/>
-                    <div style={{fontSize:13,fontWeight:700,color,marginTop:3}}>{label}</div>
-                  </div>
-                </div>
-              </div>
-            );
-            return (
-              <div style={{marginBottom:24}}>
-                <h2 style={{marginBottom:8}}>Impact on your EcoLabel</h2>
-                <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-                  {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
-                  <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
-                  {mkBox(scenario.count>0?`Projected · ${scenario.count} intervention${scenario.count===1?'':'s'}`:'Projected', projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
-                </div>
-                {projScore != null && (
-                  scenario.count === 0
-                    ? <p className="note" style={{marginTop:8}}>Tick one or more interventions above to project their combined impact on your CEDARS Score.</p>
-                    : projScore === cur.score
-                      ? <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} don't move your CEDARS Score band, but still cut {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
-                      : <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} shift your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
-                )}
-              </div>
-            );
-          })()}
-
-          {(()=>{
-            const price = getPrice(settings.region, settings.electricityPrice);
-            const sym   = currencySym(settings.region);
-            const mult  = TIME_MULT[settings.timePeriod] ?? 1;
-            const annualSaved = scenario.savings.kwh / mult * 12 * price;
-            return (
-            <>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-              <h2 style={{margin:0}}>Energy, carbon &amp; cost — before vs after</h2>
-              <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,color:'#2E7D32',fontWeight:700}}>
-                Electricity price ({sym}/kWh)
-                <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)} style={{width:84,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
-              </label>
-            </div>
-            <div className="scenarioGrid">
-              <section className="card">
-                <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
-                <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
-                <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
-                <p style={{color:'#607d66'}}>{fmtMoney(scenario.baseline.kwh*price, sym)}</p>
-              </section>
-              <section className="card savings">
-                <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
-                <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
-                <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
-                <p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price, sym)}{dash.totals.label}</p>
-                <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
-              </section>
-              <section className="card">
-                <div className="cardHead"><Leaf/><span>After interventions</span></div>
-                <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
-                <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
-                <p style={{color:'#607d66'}}>{fmtMoney(scenario.projected.kwh*price, sym)}</p>
-              </section>
-            </div>
-            {scenario.count>0 && scenario.savings.kwh>0 && (
-              <p className="note" style={{marginTop:12,padding:'10px 14px',background:'#e8f5e9',borderRadius:12,fontSize:13}}>
-                <strong style={{color:'#1b5e20'}}>≈ {fmtMoney(annualSaved, sym)}/year</strong> in avoided electricity cost — most operational levers (overnight power-down, standby) need little or no capital outlay. Electricity cost only; an editable estimate at {sym}{price}/kWh.
-              </p>
-            )}
-            </>
-            );
-          })()}
-          <div className="charts" style={{marginTop:24}}>
-            <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
-          </div>
-          <p className="note" style={{marginTop:12}}>Region: {settings.region} — {settings.timePeriod} figures. Change region or time period on the Input page.</p>
-        </main>
-      )}
-
-      {/* ── Eco-label ── */}
-      {page==='ecolabel' && (
-        <main>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
-            <h1 style={{margin:0}}>CEDARS EcoLabel</h1>
-          </div>
-
-            <p className="note" style={{marginBottom:16}}>
-              Generate a department-level sustainability label for ESG reports, accreditation submissions, or public sustainability disclosures.
-              The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department scores well even at a high absolute footprint, while an under-used fleet does not. Benchmarked against published radiology carbon-intensity data — see the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>full source list</a> — following the design logic of consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer" style={{color:'#2E7D32'}}>EU Energy Label</a> (Regulation EU 2021/341).
-            </p>
-
-            {/* ── Pre-fill from Radiology Dashboard ── */}
-            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:24,padding:'12px 16px',background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16}}>
-              <button onClick={()=>{
-                const mult = TIME_MULT[settings.timePeriod] ?? 1;
-                const monthlyKwh = dash.totals.kwh / mult;
-                // Use the actual imaging volume entered on the Efficiency tab if set;
-                // otherwise fall back to the fleet's typical throughput.
-                const annualStudies = efficiency.studiesYr;
-                setDeptLabel(d=>({
-                  ...d,
-                  region: settings.region,
-                  ...(monthlyKwh > 0    ? {annualKwh:     String(Math.round(monthlyKwh * 12))} : {}),
-                  ...(annualStudies > 0 ? {annualStudies:  String(annualStudies)}              : {}),
-                }));
-              }} style={{
-                display:'inline-flex',alignItems:'center',gap:7,
-                background:'#2E7D32',color:'white',border:'none',borderRadius:10,
-                padding:'7px 16px',cursor:'pointer',fontSize:12,fontWeight:700,
-              }}>
-                <ArrowRight size={13}/> Pre-fill from dashboards
-              </button>
-              <span style={{fontSize:11,color:'#607d66'}}>
-                Copies grid region · electricity (kWh) · and imaging studies/year ({efficiency.isEstimate ? 'fleet estimate' : 'your actual volume from the Efficiency tab'})
-              </span>
-            </div>
-
-            <div className="inputSummary" style={{marginBottom:24}}>
-              <h2 style={{marginTop:0,marginBottom:16,color:'#1b5e20'}}>Department identity</h2>
-              <div className="grid grid3">
-                <label>Department name<input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
-                <label>Hospital / institution<input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
-                <label>Grid region
-                  <select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}>
-                    <option value="">— use current ({settings.region}) —</option>
-                    {META.regions.map(r=><option key={r} value={r}>{r}</option>)}
-                  </select>
-                </label>
-              </div>
-            </div>
-
-            <div className="inputSummary" style={{marginBottom:24}}>
-              <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Energy &amp; imaging volume <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(live from Radiology Department — override only if you have measured figures)</span></h2>
-              <p className="note" style={{marginBottom:12}}>
-                {deptLabelData.isLive
-                  ? <>Currently <strong style={{color:'#2E7D32'}}>live</strong> from your Radiology Department state. Leave blank to keep it live; enter a value to override.</>
-                  : <>Using your <strong>overridden</strong> figures. Clear a field to return it to the live value.</>}
-              </p>
-              <div className="grid grid3">
-                <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
-                <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder={`live: ${deptLabelData.annualStudies.toLocaleString()}`}/></label>
-                <label>Renewable energy (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
-              </div>
-              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Override with utility bills / RIS counts for publication-quality figures.</p>
-            </div>
-
-            {/* Clinical AI tools now live on the Radiology Department tab */}
-            <p className="note" style={{marginBottom:24,padding:'10px 14px',background:'#f1f8f1',borderRadius:12}}>
-              <Brain size={14} style={{verticalAlign:'-2px',marginRight:6}}/>
-              {deptLabelData.clinicalToolCount > 0
-                ? <>{deptLabelData.clinicalToolCount} clinical AI tool{deptLabelData.clinicalToolCount>1?'s':''} deployed — configured on the <strong>Radiology Department</strong> tab, and already reflected in the energy and score above.</>
-                : <>Deploy clinical AI tools on the <strong>Radiology Department</strong> tab to see their effect on this label.</>}
-            </p>
-
-            <div className="inputSummary" style={{marginBottom:32}}>
-              <h2 style={{marginTop:0,marginBottom:8,color:'#1b5e20'}}>Sustainability actions <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(tick implemented interventions)</span></h2>
-              <p className="note" style={{marginBottom:16}}>
-                Checking implemented interventions shows your saving potential and strengthens your label documentation. This is the <strong>same selection</strong> as the <strong>Interventions</strong> tab — tick here or there, the combined impact is identical.
-                {deptLabel.activeInterventions.length > 0 && (
-                  <> <strong style={{color:'#2E7D32'}}>{deptLabel.activeInterventions.length} selected · saving potential: {deptLabelData.annualKwhSaving.toLocaleString()} kWh/yr ({deptLabelData.co2Saving} kgCO₂e/yr)</strong></>
-                )}
-              </p>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
-                {Object.entries(INTERVENTIONS).map(([name, data]) => {
-                  const active = deptLabel.activeInterventions.includes(name);
-                  return (
-                    <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
-                      <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
-                      <div>
-                        <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
-                        <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr saving`:''}</div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            <h2>Label preview</h2>
-            <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
-              <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
-                <div style={{background:'#1b5e20',padding:'14px 18px'}}>
-                  <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
-                  <div style={{color:'#A5D6A7',fontSize:13,marginTop:4}}>{deptLabelData.deptName}</div>
-                  <div style={{color:'#81C784',fontSize:11,marginTop:2}}>{deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}{deptLabelData.region} · {deptLabelData.date}</div>
-                </div>
-                <div style={{background:deptLabelData.ratingBg,padding:'16px 18px',display:'flex',alignItems:'center',gap:18}}>
-                  <div style={{textAlign:'center',flexShrink:0}}>
-                    <div style={{fontSize:48,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</div>
-                    <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-                  </div>
-                  <div>
-                    <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
-                    <div style={{fontWeight:700,fontSize:15,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
-                    <div style={{fontSize:12,color:'#263238',marginTop:2}}>{deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e per imaging study` : 'Enter data above to calculate'}</div>
-                    {deptLabelData.interventionCount>0 && deptLabelData.potentialLeaves!==deptLabelData.leaves && (
-                      <div style={{fontSize:12,color:'#2E7D32',marginTop:3}}>With active interventions → potential Score {deptLabelData.potentialScore} ({deptLabelData.potentialLeaves}/5 leaves)</div>
-                    )}
-                  </div>
-                </div>
-                {[
-                  ['Annual electricity',   deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'],
-                  ['Annual CO₂e',         deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
-                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI tools', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
-                  ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
-                  ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
-                  ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
-                  ['Effective grid CI',    `${deptLabelData.effectiveCi} kgCO₂e/kWh (${deptLabelData.renewablePct}% renewable)`],
-                  ['Grid region',          deptLabelData.region],
-                  ...(deptLabelData.interventionCount>0 ? [['Active interventions', `${deptLabelData.interventionCount} implemented · ${deptLabelData.annualKwhSaving.toLocaleString()} kWh/yr saving`]] : []),
-                ].map(([k,v],i)=>(
-                  <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 18px',background:i%2===0?'#f1f8f1':'white',fontSize:13,gap:12}}>
-                    <span style={{color:'#607d66',flexShrink:0}}>{k}</span>
-                    <span style={{fontWeight:700,color:'#263238',textAlign:'right'}}>{v}</span>
-                  </div>
-                ))}
-                <div style={{background:'#e8f5e9',padding:'8px 18px',fontSize:11,color:'#2E7D32'}}>
-                  Estimated with CEDARS · {deptLabelData.date} · CC BY 4.0
-                </div>
-              </div>
-
-              <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
-                <button className="download" onClick={()=>downloadDeptPNG(deptLabelData)} disabled={deptLabelData.annualStudies===0}>
-                  <Download/> Download PNG badge
-                </button>
-                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} disabled={deptLabelData.annualStudies===0} style={deptCopied?{background:'#26A69A'}:undefined}>
-                  <FileText/> {deptCopied ? 'Copied!' : 'Copy ESG paragraph'}
-                </button>
-                <p className="note" style={{maxWidth:220,fontSize:12,margin:0}}>
-                  PNG badge: embed in sustainability reports, posters, or accreditation submissions.<br/><br/>
-                  ESG paragraph: paste into your hospital's annual sustainability report or ESR Green Imaging self-assessment.
-                </p>
-                <div style={{marginTop:8}}>
-                  <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
-                  {CEDARS_RATINGS.map(r=>(
-                    <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:deptLabelData.leaves===r.leaves?700:400,color:deptLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
-                      <LeafRating leaves={r.leaves} size={12} color={r.color}/>
-                      <span>{r.label}</span>
-                      <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'< 20'})[r.leaves]}</span>
-                    </div>
-                  ))}
-                  <p className="note" style={{fontSize:10,marginTop:6}}>Continuous Score (0–100) from the per-study footprint, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── CEDARS disclosure checklist (department) ── */}
-            <section style={{marginBottom:24}}>
-              <h2 style={{marginBottom:4}}>CEDARS disclosure checklist</h2>
-              <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible department footprint — a reporting standard modelled on CLAIM/DEAL.</p>
-              {(()=>{
-                const d = deptLabelData;
-                const items = [
-                  ['1', 'Imaging operation (studies / year)', d.hasData ? `${d.annualStudies.toLocaleString()} studies/yr` : '—', d.hasData, 'Department'],
-                  ['2', 'Total energy (kWh / year)', d.annualKwh > 0 ? `${d.annualKwh.toLocaleString()} kWh` : '—', d.annualKwh > 0, 'Department'],
-                  ['3', 'Grid carbon intensity, location, source', `${d.effectiveCi} kgCO₂e/kWh · ${d.region} · ${d.renewablePct}% renewable`, !!d.region, 'Grid'],
-                  ['4', 'Annual carbon footprint (facility + AI)', d.totalAnnualCo2 > 0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—', d.totalAnnualCo2 > 0, 'Department'],
-                  ['5', 'Clinical AI tools deployed', d.clinicalToolCount > 0 ? `${d.clinicalToolCount} (net effect in dept energy)` : 'none deployed', d.clinicalToolCount > 0, 'Clinical AI'],
-                  ['6', 'Active mitigation / interventions', d.interventionCount > 0 ? `${d.interventionCount} · ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved` : 'none reported', d.interventionCount > 0, 'Interventions'],
-                  ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
-                  ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
-                ];
-                return (
-                  <div style={{border:'1px solid #c8e6c9', borderRadius:14, overflow:'hidden'}}>
-                    {items.map(([n, item, val, ok, mod], i)=>(
-                      <div key={n} style={{display:'grid', gridTemplateColumns:'28px 1.6fr 2fr 110px', gap:10, alignItems:'center', padding:'9px 14px', background:i%2===0?'#f1f8f1':'white', fontSize:13}}>
-                        <span style={{color: ok ? '#2E7D32' : '#bdbdbd', fontWeight:900}}>{ok ? '✓' : '○'}</span>
-                        <span style={{color:'#263238', fontWeight:600}}>{item}</span>
-                        <span style={{color:'#607d66'}}>{val}</span>
-                        <span style={{fontSize:11, color:'#90a4ae', textAlign:'right'}}>{mod}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </section>
-
-            {deptLabelData.annualStudies>0 && (
-              <section style={{marginTop:0}}>
-                <h2>Ready-to-paste ESG paragraph</h2>
-                <p className="note" style={{marginBottom:8}}>Copy into your hospital's annual sustainability report, ESR Green Imaging self-assessment, or accreditation documentation.</p>
-                <pre style={{background:'#f1f8f1',borderRadius:14,padding:'16px 20px',fontSize:12,lineHeight:1.8,border:'1px solid #c8e6c9',fontFamily:'monospace',whiteSpace:'pre-wrap'}}>
-                  {generateDeptText(deptLabelData)}
-                </pre>
-              </section>
-            )}
         </main>
       )}
 
