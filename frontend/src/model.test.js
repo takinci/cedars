@@ -19,7 +19,7 @@ describe('buildFleet — scales specs by count', () => {
     const ct = f.find(r => r.modality === 'CT');
     expect(ct.name).toBe('2× CT Scanner');
     expect(ct.active_kw).toBe(6);   // 3 kW × 2
-    expect(ct.idle_kw).toBe(3);     // 1.5 kW × 2
+    expect(ct.idle_kw).toBe(5.2);   // 2.6 kW × 2
     expect(ct.scans).toBe(3600);    // 1800 × 2
   });
 });
@@ -30,20 +30,26 @@ describe('computeDashboard — FLEET, Germany, Annual', () => {
     expect(d.scopes.imagingScans).toBe(205200); // (2·1800 + 1000 + 3·2500 + 2·2500) × 12
   });
   it('total energy, carbon, and energy-per-scan', () => {
-    expect(d.totals.kwh).toBeCloseTo(293967.49, 2);
-    expect(d.totals.co2Kg).toBeCloseTo(105828.3, 1);
-    expect(d.totals.energyPerScan).toBeCloseTo(1.433, 3); // kWh ÷ scans
+    expect(d.totals.kwh).toBeCloseTo(301887.49, 2);
+    expect(d.totals.co2Kg).toBeCloseTo(108679.5, 1);
+    expect(d.totals.energyPerScan).toBeCloseTo(1.471, 3); // kWh ÷ scans
   });
   it('carbon = total energy × Germany grid intensity (0.36 kgCO₂e/kWh)', () => {
     expect(d.totals.co2Kg).toBeCloseTo(d.totals.kwh * 0.36, 0);
   });
   it('GHG scopes: Scope 2 = operational carbon; Scope 3 travel = scans × 20 km × 0.17 kg/km', () => {
-    expect(d.scopes.scope2Kg).toBeCloseTo(105828.3, 1);
+    expect(d.scopes.scope2Kg).toBeCloseTo(108679.5, 1);
     expect(d.scopes.scope3TravelKg).toBe(697680); // 205200 × 20 × 0.17
   });
   it('Scope 3 embodied scales with the unit count of each device type', () => {
     // Σ EMBODIED_KG_MO[modality] × count × 12: (139·2 + 389·1 + 33·3 + 12·2 + 30·1 + 5·5) × 12
     expect(d.scopes.scope3EmbKg).toBe(10140);
+  });
+  it('Scope 3 contrast = ICM exams × 100 mL × 10.29 gCO2e/mL, and rolls into scope3Kg', () => {
+    // icmExams = ct.scans × 12 × 0.40 fraction = (1800×2) × 12 × 0.40 = 17280
+    expect(d.resources.contrast.icmExams).toBe(17280);
+    expect(d.scopes.scope3ContrastKg).toBeCloseTo(17781.1, 1); // 17280 × 0.1 kg × 10.29
+    expect(d.scopes.scope3Kg).toBeCloseTo(d.scopes.scope3EmbKg + d.scopes.scope3TravelKg + d.scopes.scope3ContrastKg, 1);
   });
 });
 
@@ -62,10 +68,10 @@ describe('computeInterventions — FLEET, delta from current config', () => {
       ['Turn MRI/CT scanners off overnight', 'Reduce low-value imaging'],
       'Germany', 'Annual', FLEET, undefined, 'AWS', 'Standby', {});
     expect(iv.count).toBe(2);
-    expect(iv.baseline.kwh).toBeCloseTo(293967.49, 2);
-    expect(iv.savings.kwh).toBe(21840);              // overnight 12240 + low-value 9600
-    expect(iv.projected.kwh).toBeCloseTo(272127.49, 2);
-    expect(iv.savings.pctEnergy).toBeCloseTo(7.4, 1);
+    expect(iv.baseline.kwh).toBeCloseTo(301887.49, 2);
+    expect(iv.savings.kwh).toBe(25008);              // overnight 15408 + low-value 9600
+    expect(iv.projected.kwh).toBeCloseTo(276879.49, 2);
+    expect(iv.savings.pctEnergy).toBeCloseTo(8.3, 1);
   });
   it('storage axial-only lever saves the reformats delta vs current all-reformats config', () => {
     const iv = computeInterventions(
@@ -90,7 +96,7 @@ describe('buildFleet — per-device overrides', () => {
   it('an overridden field replaces the default (post-count-scaling); untouched fields and count scaling are unaffected', () => {
     const f = buildFleet({ ct: 2 }, { ct: { active_kw: 45 } });
     expect(f[0].active_kw).toBe(90);  // 45 kW × 2 units, not the 3 kW default
-    expect(f[0].idle_kw).toBe(3);     // untouched field: 1.5 kW default × 2 units
+    expect(f[0].idle_kw).toBe(5.2);   // untouched field: 2.6 kW default × 2 units
     expect(f[0].overridden).toBe(true);
   });
   it('no override for a device → overridden is falsy, values equal the plain default', () => {

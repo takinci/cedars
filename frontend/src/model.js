@@ -50,6 +50,22 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 //   ON", idle≈"Computer ON", off≈shutdown; standby interpolated, no 4th measured state exists).
 //   These are overnight/non-operational measurements, so active_kw likely still somewhat
 //   understates true daytime per-scan throughput — see sources.md.
+// CT idle_kw revised 2026-08 (1.5→2.6 kW) — four independent real-world sources now converge on
+//   CJRS-2022's "Computer ON" figure understating actual idle draw at this table's 160/300/250/34
+//   hour split: Heye et al. 2020 (real 3-CT-scanner year, Radiol-2020-Heye) implies ≈26,226
+//   kWh/yr/scanner with idle the dominant state (≈2/3 of on-time energy, ≈54% of total); the
+//   Hernandez et al. 2025 review's aggregated real-world CT range is 18,520-33,580 kWh/yr (4
+//   scanners); Carver et al. 2026 (JACR) finds CT spends the bulk of monitored time in
+//   "ready-to-scan"/"low-power" modes, not scanning; and an unrelated IR-suite plug-load table
+//   (Chua et al. 2021, JVIR) lists a CT's on-hours/off-hours draw above this table's old idle/off
+//   defaults too. This table's prior 14,364 kWh/yr implied total sat below the low end of all of
+//   them. idle_kw is raised only as far as 2.6 kW — deliberately kept below active_kw (3 kW) to
+//   preserve the same "idle must not exceed active" physical constraint already enforced for MRI
+//   (no real Woolen scanner ever showed idle > active either) — landing the implied annual total
+//   at ≈18,324 kWh/yr, the conservative low end of the real-world range rather than Heye's own
+//   mean. active_kw/off_kw/standby_kw and the hour split are unchanged: none of the four new
+//   sources gives a clean, generalisable real off-HOURS figure for CT (Heye's blends a 24 h/day ER
+//   scanner with two 9.5 h/day department scanners), so off_h stays separately flagged below.
 // PET-CT: 22 kW active + 5 kW idle calibrated exactly to MODALITY_BENCHMARKS 66,150 kWh/yr.
 // PACS/servers was NOT cross-checked against an annual-kWh benchmark (no MODALITY_BENCHMARKS
 // entry) and its citation doesn't hold up under scrutiny either — see sources.md, unverified.
@@ -100,7 +116,7 @@ const EQUIPMENT_UNITS = {
   mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:15,  standby_kw:7.5, off_kw:10,   active_h:160, idle_h:106, standby_h:88, off_h:390, avoidable_idle_h:120, scans:1000},
   mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:10,   active_h:160, idle_h:106, standby_h:88, off_h:390, avoidable_idle_h:120, scans:1200},
   mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:16.5, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
-  ct:          {name:"CT Scanner",     modality:"CT",         active_kw:3,   idle_kw:1.5, standby_kw:1.0, off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
+  ct:          {name:"CT Scanner",     modality:"CT",         active_kw:3,   idle_kw:2.6, standby_kw:1.0, off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
   // off_h corrected 2026-08 (34→4, idle_h 300→330): Hernandez et al. 2026 (Radiol-253128) logged
   // a real PET-CT's actual schedule — kept in Idle overnight, never fully Off, because full
   // shutdown costs ~12 h of detector recalibration. This is a hardware/physical constraint, not
@@ -210,6 +226,10 @@ const INTERVENTIONS = {
   "Store only acquired axial series (avoid reformats)": {kwh: 0, note: "Avoid storing non-essential CT/PET reformats — up to ~69% less CT storage, automatable, no clinical downside. (Jia 2026)"},
   "Migrate imaging archive to cloud":                   {kwh: 0, note: "Efficient cloud data centres cut archive storage energy ~40%. (Jia 2026; Doo 2024)"},
   "Apply an imaging data-retention policy":             {kwh: 0, note: "Move older studies to deep / low-power archive after ~8 years, shrinking the live archive. (Jia 2026)"},
+  // contrast-media (ICM) supply-chain levers — savings computed dynamically against the contrast
+  // carbon footprint (kwh:0 here since these don't touch electricity; see CONTRAST_LEVER_FRACTION)
+  "Right-size contrast vials to dose (vial optimization)": {kwh: 0, note: "Draw from the smallest vial that covers the dose (e.g. a 75 mL vial for a 72 mL dose) instead of always opening a larger one — cuts ICM supply-chain carbon ~6%. (Nghiem 2026)"},
+  "Switch to multidose contrast injector system":          {kwh: 0, note: "Larger shared multidose vials + reusable injector cut ICM volume ~17% and packaging/administration waste ~93% — ICM supply-chain carbon ~52% lower. (Nghiem 2026)"},
 };
 
 // Cloud provider PUE and global fleet carbon intensity defaults.
@@ -262,6 +282,15 @@ const CONTRAST = {
   gadGramsPerExam: 1.0, // ~0.1 mmol/kg × 70 kg → ~1 g Gd per exam
   wasteFraction: 0.10,  // fraction of drawn contrast discarded unused (overfill/leftover)
   densityGPerMl: 1.4,   // approx density of iodinated contrast for waste-mass estimate
+  // ICM supply-chain carbon (2026-08): iodine extraction + pharmaceutical processing + packaging/
+  // distribution + clinical administration, per 100 mL vial — Nghiem et al. 2026 (JACR), a
+  // cradle-to-administration LCA (not a validation-benchmark paper). 518+30+181+300 = 1,029 g
+  // CO2e/100 mL = 10.29 g/mL. Applied to the FULL procured vial (icmMlPerExam), not just the
+  // injected volume — wasteFraction is a separate disposal-mass metric; the discarded portion of
+  // a vial was still manufactured and shipped, so its carbon cost isn't avoided by not injecting
+  // it. No equivalent GBCA (MRI gadolinium) production-carbon figure was found in the literature
+  // reviewed — gadKg/gadGrams stay mass-only; gbcaExams do not contribute to contrastCo2eKg.
+  icmCo2eGPerMl: 10.29,
 };
 
 const ICM_MODALITIES = ["CT", "PET-CT", "Angio/IR", "Fluoroscopy"];
@@ -338,16 +367,6 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   totalKwh = rnd(totalKwh + storageKwh, 2);
   totalCo2 = totalKwh * ci;
 
-  // GHG Protocol scope breakdown
-  // Scope 1: direct fuel/gas estimated at 8% of Scope 2 (backup generators, medical gas) — McKee 2024
-  // Scope 3 embodied: hardware manufacturing amortised (ESR PP 2025) — use fleet for profile-awareness
-  // Scope 3 travel: patient travel at PATIENT_KM_RT × CAR_CO2_KG_KM (DEFRA 2023)
-  const scope2Kg       = rnd(totalCo2);
-  const scope1Kg       = rnd(scope2Kg * 0.08);
-  const scope3EmbKg    = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0));
-  const scope3TravelKg = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
-  const scope3Kg       = rnd(scope3EmbKg + scope3TravelKg);
-
   // Resource metrics
   const waterLitres  = rnd(totalKwh * WATER_PER_KWH, 0);
   const paperKg      = rnd(imagingScans * PAPER_G_PER_ENC / 1000, 1);
@@ -369,12 +388,28 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   const contrastVolumeL   = rnd(icmVolumeL + gbcaVolumeL, 0);
   const contrastWastedL   = rnd((icmVolumeL + gbcaVolumeL) * CONTRAST.wasteFraction, 1);
   const contrastHazKg     = rnd(contrastWastedL * CONTRAST.densityGPerMl, 1); // discarded contrast mass
+  // ICM supply-chain carbon (extraction + processing + packaging/distribution + administration),
+  // per the FULL procured vial volume (see CONTRAST.icmCo2eGPerMl note) — GBCA has no equivalent
+  // sourced figure, so gbcaExams don't contribute here.
+  const contrastCo2eKg    = rnd(icmExams * CONTRAST.icmMlPerExam * CONTRAST.icmCo2eGPerMl / 1000, 1); // g → kg
   const hazardousKg  = rnd(imagingScans * HAZ_WASTE_G_SCAN / 1000, 1);
   const contrast = {
     enhancedExams: Math.round(icmExams + gbcaExams), icmExams: Math.round(icmExams), gbcaExams: Math.round(gbcaExams),
     iodineKg, gadKg, gadGrams: rnd(gbcaExams * CONTRAST.gadGramsPerExam, 0),
-    volumeL: contrastVolumeL, wastedL: contrastWastedL, hazKg: contrastHazKg,
+    volumeL: contrastVolumeL, wastedL: contrastWastedL, hazKg: contrastHazKg, co2eKg: contrastCo2eKg,
   };
+
+  // GHG Protocol scope breakdown
+  // Scope 1: direct fuel/gas estimated at 8% of Scope 2 (backup generators, medical gas) — McKee 2024
+  // Scope 3 embodied: hardware manufacturing amortised (ESR PP 2025) — use fleet for profile-awareness
+  // Scope 3 travel: patient travel at PATIENT_KM_RT × CAR_CO2_KG_KM (DEFRA 2023)
+  // Scope 3 contrast: ICM supply-chain carbon (Nghiem et al. 2026) — see CONTRAST.icmCo2eGPerMl
+  const scope2Kg        = rnd(totalCo2);
+  const scope1Kg        = rnd(scope2Kg * 0.08);
+  const scope3EmbKg     = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0));
+  const scope3TravelKg  = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
+  const scope3ContrastKg = contrastCo2eKg;
+  const scope3Kg        = rnd(scope3EmbKg + scope3TravelKg + scope3ContrastKg);
 
   return {
     byEquipment,
@@ -390,7 +425,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
       activePct: totalKwh > 0 ? rnd(totalActiveKwh / totalKwh * 100, 1) : 0,
       idlePct:   totalKwh > 0 ? rnd(totalIdleKwh   / totalKwh * 100, 1) : 0,
     },
-    scopes:    {scope1Kg, scope2Kg, scope3EmbKg, scope3TravelKg, scope3Kg, imagingScans},
+    scopes:    {scope1Kg, scope2Kg, scope3EmbKg, scope3TravelKg, scope3ContrastKg, scope3Kg, imagingScans},
     resources: {waterLitres, paperKg, hazardousKg, contrast},
     storage:   {kwh: storageKwh, storedTB: rnd(_storedTB, 1), annualDataTB: rnd(_annualDataTB, 2),
       retentionYears: _retention, cloud: !!storage.cloud, reformats: storage.reformats || 'all',
@@ -428,6 +463,22 @@ const STORAGE_CLOUD_LEVER     = 'Migrate imaging archive to cloud';
 const STORAGE_RETENTION_LEVER = 'Apply an imaging data-retention policy';
 
 const STORAGE_INTERVENTIONS   = new Set([STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER]);
+
+// Contrast-media (ICM) levers — alternative strategies for the same problem (right-size the
+// existing single-use vial vs. switch to a shared multidose system), not additive, so like the
+// idle-reduction levers we take the deepest ONE selected rather than summing. Fractions are
+// Nghiem et al. 2026's own reported total per-exam ICM carbon reduction vs. their 100 mL SRC
+// baseline (Table 1's "Strategy-specific CO2 % emission reduction" column) — 6.4% for vial
+// optimization, 52.4% for a multidose system (their combined ICM-volume + 93%-packaging-cut
+// figure). Neither reduces electricity, so they don't touch `kwh`/Scope 2 at all — only the
+// contrast-media Scope 3 carbon computed in computeDashboard (see CONTRAST.icmCo2eGPerMl).
+const CONTRAST_VIAL_OPT_LEVER  = 'Right-size contrast vials to dose (vial optimization)';
+
+const CONTRAST_MULTIDOSE_LEVER = 'Switch to multidose contrast injector system';
+
+const CONTRAST_INTERVENTIONS  = new Set([CONTRAST_VIAL_OPT_LEVER, CONTRAST_MULTIDOSE_LEVER]);
+
+const CONTRAST_LEVER_FRACTION = {[CONTRAST_VIAL_OPT_LEVER]: 0.064, [CONTRAST_MULTIDOSE_LEVER]: 0.524};
 
 // Combined impact of a SET of interventions (the "intervention program"). Single source of
 // truth for both the Interventions tab and the EcoLabel. Computes each lever's dynamic,
@@ -490,6 +541,14 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
     list.includes(STORAGE_RETENTION_LEVER) ? Math.min(stgRet, 8) : stgRet);
   const storageSaving = rnd(Math.max(0, stgCurrent - stgAfter), 2);
 
+  // Contrast levers don't touch kWh/Scope 2 — they reduce the Scope 3 ICM carbon computed in
+  // computeDashboard directly, so this is a separate saving dimension from kwhSaved/co2Saved below.
+  const contrastLevers   = list.filter(n => CONTRAST_INTERVENTIONS.has(n));
+  const contrastFraction = contrastLevers.length ? Math.max(...contrastLevers.map(n => CONTRAST_LEVER_FRACTION[n] ?? 0)) : 0;
+  const contrastBaseKg   = base.resources.contrast.co2eKg;
+  const contrastSavedKg  = rnd(contrastBaseKg * contrastFraction, 1);
+  const contrastProjKg   = rnd(Math.max(0, contrastBaseKg - contrastSavedKg), 1);
+
   const idleLevers  = list.filter(n => SCANNER_STATE_INTERVENTIONS.has(n));
   const idleSaving  = idleLevers.length ? Math.max(...idleLevers.map(leverKwh)) : 0;      // overlap → deepest one
   const otherSaving = list.filter(n => !SCANNER_STATE_INTERVENTIONS.has(n) && !STORAGE_INTERVENTIONS.has(n)).reduce((s, n) => s + leverKwh(n), 0);
@@ -511,6 +570,7 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
     baseline:  {kwh: base.totals.kwh, co2: baseCo2kg},
     projected: {kwh: projectedKwh,    co2: projectedCo2},
     savings:   {kwh: kwhSaved, co2: co2Saved, pctEnergy, pctCo2, co2Fraction},
+    contrast:  {baselineCo2eKg: contrastBaseKg, savedCo2eKg: contrastSavedKg, projectedCo2eKg: contrastProjKg},
   };
 }
 
@@ -542,5 +602,8 @@ export {
   STORAGE_CLOUD_LEVER,
   STORAGE_RETENTION_LEVER,
   STORAGE_INTERVENTIONS,
+  CONTRAST_VIAL_OPT_LEVER,
+  CONTRAST_MULTIDOSE_LEVER,
+  CONTRAST_INTERVENTIONS,
   computeInterventions,
 };

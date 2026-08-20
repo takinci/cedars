@@ -69,7 +69,7 @@ const MRI_035T_TOOLTIP  = 'Permanent magnet; no cryocooler, so idle ≈ off. Act
 const MRI_15T_TOOLTIP   = 'Superconducting: idle 15 kW and off 10 kW from direct power-meter measurements across 4 real scanners, 3 vendors (Woolen et al. Radiology 2023, doi:10.1148/radiol.230441, Table 1: idle 10-15 kW, off 7-10 kW). The cryocooler cannot fully stop without risking magnet quench (helium boil-off), so "off" still draws substantial power — but idle never exceeds active/scan power in any real scanner Woolen measured. Active 22 kW: Chaban et al. JMRI 2023 (doi:10.1002/jmri.28994), EurRad 2024 (doi:10.1007/s00330-024-11056-0). Off-hours ≈390/month (52% of total) from Heye et al. 2020, via Chaban et al. 2024 JMRI review Table 1: off 107-147 kWh/day ÷ 10 kW off_kw. Projected ~116 MWh/yr.';
 const MRI_3T_TOOLTIP    = 'Active 30 kW from measured mean of 3T scanners: Chaban et al. JMRI 2023 (doi:10.1002/jmri.28994). Idle 15 kW and off 10 kW: direct power-meter data across 4 real scanners (Woolen et al. Radiology 2023, doi:10.1148/radiol.230441, Table 1: idle 10-15 kW, off 7-10 kW) — the cryocooler cannot fully stop without risking quench, so off draws substantially more than a simple "powered down" assumption. Standby 5 kW: cryocooler minimum (Herrmann 2012). Off-hours ≈390/month (52% of total) from Heye et al. 2020, via Chaban et al. 2024 JMRI review Table 1. Projected ~129 MWh/yr. Replace with scanner logs if available.';
 const MRI_7T_TOOLTIP    = 'No published sustainability benchmark specific to 7T. Active 45 kW and idle 22 kW extrapolated from high-field MRI data in Neurad 2024 (doi:10.1016/j.neurad.2023.12.001) and EurRad 2024 (doi:10.1007/s00330-024-11056-0). Off 16.5 kW — cryocooler continues running even "off" (Woolen et al. Radiology 2023, doi:10.1148/radiol.230441). Treat as estimate; replace with vendor TDP.';
-const CT_TOOLTIP        = 'Active 3 kW ("System ON" state, measured on a real 128-slice CT), idle 1.5 kW ("Computer ON"), off 0.5 kW (shutdown). Source: CJRS 2022 (doi:10.1177/08465371221133074). Corrected 2026-08 — the prior 60 kW default cited this paper (and Acra-2024) for "40-80 kW active," but neither paper reports anything near that; 60 kW was very likely a peak X-ray-exposure spec misapplied as a sustained active-hours average. These are overnight/non-operational measurements, so active_kw may still understate true high-throughput daytime draw — enter scanner logs if available.';
+const CT_TOOLTIP        = 'Active 3 kW ("System ON" state, measured on a real 128-slice CT), idle 2.6 kW, off 0.5 kW (shutdown). Active/off from CJRS 2022 (doi:10.1177/08465371221133074); idle raised from CJRS-2022\'s own 1.5 kW ("Computer ON") after four independent real-world sources — Heye et al. 2020 (real 3-CT-scanner year), a 2025 multi-study review (18,520-33,580 kWh/yr real range), Carver et al. 2026, and an IR-suite plug-load audit — converged on CT idle draw being higher than that single reading, while staying below active_kw so idle never exceeds active (no real scanner shows that pattern). Corrected 2026-08 — the prior 60 kW default cited CJRS-2022 (and Acra-2024) for "40-80 kW active," but neither paper reports anything near that; 60 kW was very likely a peak X-ray-exposure spec misapplied as a sustained active-hours average. active_kw is still from overnight/non-operational measurements, so it may understate true high-throughput daytime draw — enter scanner logs if available.';
 const PETCT_TOOLTIP     = 'Active 22 kW calibrated to ~68,050 kWh/yr, within the Vosshenrich et al. Curr Opin Urol 2025 benchmark range (doi:10.1097/MOU.0000000000001337). Off-hours corrected 2026-08: Hernandez et al. 2026 (doi:10.1148/radiol.253128) found a real PET-CT is kept idle overnight rather than fully off (~12h recalibration cost) — off_h reduced accordingly. Cyclotron energy for isotope production is external and not included here. Embodied carbon ~278 kgCO₂/month.';
 const ANGIO_TOOLTIP     = 'Direct power-sensor measurements on an IR suite (Artis pheno). Idle 6.9 kW, active 7.5 kW, off 1.1 kW; annual ~25,525 kWh. For biplane INR suites idle is ~7.4 kW; cath labs ~4.5 kW. Chiller not included. (Vosshenrich et al. AJR 2024, doi:10.2214/AJR.24.30988)';
 const FLUORO_TOOLTIP    = 'Direct power-sensor measurements on a multipurpose fluoroscopy unit (Artis zee). Idle 2.8 kW, active 3.1 kW; annual ~11,439 kWh. 96% of energy is nonproductive — powering down overnight is the dominant savings lever. (Vosshenrich et al. AJR 2024, doi:10.2214/AJR.24.30988)';
@@ -783,6 +783,7 @@ function downloadCSV(dash) {
     row(['Scope 2 — Electricity',      dash.scopes.scope2Kg]),
     row(['Scope 3 — Embodied carbon',  dash.scopes.scope3EmbKg]),
     row(['Scope 3 — Patient travel',   dash.scopes.scope3TravelKg]),
+    row(['Scope 3 — Contrast supply chain', dash.scopes.scope3ContrastKg]),
     row(['Scope 3 — Total',            dash.scopes.scope3Kg]),
     blank,
 
@@ -1838,7 +1839,7 @@ function App() {
   // Scope 1/2/3 stacked horizontal bar — shown as % of total so all scopes are visible
   const scopeTotal = dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2;
   const scopePct   = v => scopeTotal > 0 ? rnd(v / scopeTotal * 100, 1) : 0;
-  const scopeVals  = [dash.scopes.scope1Kg, dash.scopes.scope2Kg, dash.scopes.scope3EmbKg, dash.scopes.scope3TravelKg, staffCommuteCo2, networkTransferCo2];
+  const scopeVals  = [dash.scopes.scope1Kg, dash.scopes.scope2Kg, dash.scopes.scope3EmbKg, dash.scopes.scope3TravelKg, dash.scopes.scope3ContrastKg, staffCommuteCo2, networkTransferCo2];
   const chartScopes = {
     labels: ['% of total emissions' + dash.totals.label],
     datasets: [
@@ -1846,6 +1847,7 @@ function App() {
       {label:`Scope 2 — Electricity (${scopePct(dash.scopes.scope2Kg)}%)`,          data:[scopePct(dash.scopes.scope2Kg)],       backgroundColor:'#2E7D32'},
       {label:`Scope 3 — Embodied (${scopePct(dash.scopes.scope3EmbKg)}%)`,          data:[scopePct(dash.scopes.scope3EmbKg)],    backgroundColor:'#4DB6AC'},
       {label:`Scope 3 — Patient travel (${scopePct(dash.scopes.scope3TravelKg)}%)`, data:[scopePct(dash.scopes.scope3TravelKg)], backgroundColor:'#A5D6A7'},
+      {label:`Scope 3 — Contrast supply chain (${scopePct(dash.scopes.scope3ContrastKg)}%)`, data:[scopePct(dash.scopes.scope3ContrastKg)], backgroundColor:'#66BB6A'},
       {label:`Scope 3 — Staff commute (${scopePct(staffCommuteCo2)}%)`,             data:[scopePct(staffCommuteCo2)],            backgroundColor:'#FFB74D'},
       {label:`Scope 3 — Data transfer (${scopePct(networkTransferCo2)}%)`,          data:[scopePct(networkTransferCo2)],         backgroundColor:'#90A4AE'},
     ],
@@ -2474,6 +2476,7 @@ function App() {
               <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg + landingAICo2)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}).${landingAICo2>0?` Includes ${fmtCo2(landingAICo2)} from AI tools.`:' Primary measured scope.'}`}/>
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={fmtCo2(dash.scopes.scope3TravelKg)} sub={`${dash.scopes.imagingScans.toLocaleString()} scans × ${PATIENT_KM_RT} km avg round trip.`}/>
+              <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
               <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={fmtCo2(staffCommuteCo2)}            sub={`~${derivedStaffCount} staff (estimated from device fleet) × ${settings.staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo. DEFRA 2023.`}/>
               <Card icon={<Wifi/>}       title="Scope 3 — Data transfer"   value={fmtCo2(networkTransferCo2)}         sub={`${dash.scopes.imagingScans.toLocaleString()} studies × ${AVG_STUDY_GB} GB avg × 0.001 kWh/GB. DICOM network energy (Aslan et al. 2018).`}/>
             </div>
@@ -2514,7 +2517,7 @@ function App() {
               <Card icon={<Cpu/>}          title="Top idle waster"    value={dash.topOpportunities[0]?.equipment ?? '—'}          sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
               <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="Radiography 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
               <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
-              <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + staff commute + DICOM data transfer. Often larger than Scope 2 in a full lifecycle view."/>
+              <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + contrast supply chain + staff commute + DICOM data transfer. Often larger than Scope 2 in a full lifecycle view."/>
             </div>
 
             {/* Data storage & archiving — fleet-driven long-term PACS/archive footprint */}
@@ -2615,6 +2618,9 @@ function App() {
               <Card icon={<Trash2/>} title={`Contrast wasted ${dash.totals.label}`} value={`${dash.resources.contrast.wastedL} L`}
                 sub={`~${dash.resources.contrast.hazKg} kg discarded contrast (pharma waste). Lever: weight-based dosing, multi-dose/bulk vials.`}
                 tip={`Assumes ${Math.round(CONTRAST.wasteFraction*100)}% of drawn contrast discarded unused (overfill/leftover). Total volume used: ${dash.resources.contrast.volumeL.toLocaleString()} L ${dash.totals.label}.`}/>
+              <Card icon={<Leaf/>} title={`Iodinated contrast carbon ${dash.totals.label}`} value={fmtCo2(dash.resources.contrast.co2eKg)}
+                sub="Extraction, processing, packaging, and administration for the full procured vial — not just the injected dose. Also counted in Scope 3 above."
+                tip={`${CONTRAST.icmMlPerExam} mL/exam × ${CONTRAST.icmCo2eGPerMl} gCO₂e/mL (Nghiem et al. 2026 supply-chain LCA). No sourced gadolinium (MRI) production-carbon figure was found, so this covers iodinated contrast only. Try the "Right-size contrast vials" or "Switch to multidose contrast injector system" interventions to reduce it.`}/>
             </div>
             <p className="note" style={{marginTop:8,fontSize:12}}>
               Estimates are mass-balance (release ≈ administered dose); contrast-use fractions vary widely by institution — replace with pharmacy/procurement data. Sources: gadolinium & iodinated contrast environmental persistence literature; ESR sustainability guidance.
@@ -3506,6 +3512,9 @@ function App() {
                 <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
                 <p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price, sym)}{dash.totals.label}</p>
                 <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
+                {scenario.contrast.savedCo2eKg > 0 && (
+                  <p style={{fontSize:12,color:'#607d66',marginTop:4}}>+ −{scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast supply chain (Scope 3, not electricity)</p>
+                )}
               </section>
               <section className="card">
                 <div className="cardHead"><Leaf/><span>After interventions</span></div>
