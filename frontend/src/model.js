@@ -89,7 +89,12 @@ const EQUIPMENT_UNITS = {
   mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:10,   active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1200},
   mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:16.5, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
   ct:          {name:"CT Scanner",     modality:"CT",         active_kw:3,   idle_kw:1.5, standby_kw:1.0, off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
-  petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:100, scans:400},
+  // off_h corrected 2026-08 (34→4, idle_h 300→330): Hernandez et al. 2026 (Radiol-253128) logged
+  // a real PET-CT's actual schedule — kept in Idle overnight, never fully Off, because full
+  // shutdown costs ~12 h of detector recalibration. This is a hardware/physical constraint, not
+  // a site policy choice, so it generalises better than most other hour-split evidence in this
+  // table. The freed off-hours move to idle (matching what the real unit does), not elsewhere.
+  petct:       {name:"PET-CT",         modality:"PET-CT",     active_kw:22,  idle_kw:5,   standby_kw:2,   off_kw:0.3,  active_h:160, idle_h:330, standby_h:250, off_h:4, avoidable_idle_h:100, scans:400},
   xray:        {name:"Radiography Room",     modality:"Radiography",      active_kw:12,  idle_kw:2,   standby_kw:0.6, off_kw:0.1,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   ultrasound:  {name:"Ultrasound",     modality:"Ultrasound", active_kw:1.5, idle_kw:0.4, standby_kw:0.1, off_kw:0.02, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:2500},
   // Corrected 2026-08 (was active 5 kW / idle 1 kW / standby 0.3 kW / off 0.1 kW — implied
@@ -102,7 +107,15 @@ const EQUIPMENT_UNITS = {
   // own hour split and scan volume — see sources.md for the derivation.
   mammography: {name:"Mammography",    modality:"Radiography",      active_kw:0.5, idle_kw:0.2, standby_kw:0.15, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
   pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
-  workstations:{name:"Workstations",   modality:"Workstation",active_kw:0.1174, idle_kw:0.1174, standby_kw:0.0542, off_kw:0.0182, active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
+  // Hour split corrected 2026-08 (was active_h:160, idle_h:300, off_h:34; standby_h:250
+  // unchanged): Walters et al. 2024 (Clin Radiol, Walters-2024) logged real on/off time on 88
+  // reporting workstations before an automated shutdown protocol — 148 h/week on, i.e. ~87
+  // h/month off (vs. this table's old 34). Reduced active_h/idle_h proportionally to absorb the
+  // difference (active_kw=idle_kw already for this row, so the active/idle split itself is not
+  // physically meaningful — see the power-value correction note above). This is the *unoptimized
+  // baseline* figure (before the shutdown intervention Walters measured), consistent with this
+  // table modelling typical current practice rather than best practice.
+  workstations:{name:"Workstations",   modality:"Workstation",active_kw:0.1174, idle_kw:0.1174, standby_kw:0.0542, off_kw:0.0182, active_h:142, idle_h:265, standby_h:250, off_h:87,  avoidable_idle_h:120, scans:0},
   // Interventional imaging — power from direct sensor measurements (Vosshenrich et al., AJR 2024, 10.2214/AJR.24.30988).
   // Hours from paper Table 3 annual projections ÷ 12. No distinct standby mode; standby_kw = off_kw.
   // IR suite = Artis pheno (monoplanar). Fluoroscopy = Artis zee multipurpose. Chiller not included in sensor.
