@@ -134,6 +134,42 @@ const GPU_PRESETS = {
   "Custom (enter TDP below)":  {tdpKw: 0.000},
 };
 
+// AI Research Label live-sync — maps the AI Model tab's architecture choice onto the label's
+// task-type field, and builds the patch used both by the auto-sync effect (keeps the label
+// mirroring the AI tab until the user edits it directly) and the "Pre-fill from dashboards"
+// button (a one-time snapshot that additionally pulls deployment volume from the Department
+// dashboard). `includeDeployment` is false for the auto-sync — the AI tab's own live hero grades
+// on per-study inference alone, with no Department dependency, so the label must default to the
+// same basis to actually show the same number; deployment volume (which flips grading to the
+// amortised training+inference figure) is opt-in only, via the button.
+const ARCH_TASK = {
+  'CNN / ResNet':              'Classification',
+  'U-Net (segmentation)':      'Segmentation',
+  'EfficientNet':              'Classification',
+  'Vision Transformer (ViT)':  'Detection',
+  'Diffusion / Generative AI': 'Reconstruction',
+  'LLM / Agent (transformer)': 'Report generation',
+};
+function buildEcoLabelPrefill(scen, ai, dash, includeDeployment) {
+  const tokenPrefill = ai.unit === 'tokens'
+    ? {inferMode:'tokens', whPer1kTokens:String(ai.whPer1kTokens ?? 0.4), callsPerTask:String(ai.callsPerTask ?? 1), tokensPerCall:String(ai.tokensPerCall ?? 0)}
+    : {inferMode:'kwh', ...(ai.inference?.kwhPerStudy != null ? {inferKwhPerStudy: String(ai.inference.kwhPerStudy)} : {})};
+  return {
+    ...(scen.architecture                 ? {architecture:      scen.architecture}                              : {}),
+    ...(ARCH_TASK[scen.architecture]       ? {taskType:          ARCH_TASK[scen.architecture]}                   : {}),
+    ...(scen.paramsM                       ? {paramsMillion:     String(scen.paramsM)}                           : {}),
+    ...(GPU_PRESETS[scen.trainGpu]         ? {gpuModel:          scen.trainGpu}                                  : {}),
+    ...(parseInt(scen.trainNumGpus) > 0    ? {gpuCount:          String(parseInt(scen.trainNumGpus))}            : {}),
+    ...(parseFloat(scen.trainHours) > 0    ? {trainingHoursPerRun: String(scen.trainHours)}                     : {}),
+    ...(scen.cloudProvider                 ? {cloudProvider:     scen.cloudProvider}                             : {}),
+    ...(scen.cloudRegion                   ? {cloudRegion:       scen.cloudRegion}                                : {}),
+    ...(parseInt(scen.deployMonths) > 0    ? {deployMonths:      String(parseInt(scen.deployMonths))}            : {}),
+    ...(includeDeployment && dash.scopes.imagingScans > 0 ? {inferStudiesMonth: String(Math.round(dash.scopes.imagingScans))} : {}),
+    ...(parseFloat(scen.customPue) > 0     ? {customPue:         String(scen.customPue)}                        : {customPue: ''}),
+    ...tokenPrefill,
+  };
+}
+
 // ── Cloud carbon tracking data ────────────────────────────────────────────────
 // Per-region carbon intensity (kgCO₂e/kWh) and provider PUE.
 // Sources: Cloud Carbon Footprint methodology (cloudcarbonfootprint.org);
@@ -1221,10 +1257,11 @@ function App() {
     setEcoLabel({
       projectName: '', taskType: 'Classification', architecture: '', paramsMillion: '', datasetSize: '',
       gpuModel: 'NVIDIA A100 (80GB SXM4)', customTdpW: '300', gpuCount: '1', trainingHoursPerRun: '',
-      numRuns: '1', energyMeasured: false, energyKwhPerRun: '', cloudProvider: 'Local compute',
+      numRuns: '1', energyMeasured: false, energyKwhPerRun: '', cloudProvider: 'Local compute', cloudRegion: '',
       renewablePct: '0', inferStudiesMonth: '', inferMode: 'kwh',
       inferKwhPerStudy: '', whPer1kTokens: '0.4', callsPerTask: '1', tokensPerCall: '', deployMonths: '36', customPue: '',
     });
+    setEcoLabelTouched(false);
     setCloudTracker({
       renewablePct: '0', computeLines: [],
       storageLines: [{id: 1, label: 'PACS archive', type: 'HDD (object storage — S3 / Blob)', tb: '10'}],
@@ -1283,6 +1320,7 @@ function App() {
     energyMeasured: false,
     energyKwhPerRun: '',
     cloudProvider: 'Local compute',
+    cloudRegion: '',
     renewablePct: '0',
     inferStudiesMonth: '',
     inferMode: 'kwh',            // 'kwh' (vision, energy/study) | 'tokens' (LLM/agentic)
@@ -1293,7 +1331,14 @@ function App() {
     deployMonths: '36',
     customPue: '',
   });
-  const setEco = (key, val) => setEcoLabel(l => ({...l, [key]: val}));
+  // Once the user edits the label directly, it stops auto-following the AI Model tab (becomes
+  // a standalone, manually-controlled disclosure) — see the auto-sync effect below.
+  const [ecoLabelTouched, setEcoLabelTouched] = useState(false);
+  const setEco = (key, val) => { setEcoLabelTouched(true); setEcoLabel(l => ({...l, [key]: val})); };
+  const setEcoCloudProvider = prov => {
+    setEcoLabelTouched(true);
+    setEcoLabel(l => ({...l, cloudProvider: prov, cloudRegion: Object.keys(CLOUD_REGIONS[prov]?.regions ?? {})[0] ?? ''}));
+  };
   const [deptCopied, setDeptCopied] = useState(false);
   const [deptLabel, setDeptLabel] = useState(() => ({
     deptName: '', hospitalName: '', region: '',
@@ -1388,6 +1433,16 @@ function App() {
   const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
+
+  // Keep the AI Research Label mirroring the AI Model tab until the user edits the label
+  // directly — same "live by default, override when touched" pattern as deptLabelData/
+  // scenario for the Department label. Deliberately excludes deployment volume (Department
+  // scan count) — the AI tab's own live hero grades on per-study inference alone with no
+  // Department dependency, so auto-sync must match that basis, not the fuller amortised one.
+  useEffect(() => {
+    if (ecoLabelTouched) return;
+    setEcoLabel(e => ({...e, ...buildEcoLabelPrefill(scen, ai, dash, false)}));
+  }, [ecoLabelTouched, scen, ai, dash]);
 
   // Benchmark: every candidate computed under the SAME department context, so only the
   // model varies. Pareto-efficient = no other candidate is both more accurate and lower-carbon.
@@ -1540,16 +1595,21 @@ function App() {
     const gpuTdpKw = ecoLabel.gpuModel === 'Custom (enter TDP below)'
       ? (parseFloat(ecoLabel.customTdpW) || 300) / 1000
       : (GPU_PRESETS[ecoLabel.gpuModel]?.tdpKw ?? 0.3);
-    const baseCf = CLOUD[ecoLabel.cloudProvider] ?? CLOUD['Local compute'];
+    const baseCf  = CLOUD[ecoLabel.cloudProvider] ?? CLOUD['Local compute'];
+    // Mirrors computeAI's own cf construction exactly (see aiResultFor/computeAI above) — a
+    // specific deployment region (CLOUD_REGIONS[provider].regions[cloudRegion]) overrides the
+    // provider's flat average CI when one is set, which it always is once auto-synced from the
+    // AI Model tab's `scen.cloudRegion`. Using the flat average unconditionally (as an earlier
+    // version of this memo did) left this label disagreeing with the AI tab's own live hero for
+    // the exact same model — e.g. "Local compute" defaults to CLOUD.ci=0.25 flat, but the AI
+    // tab's default region (On-premise, Switzerland) is 0.10, a 2.5x gap for the "same" setting.
+    const provData  = CLOUD_REGIONS[ecoLabel.cloudProvider];
+    const regionCi  = (provData && ecoLabel.cloudRegion) ? provData.regions[ecoLabel.cloudRegion] : undefined;
     const ecoCustomPue = parseFloat(ecoLabel.customPue);
-    const cf = {...baseCf, pue: ecoCustomPue > 0 ? ecoCustomPue : baseCf.pue};
-    // Cloud-provider average CI — NOT the department's local grid. Matches how the live AI tab
-    // itself grades operational carbon (computeAI uses cf.ci, not getCI(settings.region,...) —
-    // see the note on the AI Model & Informatics tab: "Operational carbon uses cloud provider CI
-    // ... Clinical savings use local grid"). Using the department's region here instead (as an
-    // earlier version of this memo did) made this label disagree with the AI tab's own live hero
-    // for the exact same model, since AWS/Azure/Google's average CI and a hospital's local grid
-    // CI can differ by 2x or more.
+    const cf = {
+      pue: ecoCustomPue > 0 ? ecoCustomPue : (provData?.pue ?? baseCf.pue),
+      ci:  (regionCi != null) ? regionCi : baseCf.ci,
+    };
     const ci = cf.ci;
     const gpuCount = Math.max(1, parseInt(ecoLabel.gpuCount) || 1);
     const hoursPerRun = parseFloat(ecoLabel.trainingHoursPerRun) || 0;
@@ -1610,6 +1670,7 @@ function App() {
       gpuHardware: gpuCount > 1 ? `${gpuCount}× ${gpuLabel}` : gpuLabel,
       totalGpuHours, numRuns, energyPerRunKwh, totalEnergyKwh, trainCo2,
       renewablePct, cloudProvider: ecoLabel.cloudProvider,
+      ciSource: (regionCi != null) ? ecoLabel.cloudRegion : `${ecoLabel.cloudProvider} average`,
       ci, effectiveCi, waterLitres, pue: cf.pue,
       hasInference: inferStudies > 0 && inferKwhPerStudy > 0,
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
@@ -3660,42 +3721,17 @@ function App() {
           {/* ── Pre-fill from dashboards ── */}
           <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:24,padding:'12px 16px',background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16}}>
             <button onClick={()=>{
-              const ARCH_TASK = {
-                'CNN / ResNet':              'Classification',
-                'U-Net (segmentation)':      'Segmentation',
-                'EfficientNet':              'Classification',
-                'Vision Transformer (ViT)':  'Detection',
-                'Diffusion / Generative AI': 'Reconstruction',
-                'LLM / Agent (transformer)': 'Report generation',
-              };
-              // If the current AI model is token-based (LLM / agentic), pre-fill the label's
-              // inference in token mode with its calls/tokens; otherwise use flat kWh/study.
-              const tokenPrefill = ai.unit === 'tokens'
-                ? {inferMode:'tokens', whPer1kTokens:String(ai.whPer1kTokens ?? 0.4), callsPerTask:String(ai.callsPerTask ?? 1), tokensPerCall:String(ai.tokensPerCall ?? 0)}
-                : {inferMode:'kwh', ...(ai.inference?.kwhPerStudy != null ? {inferKwhPerStudy: String(ai.inference.kwhPerStudy)} : {})};
-              setEcoLabel(e=>({
-                ...e,
-                ...(scen.architecture                 ? {architecture:      scen.architecture}                              : {}),
-                ...(ARCH_TASK[scen.architecture]       ? {taskType:          ARCH_TASK[scen.architecture]}                   : {}),
-                ...(scen.paramsM                       ? {paramsMillion:     String(scen.paramsM)}                           : {}),
-                ...(GPU_PRESETS[scen.trainGpu]         ? {gpuModel:          scen.trainGpu}                                  : {}),
-                ...(parseInt(scen.trainNumGpus) > 0    ? {gpuCount:          String(parseInt(scen.trainNumGpus))}            : {}),
-                ...(parseFloat(scen.trainHours) > 0    ? {trainingHoursPerRun: String(scen.trainHours)}                     : {}),
-                ...(scen.cloudProvider                 ? {cloudProvider:     scen.cloudProvider}                             : {}),
-                ...(parseInt(scen.deployMonths) > 0    ? {deployMonths:      String(parseInt(scen.deployMonths))}            : {}),
-                ...(dash.scopes.imagingScans > 0       ? {inferStudiesMonth: String(Math.round(dash.scopes.imagingScans))}   : {}),
-                ...(parseFloat(scen.customPue) > 0     ? {customPue:         String(scen.customPue)}                        : {customPue: ''}),
-                ...tokenPrefill,
-              }));
+              setEcoLabelTouched(true);
+              setEcoLabel(e => ({...e, ...buildEcoLabelPrefill(scen, ai, dash, true)}));
             }} style={{
               display:'inline-flex',alignItems:'center',gap:7,
               background:'#2E7D32',color:'white',border:'none',borderRadius:10,
               padding:'7px 16px',cursor:'pointer',fontSize:12,fontWeight:700,
             }}>
-              <ArrowRight size={13}/> Pre-fill from dashboards
+              <ArrowRight size={13}/> Pre-fill deployment volume from dashboards
             </button>
             <span style={{fontSize:11,color:'#607d66'}}>
-              Copies the model specs (architecture, task, parameters, GPU/training, cloud, deployment) and inference energy from the AI model above · inference studies/month from the Radiology dashboard · grid region follows this page
+              Model specs, GPU/training, cloud provider, and inference energy already mirror the AI model above automatically — this button additionally pulls inference studies/month from the Radiology dashboard, so the grade switches from per-inference to the fuller amortised (training + inference) figure. Edit any field to take over the disclosure manually.
             </span>
           </div>
 
@@ -3770,16 +3806,20 @@ function App() {
           <div className="inputSummary" style={{marginBottom:24}}>
             <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Deployment context</h2>
             <div className="grid grid3">
-              <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={v=>setEco('cloudProvider',v)}/>
+              <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={setEcoCloudProvider}/>
               <label>
-                Custom PUE <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>optional — overrides {ecoLabel.cloudProvider} default ({CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5})</span>
-                <input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5} default`}/>
-                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>This label has its own independent PUE — it does not follow the AI Model page's Custom PUE. Set to <strong>1.0</strong> to reproduce a single lab GPU measurement (e.g. CodeCarbon) with no data-centre overhead.</span>
+                Deployment region <span style={{fontWeight:400, fontSize:11, color:'#607d66'}}>— sets grid CI</span>
+                <select value={ecoLabel.cloudRegion} onChange={e=>setEco('cloudRegion',e.target.value)}>
+                  {Object.entries(CLOUD_REGIONS[ecoLabel.cloudProvider]?.regions ?? {}).map(([name, rci]) => (
+                    <option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>
+                  ))}
+                </select>
+                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>Mirrors the AI Model tab's provider/region automatically until edited here — this label's grid CI does not follow the Home page's Region / grid setting (that's the department's local grid, a different thing from where AI compute runs).</span>
               </label>
-              <label style={{opacity:0.9}}>
-                Grid region <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>(follows this page)</span>
-                <input type="text" value={settings.region} readOnly title="Change the grid region on the Home page." style={{background:'#f5f5f5',cursor:'not-allowed'}}/>
-                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>To change it, set <strong>Region / grid</strong> on the <strong>Home</strong> page — the whole tool (this label included) uses that one grid.</span>
+              <label>
+                Custom PUE <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>optional — overrides {ecoLabel.cloudProvider} default ({CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5})</span>
+                <input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5} default`}/>
+                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>Set to <strong>1.0</strong> to reproduce a single lab GPU measurement (e.g. CodeCarbon) with no data-centre overhead.</span>
               </label>
               <label>
                 Renewable energy (%)
@@ -3897,7 +3937,7 @@ function App() {
                 ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
                 ['Renewable energy',         `${ecoLabelData.renewablePct}%`],
                 ['Compute / PUE',            `${ecoLabelData.cloudProvider} · PUE ${ecoLabelData.pue}`],
-                ['Cloud grid CI',            `${ecoLabelData.ci} kgCO₂e/kWh (${ecoLabelData.cloudProvider} average)`],
+                ['Cloud grid CI',            `${ecoLabelData.ci} kgCO₂e/kWh (${ecoLabelData.ciSource})`],
                 ['Water footprint',          `${ecoLabelData.waterLitres.toLocaleString()} L`],
                 ...(ecoLabelData.hasInference ? [['Monthly inference', `${ecoLabelData.inferStudies.toLocaleString()} studies · ${ecoLabelData.inferMonthlyKwh} kWh · ${ecoLabelData.inferCo2Month} kgCO₂e`]] : []),
               ].map(([k, v], i) => (
@@ -3993,7 +4033,7 @@ function App() {
                `Total training energy consumption was ${ecoLabelData.totalEnergyKwh} kWh ` +
                `(${ecoLabelData.energyPerRunKwh} kWh per run${ecoLabelData.energyMeasured ? ', directly measured' : ', estimated from GPU TDP'}), ` +
                `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e ` +
-               `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh; ` +
+               `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh, ${ecoLabelData.ciSource}; ` +
                `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
                `The estimated cooling water footprint is ${ecoLabelData.waterLitres.toLocaleString()} L.` +
                (ecoLabelData.perInferCo2g > 0
