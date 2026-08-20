@@ -1617,6 +1617,32 @@ function App() {
     };
   }, [ecoLabel, settings.region, settings.customCi]);
 
+  // Live AI-tab grade preview — deliberately independent of `ecoLabelData` above. The AI
+  // Research Label is a standalone disclosure ("no department context", its own PUE/region),
+  // only synced to the live Model tab via the manual "Pre-fill from dashboards" button — so it
+  // can't drive a hero card that's supposed to move as the user edits the AI Model tab. This
+  // memo re-derives the same amortised-grade logic directly from the live `ai` result instead.
+  const aiLiveGrade = useMemo(() => {
+    const deployMonths = Math.max(1, parseInt(scen.deployMonths) || 36);
+    const perInferCo2g = rnd(ai.inference.kwhPerStudy * ai.cloudCi * 1000, 3);
+    const lifetimeInferences = Math.round(ai.inference.studies * deployMonths);
+    const hasInferenceData = ai.inference.studies > 0 && ai.inference.kwhPerStudy > 0;
+    const trainPerStudyG = lifetimeInferences > 0 ? rnd(ai.training.kgCo2e * 1000 / lifetimeInferences, 3) : null;
+    const effectivePerStudyG = hasInferenceData ? rnd((trainPerStudyG ?? 0) + perInferCo2g, 3)
+      : (ai.inference.kwhPerStudy > 0 ? perInferCo2g : null);
+    const gradeBasis = hasInferenceData ? 'amortised' : (ai.inference.kwhPerStudy > 0 ? 'inference' : 'none');
+    const gradeValueG = gradeBasis === 'none' ? null : effectivePerStudyG;
+    const graded = gradeValueG != null;
+    const score = graded ? cedarsScore(gradeValueG, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI) : null;
+    const rating = graded ? cedarsRating(score) : null;
+    return {
+      graded, gradeBasis, score, effectivePerStudyG, perInferCo2g,
+      leaves: rating?.leaves ?? 0,
+      ratingLabel: rating?.label ?? 'Configure a model above to calculate.',
+      ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5',
+    };
+  }, [ai, scen.deployMonths]);
+
   const deptLabelData = useMemo(() => {
     // Live-by-default: derive from the Radiology Department state; the EcoLabel form
     // fields are optional OVERRIDES (headline numbers + region) when non-empty.
@@ -2527,22 +2553,24 @@ function App() {
           </div>
           <p className="note" style={{marginBottom:16}}>Recycling Pyramid priority: Prevent unnecessary scans → Reduce scan energy → Recover/recycle prior data. (Implementation Guide §1)</p>
 
-          {/* ── AI Grade hero (always visible, mirrors the Radiology Department overview) ── */}
-          <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
+          {/* ── AI Grade hero (always visible; live off the current model config, not the
+               separately-edited Research Label — that label is an independent disclosure with
+               its own "no department context" state, see the note on the EcoLabel page) ── */}
+          <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:aiLiveGrade.ratingBg,border:`2px solid ${aiLiveGrade.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
             <div style={{textAlign:'center',flexShrink:0}}>
-              <div style={{fontSize:52,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
-              <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+              <div style={{fontSize:52,fontWeight:900,color:aiLiveGrade.ratingColor,lineHeight:1}}>{aiLiveGrade.graded?aiLiveGrade.score:'—'}</div>
+              <div style={{fontSize:10,fontWeight:700,color:aiLiveGrade.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
             </div>
             <div>
-              <LeafRating leaves={ecoLabelData.leaves} size={24} color={ecoLabelData.ratingColor}/>
-              <div style={{fontWeight:700,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.ratingLabel}</div>
+              <LeafRating leaves={aiLiveGrade.leaves} size={24} color={aiLiveGrade.ratingColor}/>
+              <div style={{fontWeight:700,fontSize:16,color:aiLiveGrade.ratingColor,marginTop:4}}>{aiLiveGrade.ratingLabel}</div>
               <div style={{fontSize:13,color:'#263238',marginTop:2}}>
-                {ecoLabelData.gradeBasis==='amortised' ? `${ecoLabelData.effectivePerStudyG} gCO₂e/study (amortised)`
-                  : ecoLabelData.gradeBasis==='inference' ? `${ecoLabelData.perInferCo2g} gCO₂e/study`
-                  : ecoLabelData.hasData ? 'Add inference volume to grade' : 'Configure a model above to calculate.'}
+                {aiLiveGrade.gradeBasis==='amortised' ? `${aiLiveGrade.effectivePerStudyG} gCO₂e/study (amortised)`
+                  : aiLiveGrade.gradeBasis==='inference' ? `${aiLiveGrade.perInferCo2g} gCO₂e/study`
+                  : 'Add department fleet/inference volume to grade'}
               </div>
             </div>
-            <button onClick={()=>setPage('ecolabel')} style={{marginLeft:'auto'}}>Full AI Research Label →</button>
+            <button onClick={()=>{ setPage('ecolabel'); setTimeout(()=>document.getElementById('ai-ecolabel')?.scrollIntoView({behavior:'smooth',block:'start'}), 50); }} style={{marginLeft:'auto'}}>Full AI Research Label →</button>
           </div>
 
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
