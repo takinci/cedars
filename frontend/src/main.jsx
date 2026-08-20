@@ -159,6 +159,7 @@ function buildEcoLabelPrefill(scen, ai, dash, includeDeployment) {
     ...(ARCH_TASK[scen.architecture]       ? {taskType:          ARCH_TASK[scen.architecture]}                   : {}),
     ...(scen.paramsM                       ? {paramsMillion:     String(scen.paramsM)}                           : {}),
     ...(GPU_PRESETS[scen.trainGpu]         ? {gpuModel:          scen.trainGpu}                                  : {}),
+    ...(scen.trainGpu === 'Custom (enter TDP below)' && scen.trainCustomTdpW ? {customTdpW: String(scen.trainCustomTdpW)} : {}),
     ...(parseInt(scen.trainNumGpus) > 0    ? {gpuCount:          String(parseInt(scen.trainNumGpus))}            : {}),
     ...(parseFloat(scen.trainHours) > 0    ? {trainingHoursPerRun: String(scen.trainHours)}                     : {}),
     ...(scen.cloudProvider                 ? {cloudProvider:     scen.cloudProvider}                             : {}),
@@ -543,14 +544,22 @@ const TRAIN_REF_IMAGES = 50000;   // ~typical medical-imaging training set
 const TRAIN_REF_EPOCHS = 100;     // ~typical epoch count
 function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
   const gpuPreset = GPU_PRESETS[cfg.trainGpu];
+  // "Custom (enter TDP below)" has tdpKw:0 in GPU_PRESETS (it's a placeholder key, not a real
+  // card) — the actual wattage comes from cfg.trainCustomTdpW instead. Without this, picking
+  // Custom silently computed 0 kWh of training energy no matter what Hours/#GPUs were entered,
+  // and the whole training total silently fell back to the model-library literature default —
+  // exactly the "hardware preset overriding my entered wattage" bug this fixes.
+  const trainGpuTdpKw = cfg.trainGpu === 'Custom (enter TDP below)'
+    ? (parseFloat(cfg.trainCustomTdpW) || 300) / 1000
+    : gpuPreset?.tdpKw;
   const trainH    = parseFloat(cfg.trainHours) || 0;
   const trainN    = Math.max(1, parseInt(cfg.trainNumGpus) || 1);
   const customPue = parseFloat(cfg.customPue);
   const pue       = customPue > 0 ? customPue : (CLOUD[cfg.cloudProvider]?.pue ?? 1.5);
-  const trainKwh  = gpuPreset && trainH > 0 ? rnd(gpuPreset.tdpKw * trainN * trainH * pue, 1) : 0;
+  const trainKwh  = trainGpuTdpKw != null && trainH > 0 ? rnd(trainGpuTdpKw * trainN * trainH * pue, 1) : 0;
   // Actual GPU-hours the user told us directly (Hours × #GPUs, no PUE) — the "Estimated GPU
   // compute" readout should echo this exactly rather than re-deriving it from PUE-inclusive energy.
-  const trainGpuHoursMeasured = gpuPreset && trainH > 0 ? rnd(trainH * trainN, 2) : null;
+  const trainGpuHoursMeasured = trainGpuTdpKw != null && trainH > 0 ? rnd(trainH * trainN, 2) : null;
   const lib = AI_MODEL_BY_KEY[cfg.modelKey] ?? AI_MODEL_LIBRARY[0];
   const paramsM    = parseFloat(cfg.paramsM)    || lib.paramsM;
   const dim        = cfg.dim || lib.dim;
@@ -592,7 +601,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: gpuPreset?.tdpKw, trainGpuHoursMeasured, customPue: cfg.customPue, inferKwh: cfg.inferKwh}, equipOverrides);
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: trainGpuTdpKw, trainGpuHoursMeasured, customPue: cfg.customPue, inferKwh: cfg.inferKwh}, equipOverrides);
   const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
@@ -602,7 +611,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
 const AI_CFG_FIELDS = ['modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec','inferKwh',
   'whPer1kTokens','callsPerTask','tokensPerCall',
   'accuracyPct','accuracyMetric','scanTimeReductPct','lowValueReductPct',
-  'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','testStudies','deployMonths','customPue'];
+  'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','trainCustomTdpW','testStudies','deployMonths','customPue'];
 function pickAiCfg(s) {
   return AI_CFG_FIELDS.reduce((o, k) => (o[k] = s[k], o), {});
 }
@@ -2763,10 +2772,12 @@ function App() {
             {/* Collapsible training assumptions */}
             {(()=>{
               const gp = GPU_PRESETS[scen.trainGpu];
+              const isCustomGpu = scen.trainGpu === 'Custom (enter TDP below)';
+              const gpTdpKw = isCustomGpu ? (parseFloat(scen.trainCustomTdpW) || 300) / 1000 : gp?.tdpKw;
               const h  = parseFloat(scen.trainHours) || 0;
               const n  = Math.max(1, parseInt(scen.trainNumGpus) || 1);
               const pue = parseFloat(scen.customPue) > 0 ? parseFloat(scen.customPue) : (CLOUD[scen.cloudProvider]?.pue ?? 1.5);
-              const estKwh = gp && h > 0 ? rnd(gp.tdpKw * n * h * pue, 1) : null;
+              const estKwh = gpTdpKw != null && h > 0 ? rnd(gpTdpKw * n * h * pue, 1) : null;
               return (
                 <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
                   <button onClick={()=>setTrainExpanded(v=>!v)} style={{
@@ -2798,7 +2809,16 @@ function App() {
                           Hours
                           <input type="number" min="0" step="0.5" value={scen.trainHours} onChange={e=>setS('trainHours',e.target.value)} placeholder="e.g. 48" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
                         </label>
+                        {isCustomGpu && (
+                          <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
+                            Custom GPU TDP (W)
+                            <input type="number" min="1" value={scen.trainCustomTdpW} onChange={e=>setS('trainCustomTdpW',e.target.value)} placeholder="e.g. 350" style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                          </label>
+                        )}
                       </div>
+                      {isCustomGpu && !scen.trainCustomTdpW && (
+                        <p className="note" style={{fontSize:10,marginTop:0,marginBottom:6}}><strong>Custom</strong> GPU selected but no TDP entered — defaulting to 300 W until you fill it in.</p>
+                      )}
                       {gp && !(h > 0) && (
                         <p className="note" style={{fontSize:10,marginTop:0,marginBottom:6}}>A GPU is selected but <strong>Hours</strong> is blank — the training <strong>energy</strong> total still uses the literature default (model default · {ai.training.kwhTotal.toLocaleString()} kWh) until both are filled in. The selected GPU's power draw is already used for the <strong>Estimated GPU compute</strong> readout below, though.</p>
                       )}
