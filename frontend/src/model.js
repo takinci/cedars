@@ -36,9 +36,10 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 //   2024, Klein 2024): 0.35T permanent magnet → ≈18 MWh/yr (unaffected, still holds). 1.5T and 3T
 //   were revised 2026-08 against directly-measured power-state data (Woolen et al. 2023,
 //   Radiol-230441 — see idle_kw/off_kw note below) and no longer match the original
-//   MODALITY_BENCHMARKS targets: 1.5T is now ≈123 MWh/yr (was ≈233 MWh/yr — the original target
+//   MODALITY_BENCHMARKS targets: 1.5T is now ≈116 MWh/yr (was ≈233 MWh/yr — the original target
 //   was itself built on an idle_kw that turned out to exceed active_kw, a pattern Woolen's real
-//   scanner data never shows). 3T is ≈131 MWh/yr (~131 MWh/yr target, effectively unchanged).
+//   scanner data never shows). 3T is ≈129 MWh/yr (~131 MWh/yr target, effectively unchanged).
+//   Both totals also reflect the off_h correction below (34→390 h/month).
 //   7T research → ≈196 MWh/yr, untouched (no comparable direct-measurement data available).
 // CT: corrected 2026-08 from an earlier 60/8/3/0.2 kW default that cited Acra-2024/CJRS-2022 as
 //   supporting "40-80 kW active" — checking both papers directly, neither reports anything near
@@ -76,6 +77,17 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // mri_7t idle_kw/off_kw unchanged — Woolen's study didn't include 7T (research-only) scanners,
 // and higher idle/off draw is physically plausible for their larger, more complex cryo/RF systems.
 // 0.35T (mri_035t) is unaffected — permanent magnet, no cryocooler, off ≈ idle already holds.
+// mri_15t/mri_3t off_h corrected 2026-08 (34→390; idle_h 300→106, standby_h 250→88, active_h
+// unchanged at 160): Chaban et al. 2024 JMRI review (Table 1) reproduces Heye et al. 2020's own
+// measured data in daily-kWh-by-state form — Off 107-147 kWh/day — which converts directly to
+// off-hours via off kWh/day ÷ off_kw (10 kW here): 10.7-14.7 h/day, ≈326-448 h/month; 390 is the
+// midpoint. This lands in the same range as the earlier back-of-envelope estimate above (Heye's
+// "31-38% of annual total" framing, ≈290-390 h/month) and Woolen's own single fully-off unit
+// (≈434 h/month) — three independent arithmetic paths converging on the same conclusion. active_h
+// is left untouched (scan throughput, not shutdown policy); idle_h and standby_h are scaled down
+// proportionally to absorb the difference, since neither Heye's nor Woolen's methodology
+// distinguishes "idle" from "standby" within their single "on" bucket — there's no literature
+// basis to prefer cutting one over the other.
 // Workstations: corrected 2026-08 from an earlier 2 kW/0.8 kW/0.2 kW/0.05 kW default (which was
 // ~24x too high) to values directly measured by Büttner et al. 2021 (Eur J Radiol Open, "Switching
 // off for future" — direct power measurement of a real reading workstation): 117.4 W powered on,
@@ -85,8 +97,8 @@ const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 // sitting there), so idle_kw = active_kw here.
 const EQUIPMENT_UNITS = {
   mri_035t:    {name:"MRI (0.35T)",    modality:"MRI",        active_kw:6,   idle_kw:1.5, standby_kw:0.5, off_kw:0.05, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:80,  scans:800},
-  mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:15,  standby_kw:7.5, off_kw:10,   active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1000},
-  mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:10,   active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1200},
+  mri_15t:     {name:"MRI (1.5T)",     modality:"MRI",        active_kw:22,  idle_kw:15,  standby_kw:7.5, off_kw:10,   active_h:160, idle_h:106, standby_h:88, off_h:390, avoidable_idle_h:120, scans:1000},
+  mri_3t:      {name:"MRI (3T)",       modality:"MRI",        active_kw:30,  idle_kw:15,  standby_kw:5,   off_kw:10,   active_h:160, idle_h:106, standby_h:88, off_h:390, avoidable_idle_h:120, scans:1200},
   mri_7t:      {name:"MRI (7T)",       modality:"MRI",        active_kw:45,  idle_kw:22,  standby_kw:8,   off_kw:16.5, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:150, scans:300},
   ct:          {name:"CT Scanner",     modality:"CT",         active_kw:3,   idle_kw:1.5, standby_kw:1.0, off_kw:0.5,  active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:1800},
   // off_h corrected 2026-08 (34→4, idle_h 300→330): Hernandez et al. 2026 (Radiol-253128) logged
