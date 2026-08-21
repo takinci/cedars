@@ -36,6 +36,32 @@ CEDARS stores uncertain literature values as transparent, editable defaults with
 
 ---
 
+## CEDARS Score & leaf rating methodology
+
+The 0–100 CEDARS Score and its corresponding 1–5 leaf rating appear in three places — the Radiology Department label, the AI Research Label, and the AI Model tab's live hero — each computed independently from the value(s) relevant to that context.
+
+**Conversion function.** A single shared function (`cedarsScore(value, lo, hi)`, `calc.js`) converts a footprint-intensity value into a 0–100 Score on a **log scale**: `lo` maps to 100 (best), `hi` maps to 0 (worst), values outside the range clamped to 100/0.
+
+```
+score = round(100 × (log10(hi) − log10(x)) / (log10(hi) − log10(lo)))
+```
+
+Log scale, not linear, because footprint values span orders of magnitude (an efficient department vs. a wasteful one; a small AI model vs. a large one) — a linear 0–100 mapping would compress almost every real-world value into one end of the scale. The 1–5 leaf rating bands (`CEDARS_RATINGS`) are even quintiles of that 0–100 Score (80/60/40/20 thresholds) — the non-linearity lives entirely in the log-scale Score itself, so the bands are evenly spaced.
+
+**Single metric per grade — no cross-domain weighting.** Each Score is computed from exactly one carbon-intensity value; there is no composite index blending energy, water, contrast, and embodied carbon with relative weights between them.
+- **Department Score**: Scope 2 electricity carbon per study (`kgCO₂e/study`) only. It does **not** currently include the department's Scope 3 embodied, patient-travel, or contrast-media carbon (all separately reported elsewhere in the dashboard) — a real gap between what's disclosed and what's graded.
+- **AI Research Label Score**: combines two quantities in the same unit — amortised training (`training CO₂ ÷ lifetime studies`) plus marginal inference CO₂/study — added directly into one `gCO₂e/study` figure (see "AI research label: two-phase footprint and amortised grade" below). This is a straightforward unit-consistent sum of two cost phases sharing a denominator, not a tunable weighted composite.
+- **AI Model tab live hero**: inference-only, no combination with anything else.
+
+**Reference ranges: heuristic, not empirically derived.**
+- `CEDARS_AIUSE_LO = 0.2`, `CEDARS_AIUSE_HI = 40` gCO₂e/study — documented below (AI research label subsection) as illustrative anchors, not a validated standard.
+- `CEDARS_DEPT_LO = 0.1`, `CEDARS_DEPT_HI = 20` kgCO₂e/study — has no citation anywhere in this document or the codebase. It is an uncited initial heuristic, on the same footing as the AI bands above, and should be treated as such until validated against real department data.
+- `CEDARS_AI_LO = 1`, `CEDARS_AI_HI = 20000` kgCO₂e (total training) — defined in `calc.js` and imported into `main.jsx`, but **not used anywhere** to compute a Score. It is a leftover from an earlier "grade training by total size" approach, abandoned in favor of grading the amortised per-study figure instead (training is disclosed as an absolute footprint but deliberately not graded on size). Dead code, safe to remove — documented here rather than silently dropped.
+
+None of the three LO/HI band pairs were derived by calibrating against a distribution of real departments' or real AI models' measured footprints. This document treats certain published department- and AI-level LCA studies as **validation-benchmark comparisons only, never as a default source** (see the Thiel/Vigil-Garcia LCA reference in the CT section above for one example) — that same category of study could in principle ground these Score bands empirically, but none has been used for that purpose to date.
+
+---
+
 ## CT energy and carbon
 
 | ID | Citation |
