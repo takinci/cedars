@@ -62,6 +62,5 @@ export function cedarsScore(value, lo, hi) {
 }
 
 // Score anchors (lo → Score 100, hi → Score 0). See sources.md.
-export const CEDARS_AI_LO = 1,   CEDARS_AI_HI = 20000;   // total training kgCO₂e
 export const CEDARS_DEPT_LO = 0.1, CEDARS_DEPT_HI = 20;   // kgCO₂e per imaging study
 export const CEDARS_AIUSE_LO = 0.2, CEDARS_AIUSE_HI = 40; // gCO₂e per study (amortised)

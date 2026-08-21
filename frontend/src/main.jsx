@@ -8,7 +8,7 @@ const Doughnut = React.lazy(() => import('react-chartjs-2').then(m => ({default:
 const Scatter  = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Scatter})));
 import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot} from 'lucide-react';
 import './styles.css';
-import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_AI_LO, CEDARS_AI_HI, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
+import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
@@ -452,6 +452,13 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const trainKwhTotal = trainKwhCustom !== null
     ? rnd(trainKwhCustom, 2)
     : rnd(trainMwhBase * 1000 * arch.trainFactor * trainSizeRatio, 2);
+  // Size-normalised reference — the SAME formula as the default estimate above, computed
+  // unconditionally (unlike trainMwhBase, which is nulled out once a measured value is given).
+  // Lets a measured training run be compared against "what's typical for a model this size and
+  // architecture" rather than an absolute kWh/kgCO2e scale, which would otherwise penalise large
+  // or capable models just for being large (see sources.md, CEDARS Score & leaf rating methodology).
+  const trainKwhReference    = rnd(model.trainMwh * 1000 * arch.trainFactor * trainSizeRatio, 2);
+  const trainVsReferenceRatio = trainKwhReference > 0 ? rnd(trainKwhTotal / trainKwhReference, 2) : null;
   const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
   // "Estimated GPU compute time": when the user has told us the actual Hours × #GPUs directly
   // (the measured path), echo that back exactly — no PUE factor, since PUE scales facility
@@ -522,7 +529,8 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     architecture, modelSize: sizeLabel(model.paramsM), precision, archDesc: arch.desc,
     paramsM: model.paramsM, dim: model.dim, resolution: model.resolution, slices: model.slices,
     inferSec: model.inferSec, trainMwhBase: model.trainMwh, embCo2KgTotal: model.embCo2Kg,
-    training:  {kwhTotal: trainKwhTotal, kgCo2e: trainKgCo2e, gpuHours: trainGpuHours, kwhAmortised: trainKwhMonth},
+    training:  {kwhTotal: trainKwhTotal, kgCo2e: trainKgCo2e, gpuHours: trainGpuHours, kwhAmortised: trainKwhMonth,
+      kwhReference: trainKwhReference, vsReferenceRatio: trainVsReferenceRatio},
     testing:   {kwhTotal: testKwhTotal,  kgCo2e: testKgCo2e,  studies: TEST_STUDIES},
     inference: {kwhPerStudy: inferKwhPerStudy, kwhMonthly: inferKwhMonthly, kwhLifetime: inferKwhLifetime, studies: STUDIES},
     inferKwhMeasured: inferKwhCustom !== null,
@@ -1697,6 +1705,12 @@ function App() {
       inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
       energyMeasured: ecoLabel.energyMeasured,
       energyLive: !ecoLabelTouched,
+      // Training-efficiency-vs-reference only makes sense for the live model with a measured
+      // training entry (it needs the library's architecture-matched reference, which a
+      // manually-typed label can't resolve, and is trivially 1.00× when nothing's measured) —
+      // see the AI model library section, sources.md.
+      vsReferenceRatio: (!ecoLabelTouched && ai.trainMeasured) ? ai.training.vsReferenceRatio : null,
+      kwhReference: (!ecoLabelTouched && ai.trainMeasured) ? ai.training.kwhReference : null,
       deployMonths, lifetimeInferences, perInferCo2g, trainPerStudyG, effectivePerStudyG, breakEvenStudies, trainFlights,
       tokenMode, tokensPerStudy, inferKwhPerStudy: rnd(inferKwhPerStudy, 6),
       hasData, graded, gradeBasis, score,
@@ -1704,7 +1718,7 @@ function App() {
       ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [ecoLabel, ecoLabelTouched, ai.training.kwhTotal]);
+  }, [ecoLabel, ecoLabelTouched, ai.training.kwhTotal, ai.training.vsReferenceRatio, ai.training.kwhReference, ai.trainMeasured]);
 
   // Live AI-tab grade preview — deliberately independent of `ecoLabelData` above. The AI
   // Research Label is a standalone disclosure ("no department context", its own PUE/region),
@@ -2935,6 +2949,10 @@ function App() {
               <Card icon={<Zap/>}        title="Total training energy"    value={`${ai.training.kwhTotal.toLocaleString()} kWh`}  sub={`One-time. Scaled by architecture (${scen.architecture}) and model size. (LLM-Energy PDF)`}/>
               <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
               <Card icon={<Gauge/>}      title={ai.trainMeasured ? "GPU compute (measured)" : "Estimated GPU compute"}    value={`${ai.trainMeasured ? '' : '~'}${ai.training.gpuHours.toLocaleString()} h`}  sub={ai.trainMeasured ? `Your entered Hours × #GPUs, exactly as typed below — not derived from energy, so PUE doesn't affect it.` : GPU_PRESETS[scen.trainGpu] ? `Estimated GPU hours at the selected ${scen.trainGpu} power draw. Actual depends on parallelism.` : "Estimated GPU hours at this template's power draw — pick a Training GPU below for a hardware-specific estimate."}/>
+              <Card icon={<BarChart3/>}  title="Training efficiency"      value={ai.trainMeasured ? `${ai.training.vsReferenceRatio}× reference` : '— (needs measured training data)'}
+                sub={ai.trainMeasured
+                  ? `Your training: ${ai.training.kwhTotal.toLocaleString()} kWh vs. ${ai.training.kwhReference.toLocaleString()} kWh typical for a ${scen.architecture} model this size (est.). <1× = more efficient than typical; >1× = less. (GreenAI-2020)`
+                  : `Enter measured Training GPU + Hours below to compare your actual training run against the literature-typical footprint for a ${scen.architecture} model this size.`}/>
               <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
               <Card icon={<Droplets/>}   title="Training electricity cost" value={fmtMoney(ai.training.kwhTotal * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`One-time, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh. Editable under Home → Department settings.`}/>
             </div>
@@ -3977,6 +3995,7 @@ function App() {
                 ['Total GPU-hours',          `${ecoLabelData.totalGpuHours} h`],
                 ['Energy per run',           `${ecoLabelData.energyPerRunKwh} kWh${ecoLabelData.energyMeasured ? ' (measured)' : ecoLabelData.energyLive ? ' (from AI Model tab)' : ' (est. from TDP)'}`],
                 ['Total training energy',    `${ecoLabelData.totalEnergyKwh} kWh${ecoLabelData.energyLive ? ' (from AI Model tab)' : ''}`],
+                ...(ecoLabelData.vsReferenceRatio != null ? [['Training efficiency', `${ecoLabelData.vsReferenceRatio}× reference (${ecoLabelData.kwhReference.toLocaleString()} kWh typical for this architecture/size)`]] : []),
                 ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
                 ['Renewable energy',         `${ecoLabelData.renewablePct}%`],
                 ['Compute / PUE',            `${ecoLabelData.cloudProvider} · PUE ${ecoLabelData.pue}`],
