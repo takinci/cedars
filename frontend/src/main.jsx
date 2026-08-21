@@ -852,7 +852,7 @@ function downloadAICSV(ai, scen, region) {
 
     row(['TRAINING (one-time)']),
     row(['Metric', 'Value', 'Unit']),
-    row(['Training energy',              ai.training.kwhTotal,    'kWh']),
+    row(['Training energy',              ai.training.kwhTotal.toFixed(3), 'kWh']),
     row(['Training CO2e',                ai.training.kgCo2e,      'kgCO2e']),
     row([ai.trainMeasured ? 'GPU compute (measured)' : 'Estimated GPU compute', ai.training.gpuHours, 'h']),
     row(['Amortised training / month',   ai.training.kwhAmortised,'kWh/mo (36-month deployment)']),
