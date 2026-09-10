@@ -439,6 +439,21 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const profileDash  = computeDashboard(region, 'Monthly', equipment, customCi, {}, {}, equipOverrides);
   const STUDIES      = profileDash.scopes.imagingScans;               // imaging scans/month for this profile
   const AVG_SCAN_KWH = profileDash.totals.energyPerScan || 0.5;       // kWh/scan from this profile (fallback 0.5)
+  // REVIEW (2026-09, not yet fixed) — this is the department's TOTAL energy per study: it includes
+  // PACS, workstations, the archive, and idle/standby/off-state draw, none of which shrink when a
+  // scan gets shorter. Multiplying it by scanTimeReductPct (below) therefore credits AI with saving
+  // energy on loads that don't scale with scan duration, and the error grows with the share of the
+  // footprint that is fixed — i.e. it is largest exactly for the under-utilised departments the
+  // tool is meant to flag. model.js's own clinical adjustment uses `totalActiveKwh` for the same
+  // concept, so the two paths already disagree on what "energy per scan" means.
+  // Fix: derive savings from the affected scanners, excluding PACS/workstations even from the
+  // active pool (totals.activeKwh currently includes them). Account for the state entered during
+  // freed time: active-to-idle savings are a power difference, not all active-state consumption.
+  // Avoided studies do not automatically eliminate allocated archive or other fixed energy;
+  // those savings need an explicit volume-dependent model. Share this clinical-savings logic
+  // with computeDashboard rather than duplicating it.
+  // The `|| 0.5` fallback substitutes a guess for zero or NaN, but NOT Infinity (which is truthy).
+  // A zero-scan row's Infinity does not itself propagate to totals.energyPerScan.
 
   // ── Phase 1: Training ────────────────────────────────────────────────────
   // trainKwhCustom: GPU-derived energy (tdpKw × n × hours × PUE) — arch factor already baked in.
@@ -516,6 +531,25 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const scansAvoided     = Math.round(STUDIES * (model.lowValueReductPct / 100));
   const savingsKgCo2e    = rnd((scanEnergySaved + scansAvoided * AVG_SCAN_KWH) * ci, 2);
   const netKgCo2e        = rnd(grossKgCo2e - savingsKgCo2e, 3);
+  // REVIEW (2026-09, not yet fixed) — two problems compound here.
+  //  a) The two savings terms OVERLAP and are added anyway: a study avoided by lowValueReductPct is
+  //     also counted in the scanTimeReductPct pool, because scanEnergySaved is computed over all
+  //     STUDIES rather than over the ones that still happen. model.js caps the additive sum
+  //     (`Math.min(0.95, _avoid + _scanT)`), but that limits the result without resolving the
+  //     overlap, so the AI tab and department dashboard still disagree. Fix: apply them sequentially —
+  //     avoided studies first, then the time reduction on the REMAINDER:
+  //       scanEnergySaved = (STUDIES - scansAvoided) * AVOIDABLE_KWH_PER_STUDY * scanTimeReductPct/100
+  //     Here the per-study factor must describe the affected scanners and their replacement state,
+  //     not the department's aggregate activeKwh (which also includes non-scanner loads).
+  //  b) The reduction inputs and combined scanner saving are not bounded to physically available
+  //     active scanner energy. A negative `netKgCo2e` is not itself invalid: it can correctly mean
+  //     that clinical savings exceed the AI system's own emissions. The impossible case is claiming
+  //     more scanner-energy savings than the affected studies consume. Validate each percentage
+  //     and cap the combined saving to that available active-energy pool; keep negative net AI
+  //     impact as a valid avoided-emissions result rather than treating it as an input error.
+  // Both fixes belong in one shared function used by computeAI and computeDashboard's clinicalAdj
+  // path; today the same clinical-benefit arithmetic exists in three places (here,
+  // computeDashboard, aiToolDeptContribution) with three different bounding rules.
 
   // ── Infrastructure & efficiency ──────────────────────────────────────────
   const waterLitres     = rnd(totalMonthlyKwh * WATER_PER_KWH, 1);
@@ -981,6 +1015,19 @@ function downloadCloudCSV(result, tracker) {
 // Net annual CO₂ a deployed AI tool adds to a department: amortised training + inference +
 // embodied GPU, minus clinical savings (shorter protocols + avoided low-value scans). Net,
 // so a tool can be net-negative (reduce department footprint).
+// REVIEW (2026-09, not yet fixed) — DEAD CODE: this function has no callers anywhere in the
+// codebase. It is the only place that consumes a deployed tool's embodied GPU carbon (`t.embCo2Kg`,
+// collected by the AI-tools form), so the fact that it is unwired is exactly why embodied AI carbon
+// never appears in any department total (see the note at `clinicalAdj`). It also duplicates, with
+// different bounding rules, the clinical-savings arithmetic in computeAI and in model.js's
+// computeDashboard — a third copy of the same concept.
+// Fix: consolidate the shared clinical-benefit logic, but do not wire this helper in unchanged:
+// it still overlaps savings, uses allocated facility energy, maps 0% share to 100%, and accepts
+// Infinity. Its net-carbon return cannot replace the scope-specific energy/carbon adjustments
+// needed by computeDashboard. Adding it on top of those existing adjustments would double-count.
+// Carry embodied GPU carbon separately into the department's embodied scope; the department
+// EcoLabel currently reports operational carbon only, so including manufacturing there would
+// additionally require an explicit change to the label's accounting boundary.
 function aiToolDeptContribution(t, annualStudies, facilityKwhPerStudy, effectiveCi) {
   const share     = Math.min(100, Math.max(0, parseFloat(t.studiesShare) || 100)) / 100;
   const studiesAI = annualStudies * share;
@@ -1251,6 +1298,12 @@ function App() {
     equipmentOverrides: initEquipOverrides || {},
     ...initSettings,
   }));
+  // REVIEW (2026-09, not yet fixed) — `...initSettings` spreads URL-decoded strings over the
+  // defaults with no validation, so anything decodeConfig lets through lands directly in the state
+  // that drives every calculation. See the note at the end of urlstate.js for the full fix (validate
+  // at the decode boundary, not here). Flagged at this line too because this is where an unvalidated
+  // value becomes indistinguishable from one the user typed: after this spread there is no marker of
+  // provenance, so no later code can treat link-supplied input more cautiously than form input.
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
   // Measured-data override for one field of one device type (active_kw/idle_kw/standby_kw/
   // off_kw/scans) — see OVERRIDABLE_FIELDS in model.js. Blank clears back to the default.
@@ -1325,6 +1378,15 @@ function App() {
   const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
   const [equivScope, setEquivScope] = useState('scope2');
   const [landingAIOpen, setLandingAIOpen] = useState(false);
+  // REVIEW (2026-09, not yet fixed) — `setLandingAIOpen` is never called: this flag is permanently
+  // false, so the `landingAIKwh` / `landingAICo2` memos below always short-circuit to 0 and the
+  // landing-page AI estimator (including its contribution to `equivData`) is dead code. Whatever
+  // control used to flip it was removed without removing the state.
+  // Fix: either wire the toggle back into the landing section, or delete landingAIOpen /
+  // landingAITools / landingAIKwh / landingAICo2 and drop the two `+ landingAI*` terms from
+  // equivData. Deleting is the safer default — the estimator's own arithmetic (fixed tdpKw × hours
+  // × 30 × PUE, with no amortised training and no utilisation factor) is cruder than the AI tab's,
+  // so silently re-enabling it would introduce a fourth, inconsistent AI energy formula.
   const [landingAITools, setLandingAITools] = useState({});
   const [ecoCopied, setEcoCopied] = useState(false);
   const [ecoLabel, setEcoLabel] = useState({
@@ -1449,6 +1511,26 @@ function App() {
     });
     return {inferKwhPerStudy, trainKwhMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools]);
+  // REVIEW (2026-09, not yet fixed) — three things about the aggregation above.
+  //  a) EMBODIED GPU CARBON IS COLLECTED BUT NEVER USED. Each tool carries `embCo2Kg` (set in the
+  //     AI-tools form, ~lines 2490/2501/2507), but this memo never reads it, so it never reaches
+  //     computeDashboard and never lands in any scope. The function that WOULD have consumed it,
+  //     `aiToolDeptContribution` (~line 1031), is fully written and never called anywhere — the
+  //     aggregation path was built and left unwired. Fix: either add
+  //     `embCo2Monthly += embCo2Kg / deployMonths` here and fold it into scope3EmbKg in
+  //     computeDashboard, with validated deployment periods and explicit hardware allocation.
+  //     Do not simply add aiToolDeptContribution's net result: compute and clinical savings are
+  //     already included, and its aggregate carbon return loses scope distinctions. Consolidate
+  //     shared logic rather than keeping competing clinical-benefit implementations.
+  //  b) `parseFloat(t.studiesShare) || 100` fails OPEN on a deliberate 0: a tool applied to 0% of
+  //     studies is silently treated as applied to 100%. By contrast, zero deployment months (and
+  //     zero calls per task elsewhere) is invalid, not a meaningful zero. Parse explicitly, accept
+  //     and clamp studiesShare in [0,100], require deployMonths/callsPerTask > 0, and use defaults
+  //     only for absent or invalid values.
+  //  c) Multiplying `1 - reduction * share` across tools is an expected-population calculation that
+  //     assumes tool coverage/effects are independent or randomly distributed. It does not assume
+  //     disjoint cohorts and may misstate savings when tools systematically target the same (or
+  //     different) studies. Known overlap requires explicit study cohorts or joint-coverage inputs.
   const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom};
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
   const scenario = useMemo(() => computeInterventions(deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides), [deptLabel.activeInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
@@ -1572,6 +1654,14 @@ function App() {
       utilPct: rnd(util * 100, 0), util,
       energyPerStudy: util > 0 ? rnd(dEnergy / util, 3) : dEnergy,
       co2PerStudy:    util > 0 ? rnd(dCo2 / util, 3)    : dCo2,
+      // REVIEW (2026-09, not yet fixed) — `util` can exceed 1 because capacityYr is a configured
+      // default throughput, not a proven physical maximum; values above 100% may therefore be real
+      // and should not simply be clamped. The defect is that `dEnergy / util` treats the fleet's
+      // entire energy as fixed while study volume changes. Active acquisition energy should scale
+      // with actual studies, while idle/standby/off and other fixed loads should be amortised over
+      // them. Model those pools separately, and flag unusually high utilisation for review without
+      // preventing legitimate fixed-energy amortisation. The same simplified `util` also feeds
+      // `nonProductivePct`, where values above 1 can pin the result at 0.
       designedCo2PerStudy: dCo2,
       // Active energy scales with actual volume, so under-utilisation raises the
       // non-productive share (idle/standby/off + unused capacity). At 100% utilisation
@@ -1778,6 +1868,17 @@ function App() {
     const annualKwhSaving = rnd(monthlyKwhSaving * 12, 0);
     const co2PctFraction = scenario.savings.co2Fraction;
     const potentialFacilityCo2 = Math.max(0, annualKwh - annualKwhSaving) * effectiveCi * (1 - co2PctFraction);
+    // REVIEW (2026-09, not yet fixed) — renewable electricity can be applied TWICE here when the
+    // label's `renewablePct` and the selected "Use renewable electricity" intervention represent
+    // the same action: `effectiveCi` applies the former, then `co2PctFraction` applies the latter.
+    // computeInterventions has a separate double-discount bug in its own `projectedCo2` calculation,
+    // but that projected value is not consumed by this formula and is not a third application here.
+    // Fix: define whether the intervention is a target renewable share or an additional reduction
+    // of remaining emissions. If a target, resolve a separate scenario intensity (e.g. at least
+    // 80% renewable) without changing the current baseline, and do not apply that target twice.
+    // If genuinely additional, multiplying the remaining-emissions factors can be valid, but the
+    // UI must say so. Multiplication order is not the issue, and there is no triple application in
+    // this path. Other scope/pool-specific levers must remain separate from renewable intensity.
     const co2Saving = rnd(facilityCo2 - potentialFacilityCo2, 1);
     const potentialCo2PerStudy = annualStudies > 0
       ? rnd(Math.max(0, potentialFacilityCo2) / annualStudies, 3) : 0;
@@ -3014,6 +3115,12 @@ function App() {
             <div className="cards">
               <Card icon={<Leaf/>}        title="Gross CO₂e/month"          value={`${ai.grossKgCo2e} kgCO₂e`}                 sub="Inference + amortised training + embodied GPU (all monthly)."/>
               <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${ai.embCo2KgTotal} kgCO₂e manufacturing, amortised 36 months. (ESR PP 2025)`}/>
+              {/* REVIEW (2026-09, not yet fixed) — "36 months" is hard-coded in this label while the
+                  value shown (ai.embGpuKgCo2e) is divided by the user-configurable DEPLOY_MO, so
+                  changing the deployment period in the form makes the caption contradict its own
+                  number. Fix: return DEPLOY_MO from computeAI (as e.g. ai.deployMonths) and
+                  interpolate it here — the same fix pattern as any other displayed assumption that
+                  is really an input. */}
               <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`}          sub="Scanner time reduction + avoided scans. Replace with measured before/after metering."/>
               <section className="card">
                 <div className="cardHead"><BarChart3/><span>Net AI impact / month</span></div>

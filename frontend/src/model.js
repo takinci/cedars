@@ -174,6 +174,25 @@ function buildFleet(equipment, overrides = {}) {
       const ov = (overrides ?? {})[key] ?? {};
       const setFields = OVERRIDABLE_FIELDS.filter(f => ov[f] != null && ov[f] !== '' && !isNaN(parseFloat(ov[f])));
       const overridden = setFields.length > 0;
+      // REVIEW (2026-09, not yet fixed) — `!isNaN(parseFloat(x))` is the ONLY gate on measured-data
+      // overrides, and it admits negatives, zero and Infinity: parseFloat('-500') = -500,
+      // parseFloat('1e999') = Infinity, both !isNaN. Reachable from a shared link (`eo=` in
+      // urlstate.js) and from the override form. Verified effect of `#eq=ct~2&eo=ct:active_kw=-500`:
+      // the CT row reports negative kWh, computeDashboard's `Math.max(0, …)` then clamps the
+      // department total up to the storage figure alone, and the dashboard prints idlePct 1034.8% —
+      // the per-row table no longer sums to the headline. With `scans=0`, energyPerScan below
+      // divides by zero and yields Infinity.
+      // Fix: validate per field instead of per parse, and drop invalid fields rather than the whole
+      // override (so one bad field doesn't discard the user's good ones):
+      // Require finite, nonnegative power and volume values; declare any upper bounds as
+      // application sanity limits rather than universal physical limits. Zero scans can describe
+      // unused equipment (and is normal for PACS/workstations): retain its energy but report
+      // per-study intensity as unavailable instead of dividing by zero or inventing activity.
+      // Flag suspicious state relationships, such as idle_kw > active_kw for MRI/CT, for review;
+      // the expected relationship depends on how the measured states were defined.
+      // URL counts remain unbounded (`#eq=mri_3t~999999999` decodes fine), while the equipment
+      // form already clamps to integer counts in 0..999. Apply a documented, consistent count
+      // policy at both boundaries, retaining zero as the valid way to omit a device.
       const u = overridden
         ? {...base, ...Object.fromEntries(setFields.map(f => [f, parseFloat(ov[f])]))}
         : base;
@@ -218,6 +237,17 @@ const INTERVENTIONS = {
   "Reduce paper and film printing":          {kwh:  120, note: "Printer and film processor elimination."},
   // embodied carbon amortised over more years (ESR PP 2025, Scope 3)
   "Extend hardware lifetime":                {kwh:    0, co2Pct: 15, note: "Amortises embodied carbon over more years. (ESR PP 2025)"},
+  // REVIEW (2026-09, not yet fixed) — this lever reduces the WRONG scope. `co2Pct` is applied by
+  // computeInterventions to operational carbon, but extending a scanner's service life changes
+  // neither its electricity use nor the carbon intensity of that electricity; it spreads
+  // manufacturing carbon over more months, i.e. scope3EmbKg. As written, a department that keeps
+  // its CT for 18 years instead of 12 is credited with 15% less operational carbon.
+  // Fix: give interventions an explicit target scope rather than one undifferentiated co2Pct —
+  // e.g. `{scope3EmbPct: 15}` — and have computeInterventions apply scope-3 levers to
+  // base.scopes.scope3EmbKg while scope-2 levers keep applying to co2Kg. The contrast levers below
+  // already needed exactly this and got a bespoke side-channel (CONTRAST_LEVER_FRACTION); a
+  // general `{kwh, scope2Pct, scope3EmbPct, scope3ContrastPct}` shape would fold that special case
+  // back in and stop the next scope-3 lever from needing a third mechanism.
   // virtualisation / right-sizing (Clinical-AI PDF, Doo 2024)
   "Consolidate servers":                     {kwh:  500, note: "Virtualisation reduces physical server count. (Doo 2024, Clinical-AI)"},
   // lighter models use less inference compute (LLM-Energy PDF)
@@ -231,6 +261,29 @@ const INTERVENTIONS = {
   "Right-size contrast vials to dose (vial optimization)": {kwh: 0, note: "Draw from the smallest vial that covers the dose (e.g. a 75 mL vial for a 72 mL dose) instead of always opening a larger one — cuts ICM supply-chain carbon ~6%. (Nghiem 2026)"},
   "Switch to multidose contrast injector system":          {kwh: 0, note: "Larger shared multidose vials + reusable injector cut ICM volume ~17% and packaging/administration waste ~93% — ICM supply-chain carbon ~52% lower. (Nghiem 2026)"},
 };
+// REVIEW (2026-09, not yet fixed) — a major distortion in the intervention model: nine entries
+// contain monthly kWh constants (2400/1200/800/600/450/900/120/500/80), but leverKwh dynamically
+// overrides the two idle entries (2400/1200) and server consolidation (500). The remaining SIX
+// constants (800/600/450/900/120/80) are used directly and do not scale with the fleet; the three
+// storage levers are also fleet-derived via storageKwhFor.
+// Consequence, verified: a department with one ultrasound has a 444.93 kWh/mo baseline, so ticking
+// the available levers returns {kwh: 444.93, pctEnergy: 100, pctCo2: 100} — a 100% energy AND 100%
+// carbon reduction, produced entirely by the `Math.min(base.totals.kwh, …)` clamp in
+// computeInterventions. The clamp is what makes this look plausible instead of absurd, so it hides
+// the flaw rather than establishing physical plausibility; small fleets can saturate with only
+// a few selected levers, while larger fleets receive the same fixed savings for those levers.
+// Fix: express every lever as a function of the fleet, the same way the idle levers already are.
+// Concretely, each should reduce a named pool it can actually touch:
+//   - "Reduce low-value imaging" / "Reduce repeat scans" → affected-scanner avoidable energy,
+//     accounting for the state during freed time, not aggregate totalActiveKwh (includes PACS/WS).
+//   - "Optimize scheduling" / "Shorten protocols" → a % of the avoidable-idle and active pools
+//     respectively; both already have per-device inputs (avoidable_idle_h, active_h).
+//   - Printing → an explicitly modelled printer/film-processor load, not unrelated PACS energy.
+//   - Server consolidation → the server pool; smaller AI models → deployed inference energy.
+// Use evidence-backed fractional anchors where available, otherwise disclose an estimate or ask
+// for measured savings. sources.md explicitly marks printing as uncited; not every lever has a
+// verified literature percentage. Fleet scaling alone is insufficient: overlapping levers also
+// need joint accounting and pool-specific bounds before a total clamp can be just a safety net.
 
 // Cloud provider PUE and global fleet carbon intensity defaults.
 // PUE sources: AWS 2022 Sustainability Report, Microsoft 2023 Environmental Report, Google 2023 Environmental Report.
@@ -301,6 +354,14 @@ const rnd = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
 function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}, overrides = {}) {
   const ci       = getCI(region, customCi);
   const mult     = TIME_MULT[timePeriod] ?? 1;
+  // REVIEW (2026-09, not yet fixed) — same inherited-key hole as getCI (see calc.js): `timePeriod`
+  // comes straight from the URL (`t=` in urlstate.js), and `TIME_MULT['__proto__']` returns
+  // Object.prototype, which is not nullish, so `?? 1` never fires and every period-scaled figure
+  // below becomes NaN. Fix: `Object.prototype.hasOwnProperty.call(TIME_MULT, timePeriod) ? … : 1`,
+  // or validate timePeriod against Object.keys(TIME_MULT) at the decode boundary. The same pattern
+  // needs fixing in computeInterventions (TIME_MULT, CLOUD, STATE_FIELD) and in main.jsx's CLOUD /
+  // GPU_PRESETS / AI_ARCHITECTURES lookups. Their exact access patterns and consequences differ;
+  // inherited-key acceptance does not produce the same failure for every table.
   const fleet    = buildFleet(equipment, overrides);
 
   const byEquipment = fleet.map(eq => {
@@ -318,6 +379,25 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
             energyPerScan: isImaging ? rnd(kwh / scans, 3) : null,
             idleWasteKwh: rnd(idleWasteKwh), confidence: eq.overridden ? "measured" : "estimated"};
   });
+  // REVIEW (2026-09, not yet fixed) — three issues in the block above.
+  //  a) energyPerScan divides by `scans` with no zero guard, so a `scans=0` override (or a future
+  //     zero-volume row) yields Infinity in that row. It does not currently propagate into the
+  //     department or AI total: totals.energyPerScan returns 0 when aggregate imagingScans is 0,
+  //     and computeAI then substitutes its 0.5 fallback. The row is still invalid and misleading.
+  //     Fix: `scans > 0 ? rnd(kwh / scans, 3) : null` — the null case is already handled by the
+  //     renderer for PACS/Workstation rows.
+  //  b) `isImaging` excludes Angio/IR and Fluoroscopy, but the department-wide `imagingScans`
+  //     denominator below INCLUDES them, so the per-row figures and the headline per-study figure
+  //     are computed over two different populations. The comment on totals.energyPerScan
+  //     ("MRI/CT/Radiography/US only") describes neither list. Fix: hoist ONE exported
+  //     IMAGING_MODALITIES set and use it in both places (main.jsx's `efficiency` memo defines the
+  //     same set a third time — it should import it too), then correct the comment.
+  //  c) Energy and carbon fields are rounded to 2 dp before aggregation, followed by further
+  //     rounding. Scans are not rounded here, and energyPerScan uses 3 dp. Aggregate error scales
+  //     with rounded rows, not directly with device count: buildFleet combines identical devices
+  //     first. Keeping co2Kg raw avoids one later rounding step, not these earlier energy errors.
+  //     Fix: aggregate raw quantities and round for display, or carry separate display values.
+
 
   let   totalKwh       = byEquipment.reduce((s, e) => s + e.kwh, 0);
   let   totalActiveKwh = byEquipment.reduce((s, e) => s + e.activeKwh, 0);
@@ -356,7 +436,21 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // energy intensity (on-prem or cloud). Axial-only avoids non-essential CT/PET reformats. The
   // period-scaled result is added to the department totals, so it flows into carbon, cost, and grade.
   const _retention  = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
+  // REVIEW (2026-09, not yet fixed) — `parseFloat('abc') || 0` turns an unparseable retention
+  // period into 0 years, which makes the ENTIRE archive footprint vanish silently: verified with
+  // retentionYears:'abc' on a single CT, storage.kwh is 0 while annualDataTB is still 15.12, so the UI shows real
+  // data being generated and no energy to store it. Failing to the default (10) or to null-and-warn
+  // avoids silently treating invalid input as a footprint-reducing retention policy.
+  // Fix: `const v = parseFloat(storage.retentionYears); const _retention = Number.isFinite(v) && v
+  // >= 0 && v <= 100 ? v : 10;` (100 would be an application sanity bound).
+  // intensityCustom uses a different `> 0` gate: invalid text falls back correctly, but Infinity
+  // passes. Separately audit `|| default` parsing in main.jsx — see the note at clinicalAdj.
   const _reformat   = mod => (storage.reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
+  // REVIEW (2026-09, not yet fixed) — the model uses a 60% reduction while the intervention note
+  // cites "up to ~69% less CT storage" (Jia 2026). These can legitimately coexist: 60% may be a
+  // conservative modelling assumption and 69% a reported best case. The code should document that
+  // distinction and use a named assumption constant (e.g. AXIAL_ONLY_RETAINED_FRACTION) so the
+  // modelled default is explicit; the citation text need not be forced to equal the default.
   const _annualDataTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * _reformat(eq.modality), 0) / 1e6;
   const _storedTB   = _annualDataTB * _retention;
   // Custom intensity (measured server density/PUE) fully overrides whichever on-prem/cloud
@@ -406,6 +500,16 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // Scope 3 contrast: ICM supply-chain carbon (Nghiem et al. 2026) — see CONTRAST.icmCo2eGPerMl
   const scope2Kg        = rnd(totalCo2);
   const scope1Kg        = rnd(scope2Kg * 0.08);
+  // REVIEW (2026-09, not yet fixed) — Scope 1 is a flat 8% of Scope 2 applied to every department
+  // regardless of whether it has backup generators or piped medical gas at all, so it is a constant
+  // markup rather than an independent direct-emissions estimate. It preserves Scope-2-only
+  // rankings, but can change all-scope rankings when departments have different Scope-3 totals.
+  // Direct emissions may correlate with activity, but are not determined by purchased-electricity
+  // emissions; changing grid CI should not automatically change fuel/gas emissions.
+  // Fix: offer measured direct emissions or fuel/gas activity inputs, with a clearly disclosed
+  // proxy when unavailable. A department with no direct-emission sources can enter zero. If an
+  // editable percentage proxy is retained, label it as an assumption; the McKee citation's
+  // support for this specific 8% factor still needs independent verification.
   const scope3EmbKg     = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0));
   const scope3TravelKg  = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
   const scope3ContrastKg = contrastCo2eKg;
@@ -430,7 +534,28 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     storage:   {kwh: storageKwh, storedTB: rnd(_storedTB, 1), annualDataTB: rnd(_annualDataTB, 2),
       retentionYears: _retention, cloud: !!storage.cloud, reformats: storage.reformats || 'all',
       co2: rnd(storageKwh * ci, 1), intensity: _storageInt},
+    // REVIEW (2026-09, not yet fixed) — archive carbon is priced at the LOCAL grid `ci` even when
+    // storage.cloud is true, so "migrate to cloud" changes the kWh but keeps the hospital's own
+    // grid intensity. That understates the benefit for a dirty local grid and overstates it for a
+    // clean one (a Swiss department at 0.10 "migrating" to a 0.20 provider is credited with a pure
+    // win). The AI/cloud path in computeAI already does this correctly by using the provider's
+    // cf.ci. Fix: resolve the archive's actual deployment-region/provider intensity and compute
+    // local and cloud carbon separately. Changing only this storage.co2 property is insufficient:
+    // totalCo2 is independently recomputed above as totalKwh * ci. Update totals and downstream
+    // consumers too, and define the accounting scope for outsourced cloud services. The storage
+    // intervention needs the same carbon-aware before/after model, not just a pure-kWh delta.
+    // Whether benefit is under- or overstated depends on provider CI relative to local CI;
+    // a provider-wide average is only a disclosed fallback, not a universal cloud factor.
     clinicalMeta,
+    // REVIEW (2026-09, not yet fixed) — every divisor below is duplicated as a bare literal in
+    // main.jsx's `equivData` memo (car 0.17, phone 0.012, household 3500, trees 21, flights 255),
+    // so the same equivalency is maintained in two places and can diverge on a future edit. Worse,
+    // `totalCo2 / 0.17` re-inlines a value this module already exports as CAR_CO2_KG_KM and uses by
+    // name for scope3TravelKg twelve lines up. Fix: hoist one exported EQUIVALENCIES table
+    // ({car_km: CAR_CO2_KG_KM, trees_year: 21, …}) plus a `toEquivalencies(kwh, co2)` helper, and
+    // have both this return value and main.jsx call it. main.jsx's version carries extra rows
+    // (car_years, flights_long, forest_ha, barrels_oil, tonnes_coal), so the helper should be the
+    // superset and this object a projection of it.
     equivalencies: {
       car_km:          rnd(totalCo2 / 0.17,   0),
       phone_charges:   rnd(totalKwh / 0.012,  0),
@@ -490,6 +615,18 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   const ci    = getCI(region, customCi);
   const mult  = TIME_MULT[timePeriod] ?? 1;
   const base  = computeDashboard(region, timePeriod, equipment, customCi, {}, storage, overrides);
+  // REVIEW (2026-09, not yet fixed) — the `{}` is an empty clinicalAdj, so the intervention
+  // baseline silently ignores any deployed clinical AI the user configured, while the dashboard on
+  // the same page includes it. Reproduced with 2 MRI 3T + 2 CT, Germany, Monthly, avoidedFrac 0.2
+  // and scanTimeFrac 0.3 (no added AI compute): dashboard 19,499.44 kWh versus intervention
+  // baseline 24,779.44 kWh. Intervention percentages therefore describe a pre-AI counterfactual,
+  // not the dashboard's current adjusted footprint.
+  // Fix: pass the real clinicalAdj through from main.jsx (it is already computed there as a memo
+  // and handed to computeDashboard) rather than defaulting it away. Callers that genuinely want the
+  // pre-AI baseline should ask for it explicitly. Worth adding a regression test asserting
+  // `computeInterventions(...).baseline.kwh === computeDashboard(...).totals.kwh` when both are
+  // requested for the same current configuration. Also derive intervention savings from the
+  // adjusted energy/study pools so AI and interventions do not claim the same savings twice.
   const fleet = buildFleet(equipment, overrides);
   const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
   const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};
@@ -558,6 +695,32 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   const projectedKwh = Math.max(0, rnd(base.totals.kwh - kwhSaved));
   const baseCo2kg    = rnd(base.totals.co2Kg, 1);
   const projectedCo2 = Math.max(0, rnd(baseCo2kg * (1 - co2Fraction) - kwhSaved * ci, 1));
+  // REVIEW (2026-09, not yet fixed) — carbon savings are DOUBLE-DISCOUNTED here. The %-levers
+  // (renewables 80%, region shift, hardware lifetime) shrink the whole baseline via
+  // `(1 - co2Fraction)`, and then the energy saving is subtracted again at the FULL grid intensity
+  // `ci` — but those saved kWh would already have been emitting at the reduced rate, so their
+  // avoided carbon is counted once at 100% of ci and once inside the percentage.
+  // Verified: 2× MRI 3T + 2× CT in Germany, scannerState 'Off', with renewables + scanners-off gives
+  // baseline 8,920.6 kg → projected 1,170.7 kg, i.e. an 86.9% cut claimed from levers worth 80% and
+  // 6.9%. (With the default scannerState 'Standby' the same setup gives 781.9 kg / 91.2% vs 80% + 11.2%.)
+  // Fix: apply the levers in the physical order — reduce energy first, then carbon-price the
+  // REMAINING energy at the already-reduced intensity:
+  //   const effCi       = ci * (1 - co2Fraction);          // %-levers act on intensity
+  //   const projectedCo2 = Math.max(0, rnd((base.totals.kwh - kwhSaved) * effCi, 1));
+  // This is also self-consistent by construction (projected carbon = projected energy × effective
+  // intensity), which the current expression is not — today projectedCo2 and projectedKwh can
+  // imply an intensity that matches neither ci nor the levers.
+  // Caveat to handle while fixing: "Move computation to lower-carbon regions" is expressed in
+  // leverCo2Pct as a share of the WHOLE department's carbon (compute-only carbon ÷ base co2Kg), so
+  // it is not a true intensity multiplier and cannot simply be folded into effCi. Split the two
+  // kinds — whole-pool intensity changes (renewables), compute-pool intensity changes (region
+  // shift), and embodied-scope changes (hardware lifetime) — rather than stacking them in one
+  // co2Fraction. The simple formula above applies only to a common electricity pool with a shared
+  // intensity reduction; mixed pools need separate before/after calculations. main.jsx
+  // deptLabelData has a separate duplication when its
+  // renewablePct setting and renewable intervention represent the same action; it consumes
+  // co2Fraction, not this projectedCo2 value. Fix both paths together so the label and tab use one
+  // consistent representation.
   const co2Saved     = rnd(baseCo2kg - projectedCo2, 1);
   const pctEnergy    = base.totals.kwh > 0 ? rnd((kwhSaved / base.totals.kwh) * 100, 1) : 0;
   const pctCo2       = baseCo2kg > 0 ? rnd((co2Saved / baseCo2kg) * 100, 1) : 0;

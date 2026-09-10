@@ -32,6 +32,22 @@ export const ELECTRICITY_PRICE = {
 // Resolve effective carbon intensity — uses customCi when region is "Editable custom".
 export const getCI = (region, customCi) =>
   region === 'Editable custom' ? (isNaN(parseFloat(customCi)) ? 0.30 : parseFloat(customCi)) : (CARBON_INTENSITY[region] ?? 0.25);
+// REVIEW (2026-09, not yet fixed) — two input-trust problems in this one expression:
+//  a) `CARBON_INTENSITY[region]` is a raw property read, so inherited keys resolve instead of
+//     falling back. `region = '__proto__'` returns Object.prototype, which is not nullish, so
+//     `?? 0.25` never fires and `ci` becomes an object — every downstream product is NaN and the
+//     dashboard renders NaN totals. `region` is user-controlled via the shareable link
+//     (SETTINGS_KEYS.r in urlstate.js), so this is reachable, not theoretical.
+//     Fix: `Object.prototype.hasOwnProperty.call(CARBON_INTENSITY, region) ? … : 0.25`, or build
+//     the table with `Object.create(null)`. Own-property checks would also harden the price table,
+//     although getPrice('__proto__') currently falls back correctly because `.price` is undefined.
+//  b) The custom-CI branch accepts any finite-looking string: `parseFloat('-5')` and
+//     `parseFloat('1e999')` (=== Infinity) both pass the isNaN gate, giving negative or infinite
+//     carbon in calculations using this custom grid intensity (cloud compute may use its own CI).
+//     Fix: require a finite, nonnegative value. Any upper bound, such as 2 kgCO₂e/kWh, needs to be
+//     documented as an application sanity limit, not a verified universal grid maximum.
+// Centralising validation here protects all getCI consumers in model.js and main.jsx; separate
+// provider/region intensity paths still need their own validated inputs.
 
 // Effective electricity price (per kWh): a positive override wins, else the region default.
 export const getPrice = (region, override) => {
@@ -60,6 +76,19 @@ export function cedarsScore(value, lo, hi) {
   if (x >= hi) return 0;
   return Math.round(100 * (Math.log10(hi) - Math.log10(x)) / (Math.log10(hi) - Math.log10(lo)));
 }
+// REVIEW (2026-09, not yet fixed) — this scorer fails OPEN, which is the wrong direction for a
+// rating that gets printed on a label. `parseFloat('abc') || 0` → 0 and any negative value is
+// lifted to 1e-6 by the Math.max, and both then satisfy `x <= lo` → score 100 → 5 leaves → "Very
+// low footprint". So a department with unparseable or nonsensical inputs is graded best-in-class,
+// and a crafted link (see urlstate.js decodeConfig) can manufacture a 5-leaf label on demand.
+// Fix: distinguish "no data" from "good data" instead of collapsing them.
+//   const x = parseFloat(value);
+//   if (!Number.isFinite(x) || x < 0) return null;   // caller renders "insufficient data"
+// Callers must explicitly handle a null score: cedarsRating(null) currently produces one leaf
+// through numeric coercion, not an ungraded result. Existing hasData/graded flags and rendering
+// paths can be extended, but presently test volume/energy availability rather than full validity.
+// Saturating legitimate low intensities at 100 is intentional; the defect is mapping invalid
+// inputs to that same best-score result before validating them.
 
 // Score anchors (lo → Score 100, hi → Score 0). See sources.md.
 export const CEDARS_DEPT_LO = 0.1, CEDARS_DEPT_HI = 20;   // kgCO₂e per imaging study

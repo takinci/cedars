@@ -148,3 +148,29 @@ export function decodeConfig(hashOrStr) {
   if (q.has('in')) out.activeInterventions = decodeInterv(q.get('in'));
   return out;
 }
+// REVIEW (2026-09, not yet fixed) — this is the tool's trust boundary, but every
+// SETTINGS_KEYS / SCEN_KEYS field is copied out of the hash as an arbitrary string
+// and spread straight over the defaults in main.jsx, so the URL can set region to '__proto__'
+// (NaN dashboard, see calc.js getCI), customCi to '-5' or '1e999', retentionYears to 'abc' (archive
+// footprint silently 0, see model.js), and equipment counts to 999999999. Validation is limited,
+// not absent: `eq`/`eo` check known device and field names, `sc` maps only the exact string "1" to
+// true, and intervention indices are filtered through ALL_INTERVENTIONS. Those checks still do not
+// enforce finite/ranged numeric values, and the scalar settings have no enum or numeric validation.
+// Why it matters beyond robustness: the output is a printable EcoLabel with a leaf rating that the
+// user can copy to the clipboard or print for institutional reporting, and cedarsScore can map
+// invalid values to 5 leaves (see calc.js). A crafted link can therefore produce a misleading
+// label. This is an input-integrity problem, not evidence of code execution or an authenticated
+// certification bypass: even validated client-side inputs remain self-reported, not verified.
+// Fix: validate at decode time, in this function, so every consumer inherits it —
+//   - enum fields (region, timePeriod, metricType, cloudProvider, scannerState, precision,
+//     architecture, storageReformats): accept only values present in the corresponding table via
+//     hasOwnProperty; otherwise drop the key and let the default stand.
+//   - numeric fields: distinguish absent, invalid, and valid zero values; require finite values
+//     and field-specific ranges. Reject invalid fields or explicitly disclose any clamping;
+//     silently clamping a bad input to a favourable boundary can still produce misleading labels.
+//   - unknown query params: ignore (already the behaviour, since iteration is over the key maps).
+// Dropping an invalid key rather than substituting a default is deliberate: the caller merges over
+// SETTINGS_DEFAULTS, so a dropped key IS the default, and there is no second place to keep the
+// fallback values in sync. Consider also returning a list of rejected keys so the UI can say "this
+// link contained invalid settings that were ignored" instead of silently rendering something the
+// sender didn't send.
