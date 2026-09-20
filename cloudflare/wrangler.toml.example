@@ -1,0 +1,11 @@
+name = "cedars-contributions"
+main = "worker.js"
+compatibility_date = "2026-09-20"
+
+[vars]
+ALLOWED_ORIGINS = "https://cedarsleaf.com,https://www.cedarsleaf.com,https://takinci.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cedars-contributions"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
