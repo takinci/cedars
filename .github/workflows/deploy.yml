@@ -1,4 +1,4 @@
-name: Deploy EcoRad to GitHub Pages
+name: Deploy CEDARS to GitHub Pages
 
 on:
   push:
@@ -45,6 +45,9 @@ jobs:
       - name: Build
         run: npx vite build
         working-directory: frontend
+        env:
+          VITE_CEDARS_CONTRIBUTE_URL: ${{ vars.VITE_CEDARS_CONTRIBUTE_URL }}
+          VITE_CEDARS_TURNSTILE_SITEKEY: ${{ vars.VITE_CEDARS_TURNSTILE_SITEKEY }}
 
       - uses: actions/configure-pages@v4
 

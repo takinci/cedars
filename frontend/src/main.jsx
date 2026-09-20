@@ -10,8 +10,15 @@ import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText
 import './styles.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
+import AboutPage from './AboutPage.jsx';
+import SaveSharePanel from './SaveSharePanel.jsx';
+import ContributionModal from './ContributionModal.jsx';
+import { buildAssessmentSnapshot, parseAssessmentText, saveAssessmentLocally, loadLocalAssessment, clearLocalAssessment, assessmentFilename } from './assessment.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
+
+const CONTRIBUTION_ENDPOINT = import.meta.env.VITE_CEDARS_CONTRIBUTE_URL || '';
+const TURNSTILE_SITEKEY = import.meta.env.VITE_CEDARS_TURNSTILE_SITEKEY || '';
 
 // ── Reference tables ──────────────────────────────────────────────────────────
 
@@ -134,7 +141,7 @@ const GPU_PRESETS = {
   "Custom (enter TDP below)":  {tdpKw: 0.000},
 };
 
-// AI Research Label live-sync — maps the AI Model tab's architecture choice onto the label's
+// AI Research Label live-sync — maps the AI Footprint tab's architecture choice onto the label's
 // task-type field, and builds the patch used both by the auto-sync effect (keeps the label
 // mirroring the AI tab until the user edits it directly) and the "Pre-fill from dashboards"
 // button (a one-time snapshot that additionally pulls deployment volume from the Department
@@ -1161,7 +1168,7 @@ function downloadDeptPNG(d) {
   const rows = [
     ['Annual electricity',   `${d.annualKwh.toLocaleString()} kWh`],
     ['Annual CO₂e',    `${d.totalAnnualCo2.toLocaleString()} kgCO₂e`],
-    ...(d.clinicalToolCount > 0 ? [['Clinical AI tools', `${d.clinicalToolCount} deployed (in energy)`]] : []),
+    ...(d.clinicalToolCount > 0 ? [['Clinical AI', `${d.clinicalToolCount} deployed (in energy)`]] : []),
     ['Studies / year',       d.annualStudies.toLocaleString()],
     ['Energy per study',     `${d.kwhPerStudy} kWh`],
     ...(d.utilPct != null ? [['Fleet utilisation', `${d.utilPct}% of configured fleet`]] : []),
@@ -1192,8 +1199,8 @@ function generateEcoMarkdown(d) {
     ['GPU hardware',             d.gpuHardware],
     ['Training runs',            `${d.numRuns} experiment${d.numRuns > 1 ? 's' : ''}`],
     ['Total GPU-hours',          `${d.totalGpuHours} h`],
-    ['Energy per run',           `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : d.energyLive ? ' (from AI Model tab)' : ' (estimated from TDP)'}`],
-    ['Total training energy',    `${d.totalEnergyKwh} kWh${d.energyLive ? ' (from AI Model tab)' : ''}`],
+    ['Energy per run',           `${d.energyPerRunKwh} kWh${d.energyMeasured ? ' (measured)' : d.energyLive ? ' (from AI Model & Informatics tab)' : ' (estimated from TDP)'}`],
+    ['Total training energy',    `${d.totalEnergyKwh} kWh${d.energyLive ? ' (from AI Model & Informatics tab)' : ''}`],
     ['Training CO₂e (one-time)', `${d.trainCo2} kgCO₂e`],
     ['Renewable energy',         `${d.renewablePct}%`],
     ['Compute provider / PUE',   `${d.cloudProvider} · PUE ${d.pue}`],
@@ -1283,7 +1290,20 @@ const fmtBig = n => {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
-  const [page, setPage] = useState('landing');
+  const [page, setPage] = useState(() => {
+    if (typeof window === 'undefined') return 'landing';
+    const requested = new URLSearchParams(window.location.search).get('page');
+    return ['landing','dashboard','ai','ecolabel','scenario','about'].includes(requested) ? requested : 'landing';
+  });
+
+  // Keep top-level views directly linkable without introducing a router. The calculator state stays
+  // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (page === 'landing') url.searchParams.delete('page'); else url.searchParams.set('page', page);
+    history.replaceState(null, '', url.pathname + (url.search || '') + (url.hash || ''));
+  }, [page]);
 
   // Decode a shared link once: the full configuration (settings + equipment + scenario +
   // interventions) is restored into the relevant state objects below.
@@ -1298,6 +1318,10 @@ function App() {
     equipmentOverrides: initEquipOverrides || {},
     ...initSettings,
   }));
+  // Provenance is intentionally separate from calculator values: it records where a local override
+  // came from without changing the calculation. It is kept in local/portable saves and research
+  // contributions, but not in the compact shareable URL.
+  const [provenance, setProvenance] = useState({equipment:{}});
   // REVIEW (2026-09, not yet fixed) — `...initSettings` spreads URL-decoded strings over the
   // defaults with no validation, so anything decodeConfig lets through lands directly in the state
   // that drives every calculation. See the note at the end of urlstate.js for the full fix (validate
@@ -1305,12 +1329,22 @@ function App() {
   // value becomes indistinguishable from one the user typed: after this spread there is no marker of
   // provenance, so no later code can treat link-supplied input more cautiously than form input.
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
-  // Measured-data override for one field of one device type (active_kw/idle_kw/standby_kw/
-  // off_kw/scans) — see OVERRIDABLE_FIELDS in model.js. Blank clears back to the default.
-  const setEquipOverride = (key, field, val) => set('equipmentOverrides', {
-    ...settings.equipmentOverrides,
-    [key]: {...(settings.equipmentOverrides[key] || {}), [field]: val},
-  });
+  // Local override for one field of one device type (active_kw/idle_kw/standby_kw/off_kw/scans).
+  // Blank clears back to the literature default; provenance records whether an entered value was
+  // measured locally, estimated locally, or assumed/other.
+  const setEquipOverride = (key, field, val) => {
+    set('equipmentOverrides', {
+      ...settings.equipmentOverrides,
+      [key]: {...(settings.equipmentOverrides[key] || {}), [field]: val},
+    });
+    if (val === '') {
+      setProvenance(p => ({...p, equipment:{...(p.equipment || {}), [key]:{...(p.equipment?.[key] || {}), [field]:''}}}));
+    }
+  };
+  const setEquipProvenance = (key, field, source) => setProvenance(p => ({
+    ...p,
+    equipment: {...(p.equipment || {}), [key]: {...(p.equipment?.[key] || {}), [field]: source}},
+  }));
   // AI scenario (model spec + cloud + scanner state). SCEN_DEFAULTS is the single source of truth
   // (shared with urlstate.js); restored from a shared link when present.
   const [scen, setScen] = useState(() => ({...SCEN_DEFAULTS, ...(initCfg.scen || {})}));
@@ -1326,7 +1360,7 @@ function App() {
       annualKwh: '', annualStudies: '', renewablePct: '0',
       activeInterventions: [], aiTools: [],
     });
-    // Also wipe the AI Model & Informatics page (model config, research label, cloud workloads).
+    // Also wipe the AI Footprint page (model config, research label, cloud workloads).
     setScen({...SCEN_DEFAULTS});
     setEcoLabel({
       projectName: '', taskType: 'Classification', architecture: '', paramsMillion: '', datasetSize: '',
@@ -1336,6 +1370,7 @@ function App() {
       inferKwhPerStudy: '', whPer1kTokens: '0.4', callsPerTask: '1', tokensPerCall: '', deployMonths: '36', customPue: '',
     });
     setEcoLabelTouched(false);
+    setProvenance({equipment:{}});
     setCloudTracker({
       renewablePct: '0', computeLines: [],
       storageLines: [{id: 1, label: 'PACS archive', type: 'HDD (object storage — S3 / Blob)', tb: '10'}],
@@ -1414,7 +1449,7 @@ function App() {
     deployMonths: '36',
     customPue: '',
   });
-  // Once the user edits the label directly, it stops auto-following the AI Model tab (becomes
+  // Once the user edits the label directly, it stops auto-following the AI Footprint tab (becomes
   // a standalone, manually-controlled disclosure) — see the auto-sync effect below.
   const [ecoLabelTouched, setEcoLabelTouched] = useState(false);
   const setEco = (key, val) => { setEcoLabelTouched(true); setEcoLabel(l => ({...l, [key]: val})); };
@@ -1457,6 +1492,93 @@ function App() {
   const addStorageLine = () => setCloudTracker(t => ({...t, storageLines: [...t.storageLines, {id: Date.now(), label: '', type: 'HDD (object storage — S3 / Blob)', tb: '1'}]}));
   const removeStorageLine = id => setCloudTracker(t => ({...t, storageLines: t.storageLines.filter(l => l.id !== id)}));
   const updateStorageLine = (id, field, val) => setCloudTracker(t => ({...t, storageLines: t.storageLines.map(l => l.id === id ? {...l, [field]: val} : l)}));
+
+  const [localSavedAt, setLocalSavedAt] = useState(() => {
+    const saved = loadLocalAssessment();
+    return saved.ok ? saved.value.savedAt : null;
+  });
+  const [saveShareStatus, setSaveShareStatus] = useState(null);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [contributeOpen, setContributeOpen] = useState(false);
+
+  const currentAssessmentSnapshot = () => buildAssessmentSnapshot({
+    settings, scen, deptLabel, ecoLabel, ecoLabelTouched, cloudTracker, provenance,
+  });
+
+  const restoreAssessmentSnapshot = snapshot => {
+    const a = snapshot.assessment || {};
+    const incomingSettings = a.settings || {};
+    const {equipment = {}, equipmentOverrides = {}, ...otherSettings} = incomingSettings;
+    setSettings({
+      ...SETTINGS_DEFAULTS,
+      ...otherSettings,
+      equipment: {...DEFAULT_EQUIPMENT, ...equipment},
+      equipmentOverrides,
+    });
+    setScen({...SCEN_DEFAULTS, ...(a.scen || {})});
+    setDeptLabel({
+      deptName:'', hospitalName:'', region:'', annualKwh:'', annualStudies:'', renewablePct:'0', activeInterventions:[], aiTools:[],
+      ...(a.deptLabel || {}),
+    });
+    setEcoLabel(e => ({...e, ...(a.ecoLabel || {})}));
+    setEcoLabelTouched(!!a.ecoLabelTouched);
+    setCloudTracker(t => ({...t, ...(a.cloudTracker || {})}));
+    setProvenance(a.provenance || {equipment:{}});
+    setPage('landing');
+  };
+
+  const saveOnThisDevice = () => {
+    const snapshot = currentAssessmentSnapshot();
+    const result = saveAssessmentLocally(snapshot);
+    if (result.ok) {
+      setLocalSavedAt(snapshot.savedAt);
+      setSaveShareStatus({type:'success', text:'Saved in this browser only. For a durable backup, also download a CEDARS file.'});
+    } else setSaveShareStatus({type:'error', text:result.error});
+  };
+
+  const restoreLocalSave = () => {
+    const result = loadLocalAssessment();
+    if (!result.ok) return setSaveShareStatus({type:'error', text:result.error});
+    restoreAssessmentSnapshot(result.value);
+    setSaveShareStatus({type:'success', text:'Restored the CEDARS assessment saved in this browser.'});
+  };
+
+  const deleteLocalSave = () => {
+    clearLocalAssessment();
+    setLocalSavedAt(null);
+    setSaveShareStatus({type:'success', text:'Deleted the locally saved browser copy. The current assessment remains open.'});
+  };
+
+  const downloadCedarsFile = () => {
+    const snapshot = currentAssessmentSnapshot();
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = assessmentFilename(snapshot.savedAt); a.click();
+    URL.revokeObjectURL(url);
+    setSaveShareStatus({type:'success', text:'Downloaded a portable CEDARS file. Keep it somewhere you control and open it later to continue.'});
+  };
+
+  const openCedarsFile = async file => {
+    try {
+      const result = parseAssessmentText(await file.text());
+      if (!result.ok) return setSaveShareStatus({type:'error', text:result.error});
+      restoreAssessmentSnapshot(result.value);
+      setSaveShareStatus({type:'success', text:`Opened ${file.name}. The file was read locally and was not uploaded.`});
+    } catch {
+      setSaveShareStatus({type:'error', text:'CEDARS could not open that file.'});
+    }
+  };
+
+  const copyShareableLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareLinkCopied(true);
+      setTimeout(()=>setShareLinkCopied(false), 1800);
+    } catch {
+      setSaveShareStatus({type:'error', text:'Could not copy the link automatically. You can copy the full address from the browser address bar.'});
+    }
+  };
 
   const handlePrint = () => { window.print(); };
 
@@ -1537,7 +1659,7 @@ function App() {
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
-  // Keep the AI Research Label mirroring the AI Model tab until the user edits the label
+  // Keep the AI Research Label mirroring the AI Footprint tab until the user edits the label
   // directly — same "live by default, override when touched" pattern as deptLabelData/
   // scenario for the Department label. Deliberately excludes deployment volume (Department
   // scan count) — the AI tab's own live hero grades on per-study inference alone with no
@@ -1710,7 +1832,7 @@ function App() {
     // Mirrors computeAI's own cf construction exactly (see aiResultFor/computeAI above) — a
     // specific deployment region (CLOUD_REGIONS[provider].regions[cloudRegion]) overrides the
     // provider's flat average CI when one is set, which it always is once auto-synced from the
-    // AI Model tab's `scen.cloudRegion`. Using the flat average unconditionally (as an earlier
+    // AI Footprint tab's `scen.cloudRegion`. Using the flat average unconditionally (as an earlier
     // version of this memo did) left this label disagreeing with the AI tab's own live hero for
     // the exact same model — e.g. "Local compute" defaults to CLOUD.ci=0.25 flat, but the AI
     // tab's default region (On-premise, Switzerland) is 0.10, a 2.5x gap for the "same" setting.
@@ -1813,7 +1935,7 @@ function App() {
   // Live AI-tab grade preview — deliberately independent of `ecoLabelData` above. The AI
   // Research Label is a standalone disclosure ("no department context", its own PUE/region),
   // only synced to the live Model tab via the manual "Pre-fill from dashboards" button — so it
-  // can't drive a hero card that's supposed to move as the user edits the AI Model tab. This
+  // can't drive a hero card that's supposed to move as the user edits the AI Footprint tab. This
   // memo re-derives the same live `ai` result instead. Self-contained on purpose: grades on
   // per-study inference footprint alone (same fallback basis the standalone label itself uses
   // when no deployment volume is given), NOT on the Department tab's configured fleet — the AI
@@ -1853,7 +1975,7 @@ function App() {
     const fleetCapacityYr = efficiency.capacityYr;
     const utilPct = (fleetCapacityYr > 0 && annualStudies > 0) ? rnd(annualStudies / fleetCapacityYr * 100, 0) : null;
     const hasData = annualStudies > 0;
-    // Clinical AI tools now flow through the live department energy (dash), so their net
+    // Clinical AI now flow through the live department energy (dash), so their net
     // effect (compute − clinical savings) is already in facilityCo2 — no separate fold here
     // (that would double-count).
     const totalAnnualCo2 = facilityCo2;
@@ -1974,8 +2096,8 @@ function App() {
     responsive:true,
   };
 
-  const pages = ['landing','dashboard','ai','ecolabel','scenario'];
-  const PAGE_LABELS = {landing:'Home', dashboard:'Radiology Department', ai:'AI Model & Informatics', ecolabel:'EcoLabel', scenario:'Interventions'};
+  const pages = ['landing','dashboard','ai','ecolabel','scenario','about'];
+  const PAGE_LABELS = {landing:'Home', dashboard:'Radiology Department', ai:'AI Model & Informatics', ecolabel:'EcoLabel', scenario:'Interventions', about:'About'};
 
   return (
     <>
@@ -2002,35 +2124,64 @@ function App() {
       {page==='landing' && (
         <main>
           <p className="eyebrow">Radiology + AI + Planetary Health</p>
-          <h1 style={{fontSize:44,lineHeight:1.05,margin:'0 0 6px'}}>How much CO₂ does your department emit?</h1>
-          <p className="note" style={{marginBottom:20,fontSize:15}}>Set your department → model your AI → see your EcoLabel → improve it.</p>
+          <h1 style={{fontSize:44,lineHeight:1.05,margin:'0 0 10px'}}>Turn radiology sustainability data into decisions.</h1>
+          <p className="note" style={{marginTop:0,marginBottom:24,fontSize:15,maxWidth:900,lineHeight:1.6}}>
+            CEDARS helps radiology departments and AI teams quantify environmental impact, understand financial and clinical context, model practical interventions, and report results in a standardized, transparent format.
+          </p>
 
-          {/* ── Journey walkthrough: 1 → 2 → 3 → 4 ── */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:12,marginBottom:28}}>
-            {[
-              {n:1,title:'Your Department',desc:'Set your equipment below',action:'Set up below',scrollTo:'landing-equipment',Icon:Activity},
-              {n:2,title:'AI & Informatics',desc:'Model & informatics footprint',action:'Open',page:'ai',Icon:Brain},
-              {n:3,title:'Your EcoLabel',desc:'See where you stand',action:'See label',page:'ecolabel',Icon:Leaf,reveal:true},
-              {n:4,title:'Improve It',desc:'Model interventions → grade up',action:'Improve',page:'scenario',Icon:TrendingDown},
-            ].map(s=>(
-              <button key={s.n} onClick={()=> s.scrollTo ? document.getElementById(s.scrollTo)?.scrollIntoView({behavior:'smooth',block:'start'}) : setPage(s.page)} style={{textAlign:'left',background:s.reveal?deptLabelData.ratingBg:'white',border:`2px solid ${s.reveal?deptLabelData.ratingColor:'#e0e0e0'}`,borderRadius:18,padding:16,cursor:'pointer',boxShadow:'0 8px 30px #1b5e2010',display:'flex',flexDirection:'column',gap:8,minHeight:148}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'}}>
-                  <span style={{width:26,height:26,borderRadius:'50%',background:'#2E7D32',color:'white',fontWeight:800,fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>{s.n}</span>
-                  <s.Icon size={20} style={{color:'#2E7D32'}}/>
+          {/* ── Primary CEDARS workflow ── */}
+          <section aria-labelledby="cedars-workflow-title" style={{marginBottom:28}}>
+            <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap',marginBottom:10}}>
+              <h2 id="cedars-workflow-title" style={{margin:0,color:'#1b5e20',fontSize:22}}>How CEDARS works</h2>
+              <span style={{fontSize:12,fontWeight:800,letterSpacing:'0.06em',color:'#2E7D32'}}>INPUT → SCORE → IMPROVE → REPORT (&amp; SHARE)</span>
+            </div>
+            <p className="note" style={{margin:'0 0 14px',fontSize:13,maxWidth:920,lineHeight:1.55}}>
+              Start with a <strong>radiology department</strong> or assess an <strong>AI model independently</strong>. Both use the same CEDARS framework for <strong>transparent, comparable reporting</strong>.
+            </p>
+
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(215px,1fr))',gap:12}}>
+              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>1</span>
+                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.07em',color:'#1b5e20'}}>INPUT</span>
                 </div>
-                <div style={{fontWeight:800,fontSize:16,color:'#1b5e20'}}>{s.title}</div>
-                {s.reveal ? (
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <span style={{fontSize:34,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</span>
-                    <span><LeafRating leaves={deptLabelData.leaves} size={13} color={deptLabelData.ratingColor}/><div style={{fontSize:11,color:deptLabelData.ratingColor,fontWeight:700,marginTop:2}}>{deptLabelData.ratingLabel}</div></span>
-                  </div>
-                ) : (
-                  <div style={{fontSize:13,color:'#607d66'}}>{s.desc}</div>
-                )}
-                <span style={{marginTop:'auto',fontSize:12,fontWeight:700,color:'#2E7D32'}}>{s.action} →</span>
-              </button>
-            ))}
-          </div>
+                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>Choose what you want to assess.</div>
+                <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+                  <button onClick={()=>document.getElementById('landing-equipment')?.scrollIntoView({behavior:'smooth',block:'start'})}
+                    style={{padding:'7px 10px',fontSize:11,boxShadow:'none'}}><Activity size={14}/> Radiology Department</button>
+                  <button className="download" onClick={()=>setPage('ai')}
+                    style={{padding:'7px 10px',fontSize:11,boxShadow:'none'}}><Cpu size={14}/> AI Model &amp; Informatics</button>
+                </div>
+              </div>
+
+              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>2</span>
+                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.07em',color:'#1b5e20'}}>SCORE</span>
+                </div>
+                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>See a standardized CEDARS assessment with sustainability, cost, and care context.</div>
+                <button className="download" onClick={()=>setPage('ecolabel')} style={{padding:'6px 9px',fontSize:11,boxShadow:'none'}}>View EcoLabel →</button>
+              </div>
+
+              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>3</span>
+                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.07em',color:'#1b5e20'}}>IMPROVE</span>
+                </div>
+                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>Model interventions and compare projected environmental, operational, financial, and clinical effects.</div>
+                <button className="download" onClick={()=>setPage('scenario')} style={{padding:'6px 9px',fontSize:11,boxShadow:'none'}}>Explore interventions →</button>
+              </div>
+
+              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>4</span>
+                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.05em',color:'#1b5e20'}}>REPORT (&amp; SHARE)</span>
+                </div>
+                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>Generate an EcoLabel, export results, save your assessment, or optionally create a reproducible link.</div>
+                <button className="download" onClick={()=>document.getElementById('save-share')?.scrollIntoView({behavior:'smooth',block:'start'})} style={{padding:'6px 9px',fontSize:11,boxShadow:'none'}}>Save &amp; report →</button>
+              </div>
+            </div>
+          </section>
 
           <div className="hero">
           <div>
@@ -2120,7 +2271,7 @@ function App() {
                     <p className="note" style={{fontSize:11,margin:0}}>Add equipment above first — overrides apply per device type you've added.</p>
                   ) : (
                     <>
-                    <p className="note" style={{fontSize:11,marginTop:0,marginBottom:8}}>Blank = literature default (shown as placeholder). Enter your own scanner logs, utility-bill readings, or a published benchmark to override active/idle/standby/off power draw and monthly study volume per device type.</p>
+                    <p className="note" style={{fontSize:11,marginTop:0,marginBottom:8}}>Blank = <strong>Literature default</strong> (shown as placeholder). If you override a value, identify its source as <strong>Measured locally</strong>, <strong>Estimated locally</strong>, or <strong>Assumed / other</strong>. Provenance is stored with local/portable saves and research contributions without changing the calculation itself.</p>
                     <div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                         <thead>
@@ -2138,14 +2289,27 @@ function App() {
                             const u = EQUIPMENT_UNITS[key];
                             if (!u) return null;
                             const ov = settings.equipmentOverrides[key] || {};
-                            const cell = field => (
-                              <td key={field} style={{padding:'3px 6px'}}>
-                                <input type="number" min="0" step="0.01" value={ov[field] ?? ''} placeholder={String(u[field])}
-                                  onChange={e=>setEquipOverride(key, field, e.target.value)}
-                                  aria-label={`${field} override for ${u.name}`}
-                                  style={{width:70,padding:'4px 6px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
-                              </td>
-                            );
+                            const cell = field => {
+                              const hasOverride = ov[field] != null && ov[field] !== '';
+                              const source = provenance.equipment?.[key]?.[field] || '';
+                              return (
+                                <td key={field} style={{padding:'3px 6px',verticalAlign:'top'}}>
+                                  <input type="number" min="0" step="0.01" value={ov[field] ?? ''} placeholder={String(u[field])}
+                                    onChange={e=>setEquipOverride(key, field, e.target.value)}
+                                    aria-label={`${field} override for ${u.name}`}
+                                    style={{width:86,padding:'4px 6px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:11,background:'white'}}/>
+                                  {hasOverride ? (
+                                    <select aria-label={`Source of ${field} override for ${u.name}`} value={source} onChange={e=>setEquipProvenance(key, field, e.target.value)}
+                                      style={{display:'block',width:100,marginTop:4,padding:'3px 4px',border:'1px solid #dfe8df',borderRadius:7,fontSize:9,background:'white',color:'#607d66'}}>
+                                      <option value="">Source…</option>
+                                      <option value="measured-locally">Measured locally</option>
+                                      <option value="estimated-locally">Estimated locally</option>
+                                      <option value="assumed-other">Assumed / other</option>
+                                    </select>
+                                  ) : <div style={{fontSize:8,color:'#90a4ae',marginTop:4}}>Literature default</div>}
+                                </td>
+                              );
+                            };
                             return (
                               <tr key={key}>
                                 <td style={{padding:'3px 6px',fontWeight:700,color:'#1b5e20',whiteSpace:'nowrap'}}>{n}× {u.name}</td>
@@ -2212,6 +2376,20 @@ function App() {
             <button onClick={()=>setPage('dashboard')}>Full breakdown →</button>
           </div>
           </div>
+
+          <SaveSharePanel
+            localSavedAt={localSavedAt}
+            status={saveShareStatus}
+            onSaveLocal={saveOnThisDevice}
+            onRestoreLocal={restoreLocalSave}
+            onClearLocal={deleteLocalSave}
+            onDownload={downloadCedarsFile}
+            onOpenFile={openCedarsFile}
+            onCopyLink={copyShareableLink}
+            linkCopied={shareLinkCopied}
+            onContribute={()=>setContributeOpen(true)}
+            contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
+          />
         </main>
       )}
 
@@ -2463,15 +2641,15 @@ function App() {
 
           )}
 
-          {/* ── Clinical AI tools (deployed — adjust the whole department) ── */}
+          {/* ── Clinical AI (deployed — adjust the whole department) ── */}
           <button type="button" className="accHead" onClick={()=>toggleDash('clinicalai')} aria-expanded={!!dashOpen['clinicalai']}>
             <span className="accCaret">{dashOpen['clinicalai']?'▾':'▸'}</span>
-            <span className="accTitle">Clinical AI tools</span>
+            <span className="accTitle">Clinical AI</span>
             <span className="accVal">{(deptLabel.aiTools||[]).length} deployed</span>
           </button>
           {dashOpen['clinicalai'] && (
           <section id="dash-clinicalai" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI tools <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
+            <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
             <p className="note" style={{marginBottom:12}}>
               Each deployed tool <strong>adds</strong> inference + amortised-training compute and <strong>subtracts</strong> clinical savings — avoided low-value scans, shorter protocols, and contrast reduction. The net effect flows into energy, efficiency, contrast, and your EcoLabel.
               {dash.clinicalMeta.active && <> <strong style={{color:'#2E7D32'}}>Net now: +{fmtKwh(dash.clinicalMeta.aiKwh)} compute − {fmtKwh(dash.clinicalMeta.scannerSavedKwh)} scanner{dash.totals.label}{dash.clinicalMeta.avoidedPct>0?` · ${dash.clinicalMeta.avoidedPct}% scans avoided`:''}{dash.clinicalMeta.contrastPct>0?` · ${dash.clinicalMeta.contrastPct}% less contrast`:''}.</strong></>}
@@ -3666,8 +3844,11 @@ function App() {
       {/* ── Eco-label ── */}
       {page==='ecolabel' && (
         <main>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <h1 style={{margin:0}}>CEDARS EcoLabel</h1>
+          </div>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,background:'#fff8e1',border:'1px solid #ffe082',color:'#6d4c41',borderRadius:12,padding:'7px 11px',fontSize:12,fontWeight:700,marginBottom:16}}>
+            Research assessment — not (yet) an external certification.
           </div>
 
             <p className="note" style={{marginBottom:16}}>
@@ -3730,7 +3911,7 @@ function App() {
               <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Override with utility bills / RIS counts for publication-quality figures.</p>
             </div>
 
-            {/* Clinical AI tools now live on the Radiology Department tab */}
+            {/* Clinical AI now live on the Radiology Department tab */}
             <p className="note" style={{marginBottom:24,padding:'10px 14px',background:'#f1f8f1',borderRadius:12}}>
               <Brain size={14} style={{verticalAlign:'-2px',marginRight:6}}/>
               {deptLabelData.clinicalToolCount > 0
@@ -3787,7 +3968,7 @@ function App() {
                 {[
                   ['Annual electricity',   deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'],
                   ['Annual CO₂e',         deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
-                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI tools', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
+                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
                   ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
                   ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
                   ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
@@ -3841,7 +4022,7 @@ function App() {
                   ['2', 'Total energy (kWh / year)', d.annualKwh > 0 ? `${d.annualKwh.toLocaleString()} kWh` : '—', d.annualKwh > 0, 'Department'],
                   ['3', 'Grid carbon intensity, location, source', `${d.effectiveCi} kgCO₂e/kWh · ${d.region} · ${d.renewablePct}% renewable`, !!d.region, 'Grid'],
                   ['4', 'Annual carbon footprint (facility + AI)', d.totalAnnualCo2 > 0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—', d.totalAnnualCo2 > 0, 'Department'],
-                  ['5', 'Clinical AI tools deployed', d.clinicalToolCount > 0 ? `${d.clinicalToolCount} (net effect in dept energy)` : 'none deployed', d.clinicalToolCount > 0, 'Clinical AI'],
+                  ['5', 'Clinical AI deployed', d.clinicalToolCount > 0 ? `${d.clinicalToolCount} (net effect in dept energy)` : 'none deployed', d.clinicalToolCount > 0, 'Clinical AI'],
                   ['6', 'Active mitigation / interventions', d.interventionCount > 0 ? `${d.interventionCount} · ~${d.annualKwhSaving.toLocaleString()} kWh/yr saved` : 'none reported', d.interventionCount > 0, 'Interventions'],
                   ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
                   ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
@@ -3877,7 +4058,7 @@ function App() {
             <h2 style={{marginBottom:8}}>Research label — AI model disclosure</h2>
           <p className="note" style={{marginBottom:8}}>
             Disclose a single AI model's footprint on its own — no department context. Unlike the department label, an AI model has <strong>two distinct costs</strong>: <strong>training</strong> (a one-time capital cost) and <strong>inference</strong> (a marginal cost paid on every study). The label shows both, then grades the <strong>amortised</strong> efficiency — training spread over the studies served, plus inference — so a large model deployed at scale can still score well.
-            To see how a deployed model affects an imaging operation's footprint, attach it under <strong>Clinical AI tools</strong> on the Radiology Department tab.
+            To see how a deployed model affects an imaging operation's footprint, attach it under <strong>Clinical AI</strong> on the Radiology Department tab.
             Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030).
           </p>
           <p className="note" style={{marginBottom:16}}>
@@ -3965,7 +4146,7 @@ function App() {
                 <p className="note" style={{marginTop:8}}>
                   {ecoLabelTouched
                     ? 'Energy estimated from GPU TDP × count × hours × PUE. Use measured values for higher accuracy.'
-                    : "Energy currently mirrors the AI Model tab's own training total (its literature/architecture-scaled estimate, or its own measured override if set) — not the GPU TDP × hours calculation below. Edit any field above to switch to that calculation."}
+                    : "Energy currently mirrors the AI Model & Informatics tab's own training total (its literature/architecture-scaled estimate, or its own measured override if set) — not the GPU TDP × hours calculation below. Edit any field above to switch to that calculation."}
                 </p>
               )}
             </div>
@@ -3982,7 +4163,7 @@ function App() {
                     <option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>
                   ))}
                 </select>
-                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>Mirrors the AI Model tab's provider/region automatically until edited here — this label's grid CI does not follow the Home page's Region / grid setting (that's the department's local grid, a different thing from where AI compute runs).</span>
+                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>Mirrors the AI Model & Informatics tab's provider/region automatically until edited here — this label's grid CI does not follow the Home page's Region / grid setting (that's the department's local grid, a different thing from where AI compute runs).</span>
               </label>
               <label>
                 Custom PUE <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>optional — overrides {ecoLabel.cloudProvider} default ({CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5})</span>
@@ -4100,8 +4281,8 @@ function App() {
                 ['GPU hardware',             ecoLabelData.gpuHardware],
                 ['Training runs',            `${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns > 1 ? 's' : ''}`],
                 ['Total GPU-hours',          `${ecoLabelData.totalGpuHours} h`],
-                ['Energy per run',           `${ecoLabelData.energyPerRunKwh} kWh${ecoLabelData.energyMeasured ? ' (measured)' : ecoLabelData.energyLive ? ' (from AI Model tab)' : ' (est. from TDP)'}`],
-                ['Total training energy',    `${ecoLabelData.totalEnergyKwh} kWh${ecoLabelData.energyLive ? ' (from AI Model tab)' : ''}`],
+                ['Energy per run',           `${ecoLabelData.energyPerRunKwh} kWh${ecoLabelData.energyMeasured ? ' (measured)' : ecoLabelData.energyLive ? ' (from AI Model & Informatics tab)' : ' (est. from TDP)'}`],
+                ['Total training energy',    `${ecoLabelData.totalEnergyKwh} kWh${ecoLabelData.energyLive ? ' (from AI Model & Informatics tab)' : ''}`],
                 ...(ecoLabelData.vsReferenceRatio != null ? [['Training efficiency', `${ecoLabelData.vsReferenceRatio}× reference (${ecoLabelData.kwhReference.toLocaleString()} kWh typical for this architecture/size)`]] : []),
                 ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
                 ['Renewable energy',         `${ecoLabelData.renewablePct}%`],
@@ -4200,7 +4381,7 @@ function App() {
               {`Environmental impact. ${ecoLabelData.projectName} was trained using ${ecoLabelData.gpuHardware} ` +
                `for ${ecoLabelData.totalGpuHours} GPU-hours across ${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns>1?'s':''}. ` +
                `Total training energy consumption was ${ecoLabelData.totalEnergyKwh} kWh ` +
-               `(${ecoLabelData.energyPerRunKwh} kWh per run${ecoLabelData.energyMeasured ? ', directly measured' : ecoLabelData.energyLive ? ', from the AI Model tab' : ', estimated from GPU TDP'}), ` +
+               `(${ecoLabelData.energyPerRunKwh} kWh per run${ecoLabelData.energyMeasured ? ', directly measured' : ecoLabelData.energyLive ? ', from the AI Model & Informatics tab' : ', estimated from GPU TDP'}), ` +
                `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e ` +
                `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh, ${ecoLabelData.ciSource}; ` +
                `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
@@ -4220,6 +4401,16 @@ function App() {
         </main>
       )}
 
+      {page==='about' && <AboutPage/>}
+
+      <ContributionModal
+        open={contributeOpen}
+        onClose={()=>setContributeOpen(false)}
+        endpoint={CONTRIBUTION_ENDPOINT}
+        turnstileSiteKey={TURNSTILE_SITEKEY}
+        buildSnapshot={currentAssessmentSnapshot}
+      />
+
       <footer style={{flexWrap:'wrap',gap:16}}>
         <Logo dark/>
         <div style={{flex:1,minWidth:240}}>
@@ -4227,7 +4418,7 @@ function App() {
           <div style={{fontSize:11,color:'#90a4ae',marginTop:10,lineHeight:1.6,maxWidth:640}}>
             © 2026 CEDARS · code <a href="https://github.com/takinci/cedars/blob/main/LICENSE" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">Apache-2.0</a>, content <a href="https://creativecommons.org/licenses/by/4.0/" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">CC BY 4.0</a>.
             {' '}Research/estimation tool — literature-based estimates, not measured values or medical/regulatory advice; provided as-is, no warranty.
-            {' '}Runs entirely in your browser: no data collected, no cookies, nothing leaves your device.
+            {' '}Assessment data stays in your browser by default. Data is transmitted only if you explicitly choose to contribute an assessment to CEDARS research; local saves, portable-file import/export, and normal calculations remain browser-side.
           </div>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>

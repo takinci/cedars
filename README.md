@@ -19,14 +19,14 @@
 
 ## What is CEDARS?
 
-CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browser-based tool that takes a radiology department **end-to-end**: **measure** your footprint (equipment + deployed clinical AI), **disclose** it as a standardised **CEDARS Score & Rating** ecolabel, and **improve** it by modelling interventions — all from published literature defaults you can override with your own measured data. A **live EcoLabel badge follows you on every tab** and updates as you change inputs.
+CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browser-based tool that takes a radiology department through an **Input → Score → Improve → Share** workflow: enter local equipment and operating context, review a standardised **CEDARS Score & Rating** ecolabel, model interventions, and preserve or share the resulting assessment. Published literature defaults can be replaced with local values, with provenance recorded where supported. A **live EcoLabel badge follows you on every tab** and updates as you change inputs.
 
 It deliberately separates two kinds of "AI":
 
 - **Clinical AI** — deployed tools that change imaging *operations* (denoising, protocol shortening, triage, avoided low-value scans). These live in the **Radiology Department**, where their net effect flows into the department's energy, efficiency, contrast, and EcoLabel.
-- **AI model & informatics footprint** — the cost of *building and running* a model (training, inference, cloud/informatics). This has its own tab, for research disclosure and model benchmarking.
+- **AI Footprint** — the environmental footprint of *building and running the AI itself* (training, inference, cloud/informatics). This has its own tab for research disclosure and model benchmarking.
 
-No installation. No backend. No data leaves your browser.
+No installation or account is required. Assessment data remains in your browser by default. Data is transmitted only if you explicitly choose **Contribute this assessment** after reviewing the contribution permissions.
 
 **→ Try it live: [cedarsleaf.com](https://cedarsleaf.com)**
 
@@ -34,11 +34,11 @@ No installation. No backend. No data leaves your browser.
 
 ## What can it do?
 
-Five tabs following a **measure → disclose → improve** journey: **Home · Radiology Department · AI Model & Informatics · EcoLabel · Interventions**. A live EcoLabel badge sits in the header throughout.
+The main workflow follows **Input → Score → Improve → Share**, with navigation for **Home · Radiology Department · AI Footprint · EcoLabel · Interventions · About**. A live EcoLabel badge sits in the header throughout.
 
 ### 🏠 Home
 
-A numbered **1 → 2 → 3 → 4 walkthrough** so a first-time user sees the whole pathway at a glance: set your equipment fleet, preview AI, see your live EcoLabel grade, and jump to improvements. Equipment is edited right here on the landing page.
+A numbered **1 → 2 → 3 → 4 walkthrough** guides first-time users through **Input your department → See your score → Improve your footprint → Save & share**. Equipment is edited directly on the landing page.
 
 ### 🔋 Radiology Department
 
@@ -47,14 +47,14 @@ Your equipment fleet (MRI by field strength, CT, PET-CT, radiography, mammograph
 | Section | What it tracks |
 |---|---|
 | **Efficiency — energy into healthcare** | Fleet **utilisation** (studies vs capacity), **CO₂ per study** at your actual volume, and **non-productive energy %** — so a busy department scores well even at a high absolute footprint |
-| **Clinical AI tools** | Deploy clinical AI (from the model library, an imported model, or manual entry); each **adds** compute and **subtracts** clinical savings (avoided scans, shorter protocols, contrast reduction), adjusting the *whole* department consistently |
+| **Clinical AI** | Deploy clinical AI (from the model library, an imported model, or manual entry); each **adds** compute and **subtracts** clinical savings (avoided scans, shorter protocols, contrast reduction), adjusting the *whole* department consistently |
 | **Energy** | Total kWh/MWh, active vs idle, avoidable idle, energy per scan |
 | **Carbon (GHG Scopes)** | Scope 1 · Scope 2 · Scope 3 (embodied hardware, patient travel, **staff commute** auto-estimated from the fleet, **DICOM data transfer**) + per-study **Software Carbon Intensity (SCI)** |
 | **Infrastructure — incl. data storage & archiving** | Idle-waste opportunities, **modality energy benchmarks** (published energy as reported; CO₂ normalised to a common grid factor for comparability), and a fleet-driven **data storage** footprint: annual data (Σ studies × per-modality file size) held over a retention period at a per-TB/yr intensity — with **axial-only / cloud / retention** levers (Jia *Eur Radiol* 2026; Doo *JACR* 2024) |
 | **Resource footprint** | Water, paper, hazardous waste, and **contrast media & contamination** (iodinated + gadolinium load to wastewater, contrast wasted) |
 | **Equivalencies + cost** | Car km, flights, tree-years, charges, household-electricity years, **and an editable electricity-cost estimate** (kWh × regional commercial tariff) |
 
-### 🤖 AI Model & Informatics
+### 🤖 AI Footprint
 
 The footprint of building and running a model — R&D / informatics, distinct from clinical effect:
 
@@ -80,9 +80,16 @@ The department's clean, citable, **current-state** disclosure, after the design 
 
 Build an **intervention program** — tick as many operational levers as you plan to implement (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, plus **data-storage levers**: store axial-only, migrate archive to cloud, apply a data-retention policy) and see their **combined** impact: before/after energy, carbon, **and cost (annual € /$ saved)**, with your **current → projected** EcoLabel grade side by side. The selection is **shared with the EcoLabel's Sustainability actions** — tick in either place and the (overlap-aware) numbers stay identical. Storage levers are modelled as a *change from* your current storage setup, so they never double-count.
 
-### 📤 Export
+### 💾 Save, Share & Export
 
-Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all carrying key assumption citations so reports are audit-ready. A **Feedback** link in the footer opens a pre-filled GitHub issue for bugs and suggestions.
+CEDARS supports four distinct persistence/sharing modes:
+
+- **Save on this device only** — browser-local storage; nothing is uploaded, but the saved copy can disappear if browser storage is cleared or the user changes browser/device.
+- **Download / Open CEDARS file** — a portable, versioned `.cedars.json` backup processed locally in the browser.
+- **Copy shareable link** — reproduces the calculator configuration using the existing URL hash. The link is reproducible, not private; anyone with the full link can open it.
+- **Contribute this assessment** — an optional, explicit research submission. Normal calculator use does not transmit assessment data.
+
+Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports remain available. A **Feedback** link in the footer opens a pre-filled GitHub issue for bugs and suggestions.
 
 ---
 
@@ -91,6 +98,8 @@ Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports above — all 
 The full calculator configuration is encoded in the URL hash — **copy the link from the address bar to share your exact setup**. A recipient opening the link reproduces it precisely: the equipment inventory, region/grid and time period, storage and cost/commute assumptions, the AI scenario (model spec, cloud provider/region, scanner state), and the selected interventions. The link stays clean (no `#…`) while everything is at its defaults, and only the values you changed are stored, so shared links stay compact.
 
 _Not carried in the URL (they are document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name), the deployed-AI-tools list, the separate AI research-label form, and the Infrastructure tab's custom compute/storage line items._
+
+The URL hash is intended for reproducibility, not confidentiality. Names, email addresses, contribution permissions, and patient-identifiable information are never intentionally added to the shareable URL.
 
 Configurable inputs include:
 
@@ -116,6 +125,29 @@ To avoid building a fleet device-by-device, the Home page offers a subtle **"Qui
 | **Academic center** | 2× MRI 1.5T · 2× MRI 3T · 1× MRI 7T · 4× CT · 1× PET-CT · 2× angio/IR · 2× fluoroscopy · 5× radiography · 6× ultrasound · 2× mammography · 2× PACS · 30 workstations |
 | **Outpatient imaging** | 1× MRI 1.5T · 1× CT · 2× radiography · 3× ultrasound · 1× mammography · 1× PACS · 6 workstations |
 | **Teleradiology hub** | 2× PACS · 15 workstations *(reading/informatics — no scanners)* |
+
+
+---
+
+## About the CEDARS Collaborative
+
+The public **About** page lists current collaborators and their display affiliations. Affiliations are provided for identification only and do not imply organizational review, endorsement, sponsorship, or official participation. Organizational logos are not used for this purpose without explicit approval.
+
+---
+
+## Optional research contributions
+
+The frontend contains an optional **Contribute this assessment** workflow. Contribution is separate from local saving and sharing, and keeps three permissions distinct: assessment sharing (required to submit), acknowledgment/contributor listing (optional), and future contact (optional). Users are instructed not to submit patient-identifiable information.
+
+The optional backend scaffold lives in [`cloudflare/`](./cloudflare/) and uses a Cloudflare Worker with D1 storage. Until that Worker is deployed and the GitHub repository variable `VITE_CEDARS_CONTRIBUTE_URL` is configured, the contribution form will not transmit data. See [`cloudflare/README.md`](./cloudflare/README.md).
+
+---
+
+## Collaboration notes
+
+- [`ROADMAP.md`](./ROADMAP.md) tracks planned and in-progress work.
+- [`CHANGELOG.md`](./CHANGELOG.md) records completed/unreleased user-facing changes.
+- GitHub Issues and pull requests should be used for task ownership and code review so multiple contributors do not unknowingly implement the same change.
 
 ---
 
