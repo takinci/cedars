@@ -14,7 +14,7 @@ import elmarPhoto from './assets/team/elmar-merkle.webp';
 import florencePhoto from './assets/team/florence-doo.webp';
 
 const LEADS = [
-  {name:"Tugba Akinci D’Antonoli", affiliations:['Independent Researcher'], image:tugbaPhoto, position:'center'},
+  {name:"Tugba Akinci D’Antonoli", affiliations:['EuSoMII'], image:tugbaPhoto, position:'center'},
   {name:'Florence X. Doo', affiliations:['ACR','RSNA'], image:florencePhoto, position:'center 24%'},
 ];
 
@@ -27,7 +27,7 @@ const COLLABORATORS = [
   {name:'Rachel Gerson', affiliations:['ACR'], image:rachelPhoto, position:'center 18%'},
   {name:'Julia Schoen', affiliations:['ACR','RSNA'], image:juliaPhoto},
   {name:'Martin Segeroth', affiliations:['Independent Researcher'], image:martinPhoto, position:'center 18%'},
-  {name:'Elmar Merkle', affiliations:['ESR'], image:elmarPhoto, position:'center 18%'},
+  {name:'Elmar Merkle', affiliations:['RSNA Sustainability Committee'], image:elmarPhoto, position:'center 18%'},
 ];
 
 function AffiliationBadges({affiliations}) {

@@ -12,6 +12,7 @@ export function buildAssessmentSnapshot({
   ecoLabelTouched = false,
   cloudTracker,
   provenance = {},
+  scenarioInterventions = [],
   savedAt = new Date().toISOString(),
   appVersion = 'web',
 } = {}) {
@@ -28,6 +29,7 @@ export function buildAssessmentSnapshot({
       ecoLabelTouched: !!ecoLabelTouched,
       cloudTracker: cloneJson(cloudTracker || {}),
       provenance: cloneJson(provenance || {}),
+      scenarioInterventions: cloneJson(scenarioInterventions || []),
     },
   };
 }

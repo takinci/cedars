@@ -26,8 +26,8 @@ export default function SaveSharePanel({
 
   return (
     <section id="save-share" style={{scrollMarginTop:100,marginTop:26}}>
-      <p className="eyebrow" style={{marginTop:0}}>Save &amp; Share</p>
-      <h2 style={{margin:'0 0 8px',color:'#1b5e20'}}>Preserve your assessment without an account</h2>
+      <p className="eyebrow" style={{marginTop:0}}>Report (&amp; Share)</p>
+      <h2 style={{margin:'0 0 8px',color:'#1b5e20'}}>Save, export, share, or contribute</h2>
       <p className="note" style={{marginTop:0,maxWidth:900,lineHeight:1.55}}>
         Local saving and CEDARS files stay on your device. Research contribution is a separate, explicit action.
       </p>
