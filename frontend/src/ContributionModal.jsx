@@ -8,21 +8,32 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
   const [form, setForm] = useState(blank);
   const [state, setState] = useState({status:'idle', message:''});
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [widgetError, setWidgetError] = useState('');
   const turnstileEl = useRef(null);
   const widgetId = useRef(null);
 
   useEffect(() => {
     if (!open || !turnstileSiteKey || typeof window === 'undefined') return undefined;
     let cancelled = false;
+    setWidgetError('');
     const renderWidget = () => {
       if (cancelled || !window.turnstile || !turnstileEl.current || widgetId.current != null) return;
-      widgetId.current = window.turnstile.render(turnstileEl.current, {
-        sitekey: turnstileSiteKey,
-        theme: 'light',
-        callback: token => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-        'error-callback': () => setTurnstileToken(''),
-      });
+      try {
+        const id = window.turnstile.render(turnstileEl.current, {
+          sitekey: turnstileSiteKey,
+          theme: 'light',
+          callback: token => { setTurnstileToken(token); setWidgetError(''); },
+          'expired-callback': () => setTurnstileToken(''),
+          'error-callback': code => {
+            setTurnstileToken('');
+            setWidgetError(`Turnstile reported error ${code || 'unknown'}. Check the site key and that this hostname is allowed on the Turnstile widget.`);
+          },
+        });
+        if (id == null) setWidgetError('Turnstile could not start. The site key may be invalid.');
+        else widgetId.current = id;
+      } catch {
+        setWidgetError('Turnstile could not start. The site key may be invalid.');
+      }
     };
 
     if (window.turnstile) renderWidget();
@@ -37,6 +48,7 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
         document.head.appendChild(script);
       }
       script.addEventListener('load', renderWidget, {once:true});
+      script.addEventListener('error', () => { if (!cancelled) setWidgetError('The Cloudflare Turnstile script could not be loaded. A browser extension, ad blocker, VPN or network filter may be blocking challenges.cloudflare.com.'); }, {once:true});
     }
 
     return () => {
@@ -126,6 +138,7 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
 
           <div style={{marginTop:16,padding:'10px 12px',border:'1px solid #e0e0e0',borderRadius:12,background:'#fafafa'}}>
             <div ref={turnstileEl}/>
+            {widgetError && <div role="alert" style={{fontSize:12,color:'#b71c1c',marginTop:6,lineHeight:1.45}}>{widgetError}</div>}
             <div style={{fontSize:10,color:'#78909c',marginTop:5}}>Anti-spam verification is provided by Cloudflare Turnstile.</div>
           </div>
 
