@@ -108,9 +108,9 @@ const encodeInterv = names => (names || [])
 const decodeInterv = str => !str ? []
   : str.split('-').map(x => ALL_INTERVENTIONS[parseInt(x, 10)]).filter(Boolean);
 
-// Serialise {settings, scen, activeInterventions} → query string (no leading '#'), omitting any
-// field still at its default.
-export function encodeConfig({ settings = {}, scen = {}, activeInterventions = [] } = {}) {
+// Serialise calculator state → query string (no leading '#'), omitting any field still at its default.
+// `activeInterventions` are prospective modeled changes; `currentPractices` are actions already in place.
+export function encodeConfig({ settings = {}, scen = {}, activeInterventions = [], currentPractices = [] } = {}) {
   const q = new URLSearchParams();
   for (const [k, f] of Object.entries(SETTINGS_KEYS)) {
     const v = settings[f];
@@ -128,10 +128,12 @@ export function encodeConfig({ settings = {}, scen = {}, activeInterventions = [
   }
   const ivStr = encodeInterv(activeInterventions);
   if (ivStr) q.set('in', ivStr);
+  const practiceStr = encodeInterv(currentPractices);
+  if (practiceStr) q.set('ip', practiceStr);
   return q.toString();
 }
 
-// Parse a hash/query string → {settings?, scen?, activeInterventions?} containing ONLY the fields
+// Parse a hash/query string → {settings?, scen?, activeInterventions?, currentPractices?} containing ONLY the fields
 // present in the URL (caller merges these over its defaults). `settings.equipment`, when present,
 // is a partial map of non-zero devices.
 export function decodeConfig(hashOrStr) {
@@ -146,6 +148,7 @@ export function decodeConfig(hashOrStr) {
   if (Object.keys(settings).length) out.settings = settings;
   if (Object.keys(scen).length) out.scen = scen;
   if (q.has('in')) out.activeInterventions = decodeInterv(q.get('in'));
+  if (q.has('ip')) out.currentPractices = decodeInterv(q.get('ip'));
   return out;
 }
 // REVIEW (2026-09, not yet fixed) — this is the tool's trust boundary, but every

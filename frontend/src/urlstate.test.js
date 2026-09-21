@@ -38,12 +38,14 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
       'Store only acquired axial series (avoid reformats)',
     ];
 
-    const decoded = decodeConfig('#' + encodeConfig({ settings, scen, activeInterventions }));
+    const currentPractices = [ALL_INTERVENTIONS[1]];
+    const decoded = decodeConfig('#' + encodeConfig({ settings, scen, activeInterventions, currentPractices }));
 
     // Only non-default fields are carried; merge over defaults to compare full state.
     expect({ ...SETTINGS_DEFAULTS, ...decoded.settings }).toEqual(settings);
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
     expect(decoded.activeInterventions).toEqual(activeInterventions);
+    expect(decoded.currentPractices).toEqual(currentPractices);
   });
 
   it('equipment: only non-zero devices are carried, and counts are preserved', () => {
@@ -63,6 +65,14 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     const enc = encodeConfig({ activeInterventions: names });
     expect(enc).toBe('in=0-2');                       // indices, not the long labels
     expect(decodeConfig('#' + enc).activeInterventions).toEqual(names);
+  });
+
+  it('current practices are distinct from prospective intervention scenarios', () => {
+    const modeled = [ALL_INTERVENTIONS[0]];
+    const current = [ALL_INTERVENTIONS[2]];
+    const decoded = decodeConfig('#' + encodeConfig({ activeInterventions: modeled, currentPractices: current }));
+    expect(decoded.activeInterventions).toEqual(modeled);
+    expect(decoded.currentPractices).toEqual(current);
   });
 
   it('equipmentOverrides and storageIntensityCustom survive encode → decode', () => {

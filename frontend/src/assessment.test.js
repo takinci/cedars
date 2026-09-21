@@ -20,9 +20,10 @@ function memoryStorage() {
 
 describe('CEDARS assessment persistence', () => {
   it('builds and parses a versioned assessment snapshot', () => {
-    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'}, scen:{modelKey:'cad'}, savedAt:'2026-09-20T00:00:00.000Z'});
+    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'}, scen:{modelKey:'cad'}, scenarioInterventions:['Turn MRI/CT scanners off overnight'], savedAt:'2026-09-20T00:00:00.000Z'});
     expect(snapshot.format).toBe('CEDARS');
     expect(snapshot.schemaVersion).toBe(1);
+    expect(snapshot.assessment.scenarioInterventions).toEqual(['Turn MRI/CT scanners off overnight']);
     expect(parseAssessmentText(JSON.stringify(snapshot))).toEqual({ok:true, value:snapshot});
   });
 
