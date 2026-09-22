@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://cedarsleaf.com/</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=input</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=dashboard</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=ai</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=ecolabel</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=ecolabel&amp;label=ai</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=scenario</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=report</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=report&amp;label=ai</loc></url>
+  <url><loc>https://cedarsleaf.com/?page=about</loc></url>
+</urlset>

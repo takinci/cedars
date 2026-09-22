@@ -21,12 +21,18 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
       try {
         const id = window.turnstile.render(turnstileEl.current, {
           sitekey: turnstileSiteKey,
+          action: 'cedars-contribution',
           theme: 'light',
           callback: token => { setTurnstileToken(token); setWidgetError(''); },
           'expired-callback': () => setTurnstileToken(''),
           'error-callback': code => {
             setTurnstileToken('');
-            setWidgetError(`Turnstile reported error ${code || 'unknown'}. Check the site key and that this hostname is allowed on the Turnstile widget.`);
+            const turnstileMessages = {
+              '400020':'Turnstile rejected the site key. Confirm VITE_CEDARS_TURNSTILE_SITEKEY exactly matches the public site key for this widget, then redeploy the site.',
+              '110200':'This hostname is not allowed for the Turnstile widget. Add cedarsleaf.com (and takinci.github.io if used) to the widget hostnames.',
+              '110110':'This Turnstile widget is disabled. Re-enable it in Cloudflare or replace the site key.',
+            };
+            setWidgetError(turnstileMessages[String(code)] || `Turnstile reported error ${code || 'unknown'}. Check the widget configuration and browser console for details.`);
           },
         });
         if (id == null) setWidgetError('Turnstile could not start. The site key may be invalid.');

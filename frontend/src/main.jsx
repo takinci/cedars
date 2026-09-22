@@ -40,7 +40,7 @@ const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedba
   );
 
 // Accordion section ids (for expand/collapse-all) on the Radiology Department and AI pages.
-const DASH_SECTIONS = ['equiv','efficiency','clinicalai','energy','carbon','charts','infrastructure','resources'];
+const DASH_SECTIONS = ['efficiency','energy','carbon','charts','infrastructure','resources'];
 const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark'];
 
 import {
@@ -1291,6 +1291,11 @@ const SEO_PAGES = {
     description: 'CEDARS is a free, open-source platform for radiology departments and AI teams to quantify environmental impact, connect sustainability with cost and clinical care, model interventions, and report results transparently.',
     canonical: SEO_BASE,
   },
+  input: {
+    title: 'Choose Assessment Pathway | CEDARS',
+    description: 'Choose whether to assess a radiology department or an AI model and informatics workflow with CEDARS.',
+    canonical: SEO_BASE + '?page=input',
+  },
   dashboard: {
     title: 'Radiology Department Sustainability Calculator | CEDARS',
     description: 'Measure radiology department energy, carbon, water, cost, resource use, clinical AI effects, and operational efficiency with transparent, editable assumptions.',
@@ -1312,9 +1317,19 @@ const SEO_PAGES = {
     canonical: SEO_BASE + '?page=ecolabel&label=ai',
   },
   scenario: {
-    title: 'Radiology Sustainability Interventions | CEDARS',
+    title: 'Improve Radiology Sustainability | CEDARS',
     description: 'Model prospective radiology sustainability interventions and compare projected energy, carbon, financial, operational, and EcoLabel effects before implementation.',
     canonical: SEO_BASE + '?page=scenario',
+  },
+  report: {
+    title: 'Report & Share CEDARS Assessments | Radiology Sustainability Reporting',
+    description: 'Complete a reproducible CEDARS disclosure, document current sustainability practices, export reporting outputs, and optionally share or contribute an assessment.',
+    canonical: SEO_BASE + '?page=report',
+  },
+  reportAi: {
+    title: 'Report AI Environmental Footprint | CEDARS AI Research Label',
+    description: 'Complete, export, and optionally share a reproducible CEDARS AI environmental disclosure covering training, inference, compute, deployment, performance, and water context.',
+    canonical: SEO_BASE + '?page=report&label=ai',
   },
   about: {
     title: 'About CEDARS | Radiology Sustainability Collaborative',
@@ -1328,12 +1343,58 @@ const SEO_PAGES = {
 // the selected interventions — so a shared link reproduces the whole setup. SETTINGS_DEFAULTS and
 // SCEN_DEFAULTS are the single source of truth for the initial `settings` / `scen` state below.
 
+function WorkflowRail({page, onInput, onDepartment, onAi, onScore, onImprove, onReport}) {
+  const stage = page === 'input' || page === 'dashboard' || page === 'ai' ? 1 : page === 'ecolabel' ? 2 : page === 'scenario' ? 3 : page === 'report' ? 4 : 0;
+  const selectedInput = page === 'dashboard' ? 'dashboard' : page === 'ai' ? 'ai' : '';
+  return (
+    <div className="workflowRailWrap" aria-label="CEDARS workflow navigation">
+      <div className="workflowRail">
+        <button type="button" className={`workflowRailStep action ${stage===1?'active':''}`} onClick={onInput}>
+          <div className="workflowRailLabel"><span>1</span><strong>INPUT</strong></div>
+          <small>{selectedInput==='dashboard' ? 'Radiology Department' : selectedInput==='ai' ? 'AI Model & Informatics' : 'Choose what to assess'}</small>
+        </button>
+        <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onScore}>
+          <div className="workflowRailLabel"><span>2</span><strong>SCORE &amp; ECOLABEL</strong></div>
+          <small>Score + label</small>
+        </button>
+        <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onImprove}>
+          <div className="workflowRailLabel"><span>3</span><strong>IMPROVE</strong></div>
+          <small>Model changes</small>
+        </button>
+        <button type="button" className={`workflowRailStep action ${stage===4?'active':''}`} onClick={onReport}>
+          <div className="workflowRailLabel"><span>4</span><strong>REPORT (&amp; SHARE)</strong></div>
+          <small>Disclosure + outputs</small>
+        </button>
+      </div>
+      {stage===1 && (
+        <div className="workflowInputChooser workflowInputChooserProminent" aria-label="Choose input pathway">
+          <div className="workflowInputChooserLabel">
+            <span>START HERE</span>
+            <strong>Choose pathway</strong>
+            <small>Select either pathway. Your choice stays full-size so switching remains obvious.</small>
+          </div>
+          <button type="button" className={selectedInput==='dashboard'?'selected':''} onClick={onDepartment} aria-pressed={selectedInput==='dashboard'}>
+            <Activity size={19}/>
+            <span><strong>Radiology Department</strong><small>Equipment, operations, resources &amp; clinical AI</small></span>
+            <span className="workflowInputAction" aria-hidden="true">{selectedInput==='dashboard' ? 'Selected ✓' : 'Start →'}</span>
+          </button>
+          <button type="button" className={selectedInput==='ai'?'selected':''} onClick={onAi} aria-pressed={selectedInput==='ai'}>
+            <Cpu size={19}/>
+            <span><strong>AI Model &amp; Informatics</strong><small>Training, inference, compute &amp; deployment</small></span>
+            <span className="workflowInputAction" aria-hidden="true">{selectedInput==='ai' ? 'Selected ✓' : 'Start →'}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const [page, setPage] = useState(() => {
     if (typeof window === 'undefined') return 'landing';
     const requested = new URLSearchParams(window.location.search).get('page');
-    return ['landing','dashboard','ai','ecolabel','scenario','about'].includes(requested) ? requested : 'landing';
+    return ['landing','input','dashboard','ai','ecolabel','scenario','report','about'].includes(requested) ? requested : 'landing';
   });
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
@@ -1446,16 +1507,24 @@ function App() {
   // Cross-page workflow links should land on the relevant section, not merely the top of the page.
   // The calculator state remains in memory while switching pages; this only changes the visible view.
   const goToWorkflowSection = (targetPage, sectionId) => {
-    if (targetPage === 'ecolabel') setEcoLabelMode('department');
+    if (targetPage === 'ecolabel' || targetPage === 'report') setEcoLabelMode('department');
     setPage(targetPage);
     window.setTimeout(() => document.getElementById(sectionId)?.scrollIntoView({behavior:'smooth', block:'start'}), 60);
+  };
+  // Score/EcoLabel product cards are real navigation controls: switch the product and
+  // bring its live score summary into view, even when the same product was already selected.
+  const selectEcoScore = mode => {
+    setEcoLabelMode(mode);
+    window.setTimeout(() => {
+      document.getElementById(mode === 'ai' ? 'ai-score-panel' : 'department-score-panel')?.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 60);
   };
   const [aiOpen, setAiOpen] = useState({model:true});
   const toggleAi = id => setAiOpen(o => ({...o, [id]: !o[id]}));
   const [trainExpanded, setTrainExpanded] = useState(false);
   const [modelExpanded, setModelExpanded] = useState(false);
   const [advEquipExpanded, setAdvEquipExpanded] = useState(false);
-  const [deptSetupOpen, setDeptSetupOpen] = useState(() => !Object.values({...DEFAULT_EQUIPMENT, ...(initEquip || {})}).some(v => Number(v) > 0));
+  const [deptSetupOpen, setDeptSetupOpen] = useState(true);
   const [scenarioInterventions, setScenarioInterventions] = useState(() => initCfg.activeInterventions || []);
   const [ecoLabelMode, setEcoLabelMode] = useState(() => {
     if (typeof window === 'undefined') return 'department';
@@ -1467,11 +1536,11 @@ function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
-    if (page === 'ecolabel' && ecoLabelMode === 'ai') url.searchParams.set('label', 'ai');
+    if ((page === 'ecolabel' || page === 'report') && ecoLabelMode === 'ai') url.searchParams.set('label', 'ai');
     else url.searchParams.delete('label');
     history.replaceState(null, '', url.pathname + (url.search || '') + (url.hash || ''));
 
-    const seoKey = page === 'ecolabel' && ecoLabelMode === 'ai' ? 'ecolabelAi' : page;
+    const seoKey = page === 'ecolabel' && ecoLabelMode === 'ai' ? 'ecolabelAi' : page === 'report' && ecoLabelMode === 'ai' ? 'reportAi' : page;
     const seo = SEO_PAGES[seoKey] || SEO_PAGES.landing;
     document.title = seo.title;
     const setMeta = (selector, attr, value) => {
@@ -1495,7 +1564,7 @@ function App() {
       label: `${AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'Model'} (current)`}]);
   const removeBenchModel  = id => setBenchModels(list => list.filter(m => m.id !== id));
   const updateBenchLabel  = (id, label) => setBenchModels(list => list.map(m => m.id === id ? {...m, label} : m));
-  const [dashOpen, setDashOpen] = useState({});
+  const [dashOpen, setDashOpen] = useState({clinicalai:true});
   const toggleDash = id => setDashOpen(o => ({...o, [id]: !o[id]}));
   const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
   const [equivScope, setEquivScope] = useState('scope2');
@@ -2188,39 +2257,49 @@ function App() {
     responsive:true,
   };
 
-  const pages = ['landing','dashboard','ai','ecolabel','scenario','about'];
-  const PAGE_LABELS = {landing:'Home', dashboard:'Radiology Department', ai:'AI Model & Informatics', ecolabel:'EcoLabel', scenario:'Interventions', about:'About'};
-
   return (
     <>
-      <header>
+      <header className="siteHeader">
         <Logo onClick={resetToHome}/>
-        <nav>
-          {pages.map(p => (
-            <button key={p} className={page===p?'on':''} onClick={()=>setPage(p)}>{PAGE_LABELS[p] ?? p}</button>
-          ))}
-        </nav>
         <div className="headerUtilities">
-        <SaveUtility
-          localSavedAt={localSavedAt}
-          onSaveLocal={saveOnThisDevice}
-          onDownload={downloadCedarsFile}
-          onOpenFile={openCedarsFile}
-          onCopyLink={copyShareableLink}
-          linkCopied={shareLinkCopied}
-        />
-        {/* Ambient EcoLabel — live current grade, follows the user on every tab */}
-        <button onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} title="Your current EcoLabel — click for the full disclosure"
-          style={{display:'inline-flex',alignItems:'center',gap:7,background:deptLabelData.ratingBg,border:`1.5px solid ${deptLabelData.ratingColor}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:'pointer',boxShadow:'none',flexShrink:0}}>
-          <Leaf size={17} style={{color:deptLabelData.ratingColor}} fill={deptLabelData.ratingColor}/>
-          <span style={{fontSize:18,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</span>
-          <span style={{display:'flex',flexDirection:'column',lineHeight:1.1}}>
-            <span style={{fontSize:10,fontWeight:800,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>ECOLABEL</span>
-            <span style={{fontSize:10,color:'#607d66'}}>{deptLabelData.leaves}/5 leaves</span>
-          </span>
-        </button>
+          <nav className="utilityNav" aria-label="Site navigation">
+            <button className={page==='landing'?'on':''} onClick={()=>setPage('landing')}>Home</button>
+            <button className={page==='about'?'on':''} onClick={()=>setPage('about')}>About</button>
+          </nav>
+          <SaveUtility
+            localSavedAt={localSavedAt}
+            onSaveLocal={saveOnThisDevice}
+            onDownload={downloadCedarsFile}
+            onOpenFile={openCedarsFile}
+            onCopyLink={copyShareableLink}
+            linkCopied={shareLinkCopied}
+            onContribute={()=>setContributeOpen(true)}
+            contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
+          />
+          {/* Ambient EcoLabel — live current department grade, follows the user on every page. */}
+          <button onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} title="Current Department EcoLabel score — open Score & EcoLabel"
+            style={{display:'inline-flex',alignItems:'center',gap:7,background:deptLabelData.ratingBg,border:`1.5px solid ${deptLabelData.ratingColor}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:'pointer',boxShadow:'none',flexShrink:0}}>
+            <Leaf size={17} style={{color:deptLabelData.ratingColor}} fill={deptLabelData.ratingColor}/>
+            <span style={{fontSize:18,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</span>
+            <span style={{display:'flex',flexDirection:'column',lineHeight:1.1}}>
+              <span style={{fontSize:10,fontWeight:800,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>ECOLABEL</span>
+              <span style={{fontSize:10,color:'#607d66'}}>{deptLabelData.leaves}/5 leaves</span>
+            </span>
+          </button>
         </div>
       </header>
+
+      {!['landing','about'].includes(page) && (
+        <WorkflowRail
+          page={page}
+          onInput={()=>setPage('input')}
+          onDepartment={()=>setPage('dashboard')}
+          onAi={()=>setPage('ai')}
+          onScore={()=>{if(page==='ai') setEcoLabelMode('ai'); setPage('ecolabel');}}
+          onImprove={()=>setPage('scenario')}
+          onReport={()=>setPage('report')}
+        />
+      )}
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
@@ -2231,62 +2310,66 @@ function App() {
             CEDARS helps radiology departments and AI teams quantify environmental impact, understand financial and clinical context, model practical interventions, and report results in a standardized, transparent format.
           </p>
 
-          {/* ── Primary CEDARS workflow ── */}
+          {/* Primary CEDARS workflow — Home keeps the four-card overview; the compact
+              workflow rail is reserved for working pages. */}
           <section aria-labelledby="cedars-workflow-title" style={{marginBottom:22}}>
             <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap',marginBottom:10}}>
               <h2 id="cedars-workflow-title" style={{margin:0,color:'#1b5e20',fontSize:22}}>How CEDARS works</h2>
-              <span style={{fontSize:12,fontWeight:800,letterSpacing:'0.06em',color:'#2E7D32'}}>INPUT → SCORE → IMPROVE → REPORT (&amp; SHARE)</span>
+              <span style={{fontSize:12,fontWeight:800,letterSpacing:'0.06em',color:'#2E7D32'}}>INPUT → SCORE &amp; ECOLABEL → IMPROVE → REPORT (&amp; SHARE)</span>
             </div>
             <p className="note" style={{margin:'0 0 14px',fontSize:13,maxWidth:920,lineHeight:1.55}}>
               Start with a <strong>radiology department</strong> or assess an <strong>AI model independently</strong>. Both use the same CEDARS framework for <strong>transparent, comparable reporting</strong>.
             </p>
 
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(215px,1fr))',gap:12}}>
-              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>1</span>
-                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.07em',color:'#1b5e20'}}>INPUT</span>
+            <div className="homeWorkflowGrid">
+              <div className="workflowCard workflowCardStart">
+                <div className="workflowCardKicker">
+                  <span className="workflowNumber">1</span>
+                  <span>INPUT</span>
+                  <span className="startHereBadge">START HERE</span>
                 </div>
-                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>Choose what you want to assess.</div>
-                <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
-                  <button onClick={()=>setPage('dashboard')}
-                    style={{padding:'7px 10px',fontSize:11,boxShadow:'none'}}><Activity size={14}/> Radiology Department</button>
-                  <button className="download" onClick={()=>setPage('ai')}
-                    style={{padding:'7px 10px',fontSize:11,boxShadow:'none'}}><Cpu size={14}/> AI Model &amp; Informatics</button>
+                <div className="workflowCardPrompt">What would you like to assess?</div>
+                <div className="startChoiceGrid">
+                  <button type="button" className="startChoice department" onClick={()=>setPage('dashboard')}>
+                    <Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span>
+                  </button>
+                  <button type="button" className="startChoice ai" onClick={()=>setPage('ai')}>
+                    <Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Training, inference, compute &amp; deployment</small></span><span aria-hidden="true">→</span>
+                  </button>
                 </div>
               </div>
 
-              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>2</span>
-                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.07em',color:'#1b5e20'}}>SCORE</span>
-                </div>
-                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>See a standardized CEDARS assessment with sustainability, cost, and care context.</div>
-                <button className="download" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} style={{padding:'6px 9px',fontSize:11,boxShadow:'none'}}>View EcoLabel →</button>
+              <div className="workflowCard">
+                <div className="workflowCardKicker"><span className="workflowNumber">2</span><span>SCORE &amp; ECOLABEL</span></div>
+                <div className="workflowCardBody">See the current CEDARS score, rating, and EcoLabel for the assessment you entered.</div>
+                <button className="download workflowCardAction" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>View score &amp; EcoLabel →</button>
               </div>
 
-              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>3</span>
-                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.07em',color:'#1b5e20'}}>IMPROVE</span>
-                </div>
-                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>Model interventions and compare projected environmental, operational, financial, and clinical effects.</div>
-                <button className="download" onClick={()=>setPage('scenario')} style={{padding:'6px 9px',fontSize:11,boxShadow:'none'}}>Explore interventions →</button>
+              <div className="workflowCard">
+                <div className="workflowCardKicker"><span className="workflowNumber">3</span><span>IMPROVE</span></div>
+                <div className="workflowCardBody">Model potential interventions and compare projected environmental, operational, financial, and clinical effects.</div>
+                <button className="download workflowCardAction" onClick={()=>setPage('scenario')}>Model improvements →</button>
               </div>
 
-              <div style={{background:'white',border:'1.5px solid #dce9dc',borderRadius:16,padding:16,boxShadow:'0 5px 20px #1b5e2008'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                  <span style={{display:'inline-grid',placeItems:'center',width:25,height:25,borderRadius:'50%',background:'#2E7D32',color:'white',fontSize:12,fontWeight:900}}>4</span>
-                  <span style={{fontSize:12,fontWeight:900,letterSpacing:'0.05em',color:'#1b5e20'}}>REPORT (&amp; SHARE)</span>
-                </div>
-                <div style={{fontSize:13,color:'#607d66',lineHeight:1.5,marginBottom:12}}>Generate an EcoLabel, export results, save your assessment, or optionally create a reproducible link.</div>
-                <button className="download" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} style={{padding:'6px 9px',fontSize:11,boxShadow:'none'}}>Save &amp; report →</button>
+              <div className="workflowCard">
+                <div className="workflowCardKicker"><span className="workflowNumber">4</span><span>REPORT (&amp; SHARE)</span></div>
+                <div className="workflowCardBody">Complete the disclosure, generate outputs, save your work, or optionally share or contribute the assessment.</div>
+                <button className="download workflowCardAction" onClick={()=>setPage('report')}>Report (&amp; share) →</button>
               </div>
             </div>
           </section>
 
-          {/* Shared local context — intentionally lightweight on Home so either pathway can start
-              with the correct grid/cost assumptions. AI compute/deployment keeps its own region. */}
+
+
+        </main>
+      )}
+
+
+      {/* ── Input pathway chooser ── */}
+      {page==='input' && (
+        <main className="inputGatewayPage">
+          {/* Shared assessment context — set once before choosing either input pathway.
+              AI compute/deployment keeps its own region. */}
           <section className="assessmentContext" aria-labelledby="assessment-context-title">
             <div className="assessmentContextIntro">
               <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -2323,7 +2406,11 @@ function App() {
               <span> <strong>AI compute region:</strong> selected separately within AI Model &amp; Informatics.</span>
             </div>
           </section>
-
+          <div className="inputGatewayMessage">
+            <span>STEP 1 · INPUT</span>
+            <h1>Choose one of the two pathways above.</h1>
+            <p>Your shared assessment context is set here first. Then start with a Radiology Department or an AI Model &amp; Informatics assessment. You can switch pathways later without losing the assessment already in progress.</p>
+          </div>
         </main>
       )}
 
@@ -2352,23 +2439,55 @@ function App() {
             </button>
             {deptSetupOpen && (
               <div className="departmentSetupBody">
-                <p className="note" style={{fontSize:12,margin:'14px 0 12px'}}>Configure equipment and local context here. These inputs drive the department footprint, EcoLabel, and intervention scenarios.</p>
+                <section className="departmentContextBlock" aria-labelledby="department-context-title">
+                  <div className="departmentContextHeader">
+                    <div>
+                      <span>FIRST STEP</span>
+                      <h2 id="department-context-title">Shared assessment context</h2>
+                    </div>
+                    <small>Used throughout this department assessment</small>
+                  </div>
+                  <div className="assessmentContextGrid">
+                    <Sel label="Country / grid region" value={settings.region} options={META.regions} onChange={v=>set('region',v)}/>
+                    <Sel label="Reporting period" value={settings.timePeriod} options={META.timePeriods} onChange={v=>set('timePeriod',v)}/>
+                    <label>
+                      Electricity price <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional override</span>
+                      <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)}
+                        placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)}/>
+                      <span style={{fontWeight:500,fontSize:10,color:'#78909c'}}>
+                        {settings.electricityPrice ? 'User-entered tariff' : `Regional default: ${currencySym(settings.region)}${ELECTRICITY_PRICE[settings.region]?.price ?? 0.20}/kWh`}
+                      </span>
+                    </label>
+                    {settings.region === 'Editable custom' && (
+                      <label>
+                        Custom grid intensity (kgCO₂e/kWh)
+                        <input type="number" min="0" max="2" step="0.001" value={settings.customCi} onChange={e=>set('customCi',e.target.value)}/>
+                        <span style={{fontWeight:500,fontSize:10,color:'#78909c'}}>Use a local utility or verified grid factor.</span>
+                      </label>
+                    )}
+                  </div>
+                </section>
+                <p className="note" style={{fontSize:12,margin:'14px 0 12px'}}>Configure your shared assessment context, equipment, and clinical AI here. These inputs drive the department footprint, Score & EcoLabel, and the scenarios modeled in Improve.</p>
             {/* Equipment card grid */}
             <div id="department-equipment" style={{marginBottom:16,scrollMarginTop:90}}>
-              <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment &amp; local context</div>
+              <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment</div>
 
-              {/* Subtle department presets — fill a realistic starting fleet; counts stay editable */}
-              <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:6,marginBottom:6}}>
-                <span style={{fontSize:11,color:'#90a4ae',fontWeight:600}}>Quick start:</span>
-                {DEPARTMENT_PRESETS.map(p=>(
-                  <button key={p.key} title={p.desc}
-                    onClick={()=>set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])))}
-                    style={{background:'#f6f8f6',border:'1px solid #e4e9e4',borderRadius:9,padding:'3px 9px',fontSize:11,fontWeight:600,color:'#607d66',cursor:'pointer',boxShadow:'none'}}>
-                    {p.label}
-                  </button>
-                ))}
+              {/* Quick-start templates are illustrative defaults, not measured local data. */}
+              <div className="quickStartNotice">
+                <AlertTriangle size={17}/>
+                <div>
+                  <strong>Quick start or enter your own fleet</strong>
+                  <p>These templates are illustrative starting points, not measured local data. Choose one and then verify or edit every device count below — or skip them and enter your own counts directly.</p>
+                  <div className="quickStartChoices">
+                    {DEPARTMENT_PRESETS.map(p=>(
+                      <button key={p.key} title={p.desc}
+                        onClick={()=>set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])))}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <p className="note" style={{fontSize:11,marginTop:0,marginBottom:10}}>Illustrative starting points — adjust any device count below.</p>
 
               {/* MRI section */}
               {[{cards:MRI_CARDS,label:'MRI scanners'},{cards:OTHER_CARDS,label:'Other equipment'}].map(({cards,label})=>(
@@ -2494,33 +2613,21 @@ function App() {
               )}
             </div>
 
-            {/* Shared assessment context — same state as the compact controls on Home. */}
-            <div style={{fontSize:11,fontWeight:800,color:'#607d66',letterSpacing:'0.05em',textTransform:'uppercase',margin:'2px 0 7px'}}>Shared assessment context</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:6}}>
-              <Sel label="Country / grid region" value={settings.region} options={META.regions} onChange={v=>set('region',v)}/>
-              <Sel label="Reporting period" value={settings.timePeriod} options={META.timePeriods} onChange={v=>set('timePeriod',v)}/>
-            </div>
-            <p className="note" style={{fontSize:10,margin:'0 0 14px'}}>These are the same shared local assumptions shown on Home. Changing them here updates the rest of CEDARS.</p>
-            {settings.region === 'Editable custom' && (
-              <div style={{marginBottom:16}}>
-                <label style={{maxWidth:300,fontWeight:700,color:'#2E7D32',display:'flex',flexDirection:'column',gap:8,fontSize:14}}>
-                  Custom carbon intensity (kgCO₂e/kWh)
-                  <input
-                    type="number" min="0" max="2" step="0.001"
-                    value={settings.customCi}
-                    onChange={e=>set('customCi',e.target.value)}
-                  />
-                </label>
-                <p className="note" style={{marginTop:6,fontSize:12}}>Enter your local utility or national grid factor. Global avg: 0.473 · EU avg: 0.237 (Vosshenrich et al.)</p>
+            <div className="clinicalAiSetupPrompt">
+              <Brain size={18}/>
+              <div>
+                <strong>Clinical AI is a department input</strong>
+                <p>Add deployed AI tools to include their compute and clinical effects — avoided scans, shorter protocols, and contrast changes — in the department footprint and EcoLabel.</p>
               </div>
-            )}
-
-            <p className="note" style={{marginTop:4,padding:'8px 12px',background:'#f1f8f1',borderRadius:12,fontSize:13}}>
-              <Brain size={14} style={{verticalAlign:'-2px',marginRight:6,color:'#2E7D32'}}/>
-              Add <strong>clinical AI tools</strong> below under Department details to include avoided scans, shorter protocols, contrast changes, and compute in the department footprint. Model an AI model's own build/run footprint separately on <button onClick={()=>setPage('ai')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:0,fontSize:13,fontWeight:700,boxShadow:'none'}}>AI Model &amp; Informatics →</button>.
-            </p>
+              <button type="button" onClick={()=>{
+                setDashOpen(o=>({...o,clinicalai:true}));
+                setDeptSetupOpen(false);
+                requestAnimationFrame(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}));
+              }}>{(deptLabel.aiTools||[]).length ? `Edit ${(deptLabel.aiTools||[]).length} deployed tool${(deptLabel.aiTools||[]).length===1?'':'s'} →` : 'Add clinical AI tools →'}</button>
+            </div>
+            <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>To model an AI system's own training/inference footprint rather than its department-level clinical effect, use <button onClick={()=>setPage('ai')} className="inlineTextButton">AI Model &amp; Informatics →</button>.</p>
             <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
-              <button onClick={()=>{setDeptSetupOpen(false);window.scrollTo({top:0,behavior:'smooth'});}} style={{padding:'8px 13px',fontSize:12}}>Done — view overview ↓</button>
+              <button onClick={()=>{setDeptSetupOpen(false);requestAnimationFrame(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}));}} style={{padding:'8px 13px',fontSize:12}}>Done — view department overview ↓</button>
             </div>
 
               </div>
@@ -2528,7 +2635,7 @@ function App() {
           </div>
 
           {/* ── Sticky tab nav ── */}
-          <div className="stickyControls">
+          <div id="department-overview" className="stickyControls workflowAnchor">
             <div className="aiSummary">
               <span>Total energy <b>{fmtKwh(dash.totals.kwh + landingAIKwh)}{dash.totals.label}</b></span>
               <span>Scope 2 CO₂ <b>{fmtCo2(dash.scopes.scope2Kg + landingAICo2)}</b></span>
@@ -2537,243 +2644,18 @@ function App() {
             </div>
           </div>
 
-          {/* ── Overview (always visible) ── */}
-          <section className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
-            <h2 style={{marginBottom:4}}>Overview</h2>
-            <p className="note" style={{marginBottom:16}}>Your department at a glance. Every area is listed below — click any row to open its detail; it stays tucked away until you want it.</p>
-
-            {/* Grade hero */}
-            <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
-              <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:52,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
-                <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-              </div>
-              <div>
-                <LeafRating leaves={deptLabelData.leaves} size={24} color={deptLabelData.ratingColor}/>
-                <div style={{fontWeight:700,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
-                <div style={{fontSize:13,color:'#263238',marginTop:2}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study`:'Set up your department above to calculate.'}</div>
-              </div>
-              <button onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} style={{marginLeft:'auto'}}>Full EcoLabel →</button>
-            </div>
-
-            {/* Hero tiles */}
-            <div className="cards" style={{marginBottom:18}}>
-              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`} value={fmtKwh(dash.totals.kwh + landingAIKwh)}       sub="All scanners, PACS, workstations."/>
-              <Card icon={<Leaf/>}         title="Carbon (Scope 2)"                          value={fmtCo2(dash.scopes.scope2Kg + landingAICo2)}  sub={`Grid ${dash.ci} kgCO₂e/kWh · ${settings.region}.`}/>
-              <Card icon={<Droplets/>}     title={`Electricity cost ${dash.totals.label}`}   value={fmtMoney(equivData.cost, equivData.sym)}      sub={`At ${equivData.sym}${equivData.pricePerKwh}/kWh. Editable under “What it means”.`}/>
-              <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}             sub="Recoverable by standby / power-off — see Interventions."/>
-            </div>
-
-            {/* Next steps */}
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              <button onClick={()=>openDash('energy')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Open energy detail →</button>
-              <button onClick={()=>openDash('carbon')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Open carbon detail →</button>
-              <button onClick={()=>setPage('scenario')}><TrendingDown size={15}/> Reduce it — Interventions →</button>
-            </div>
-          </section>
-
-          {/* ── Accordion: detail sections (click to open) ── */}
-          <div className="detailToolbar">
-            <div>
-              <h3 className="detailToolbarTitle">Supporting details <span>optional</span></h3>
-              <div className="detailToolbarHint">Open only the background or methodology you want to inspect.</div>
-            </div>
-            <button className="detailToolbarAction" onClick={()=>{const all=DASH_SECTIONS.every(id=>dashOpen[id]); setDashOpen(all?{}:Object.fromEntries(DASH_SECTIONS.map(id=>[id,true])));}}>
-              {DASH_SECTIONS.every(id=>dashOpen[id]) ? 'Collapse all' : 'Expand all'}
-            </button>
-          </div>
-          {/* ── What it means (equivalencies) ── */}
-          <button type="button" className="accHead" onClick={()=>toggleDash('equiv')} aria-expanded={!!dashOpen['equiv']}>
-            <span className="accCaret">{dashOpen['equiv']?'▾':'▸'}</span>
-            <span className="accTitle">What it means — everyday equivalents</span>
-            <span className="accVal">≈ {fmtBig(equivData.car_km)} km driven</span>
-          </button>
-          {dashOpen['equiv'] && (
-          <section id="dash-equiv" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
-            <h2 style={{marginBottom:4}}>What it means in everyday terms</h2>
-            <p className="note" style={{marginBottom:16}}>
-              Inspired by the <a href="https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">EPA Greenhouse Gas Equivalencies Calculator</a>.
-              Switch between Scope 2 (electricity only) or all scopes below.
-            </p>
-
-            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:8}}>
-              <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')} style={{padding:'7px 14px',fontSize:13}}>Scope 2 — electricity only</button>
-              <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')} style={{padding:'7px 14px',fontSize:13}}>All scopes — full lifecycle</button>
-            </div>
-            <p className="note" style={{marginBottom:24,fontSize:12}}>
-              {equivScope==='scope2' ? 'Showing Scope 2 (purchased electricity). Best for comparing with published benchmarks.' : 'Showing Scope 1 + 2 + 3 (direct + electricity + embodied + patient travel). Full lifecycle view.'}
-              {' '}Change settings in <button onClick={()=>setDeptSetupOpen(true)} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:'0 2px',fontSize:12,fontWeight:600,boxShadow:'none'}}>Department setup above →</button>
-            </p>
-
-            {/* Electricity cost — kWh × regional price (editable). Independent of the carbon toggle. */}
-            <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:16,marginBottom:6,padding:'16px 20px',background:'#e8f5e9',border:'1.5px solid #c8e6c9',borderRadius:20}}>
-              <div style={{display:'flex',alignItems:'center',gap:12}}>
-                <span style={{fontSize:34,fontWeight:900,color:'#1b5e20',lineHeight:1}}>≈ {fmtMoney(equivData.cost, equivData.sym)}</span>
-                <div style={{fontSize:13,color:'#607d66'}}>in electricity{dash.totals.label}<br/><span style={{fontSize:11}}>at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}</span></div>
-              </div>
-              <label style={{marginLeft:'auto',flexDirection:'row',alignItems:'center',gap:8,fontSize:12,color:'#2E7D32',fontWeight:700}}>
-                Electricity price ({equivData.sym}/kWh)
-                <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)} style={{width:90,padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
-              </label>
-            </div>
-            <p className="note" style={{fontSize:11,marginTop:0,marginBottom:20}}>Electricity cost only — an editable estimate. Commercial tariffs vary by region and contract; enter yours to override the {settings.region} default. Cost and carbon are independent (a low-carbon grid is not necessarily cheap).</p>
-
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:20,marginBottom:32}}>
-              {[
-                {icon:<Car style={{width:40,height:40}}/>,     n:fmtBig(equivData.car_km),        unit:`km driven by car${dash.totals.label}`,      note:'Avg petrol car at 0.17 kgCO₂/km (DEFRA 2023).', bg:'#e8f5e9'},
-                {icon:<Plane style={{width:40,height:40}}/>,   n:fmtBig(equivData.flights_short), unit:`short-haul flights${dash.totals.label}`,     note:'Economy seat, ~255 kgCO₂e each (ICAO 2023).',   bg:'#e0f7fa'},
-                {icon:<TreePine style={{width:40,height:40}}/>,n:fmtBig(equivData.trees_year),    unit:'trees absorbing for 1 year',                 note:'One mature tree sequesters ~21 kgCO₂/yr.',       bg:'#f1f8e9'},
-                {icon:<Home style={{width:40,height:40}}/>,    n:fmtBig(equivData.homes),         unit:`home electricity years${dash.totals.label}`, note:'EU average household: 3,500 kWh/yr.',            bg:'#fff8e1'},
-              ].map((c,i)=>(
-                <div key={i} style={{background:c.bg,borderRadius:28,padding:'32px 20px',textAlign:'center',display:'flex',flexDirection:'column',alignItems:'center',gap:10,boxShadow:'0 8px 30px #1b5e2012'}}>
-                  <div style={{color:'#2E7D32'}}>{c.icon}</div>
-                  <div style={{fontSize:46,fontWeight:900,color:'#1b5e20',lineHeight:1}}>{c.n}</div>
-                  <div style={{fontWeight:700,fontSize:15,color:'#263238'}}>{c.unit}</div>
-                  <div style={{fontSize:12,color:'#607d66',lineHeight:1.5}}>{c.note}</div>
-                </div>
-              ))}
-            </div>
-
-            {landingAIOpen && landingAICo2>0 && (
-              <p className="note" style={{marginBottom:20,padding:'10px 14px',background:'#f1f8f1',borderRadius:12}}>
-                AI tools add approx. <strong>{fmtCo2(landingAICo2)}</strong>{dash.totals.label} on top of the figures above.{' '}
-                <button onClick={()=>setPage('ai')} style={{background:'none',border:'none',color:'#2E7D32',cursor:'pointer',padding:'0 2px',fontSize:13,fontWeight:600,boxShadow:'none'}}>Full AI analysis →</button>
-              </p>
-            )}
-
-            <section style={{marginBottom:28}}>
-              <h2 style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><Car style={{color:'#2E7D32'}}/> Transport</h2>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:16}}>
-                {[
-                  {icon:<Car/>,   n:fmtBig(equivData.car_years),    unit:'cars driven for a full year',     note:'EU avg passenger car emits 2.1 tCO₂e/yr (EEA 2023).'},
-                  {icon:<Plane/>, n:fmtBig(equivData.flights_short), unit:'short-haul economy flights',      note:'~255 kgCO₂e per seat (ICAO 2023). London–Rome class.'},
-                  {icon:<Plane/>, n:fmtBig(equivData.flights_long),  unit:'transatlantic long-haul flights', note:'~1,200 kgCO₂e per economy seat (ICAO 2023).'},
-                  {icon:<Car/>,   n:fmtBig(equivData.car_km),        unit:'km driven at 0.17 kgCO₂/km',     note:'Avg UK petrol car (DEFRA 2023). Diesel ~0.17 similar.'},
-                ].map((c,i)=>(
-                  <div key={i} className="card" style={{textAlign:'center',padding:'20px 16px'}}>
-                    <div style={{color:'#2E7D32',marginBottom:6}}>{c.icon}</div>
-                    <div style={{fontSize:34,fontWeight:900,color:'#1b5e20',lineHeight:1.1}}>{c.n}</div>
-                    <div style={{fontWeight:700,fontSize:13,color:'#263238',margin:'6px 0'}}>{c.unit}</div>
-                    <div style={{fontSize:11,color:'#607d66',lineHeight:1.5}}>{c.note}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section style={{marginBottom:28}}>
-              <h2 style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><Home style={{color:'#2E7D32'}}/> Home &amp; everyday life</h2>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:16}}>
-                {[
-                  {icon:<Lightbulb/>,n:fmtBig(equivData.led_years),    unit:'LED bulb-switches',     note:'Switching one 60 W incandescent to 10 W LED saves ~50 kWh/yr each.'},
-                  {icon:<Activity/>, n:fmtBig(equivData.phone_charges), unit:'smartphone charges',    note:'Full charge of a modern smartphone at ~12 Wh each.'},
-                  {icon:<Monitor/>,  n:fmtBig(equivData.stream_hours),  unit:'hours of TV streaming', note:'TV device consumes ~100 W. Equivalent screen time.'},
-                  {icon:<Coffee/>,   n:fmtBig(equivData.tea_cups),      unit:'cups of tea or coffee', note:'Boiling 250 ml in a kettle uses ~0.025 kWh per cup.'},
-                  {icon:<Cpu/>,      n:fmtBig(equivData.laptop_days),   unit:'laptop working days',   note:'30 W laptop × 8 h/day = 0.24 kWh/day average.'},
-                ].map((c,i)=>(
-                  <div key={i} className="card" style={{textAlign:'center',padding:'20px 16px'}}>
-                    <div style={{color:'#26A69A',marginBottom:6}}>{c.icon}</div>
-                    <div style={{fontSize:34,fontWeight:900,color:'#1b5e20',lineHeight:1.1}}>{c.n}</div>
-                    <div style={{fontWeight:700,fontSize:13,color:'#263238',margin:'6px 0'}}>{c.unit}</div>
-                    <div style={{fontSize:11,color:'#607d66',lineHeight:1.5}}>{c.note}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section style={{marginBottom:28}}>
-              <h2 style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><TreePine style={{color:'#2E7D32'}}/> Nature &amp; carbon sinks</h2>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:16}}>
-                {[
-                  {icon:<TreePine/>,n:fmtBig(equivData.trees_year), unit:'trees absorbing CO₂ for 1 year', note:'One mature tree sequesters ~21 kgCO₂/yr (IPCC avg).'},
-                  {icon:<Leaf/>,    n:fmtBig(equivData.forest_ha),  unit:'hectares of temperate forest',   note:'1 ha temperate forest sequesters ~5.5 tCO₂/yr (FAO).'},
-                ].map((c,i)=>(
-                  <div key={i} className="card" style={{textAlign:'center',padding:'20px 16px',background:'#f9fbe7'}}>
-                    <div style={{color:'#33691e',marginBottom:6}}>{c.icon}</div>
-                    <div style={{fontSize:34,fontWeight:900,color:'#1b5e20',lineHeight:1.1}}>{c.n}</div>
-                    <div style={{fontWeight:700,fontSize:13,color:'#263238',margin:'6px 0'}}>{c.unit}</div>
-                    <div style={{fontSize:11,color:'#607d66',lineHeight:1.5}}>{c.note}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section style={{marginBottom:28}}>
-              <h2 style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><Flame style={{color:'#c62828'}}/> Fossil fuel equivalent</h2>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:16}}>
-                {[
-                  {icon:<Droplets/>,n:fmtBig(equivData.barrels_oil), unit:'barrels of crude oil burned', note:'1 barrel crude oil combustion ≈ 430 kgCO₂e (EPA).'},
-                  {icon:<Flame/>,   n:fmtBig(equivData.tonnes_coal), unit:'tonnes of coal burned',       note:'Bituminous coal ≈ 2,350 kgCO₂/tonne combustion (IPCC).'},
-                ].map((c,i)=>(
-                  <div key={i} className="card" style={{textAlign:'center',padding:'20px 16px',background:'#fff3e0'}}>
-                    <div style={{color:'#e65100',marginBottom:6}}>{c.icon}</div>
-                    <div style={{fontSize:34,fontWeight:900,color:'#bf360c',lineHeight:1.1}}>{c.n}</div>
-                    <div style={{fontWeight:700,fontSize:13,color:'#263238',margin:'6px 0'}}>{c.unit}</div>
-                    <div style={{fontSize:11,color:'#607d66',lineHeight:1.5}}>{c.note}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <p className="note" style={{borderTop:'1px solid #c8e6c9',paddingTop:16}}>
-              Sources: DEFRA 2023 (car emissions); ICAO 2023 (aviation); EEA 2023 (EU household energy); IPCC (coal &amp; forest carbon); EPA (crude oil); FAO (forest sequestration).
-            </p>
-          </section>
-
-          )}
-
-          {/* ── Efficiency — energy into healthcare ── */}
-          <button type="button" className="accHead" onClick={()=>toggleDash('efficiency')} aria-expanded={!!dashOpen['efficiency']}>
-            <span className="accCaret">{dashOpen['efficiency']?'▾':'▸'}</span>
-            <span className="accTitle">Efficiency — energy into healthcare</span>
-            <span className="accVal">{deptLabelData.co2PerStudy} kgCO₂e/study</span>
-          </button>
-          {dashOpen['efficiency'] && (
-          <section id="dash-efficiency" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:4}}>Efficiency — energy into healthcare</h2>
-            <p className="note" style={{marginBottom:16}}>
-              How efficiently your fleet's energy is converted into delivered patient care (imaging studies). Fixed energy — idle, standby, MRI cooling — is there whether you scan few patients or many, so an under-used fleet carries a high footprint <em>per study</em>. This reflects care <strong>delivered</strong>, not health outcomes.
-            </p>
-
-            <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',background:'#f1f8f1',borderRadius:12,padding:'10px 16px',marginBottom:16}}>
-              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:700,color:'#2E7D32'}}>
-                Actual imaging studies / year
-                <input type="number" min="0" value={settings.actualStudiesYear} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder={`fleet est: ${efficiency.capacityYr.toLocaleString()}`} style={{width:150,padding:'6px 10px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:13,background:'white'}}/>
-              </label>
-              <span style={{fontSize:12,color:'#607d66'}}>
-                {efficiency.isEstimate
-                  ? `Blank — assuming fleet runs at typical throughput (~${efficiency.capacityYr.toLocaleString()}/yr). Enter your real annual volume to reveal utilisation.`
-                  : `Fleet typical capacity: ~${efficiency.capacityYr.toLocaleString()}/yr.`}
+          {/* ── Primary input: deployed Clinical AI ── */}
+          <div id="department-clinical-ai-input" className="primaryInputPanel workflowAnchor">
+            <button type="button" className="primaryInputSummary" onClick={()=>toggleDash('clinicalai')} aria-expanded={!!dashOpen['clinicalai']}>
+              <Brain size={19}/>
+              <span className="primaryInputSummaryText">
+                <strong>Clinical AI — department input</strong>
+                <small>{(deptLabel.aiTools||[]).length} deployed · Optional, but changes the department footprint and EcoLabel when used</small>
               </span>
-            </div>
-
-            <div className="cards">
-              <section className="card" style={{borderTop:`3px solid ${efficiency.band.color}`}}>
-                <div className="cardHead"><Gauge/><span>Fleet utilisation</span></div>
-                <b style={{color:efficiency.band.color}}>{efficiency.utilPct}%</b>
-                <p>{efficiency.band.label} · {efficiency.studiesYr.toLocaleString()} of ~{efficiency.capacityYr.toLocaleString()} typical studies/yr.</p>
-              </section>
-              <Card icon={<Leaf/>} title="CO₂ per study (care delivered)" value={`${efficiency.co2PerStudy} kgCO₂e`}
-                sub={efficiency.util > 0 && efficiency.util < 0.99
-                  ? `${rnd(1/efficiency.util,1)}× the fleet's efficient baseline (${efficiency.designedCo2PerStudy} kgCO₂e) — fixed energy amortised over fewer studies.`
-                  : `At or above typical throughput — efficient conversion. Lower = more care per kg CO₂.`}/>
-              <Card icon={<Zap/>} title="Energy per study" value={`${efficiency.energyPerStudy} kWh`} sub="Fleet energy ÷ actual studies. Rises as utilisation falls."/>
-              <Card icon={<Activity/>} title="Non-productive energy" value={`${efficiency.nonProductivePct}%`} sub="Share of fleet energy not converted into active scanning — idle, standby, off, and unused capacity. Rises as utilisation falls. Levers: power-down, scheduling, consolidation."/>
-            </div>
-            <p className="note" style={{marginTop:12}}>
-              A large fleet doing little imaging shows high CO₂/study (poor conversion of energy into care); a small, busy fleet shows low CO₂/study even at higher <em>total</em> emissions. Utilisation explains the per-study figure; non-productive energy points to the fix.
-            </p>
-          </section>
-
-          )}
-
-          {/* ── Clinical AI (deployed — adjust the whole department) ── */}
-          <button type="button" className="accHead" onClick={()=>toggleDash('clinicalai')} aria-expanded={!!dashOpen['clinicalai']}>
-            <span className="accCaret">{dashOpen['clinicalai']?'▾':'▸'}</span>
-            <span className="accTitle">Clinical AI</span>
-            <span className="accVal">{(deptLabel.aiTools||[]).length} deployed</span>
-          </button>
-          {dashOpen['clinicalai'] && (
-          <section id="dash-clinicalai" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+              <span>{dashOpen['clinicalai'] ? 'Hide input ▴' : 'Add / edit input ▾'}</span>
+            </button>
+            {dashOpen['clinicalai'] && (
+          <section id="dash-clinicalai" className="aiSection clinicalAiPrimaryBody">
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
             <p className="note" style={{marginBottom:12}}>
               Each deployed tool <strong>adds</strong> inference + amortised-training compute and <strong>subtracts</strong> clinical savings — avoided low-value scans, shorter protocols, and contrast reduction. The net effect flows into energy, efficiency, contrast, and your EcoLabel.
@@ -2841,6 +2723,98 @@ function App() {
               </div>
             ))}
             {(deptLabel.aiTools||[]).length === 0 && <p className="note" style={{fontSize:12}}>No clinical AI deployed — the department reflects equipment only. Import the current AI model or add one manually to see its net effect.</p>}
+          </section>
+            )}
+          </div>
+
+          {/* ── Overview (always visible) ── */}
+          <section className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
+            <h2 style={{marginBottom:4}}>Overview</h2>
+            <p className="note" style={{marginBottom:16}}>Your department at a glance. Every area is listed below — click any row to open its detail; it stays tucked away until you want it.</p>
+
+            {/* Grade hero */}
+            <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
+              <div style={{textAlign:'center',flexShrink:0}}>
+                <div style={{fontSize:52,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
+                <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+              </div>
+              <div>
+                <LeafRating leaves={deptLabelData.leaves} size={24} color={deptLabelData.ratingColor}/>
+                <div style={{fontWeight:700,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
+                <div style={{fontSize:13,color:'#263238',marginTop:2}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study`:'Set up your department above to calculate.'}</div>
+              </div>
+              <button onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} style={{marginLeft:'auto'}}>Full EcoLabel →</button>
+            </div>
+
+            {/* Hero tiles */}
+            <div className="cards" style={{marginBottom:18}}>
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`} value={fmtKwh(dash.totals.kwh + landingAIKwh)}       sub="All scanners, PACS, workstations."/>
+              <Card icon={<Leaf/>}         title="Carbon (Scope 2)"                          value={fmtCo2(dash.scopes.scope2Kg + landingAICo2)}  sub={`Grid ${dash.ci} kgCO₂e/kWh · ${settings.region}.`}/>
+              <Card icon={<Droplets/>}     title={`Electricity cost ${dash.totals.label}`}   value={fmtMoney(equivData.cost, equivData.sym)}      sub={`At ${equivData.sym}${equivData.pricePerKwh}/kWh. Editable under “What it means”.`}/>
+              <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}             sub="Recoverable by standby / power-off — see Interventions."/>
+            </div>
+
+            {/* Next steps */}
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <button onClick={()=>openDash('energy')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Open energy detail →</button>
+              <button onClick={()=>openDash('carbon')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none'}}>Open carbon detail →</button>
+              <button onClick={()=>setPage('scenario')}><TrendingDown size={15}/> Reduce it — Interventions →</button>
+            </div>
+          </section>
+
+          {/* ── Accordion: detail sections (click to open) ── */}
+          <div className="detailToolbar">
+            <div>
+              <h3 className="detailToolbarTitle">Supporting details <span>optional</span></h3>
+              <div className="detailToolbarHint">Open only the background or methodology you want to inspect.</div>
+            </div>
+            <button className="detailToolbarAction" onClick={()=>{const all=DASH_SECTIONS.every(id=>dashOpen[id]); setDashOpen(all?{}:Object.fromEntries(DASH_SECTIONS.map(id=>[id,true])));}}>
+              {DASH_SECTIONS.every(id=>dashOpen[id]) ? 'Collapse all' : 'Expand all'}
+            </button>
+          </div>
+          {/* Everyday-equivalents interpretation moved to Score & EcoLabel, where results are interpreted. */}
+
+          {/* ── Efficiency — energy into healthcare ── */}
+          <button type="button" className="accHead" onClick={()=>toggleDash('efficiency')} aria-expanded={!!dashOpen['efficiency']}>
+            <span className="accCaret">{dashOpen['efficiency']?'▾':'▸'}</span>
+            <span className="accTitle">Efficiency — energy into healthcare</span>
+            <span className="accVal">{deptLabelData.co2PerStudy} kgCO₂e/study</span>
+          </button>
+          {dashOpen['efficiency'] && (
+          <section id="dash-efficiency" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+            <h2 style={{marginBottom:4}}>Efficiency — energy into healthcare</h2>
+            <p className="note" style={{marginBottom:16}}>
+              How efficiently your fleet's energy is converted into delivered patient care (imaging studies). Fixed energy — idle, standby, MRI cooling — is there whether you scan few patients or many, so an under-used fleet carries a high footprint <em>per study</em>. This reflects care <strong>delivered</strong>, not health outcomes.
+            </p>
+
+            <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',background:'#f1f8f1',borderRadius:12,padding:'10px 16px',marginBottom:16}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:700,color:'#2E7D32'}}>
+                Actual imaging studies / year
+                <input type="number" min="0" value={settings.actualStudiesYear} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder={`fleet est: ${efficiency.capacityYr.toLocaleString()}`} style={{width:150,padding:'6px 10px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:13,background:'white'}}/>
+              </label>
+              <span style={{fontSize:12,color:'#607d66'}}>
+                {efficiency.isEstimate
+                  ? `Blank — assuming fleet runs at typical throughput (~${efficiency.capacityYr.toLocaleString()}/yr). Enter your real annual volume to reveal utilisation.`
+                  : `Fleet typical capacity: ~${efficiency.capacityYr.toLocaleString()}/yr.`}
+              </span>
+            </div>
+
+            <div className="cards">
+              <section className="card" style={{borderTop:`3px solid ${efficiency.band.color}`}}>
+                <div className="cardHead"><Gauge/><span>Fleet utilisation</span></div>
+                <b style={{color:efficiency.band.color}}>{efficiency.utilPct}%</b>
+                <p>{efficiency.band.label} · {efficiency.studiesYr.toLocaleString()} of ~{efficiency.capacityYr.toLocaleString()} typical studies/yr.</p>
+              </section>
+              <Card icon={<Leaf/>} title="CO₂ per study (care delivered)" value={`${efficiency.co2PerStudy} kgCO₂e`}
+                sub={efficiency.util > 0 && efficiency.util < 0.99
+                  ? `${rnd(1/efficiency.util,1)}× the fleet's efficient baseline (${efficiency.designedCo2PerStudy} kgCO₂e) — fixed energy amortised over fewer studies.`
+                  : `At or above typical throughput — efficient conversion. Lower = more care per kg CO₂.`}/>
+              <Card icon={<Zap/>} title="Energy per study" value={`${efficiency.energyPerStudy} kWh`} sub="Fleet energy ÷ actual studies. Rises as utilisation falls."/>
+              <Card icon={<Activity/>} title="Non-productive energy" value={`${efficiency.nonProductivePct}%`} sub="Share of fleet energy not converted into active scanning — idle, standby, off, and unused capacity. Rises as utilisation falls. Levers: power-down, scheduling, consolidation."/>
+            </div>
+            <p className="note" style={{marginTop:12}}>
+              A large fleet doing little imaging shows high CO₂/study (poor conversion of energy into care); a small, busy fleet shows low CO₂/study even at higher <em>total</em> emissions. Utilisation explains the per-study figure; non-productive energy points to the fix.
+            </p>
           </section>
 
           )}
@@ -3429,7 +3403,7 @@ function App() {
               <Card icon={<Activity/>}   title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub={ai.inferKwhMeasured ? "Your measured kWh/study, entered directly — not derived from time × GPU power." : "Per-inference energy including PUE and AMP factor. Scales with every request."}/>
               <Card icon={<Zap/>}        title="Monthly inference energy" value={`${ai.inference.kwhMonthly} kWh`}               sub={`Across ${ai.inference.studies.toLocaleString()} studies/month at ${scen.cloudProvider}.`}/>
               <Card icon={<Gauge/>}      title="Lifetime inference total" value={`${ai.inference.kwhLifetime.toLocaleString()} kWh`} sub="36-month deployment. Inference typically exceeds training energy within 1–3 months."/>
-              <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh cooling estimate. Often overlooked environmental cost.`}/>
+              <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh screening factor. Water intensity is location-dependent; see methodology.`}/>
               <Card icon={<Gauge/>}      title="Monthly electricity cost" value={fmtMoney(ai.monthly.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`Inference + amortised training, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh.`}/>
             </div>
           </section>
@@ -3864,13 +3838,14 @@ function App() {
         </main>
       )}
 
-      {/* ── Interventions ── */}
+      {/* ── Improve / intervention modelling ── */}
       {page==='scenario' && (
         <main>
-          <h1 style={{margin:'0 0 8px'}}>Interventions</h1>
+          <h1 style={{margin:'0 0 6px'}}>Improve</h1>
+          <p className="note" style={{margin:'0 0 12px',fontSize:14}}>Model potential interventions and compare their projected environmental, operational, financial, and clinical effects before implementation.</p>
           <div id="future-scenario" className="workflowBridge workflowAnchor" aria-label="Current state and future scenario workflow">
             <div className="workflowBridgeNav">
-              <button type="button" className="workflowBridgeChoice" onClick={()=>goToWorkflowSection('ecolabel','current-practices')}>
+              <button type="button" className="workflowBridgeChoice" onClick={()=>goToWorkflowSection('report','current-practices')}>
                 <span className="stateContextTag current">CURRENT STATE</span>
                 <strong>Review / edit current practices</strong>
               </button>
@@ -3880,7 +3855,7 @@ function App() {
                 <strong>Model potential changes</strong>
               </div>
             </div>
-            <p>These selections model <strong>potential future changes</strong> and remain separate from practices already documented on your EcoLabel, so savings are not double-counted.</p>
+            <p>These selections model <strong>potential future changes</strong> and remain separate from practices already documented in Report (& Share), so savings are not double-counted.</p>
             <div className="workflowPersistence"><Save size={13}/> Your entries stay with this assessment as you move between CEDARS pages. Use <strong>Save</strong> in the header to preserve them for a later visit.</div>
           </div>
 
@@ -4012,38 +3987,72 @@ function App() {
       )}
 
       {/* ── Eco-label ── */}
-      {page==='ecolabel' && (
+      {(page==='ecolabel' || page==='report') && (
         <main>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-            <h1 style={{margin:0}}>CEDARS EcoLabel</h1>
+            <div>
+              <h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Score & EcoLabel' : 'Report (& Share)'}</h1>
+              {page==='report' && <p className="note" style={{margin:0,fontSize:13}}>Complete a reproducible disclosure, generate reporting outputs, and optionally share or contribute your assessment.</p>}
+            </div>
           </div>
           <div className="researchAssessmentNotice">
             <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
           </div>
-          <div className="ecoChooserHeader">
-            <h2>Choose your CEDARS label</h2>
-            <p>Use the reporting product that matches what you assessed. You can switch at any time.</p>
-          </div>
-          <div className="ecoProductChooser" role="tablist" aria-label="CEDARS reporting product">
-            <button type="button" className={`ecoProductChoice ${ecoLabelMode==='department'?'active':''}`} onClick={()=>setEcoLabelMode('department')} role="tab" aria-selected={ecoLabelMode==='department'}>
-              <span className="ecoProductIcon"><Leaf size={20}/></span>
-              <span className="ecoProductText">
-                <span className="ecoProductTitle">Department EcoLabel</span>
-                <span className="ecoProductDesc">Radiology operations, equipment, resources, efficiency, and current sustainability practices.</span>
-              </span>
-              {ecoLabelMode==='department' && <span className="ecoProductSelected">SELECTED</span>}
-            </button>
-            <button type="button" className={`ecoProductChoice ${ecoLabelMode==='ai'?'active':''}`} onClick={()=>setEcoLabelMode('ai')} role="tab" aria-selected={ecoLabelMode==='ai'}>
-              <span className="ecoProductIcon"><Brain size={20}/></span>
-              <span className="ecoProductText">
-                <span className="ecoProductTitle">AI Research Label</span>
-                <span className="ecoProductDesc">Model training, validation, inference, deployment, compute, and performance context.</span>
-              </span>
-              {ecoLabelMode==='ai' && <span className="ecoProductSelected">SELECTED</span>}
-            </button>
-          </div>
+
+          {page==='ecolabel' ? <>
+            <div className="ecoChooserHeader prominent">
+              <span>CHOOSE ONE</span>
+              <h2>What are you scoring?</h2>
+              <p>Select the assessment you want CEDARS to score and summarize. You can switch at any time.</p>
+            </div>
+            <div className="ecoProductChooser prominent" role="tablist" aria-label="CEDARS scoring product">
+              <button type="button" className={`ecoProductChoice ${ecoLabelMode==='department'?'active':''}`} onClick={()=>selectEcoScore('department')} role="tab" aria-selected={ecoLabelMode==='department'}>
+                <span className="ecoProductIcon"><Activity size={20}/></span>
+                <span className="ecoProductText">
+                  <span className="ecoProductTitle">Radiology Department</span>
+                  <span className="ecoProductDesc">Score department operations, equipment, resources, efficiency, and current sustainability performance.</span>
+                  <span className="ecoProductAction">View Department EcoLabel →</span>
+                </span>
+                {ecoLabelMode==='department' && <span className="ecoProductSelected">DEPARTMENT SELECTED</span>}
+              </button>
+              <button type="button" className={`ecoProductChoice ${ecoLabelMode==='ai'?'active':''}`} onClick={()=>selectEcoScore('ai')} role="tab" aria-selected={ecoLabelMode==='ai'}>
+                <span className="ecoProductIcon"><Brain size={20}/></span>
+                <span className="ecoProductText">
+                  <span className="ecoProductTitle">AI Model &amp; Informatics</span>
+                  <span className="ecoProductDesc">Score model training, inference, deployment, compute, and reported performance context.</span>
+                  <span className="ecoProductAction">View AI Research Label →</span>
+                </span>
+                {ecoLabelMode==='ai' && <span className="ecoProductSelected">AI SELECTED</span>}
+              </button>
+            </div>
+            {((ecoLabelMode==='department' && !deptLabelData.hasData) || (ecoLabelMode==='ai' && !ecoLabelData.hasData)) && (
+              <div className="scoreEmptyState">
+                <AlertTriangle size={18}/>
+                <div>
+                  <strong>No assessment data yet for this pathway.</strong>
+                  <p>Go back to <strong>Input</strong> and choose Radiology Department or AI Model &amp; Informatics to enter the data needed for a score.</p>
+                </div>
+                <button type="button" onClick={()=>setPage('input')}>Go to Input →</button>
+              </div>
+            )}
+          </> : <>
+            <div className="reportContextBar">
+              <div><span>REPORTING PRODUCT</span><strong>{ecoLabelMode==='department' ? 'Department EcoLabel' : 'AI Research Label'}</strong></div>
+              <div className="reportContextChoices">
+                <button className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}>Department</button>
+                <button className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}>AI Research</button>
+              </div>
+            </div>
+            <div className="reportSteps" aria-label="Report and share workflow">
+              <div><span>1</span><strong>Complete disclosure</strong><small>Verify reporting details</small></div>
+              <div><span>2</span><strong>Generate outputs</strong><small>Checklist, label, text</small></div>
+              <div><span>3</span><strong>Optional share</strong><small>Link or research contribution</small></div>
+            </div>
+          </>}
           <div style={{display:ecoLabelMode==='department'?'block':'none'}}>
-            <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:16}}>
+            {page==='ecolabel' && <>
+            <div id="department-score-panel" className="scoreResultPanel workflowAnchor" style={{background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`}}>
+              <div className="scoreResultHero">
               <div style={{textAlign:'center',flexShrink:0}}>
                 <div style={{fontSize:50,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
                 <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
@@ -4053,11 +4062,49 @@ function App() {
                 <div style={{fontWeight:800,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
                 <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study · ${deptLabelData.annualKwh.toLocaleString()} kWh/year`:'Complete your Radiology Department setup to generate the label.'}</div>
               </div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <button className="download" onClick={()=>downloadDeptPNG(deptLabelData)} disabled={deptLabelData.annualStudies===0}><Download size={15}/> Download label</button>
-                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} disabled={deptLabelData.annualStudies===0}><FileText size={15}/> {deptCopied?'Copied':'Copy report text'}</button>
+              </div>
+              <div className="scoreDataGrid" aria-label="Department score inputs and outputs">
+                <div><span>Annual electricity</span><strong>{deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'}</strong></div>
+                <div><span>Annual carbon</span><strong>{deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'}</strong></div>
+                <div><span>Studies / year</span><strong>{deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'}</strong></div>
+                <div><span>Energy / study</span><strong>{deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'}</strong></div>
+                <div><span>Effective grid CI</span><strong>{deptLabelData.effectiveCi} kgCO₂e/kWh</strong></div>
+                <div><span>Current practices</span><strong>{deptLabelData.interventionCount || 0} documented</strong></div>
               </div>
             </div>
+
+            <section className="scoreEverydayPanel" aria-labelledby="score-everyday-title">
+              <div className="scoreEverydayHeader">
+                <div>
+                  <span>INTERPRET THE RESULT</span>
+                  <h2 id="score-everyday-title">What it means in everyday terms</h2>
+                  <p>Translate the department footprint into familiar equivalents for easier interpretation.</p>
+                </div>
+                <div className="scoreScopeToggle" aria-label="Carbon scope for everyday equivalents">
+                  <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}>Scope 2</button>
+                  <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}>All scopes</button>
+                </div>
+              </div>
+              <div className="scoreEverydayGrid">
+                {[
+                  {icon:<Car/>, n:fmtBig(equivData.car_km), unit:`km driven by car${dash.totals.label}`},
+                  {icon:<Plane/>, n:fmtBig(equivData.flights_short), unit:`short-haul flights${dash.totals.label}`},
+                  {icon:<TreePine/>, n:fmtBig(equivData.trees_year), unit:'trees absorbing CO₂ for 1 year'},
+                  {icon:<Home/>, n:fmtBig(equivData.homes), unit:`home electricity years${dash.totals.label}`},
+                ].map((item,i)=>(
+                  <div key={i} className="scoreEverydayItem">
+                    <span className="scoreEverydayIcon">{item.icon}</span>
+                    <strong>{item.n}</strong>
+                    <small>{item.unit}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="scoreEverydayFoot">
+                <span>≈ {fmtMoney(equivData.cost, equivData.sym)} in electricity{dash.totals.label} at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}</span>
+                <button type="button" className="inlineTextButton" onClick={()=>setPage('input')}>Edit assessment context →</button>
+                <span>Inspired by EPA greenhouse-gas equivalencies; detailed methodology remains in the source documentation.</span>
+              </div>
+            </section>
 
             <div className="ecoIntroBlock">
               <p><strong>Create a standardized sustainability disclosure from your current Radiology Department data.</strong> The label summarizes environmental performance, efficiency, resource use, and documented sustainability practices in a comparable format.</p>
@@ -4069,6 +4116,12 @@ function App() {
               </details>
             </div>
 
+            <div className="scoreNextActions">
+              <button onClick={()=>setPage('report')}>Continue to Report (&amp; Share) <ArrowRight size={15}/></button>
+              <button className="download" onClick={()=>setPage('scenario')}>Improve first →</button>
+            </div>
+            </>}
+            {page==='report' && <>
             <div className="ecoDisclosureHeader">
               <div>
                 <h2>Complete your disclosure</h2>
@@ -4134,7 +4187,7 @@ function App() {
                     <strong>Model potential interventions</strong>
                   </button>
                 </div>
-                <p>Already-implemented actions belong here. Use <strong>Interventions</strong> to test additional changes and projected savings separately.</p>
+                <p>Already-implemented actions belong here. Use <strong>Improve</strong> to test additional changes and projected savings separately.</p>
                 <div className="workflowPersistence"><Save size={13}/> Your entries stay with this assessment as you move between CEDARS pages. Use <strong>Save</strong> in the header to preserve them for a later visit.</div>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
@@ -4259,10 +4312,13 @@ function App() {
               </section>
             )}
 
+            </>}
           </div>
 
           <section id="ai-ecolabel" className="aiSection" style={{display:ecoLabelMode==='ai'?'block':'none',background:'none',boxShadow:'none',padding:0,marginTop:8}}>
-            <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:16}}>
+            {page==='ecolabel' && <>
+            <div id="ai-score-panel" className="scoreResultPanel workflowAnchor" style={{background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`}}>
+              <div className="scoreResultHero">
               <div style={{textAlign:'center',flexShrink:0}}>
                 <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
                 <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
@@ -4272,9 +4328,14 @@ function App() {
                 <div style={{fontWeight:800,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.ratingLabel}</div>
                 <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.gradeBasis==='amortised'?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · training + inference`:ecoLabelData.gradeBasis==='inference'?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference`:'AI model disclosure; add deployment volume for an in-use grade.'}</div>
               </div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <button className="download" onClick={()=>downloadEcoPNG(ecoLabelData)}><Download size={15}/> Download label</button>
-                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateEcoMarkdown(ecoLabelData));setEcoCopied(true);setTimeout(()=>setEcoCopied(false),2000);}}><FileText size={15}/> {ecoCopied?'Copied':'Copy markdown'}</button>
+              </div>
+              <div className="scoreDataGrid" aria-label="AI score inputs and outputs">
+                <div><span>Training energy</span><strong>{ecoLabelData.totalEnergyKwh>0 ? `${ecoLabelData.totalEnergyKwh} kWh` : '—'}</strong></div>
+                <div><span>Training carbon</span><strong>{ecoLabelData.trainCo2>0 ? `${ecoLabelData.trainCo2} kgCO₂e` : '—'}</strong></div>
+                <div><span>Inference energy</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : '—'}</strong></div>
+                <div><span>Inference carbon</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : '—'}</strong></div>
+                <div><span>Compute region</span><strong>{ecoLabelData.ciSource || '—'}</strong></div>
+                <div><span>Water screening estimate</span><strong>{ecoLabelData.waterLitres>0 ? `${ecoLabelData.waterLitres.toLocaleString()} L training` : '—'}</strong></div>
               </div>
             </div>
             <div className="ecoIntroBlock">
@@ -4287,6 +4348,12 @@ function App() {
               </details>
             </div>
 
+            <div className="scoreNextActions">
+              <button onClick={()=>setPage('report')}>Continue to Report (&amp; Share) <ArrowRight size={15}/></button>
+              <button className="download" onClick={()=>setPage('scenario')}>Improve first →</button>
+            </div>
+            </>}
+            {page==='report' && <>
             <div className="ecoDisclosureHeader">
               <div>
                 <h2>Complete your AI disclosure</h2>
@@ -4614,7 +4681,7 @@ function App() {
                `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e ` +
                `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh, ${ecoLabelData.ciSource}; ` +
                `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
-               `The estimated cooling water footprint is ${ecoLabelData.waterLitres.toLocaleString()} L.` +
+               `The screening estimate for operational water use is ${ecoLabelData.waterLitres.toLocaleString()} L; location-specific onsite cooling and offsite electricity-water intensity are not yet separated.` +
                (ecoLabelData.perInferCo2g > 0
                  ? ` Inference costs ${ecoLabelData.perInferCo2g} gCO₂e per study.`
                  : '') +
@@ -4626,8 +4693,10 @@ function App() {
                ` Sustainability metrics were estimated using CEDARS (${ecoLabelData.date}), following the framework of Doo FX et al. (Radiology 2024, DOI: 10.1148/radiol.232030).`}
             </pre>
           </section>
+            </>}
           </section>
 
+          {page==='report' && (
           <SaveSharePanel
             localSavedAt={localSavedAt}
             status={saveShareStatus}
@@ -4641,6 +4710,7 @@ function App() {
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
           />
+          )}
         </main>
       )}
 
