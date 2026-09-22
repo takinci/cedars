@@ -448,3 +448,10 @@ Cost = energy (kWh) × electricity price, mirroring the carbon calculation (kWh 
 7. **Update defaults annually** as grids decarbonise and scanner technology improves.
 8. **AI lifecycle reporting follows Doo-JACR-2024 §4.** Training (Phase 1), testing/validation (Phase 2), and inference/deployment (Phase 3) are the three phases. Per-study Software Carbon Intensity (SCI) per the Green Software Foundation specification is the recommended single-number comparison metric for AI tools.
 9. **Model energy may be modelled; model performance may only be recorded.** AI inference/training energy is estimated from physical drivers (parameters, resolution, dimensionality, GPU power, PUE). Diagnostic performance (accuracy, Dice, AUC, etc.) and clinical co-benefits are **never predicted** — they default to a cited reference and must be replaced with the user's own validation results. See the AI model library section.
+
+
+## AI operational water footprint
+
+CEDARS currently exposes an AI water **screening estimate** rather than a location-specific water accounting model. A future refinement should distinguish direct data-center cooling water (onsite WUE) from water consumed in electricity generation (offsite water intensity), and should account for PUE consistently with the energy quantity being multiplied.
+
+- Li P, Yang J, Islam MA, Ren S. *Making AI Less “Thirsty”: Uncovering and Addressing the Secret Water Footprint of AI Models.* arXiv:2304.03271. https://doi.org/10.48550/arXiv.2304.03271. The paper separates onsite cooling-water use from offsite electricity-generation water consumption and demonstrates substantial geographic and temporal variability.

@@ -1,0 +1,21 @@
+# CEDARS
+
+CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a free, open-source, browser-based platform for sustainability assessment and reporting across radiology departments and medical AI.
+
+Canonical site: https://cedarsleaf.com/
+Source code: https://github.com/takinci/cedars
+
+## Primary workflows
+
+- Input: assess a Radiology Department or an AI Model & Informatics workflow.
+- Score & EcoLabel: calculate a CEDARS Score and generate a Department EcoLabel or AI Research Label.
+- Improve: model prospective interventions and projected environmental, operational, financial, and clinical effects.
+- Report (& Share): complete a reproducible disclosure, generate reporting outputs, and optionally create a reproducible link or contribute an assessment to CEDARS research.
+
+## Key topics
+
+Radiology sustainability; medical imaging environmental footprint; medical AI energy and carbon footprint; healthcare decarbonization; radiology energy use; AI inference and training energy; cloud compute; water use; clinical AI; sustainability interventions; environmental reporting; EcoLabel; planetary health; cost; clinical care.
+
+## Important notes
+
+CEDARS is a research and estimation tool, not an external certification. Literature defaults are editable and local or measured values should be used when available. Normal calculator use remains browser-local; research contribution is an explicit optional action.

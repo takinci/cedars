@@ -1,0 +1,70 @@
+// Optional Google Sheets mirror for CEDARS contributions.
+// D1 remains the authoritative database. This web app receives a compact summary from the
+// Cloudflare Worker and appends one row to a restricted Google Sheet.
+
+const SHEET_NAME = 'Submissions';
+const HEADERS = [
+  'submission_id', 'created_at', 'schema_version', 'app_version',
+  'name', 'institution', 'country', 'professional_role', 'email', 'interests',
+  'allow_acknowledgment', 'allow_future_contact', 'consent_version',
+  'assessment_saved_at', 'local_region', 'reporting_period',
+  'department_name', 'hospital_name', 'ai_project_name', 'ai_task_type',
+  'ai_cloud_provider', 'ai_compute_region', 'current_practices', 'scenario_interventions',
+];
+
+function jsonResponse(value) {
+  return ContentService.createTextOutput(JSON.stringify(value))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const props = PropertiesService.getScriptProperties();
+  const expectedSecret = props.getProperty('CEDARS_SHARED_SECRET');
+  const spreadsheetId = props.getProperty('CEDARS_SHEET_ID');
+  if (!expectedSecret || !spreadsheetId) return jsonResponse({ok:false, error:'Mirror is not configured.'});
+
+  let payload;
+  try {
+    payload = JSON.parse(e?.postData?.contents || '{}');
+  } catch (error) {
+    return jsonResponse({ok:false, error:'Invalid JSON.'});
+  }
+  if (!payload.sharedSecret || payload.sharedSecret !== expectedSecret) {
+    return jsonResponse({ok:false, error:'Unauthorized.'});
+  }
+  if (!payload.submissionId) return jsonResponse({ok:false, error:'Missing submission ID.'});
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return jsonResponse({ok:false, error:'Sheet is busy; try again.'});
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    let sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+    if (sheet.getLastRow() === 0) {
+      sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+      sheet.setFrozenRows(1);
+    }
+
+    // Idempotency: if the same webhook is retried, do not duplicate the submission row.
+    if (sheet.getLastRow() > 1) {
+      const existing = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1)
+        .createTextFinder(String(payload.submissionId))
+        .matchEntireCell(true)
+        .findNext();
+      if (existing) return jsonResponse({ok:true, duplicate:true});
+    }
+
+    const row = [
+      payload.submissionId, payload.createdAt, payload.schemaVersion, payload.appVersion,
+      payload.name, payload.institution, payload.country, payload.professionalRole,
+      payload.email, payload.interests, !!payload.allowAcknowledgment, !!payload.allowFutureContact,
+      payload.consentVersion, payload.assessmentSavedAt, payload.localRegion, payload.reportingPeriod,
+      payload.departmentName, payload.hospitalName, payload.aiProjectName, payload.aiTaskType,
+      payload.aiCloudProvider, payload.aiComputeRegion, payload.currentPractices, payload.scenarioInterventions,
+    ];
+    sheet.appendRow(row);
+    return jsonResponse({ok:true});
+  } finally {
+    lock.releaseLock();
+  }
+}

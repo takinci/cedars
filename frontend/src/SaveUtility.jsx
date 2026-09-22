@@ -1,5 +1,5 @@
 import React, {useRef, useState} from 'react';
-import {Save, Download, Upload, Share2, CheckCircle2} from 'lucide-react';
+import {Save, Download, Upload, Share2, CheckCircle2, Database} from 'lucide-react';
 
 export default function SaveUtility({
   localSavedAt,
@@ -8,6 +8,8 @@ export default function SaveUtility({
   onOpenFile,
   onCopyLink,
   linkCopied,
+  onContribute,
+  contributionConfigured,
 }) {
   const [open, setOpen] = useState(false);
   const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
@@ -27,7 +29,7 @@ export default function SaveUtility({
         onClick={()=>setOpen(v=>!v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        title="Save or reopen your CEDARS assessment"
+        title="Save, reopen, or share your CEDARS assessment"
       >
         {localSavedAt ? <CheckCircle2 size={16}/> : <Save size={16}/>}
         <span>{localSavedAt ? 'Saved' : 'Save'}</span>
@@ -36,7 +38,7 @@ export default function SaveUtility({
 
       {open && (
         <div className="saveUtilityMenu" role="menu">
-          <div className="saveUtilityMenuTitle">Save &amp; reopen</div>
+          <div className="saveUtilityMenuTitle">Save your work</div>
           <button type="button" onClick={()=>{onSaveLocal?.(); setOpen(false);}} role="menuitem">
             <Save size={15}/><span><strong>Save on this device only</strong><small>Browser-local; may be lost if browser data are cleared.</small></span>
           </button>
@@ -46,8 +48,12 @@ export default function SaveUtility({
           <button type="button" onClick={()=>inputRef.current?.click()} role="menuitem">
             <Upload size={15}/><span><strong>Open CEDARS file</strong><small>Read locally; the file is not uploaded.</small></span>
           </button>
+          <div className="saveUtilityMenuTitle separated">Share / contribute</div>
           <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
             <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Create reproducible assessment link'}</strong><small>Nothing is published until you choose to share it.</small></span>
+          </button>
+          <button type="button" onClick={()=>{onContribute?.(); setOpen(false);}} role="menuitem" disabled={!contributionConfigured}>
+            <Database size={15}/><span><strong>Contribute this assessment</strong><small>{contributionConfigured ? 'Optional research contribution after explicit consent.' : 'Research submission is not configured on this deployment.'}</small></span>
           </button>
           <input
             ref={inputRef}

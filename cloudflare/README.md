@@ -80,3 +80,41 @@ npx wrangler d1 execute cedars-contributions --remote --command="SELECT COUNT(*)
 ```
 
 Do not commit identifiable exports to GitHub.
+
+
+## Optional Google Sheets mirror
+
+D1 should remain the authoritative record. If the team wants a more convenient collaborative view,
+CEDARS can also mirror a compact summary of each successful submission into a restricted Google
+Sheet. The mirror is intentionally secondary: a Google outage does not block or erase the D1
+submission.
+
+1. Create a Google Sheet for CEDARS submissions. Keep it restricted. If appropriate, share the Sheet
+   with the project's Google Group so membership controls who can view/edit the identifiable rows.
+2. Open **Extensions -> Apps Script** from the Sheet (or create a standalone Apps Script project) and
+   paste the contents of `google-sheets-mirror.gs.example`.
+3. From the Sheet URL, copy the spreadsheet ID (the long value between `/d/` and `/edit`). In Apps
+   Script, open **Project Settings -> Script Properties** and add:
+
+   ```text
+   CEDARS_SHEET_ID=<spreadsheet id>
+   CEDARS_SHARED_SECRET=<a long random secret>
+   ```
+
+4. In Apps Script choose **Deploy -> New deployment -> Web app**. Execute as the deploying account
+   and allow access to **Anyone** so the Cloudflare Worker can POST to it without a Google login.
+   Copy the production `/exec` web-app URL. The shared secret above is what prevents unauthorised
+   writes to that public endpoint.
+5. Store the web-app URL and the same shared secret only as Cloudflare Worker secrets:
+
+   ```bash
+   npx wrangler secret put GOOGLE_SHEETS_WEBHOOK_URL
+   npx wrangler secret put GOOGLE_SHEETS_SHARED_SECRET
+   npx wrangler deploy
+   ```
+
+6. Submit a clearly labelled test contribution. Confirm that it appears in both D1 and the Sheet.
+
+The Sheet mirror contains contributor metadata plus a compact assessment summary. It deliberately
+**does not copy the full `assessment_json`**; D1 remains the complete source of truth. Keep the Sheet
+private because it can contain names and email addresses supplied with permission.
