@@ -2315,7 +2315,6 @@ function App() {
           <section aria-labelledby="cedars-workflow-title" style={{marginBottom:22}}>
             <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap',marginBottom:10}}>
               <h2 id="cedars-workflow-title" style={{margin:0,color:'#1b5e20',fontSize:22}}>How CEDARS works</h2>
-              <span style={{fontSize:12,fontWeight:800,letterSpacing:'0.06em',color:'#2E7D32'}}>INPUT → SCORE &amp; ECOLABEL → IMPROVE → REPORT (&amp; SHARE)</span>
             </div>
             <p className="note" style={{margin:'0 0 14px',fontSize:13,maxWidth:920,lineHeight:1.55}}>
               Start with a <strong>radiology department</strong> or assess an <strong>AI model independently</strong>. Both use the same CEDARS framework for <strong>transparent, comparable reporting</strong>.
