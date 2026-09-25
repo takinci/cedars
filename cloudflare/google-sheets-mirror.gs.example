@@ -4,12 +4,40 @@
 
 const SHEET_NAME = 'Submissions';
 const HEADERS = [
+  // Keep these first 24 columns stable so existing rows remain correctly aligned.
   'submission_id', 'created_at', 'schema_version', 'app_version',
   'name', 'institution', 'country', 'professional_role', 'email', 'interests',
   'allow_acknowledgment', 'allow_future_contact', 'consent_version',
   'assessment_saved_at', 'local_region', 'reporting_period',
   'department_name', 'hospital_name', 'ai_project_name', 'ai_task_type',
   'ai_cloud_provider', 'ai_compute_region', 'current_practices', 'scenario_interventions',
+
+  // Department disclosure outputs
+  'dept_disclosure_region', 'dept_using_live_values', 'dept_annual_kwh',
+  'dept_annual_studies', 'dept_renewable_pct', 'dept_grid_ci_kgco2e_per_kwh',
+  'dept_effective_grid_ci_kgco2e_per_kwh', 'dept_annual_co2_kg',
+  'dept_kwh_per_study', 'dept_co2_kg_per_study', 'dept_fleet_utilization_pct',
+  'dept_clinical_ai_tool_count', 'dept_current_practice_count', 'dept_score',
+  'dept_rating_leaves', 'dept_rating_label',
+
+  // AI disclosure outputs
+  'ai_disclosure_architecture', 'ai_disclosure_parameters', 'ai_disclosure_dataset_size',
+  'ai_disclosure_gpu_hardware', 'ai_disclosure_training_runs', 'ai_disclosure_total_gpu_hours',
+  'ai_disclosure_energy_per_run_kwh', 'ai_disclosure_total_training_energy_kwh',
+  'ai_disclosure_training_co2_kg', 'ai_disclosure_energy_measured',
+  'ai_disclosure_renewable_pct', 'ai_disclosure_cloud_provider',
+  'ai_disclosure_compute_region', 'ai_disclosure_pue', 'ai_disclosure_grid_ci_kgco2e_per_kwh',
+  'ai_disclosure_effective_grid_ci_kgco2e_per_kwh', 'ai_disclosure_water_litres',
+  'ai_disclosure_inference_studies_month', 'ai_disclosure_inference_kwh_per_study',
+  'ai_disclosure_inference_monthly_kwh', 'ai_disclosure_inference_monthly_co2_kg',
+  'ai_disclosure_deployment_months', 'ai_disclosure_lifetime_inferences',
+  'ai_disclosure_inference_co2_g_per_study',
+  'ai_disclosure_amortized_training_co2_g_per_study',
+  'ai_disclosure_effective_co2_g_per_study', 'ai_disclosure_grade_basis',
+  'ai_disclosure_score', 'ai_disclosure_rating_leaves', 'ai_disclosure_rating_label',
+
+  // Future-proof copies of the exact Report (& Share) disclosure objects
+  'department_disclosure_json', 'ai_disclosure_json',
 ];
 
 function jsonResponse(value) {
@@ -43,6 +71,13 @@ function doPost(e) {
     if (sheet.getLastRow() === 0) {
       sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
       sheet.setFrozenRows(1);
+    } else {
+      // Extend/refresh only the header row when new mirror columns are added. Existing data rows
+      // stay in place because all legacy columns remain in their original positions.
+      const currentHeaders = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+      const needsHeaderRefresh = HEADERS.some((header, index) => currentHeaders[index] !== header);
+      if (needsHeaderRefresh) sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+      sheet.setFrozenRows(1);
     }
 
     // Idempotency: if the same webhook is retried, do not duplicate the submission row.
@@ -61,6 +96,29 @@ function doPost(e) {
       payload.consentVersion, payload.assessmentSavedAt, payload.localRegion, payload.reportingPeriod,
       payload.departmentName, payload.hospitalName, payload.aiProjectName, payload.aiTaskType,
       payload.aiCloudProvider, payload.aiComputeRegion, payload.currentPractices, payload.scenarioInterventions,
+
+      payload.deptDisclosureRegion, !!payload.deptUsingLiveValues, payload.deptAnnualKwh,
+      payload.deptAnnualStudies, payload.deptRenewablePct, payload.deptGridCi,
+      payload.deptEffectiveGridCi, payload.deptAnnualCo2Kg, payload.deptKwhPerStudy,
+      payload.deptCo2KgPerStudy, payload.deptFleetUtilizationPct, payload.deptClinicalAiToolCount,
+      payload.deptCurrentPracticeCount, payload.deptScore, payload.deptRatingLeaves,
+      payload.deptRatingLabel,
+
+      payload.aiDisclosureArchitecture, payload.aiDisclosureParameters, payload.aiDisclosureDatasetSize,
+      payload.aiDisclosureGpuHardware, payload.aiDisclosureTrainingRuns, payload.aiDisclosureTotalGpuHours,
+      payload.aiDisclosureEnergyPerRunKwh, payload.aiDisclosureTotalTrainingEnergyKwh,
+      payload.aiDisclosureTrainingCo2Kg, !!payload.aiDisclosureEnergyMeasured,
+      payload.aiDisclosureRenewablePct, payload.aiDisclosureCloudProvider,
+      payload.aiDisclosureComputeRegion, payload.aiDisclosurePue, payload.aiDisclosureGridCi,
+      payload.aiDisclosureEffectiveGridCi, payload.aiDisclosureWaterLitres,
+      payload.aiDisclosureInferenceStudiesMonth, payload.aiDisclosureInferenceKwhPerStudy,
+      payload.aiDisclosureInferenceMonthlyKwh, payload.aiDisclosureInferenceMonthlyCo2Kg,
+      payload.aiDisclosureDeploymentMonths, payload.aiDisclosureLifetimeInferences,
+      payload.aiDisclosureInferenceCo2GPerStudy, payload.aiDisclosureAmortizedTrainingCo2GPerStudy,
+      payload.aiDisclosureEffectiveCo2GPerStudy, payload.aiDisclosureGradeBasis,
+      payload.aiDisclosureScore, payload.aiDisclosureRatingLeaves, payload.aiDisclosureRatingLabel,
+
+      payload.departmentDisclosureJson, payload.aiDisclosureJson,
     ];
     sheet.appendRow(row);
     return jsonResponse({ok:true});

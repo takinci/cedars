@@ -64,6 +64,9 @@ function compactAssessmentSummary(assessment) {
   const scen = payload.scen || {};
   const dept = payload.deptLabel || {};
   const eco = payload.ecoLabel || {};
+  const disclosure = payload.disclosure || {};
+  const deptDisclosure = disclosure.department || {};
+  const aiDisclosure = disclosure.ai || {};
   return {
     assessmentSavedAt: trim(assessment?.savedAt, 100),
     localRegion: trim(settings.region, 200),
@@ -76,6 +79,60 @@ function compactAssessmentSummary(assessment) {
     aiComputeRegion: trim(scen.cloudRegion || eco.cloudRegion, 200),
     currentPractices: Array.isArray(dept.activeInterventions) ? dept.activeInterventions.join(' | ').slice(0, 8000) : '',
     scenarioInterventions: Array.isArray(payload.scenarioInterventions) ? payload.scenarioInterventions.join(' | ').slice(0, 8000) : '',
+
+    // Exact report/disclosure outputs captured by the frontend at submission time. These are
+    // optional for backward compatibility with older saved assessments.
+    deptDisclosureRegion: trim(deptDisclosure.region, 200),
+    deptUsingLiveValues: deptDisclosure.usingLiveDepartmentValues === true,
+    deptAnnualKwh: deptDisclosure.annualKwh ?? '',
+    deptAnnualStudies: deptDisclosure.annualStudies ?? '',
+    deptRenewablePct: deptDisclosure.renewablePct ?? '',
+    deptGridCi: deptDisclosure.gridCiKgCo2ePerKwh ?? '',
+    deptEffectiveGridCi: deptDisclosure.effectiveGridCiKgCo2ePerKwh ?? '',
+    deptAnnualCo2Kg: deptDisclosure.annualCo2Kg ?? '',
+    deptKwhPerStudy: deptDisclosure.kwhPerStudy ?? '',
+    deptCo2KgPerStudy: deptDisclosure.co2KgPerStudy ?? '',
+    deptFleetUtilizationPct: deptDisclosure.fleetUtilizationPct ?? '',
+    deptClinicalAiToolCount: deptDisclosure.clinicalAiToolCount ?? '',
+    deptCurrentPracticeCount: deptDisclosure.currentPracticeCount ?? '',
+    deptScore: deptDisclosure.score ?? '',
+    deptRatingLeaves: deptDisclosure.ratingLeaves ?? '',
+    deptRatingLabel: trim(deptDisclosure.ratingLabel, 200),
+
+    aiDisclosureArchitecture: trim(aiDisclosure.architecture, 300),
+    aiDisclosureParameters: trim(aiDisclosure.parameters, 100),
+    aiDisclosureDatasetSize: trim(aiDisclosure.datasetSize, 100),
+    aiDisclosureGpuHardware: trim(aiDisclosure.gpuHardware, 300),
+    aiDisclosureTrainingRuns: aiDisclosure.trainingRuns ?? '',
+    aiDisclosureTotalGpuHours: aiDisclosure.totalGpuHours ?? '',
+    aiDisclosureEnergyPerRunKwh: aiDisclosure.energyPerRunKwh ?? '',
+    aiDisclosureTotalTrainingEnergyKwh: aiDisclosure.totalTrainingEnergyKwh ?? '',
+    aiDisclosureTrainingCo2Kg: aiDisclosure.trainingCo2Kg ?? '',
+    aiDisclosureEnergyMeasured: aiDisclosure.energyMeasured === true,
+    aiDisclosureRenewablePct: aiDisclosure.renewablePct ?? '',
+    aiDisclosureCloudProvider: trim(aiDisclosure.cloudProvider, 200),
+    aiDisclosureComputeRegion: trim(aiDisclosure.computeRegion, 200),
+    aiDisclosurePue: aiDisclosure.pue ?? '',
+    aiDisclosureGridCi: aiDisclosure.gridCiKgCo2ePerKwh ?? '',
+    aiDisclosureEffectiveGridCi: aiDisclosure.effectiveGridCiKgCo2ePerKwh ?? '',
+    aiDisclosureWaterLitres: aiDisclosure.waterLitres ?? '',
+    aiDisclosureInferenceStudiesMonth: aiDisclosure.inferenceStudiesPerMonth ?? '',
+    aiDisclosureInferenceKwhPerStudy: aiDisclosure.inferenceEnergyKwhPerStudy ?? '',
+    aiDisclosureInferenceMonthlyKwh: aiDisclosure.inferenceMonthlyKwh ?? '',
+    aiDisclosureInferenceMonthlyCo2Kg: aiDisclosure.inferenceMonthlyCo2Kg ?? '',
+    aiDisclosureDeploymentMonths: aiDisclosure.deploymentMonths ?? '',
+    aiDisclosureLifetimeInferences: aiDisclosure.lifetimeInferences ?? '',
+    aiDisclosureInferenceCo2GPerStudy: aiDisclosure.inferenceCo2GPerStudy ?? '',
+    aiDisclosureAmortizedTrainingCo2GPerStudy: aiDisclosure.amortizedTrainingCo2GPerStudy ?? '',
+    aiDisclosureEffectiveCo2GPerStudy: aiDisclosure.effectiveCo2GPerStudy ?? '',
+    aiDisclosureGradeBasis: trim(aiDisclosure.gradeBasis, 100),
+    aiDisclosureScore: aiDisclosure.score ?? '',
+    aiDisclosureRatingLeaves: aiDisclosure.ratingLeaves ?? '',
+    aiDisclosureRatingLabel: trim(aiDisclosure.ratingLabel, 200),
+
+    // Future-proof copies of the report objects only (not the full assessment JSON).
+    departmentDisclosureJson: JSON.stringify(deptDisclosure).slice(0, 40000),
+    aiDisclosureJson: JSON.stringify(aiDisclosure).slice(0, 40000),
   };
 }
 
