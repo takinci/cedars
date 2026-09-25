@@ -85,8 +85,8 @@ Do not commit identifiable exports to GitHub.
 ## Optional Google Sheets mirror
 
 D1 should remain the authoritative record. If the team wants a more convenient collaborative view,
-CEDARS can also mirror a compact summary of each successful submission into a restricted Google
-Sheet. The mirror is intentionally secondary: a Google outage does not block or erase the D1
+CEDARS can also mirror a review-oriented summary of each successful submission into a restricted Google
+Sheet, including the Department and AI disclosure values shown under Report (& Share). The mirror is intentionally secondary: a Google outage does not block or erase the D1
 submission.
 
 1. Create a Google Sheet for CEDARS submissions. Keep it restricted. If appropriate, share the Sheet
@@ -115,6 +115,12 @@ submission.
 
 6. Submit a clearly labelled test contribution. Confirm that it appears in both D1 and the Sheet.
 
-The Sheet mirror contains contributor metadata plus a compact assessment summary. It deliberately
-**does not copy the full `assessment_json`**; D1 remains the complete source of truth. Keep the Sheet
-private because it can contain names and email addresses supplied with permission.
+The Sheet mirror contains contributor metadata, assessment context, and the Department/AI disclosure
+outputs captured at submission time. It also keeps bounded JSON copies of those two disclosure objects so
+future disclosure fields are not silently lost from the mirror. It deliberately **does not copy the full
+`assessment_json`**; D1 remains the complete source of truth. Keep the Sheet private because it can contain
+names and email addresses supplied with permission.
+
+When the mirror schema changes, paste the latest `google-sheets-mirror.gs.example` into Apps Script and
+update the existing web-app deployment before testing a new contribution. Existing D1 submissions are not
+automatically backfilled into Google Sheets.
