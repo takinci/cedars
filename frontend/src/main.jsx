@@ -10,6 +10,8 @@ import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText
 import './styles.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
+import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
+import { REFS, refUrl } from './refs.js';
 import AboutPage from './AboutPage.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
@@ -3553,7 +3555,7 @@ function App() {
             <p className="note" style={{marginBottom:16}}>
               Workload-by-workload cloud carbon — compute, storage, and data transfer — for the model configured above.
               Training (amortised) and inference are seeded automatically from the AI settings; add your own storage, network, and extra compute below.
-              Inspired by <a href="https://www.cloudcarbonfootprint.org/" style={{color:'#2E7D32'}} target="_blank" rel="noreferrer">Cloud Carbon Footprint</a>.
+              Inspired by <ExternalLink href={refUrl(REFS['cloud-carbon-footprint'])}>Cloud Carbon Footprint</ExternalLink>.
             </p>
 
             {/* Provider & region (shared with AI lifecycle) */}
@@ -4403,7 +4405,7 @@ function App() {
               <details className="methodologyDetails">
                 <summary>How AI grading works</summary>
                 <div>
-                  AI has two distinct energy costs: <strong>training</strong> (a one-time cost) and <strong>inference</strong> (a marginal cost paid on every study). When deployment volume is available, CEDARS grades the <strong>amortised</strong> footprint per study — training spread across the studies served plus inference. To see how a deployed model affects an imaging operation, attach it under <strong>Clinical AI</strong> on the Radiology Department tab. Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030). For the most accurate figures, measure training energy with <a href="https://codecarbon.io/" target="_blank" rel="noreferrer">CodeCarbon</a>, <code>nvidia-smi</code>, or your cloud provider's carbon dashboard.
+                  AI has two distinct energy costs: <strong>training</strong> (a one-time cost) and <strong>inference</strong> (a marginal cost paid on every study). When deployment volume is available, CEDARS grades the <strong>amortised</strong> footprint per study — training spread across the studies served plus inference. To see how a deployed model affects an imaging operation, attach it under <strong>Clinical AI</strong> on the Radiology Department tab. Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030). For the most accurate figures, measure training energy with <ExternalLink href={refUrl(REFS['codecarbon'])}>CodeCarbon</ExternalLink>, <code>nvidia-smi</code>, or your cloud provider's carbon dashboard.
                 </div>
               </details>
             </div>
@@ -4803,4 +4805,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<ExternalLinkProvider><App/></ExternalLinkProvider>);

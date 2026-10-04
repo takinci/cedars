@@ -1,0 +1,124 @@
+// References cited inline in the interface. Each entry carries the DOI (preferred) or canonical
+// URL and the date it was verified. `sources.md` remains the methods document for the defaults;
+// this registry exists so that every citation shown to a visitor links straight to the source.
+//
+// Keep ids stable — they are referenced from JSX via <Ref id="..."/> and <ReferenceList ids={[...]}/>.
+export const REFS = {
+  'doo-jacr-2024': {
+    authors: 'Doo FX, Parekh VS, Kanhere A, Savani D, Tejani AS, Sapkota A, Yi PH',
+    title: 'Evaluation of climate-aware metrics tools for radiology informatics and artificial intelligence: toward a potential radiology ecolabel',
+    venue: 'J Am Coll Radiol', year: 2024, cite: '2024;21:239–247',
+    doi: '10.1016/j.jacr.2023.11.019', verified: '2026-10-04',
+  },
+  'tzanis-maistro-2025': {
+    authors: 'Tzanis E, Klontzas ME',
+    title: 'mAIstro: an open-source multi-agent system for automated end-to-end development of radiomics and deep learning models for medical imaging',
+    venue: 'Eur J Radiol Artif Intell', year: 2025, cite: '2025;4:100044',
+    doi: '10.1016/j.ejrai.2025.100044', verified: '2026-10-04',
+  },
+  'chambon-roentgen-2022': {
+    authors: 'Chambon P, Bluethgen C, Delbrouck J-B, et al.',
+    title: 'RoentGen: vision-language foundation model for chest X-ray generation',
+    venue: 'arXiv', year: 2022, cite: '2022; arXiv:2211.12737',
+    doi: '10.48550/arXiv.2211.12737', verified: '2026-10-04',
+  },
+  'mongan-claim-2020': {
+    authors: 'Mongan J, Moy L, Kahn CE Jr',
+    title: 'Checklist for Artificial Intelligence in Medical Imaging (CLAIM): a guide for authors and reviewers',
+    venue: 'Radiol Artif Intell', year: 2020, cite: '2020;2:e200029',
+    doi: '10.1148/ryai.2020200029', verified: '2026-10-04',
+  },
+  'li-thirsty-2023': {
+    authors: 'Li P, Yang J, Islam MA, Ren S',
+    title: 'Making AI less "thirsty": uncovering and addressing the secret water footprint of AI models',
+    venue: 'arXiv', year: 2023, cite: '2023; arXiv:2304.03271',
+    doi: '10.48550/arXiv.2304.03271', verified: '2026-10-04',
+  },
+  'heye-radiology-2020': {
+    authors: 'Heye T, Knoerl R, Wehrle T, et al.',
+    title: 'The energy consumption of radiology: energy- and cost-saving opportunities for CT and MRI operation',
+    venue: 'Radiology', year: 2020, cite: '2020;295:593–605',
+    doi: '10.1148/radiol.2020192084', verified: '2026-10-04',
+  },
+  'ecologits-joss': {
+    authors: 'Rincé S, et al. (GenAI Impact)',
+    title: 'EcoLogits: evaluating the environmental impacts of generative AI',
+    venue: 'J Open Source Softw', year: 2025, cite: 'JOSS 10(107):7471',
+    doi: '10.21105/joss.07471', verified: '2026-10-04',
+  },
+  'gsf-sci-iso': {
+    authors: 'Green Software Foundation',
+    title: 'Software Carbon Intensity (SCI) specification',
+    venue: 'ISO/IEC 21031:2024', year: 2024, cite: 'ISO/IEC 21031:2024',
+    url: 'https://sci.greensoftware.foundation/', verified: '2026-10-04',
+  },
+  'codecarbon': {
+    authors: 'mlco2/codecarbon contributors',
+    title: 'CodeCarbon — track compute emissions',
+    venue: 'GitHub', year: 2026, cite: 'v3.2.9, July 2026',
+    url: 'https://github.com/mlco2/codecarbon', verified: '2026-10-04',
+  },
+  'zeus': {
+    authors: 'ML.ENERGY Initiative',
+    title: 'Zeus — deep learning energy measurement and optimization',
+    venue: 'ml.energy', year: 2025, cite: 'PyTorch ecosystem project',
+    url: 'https://ml.energy/zeus', verified: '2026-10-04',
+  },
+  'carbontracker': {
+    authors: 'Anthony LFW, Kanding B, Selvan R',
+    title: 'Carbontracker: tracking and predicting the carbon footprint of training deep learning models',
+    venue: 'arXiv', year: 2020, cite: '2020; arXiv:2007.03051',
+    doi: '10.48550/arXiv.2007.03051', verified: '2026-10-04',
+  },
+  'green-algorithms': {
+    authors: 'Lannelongue L, Grealey J, Inouye M',
+    title: 'Green Algorithms: quantifying the carbon footprint of computation',
+    venue: 'arXiv', year: 2020, cite: '2020; arXiv:2007.07610 (journal version: Adv Sci 2021)',
+    doi: '10.48550/arXiv.2007.07610', verified: '2026-10-04',
+  },
+  'cloud-carbon-footprint': {
+    authors: 'Thoughtworks',
+    title: 'Cloud Carbon Footprint — open-source cloud emissions measurement',
+    venue: 'cloudcarbonfootprint.org', year: 2026, cite: 'open source',
+    url: 'https://www.cloudcarbonfootprint.org/', verified: '2026-10-04',
+  },
+  'scaphandre': {
+    authors: 'Hubblo',
+    title: 'Scaphandre — energy consumption metrology agent',
+    venue: 'GitHub', year: 2026, cite: 'open source',
+    url: 'https://github.com/hubblo-org/scaphandre', verified: '2026-10-04',
+  },
+  'ai-energy-score': {
+    authors: 'Salesforce, Hugging Face, Cohere, Carnegie Mellon University',
+    title: 'AI Energy Score — benchmark and 1–5 star label for AI model energy efficiency',
+    venue: 'Hugging Face', year: 2025, cite: 'launched Feb 2025',
+    url: 'https://www.salesforce.com/news/stories/ai-energy-score/', verified: '2026-10-04',
+  },
+  'boavizta': {
+    authors: 'Boavizta',
+    title: 'Boavizta API — embodied environmental impacts of hardware',
+    venue: 'GitHub', year: 2026, cite: 'open source',
+    url: 'https://github.com/Boavizta/boaviztapi', verified: '2026-10-04',
+  },
+  'electricity-maps': {
+    authors: 'Electricity Maps',
+    title: 'Carbon intensity of electricity by zone',
+    venue: 'electricitymaps.com', year: 2026, cite: 'live and annual averages',
+    url: 'https://app.electricitymaps.com/', verified: '2026-10-04',
+  },
+  'owid-ci': {
+    authors: 'Our World in Data',
+    title: 'Carbon intensity of electricity generation',
+    venue: 'ourworldindata.org', year: 2026, cite: 'annual, by country',
+    url: 'https://ourworldindata.org/grapher/carbon-intensity-electricity', verified: '2026-10-04',
+  },
+};
+
+export const refUrl = ref => ref.doi ? `https://doi.org/${ref.doi}` : ref.url;
+
+// Short "Author, Venue Year" form for tooltips and the chooser cards.
+export const refShort = id => {
+  const r = REFS[id]; if (!r) return id;
+  const first = r.authors.split(',')[0].trim();
+  return `${first}${r.authors.includes(',') ? ' et al.' : ''}, ${r.venue} ${r.year}`;
+};
