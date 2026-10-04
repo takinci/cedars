@@ -452,6 +452,20 @@ Cost = energy (kWh) × electricity price, mirroring the carbon calculation (kWh 
 
 ## AI operational water footprint
 
+**Inputs (added October 2026).** The AI model record carries two optional water fields: on-site cooling water at the compute site (the provider's water-use effectiveness, L/kWh, if published) and off-site water from electricity generation (L/kWh, which depends on the grid). When either is given, the label applies their sum and badges the line *Estimated*. When neither is given, the user chooses between the 1.8 L/kWh screening factor below (badged *Screening*) and reporting water as *not assessed*; either choice is stated on the label and in the methods paragraph. The split follows Li et al. (below), who separate on-site cooling water from the water embedded in electricity generation.
+
+
 CEDARS currently exposes an AI water **screening estimate** rather than a location-specific water accounting model. A future refinement should distinguish direct data-center cooling water (onsite WUE) from water consumed in electricity generation (offsite water intensity), and should account for PUE consistently with the energy quantity being multiplied.
 
 - Li P, Yang J, Islam MA, Ren S. *Making AI Less “Thirsty”: Uncovering and Addressing the Secret Water Footprint of AI Models.* arXiv:2304.03271. https://doi.org/10.48550/arXiv.2304.03271. The paper separates onsite cooling-water use from offsite electricity-generation water consumption and demonstrates substantial geographic and temporal variability.
+
+
+## Department water footprint — status note (October 2026)
+
+The Department pathway multiplies total electricity by the same 1.8 L/kWh screening factor used for AI compute. That factor is a data-centre cooling proxy; no published study has measured water use per kWh for imaging equipment. The best available evidence concerns cooling *energy*, not water: Heye et al. instrumented three CT scanners, four MRI scanners and their cooling systems for a year and found dedicated cooling accounted for 44.5% of the combined scanner-plus-cooling consumption (Heye T, et al. *Radiology* 2020;295:593–605, DOI [10.1148/radiol.2020192084](https://doi.org/10.1148/radiol.2020192084)). Whether that cooling consumes water depends on the plant: closed-loop air-cooled chillers reject heat to air and use essentially no water on site; water-cooled chillers fed by a cooling tower lose water to evaporation; once-through city-water cooling consumes the most; and many hospitals run scanners from a shared chilled-water loop, where the water sits at the central plant. Off-site, every kWh also carries the water used to generate it, which varies by grid (Li et al., above).
+
+The number is therefore a placeholder, labelled as such on the Department's water card. The planned replacement (see ROADMAP) is a cooling-type selector — closed-loop air-cooled · cooling tower · once-through city water · shared house chilled water / unknown — with the evaporative make-up coefficient for cooling towers verified against ASHRAE before it ships, and the off-site component shared with the AI pathway. Measured water data from departments is welcome (see About).
+
+## Measurement tools referenced in "Help me measure" (verified 2026-10-04)
+
+CodeCarbon (github.com/mlco2/codecarbon, v3.2.9) · Zeus / ML.ENERGY (ml.energy/zeus) · Carbontracker (arXiv:2007.03051) · EcoLogits (DOI 10.21105/joss.07471) · Green Algorithms / GA4HPC (arXiv:2007.07610) · Cloud Carbon Footprint (cloudcarbonfootprint.org) · Scaphandre (github.com/hubblo-org/scaphandre) · nvidia-smi · AI Energy Score (external benchmark, launched February 2025) · Boavizta (embodied hardware carbon). Categories follow Doo-JACR-2024 Fig. 3; the in-app list carries each tool's status and the date it was checked, and asks for feedback when something newer appears. The in-app registry of every citation with its DOI is `frontend/src/refs.js`.
