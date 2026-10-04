@@ -8,7 +8,7 @@ This roadmap is a lightweight collaboration note for work that is planned or act
 - [x] Homepage journey: **Input → Score → Improve → Share**.
 - [x] User-facing AI terminology:
   - **Clinical AI** — environmental impact of AI used in clinical practice.
-  - **AI Footprint** — environmental footprint of building and running the AI itself.
+  - **AI Model & Informatics** — environmental footprint of building and running the AI itself (name retained; see CHANGELOG).
 - [x] EcoLabel clarification: **Research assessment — not (yet) an external certification.**
 - [x] Provenance options for local equipment overrides:
   - Literature default
@@ -29,6 +29,8 @@ This roadmap is a lightweight collaboration note for work that is planned or act
 The contribution form is implemented but remains non-transmitting until the project team deploys the Cloudflare Worker/D1 backend and sets the GitHub repository variable `VITE_CEDARS_CONTRIBUTE_URL`. See `cloudflare/README.md`.
 
 ## Later / ongoing
+
+- Department water: replace the flat data-centre screening factor with a cooling-type model (closed-loop air-cooled · cooling tower · once-through city water · shared house chilled water) once a make-up-water coefficient has been verified; see the note on the Department water card and `sources.md`.
 
 - Incrementally extract UI sections from the large `frontend/src/main.jsx` file after the new functionality is stable.
 - Expand provenance tracking beyond advanced equipment overrides where it improves scientific reporting without making data entry burdensome.
