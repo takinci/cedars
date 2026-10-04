@@ -148,6 +148,12 @@ export const REFS = {
     venue: 'arXiv', year: 2025, cite: '2025; arXiv:2509.20241',
     doi: '10.48550/arXiv.2509.20241', verified: '2026-10-04',
   },
+  'kpodzro-haip-2026': {
+    authors: 'Kpodzro S, Kim JY, Hasan A, Thomas C, et al.',
+    title: 'A Collaborative Best Practice Guide for Promoting AI Vendor Transparency in Health Care — The HAIP AI Vendor Disclosure Framework',
+    venue: 'NEJM AI', year: 2026, cite: '2026;3(5)',
+    doi: '10.1056/AIp2500985', verified: '2026-10-04',
+  },
   'owid-ci': {
     authors: 'Our World in Data',
     title: 'Carbon intensity of electricity generation',

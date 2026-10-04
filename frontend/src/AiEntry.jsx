@@ -7,7 +7,7 @@ import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 //   compare → procure/deploy: library templates + benchmark under one deployment context
 //   own     → develop: one model record, three ways in (measured · measure · spec)
 // Both routes grade the same record shape; the choice only decides what the page shows first.
-export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025'];
+export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025', 'kpodzro-haip-2026'];
 
 const seg = (on) => ({
   display:'inline-flex', alignItems:'center', gap:6, minHeight:36, padding:'0 12px', borderRadius:999,
@@ -77,7 +77,7 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
             <TrendingUp size={20} style={{color:'#2E7D32', flexShrink:0}}/>
             <div><span style={kicker}>PROCURE · DEPLOY</span><br/><strong style={{fontSize:16}}>Compare candidate models</strong></div>
           </div>
-          <p className="note" style={{margin:0}}>For choosing, buying or deploying a model someone else built. Start from literature-anchored task-family templates, set the deployment conditions once, and read the accuracy-versus-carbon trade-off on a benchmark chart.</p>
+          <p className="note" style={{margin:0}}>For choosing, buying or deploying a model someone else built. Set the deployment conditions once, compare at least two like-for-like candidates, and review environmental impact alongside intended use, validation and implementation context.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
           <div style={inset}>
             <div>
               <p style={q}>How should the models be ranked?</p>
@@ -142,7 +142,7 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
 }
 
 // Compact strip shown once a route is chosen.
-export function AiRouteStrip({route, ownMode, onChange}) {
+export function AiRouteStrip({route, ownMode, onComparison, onChange}) {
   const label = route === 'compare' ? 'Procure · deploy — Compare candidate models'
     : `Develop · assess — One model · ${ownMode === 'measured' ? 'measured numbers' : ownMode === 'measure' ? 'help me measure' : 'from specification'}`;
   return (
@@ -150,7 +150,7 @@ export function AiRouteStrip({route, ownMode, onChange}) {
       <span style={{...kicker, background:'#e8f5e9', border:'none', marginBottom:0}}>AI PATHWAY</span>
       <strong style={{fontSize:13}}>{label}</strong>
       <span style={{marginLeft:'auto', display:'flex', gap:14, alignItems:'center'}}>
-        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth', block:'start'})}>Go to comparison ↓</button>}
+        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>View candidate comparison ↓</button>}
         <button type="button" className="inlineTextButton" onClick={onChange}>Change pathway</button>
       </span>
     </div>

@@ -1268,8 +1268,8 @@ const SEO_PAGES = {
     canonical: SEO_BASE,
   },
   input: {
-    title: 'Choose Assessment Pathway | CEDARS',
-    description: 'Choose whether to assess a radiology department or an AI model and informatics workflow with CEDARS.',
+    title: 'Assessment Context & Input Pathway | CEDARS',
+    description: 'Set shared local grid, reporting-period and electricity-cost assumptions, then continue to a Radiology Department or AI Model & Informatics assessment in CEDARS.',
     canonical: SEO_BASE + '?page=input',
   },
   dashboard: {
@@ -1278,8 +1278,8 @@ const SEO_PAGES = {
     canonical: SEO_BASE + '?page=dashboard',
   },
   ai: {
-    title: 'AI Model & Informatics Environmental Footprint | CEDARS',
-    description: 'Assess the environmental footprint of medical AI training, validation, inference, deployment, cloud compute, storage, and reported performance with CEDARS.',
+    title: 'Medical AI Procurement, Deployment & Environmental Footprint | CEDARS',
+    description: 'Compare medical AI candidates for procurement or deployment, or assess one model in detail, including carbon per study, training, inference, compute, validation and clinical context.',
     canonical: SEO_BASE + '?page=ai',
   },
   ecolabel: {
@@ -1357,6 +1357,10 @@ function App() {
     const requested = new URLSearchParams(window.location.search).get('page');
     return ['landing','input','dashboard','ai','ecolabel','scenario','report','about'].includes(requested) ? requested : 'landing';
   });
+  // Assessment Context is the shared first step when a visitor starts from Home. Keep the
+  // intended pathway in session state so the page can offer a clear Continue / Return action
+  // without changing reproducible direct links such as ?page=ai or ?page=dashboard.
+  const [inputTarget, setInputTarget] = useState('');
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
   // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
@@ -1453,7 +1457,8 @@ function App() {
     ...s, cloudProvider: prov,
     cloudRegion: Object.keys(CLOUD_REGIONS[prov]?.regions ?? {})[0] ?? '',
   }));
-  const goToAssessmentContext = () => {
+  const goToAssessmentContext = (returnTo = '') => {
+    setInputTarget(returnTo);
     setPage('input');
     window.setTimeout(() => document.getElementById('assessment-context-title')?.scrollIntoView({behavior:'smooth', block:'start'}), 60);
   };
@@ -1537,13 +1542,27 @@ function App() {
     if (canonical) canonical.setAttribute('href', seo.canonical);
   }, [page, ecoLabelMode]);
 
-  // Scenario tab mode + AI model benchmark shortlist
-  const [benchModels, setBenchModels] = useState(() => []);
-  const addBenchModel = () => setBenchModels(list =>
-    list.length >= 6 ? list : [...list, {...pickAiCfg(scen), id: Date.now(),
-      label: `${AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'Model'} (current)`}]);
-  const removeBenchModel  = id => setBenchModels(list => list.filter(m => m.id !== id));
-  const updateBenchLabel  = (id, label) => setBenchModels(list => list.map(m => m.id === id ? {...m, label} : m));
+  // Scenario tab mode + AI procurement shortlist. Procure / Deploy starts with two editable,
+  // like-for-like candidate slots rather than asking the user to build one model and overwrite it.
+  const makeDefaultBenchModels = () => [
+    {...benchCfgFromLib(scen.modelKey || 'cad'), id:'candidate-a', label:'Candidate A', scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'},
+    {...benchCfgFromLib(scen.modelKey || 'cad'), id:'candidate-b', label:'Candidate B', scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'},
+  ];
+  const [benchModels, setBenchModels] = useState(() => scen.aiRoute === 'compare' ? makeDefaultBenchModels() : []);
+  const ensureBenchModels = () => setBenchModels(list => list.length ? list : makeDefaultBenchModels());
+  const addBenchModel = () => setBenchModels(list => {
+    if (list.length >= 6) return list;
+    const source = list[0]?.modelKey || scen.modelKey || 'cad';
+    const letter = String.fromCharCode(65 + list.length);
+    return [...list, {...benchCfgFromLib(source), id:Date.now(), label:`Candidate ${letter}`, scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'}];
+  });
+  const removeBenchModel = id => setBenchModels(list => list.length <= 2 ? list : list.filter(m => m.id !== id));
+  const updateBenchModel = (id, field, value) => setBenchModels(list => list.map(m => m.id === id ? {...m, [field]:value} : m));
+  const updateBenchTemplate = (id, modelKey) => setBenchModels(list => list.map(m => {
+    if (m.id !== id) return m;
+    return {...benchCfgFromLib(modelKey), id:m.id, label:m.label, scanTimeReductPct:m.scanTimeReductPct || '0', lowValueReductPct:m.lowValueReductPct || '0', validationBasis:m.validationBasis || 'Not specified', intendedUse:m.intendedUse || '', vendor:m.vendor || '', regulatoryStatus:m.regulatoryStatus || 'Not specified', integrationPath:m.integrationPath || 'Not specified'};
+  }));
+  const updateBenchLabel = (id, label) => updateBenchModel(id, 'label', label);
   const [dashOpen, setDashOpen] = useState({clinicalai:true});
   const toggleDash = id => setDashOpen(o => ({...o, [id]: !o[id]}));
   const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
@@ -2362,7 +2381,7 @@ function App() {
       {!['landing','about'].includes(page) && (
         <WorkflowRail
           page={page}
-          onInput={()=>setPage('input')}
+          onInput={()=>goToAssessmentContext(page === 'ai' ? 'ai' : page === 'dashboard' ? 'dashboard' : '')}
           onDepartment={()=>setPage('dashboard')}
           onAi={()=>setPage('ai')}
           onScore={()=>{if(page==='ai') setEcoLabelMode('ai'); setPage('ecolabel');}}
@@ -2399,10 +2418,10 @@ function App() {
                 </div>
                 <div className="workflowCardPrompt">What would you like to assess?</div>
                 <div className="startChoiceGrid">
-                  <button type="button" className="startChoice department" onClick={()=>setPage('dashboard')}>
+                  <button type="button" className="startChoice department" onClick={()=>goToAssessmentContext('dashboard')}>
                     <Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span>
                   </button>
-                  <button type="button" className="startChoice ai" onClick={()=>setPage('ai')}>
+                  <button type="button" className="startChoice ai" onClick={()=>goToAssessmentContext('ai')}>
                     <Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Training, inference, compute &amp; deployment</small></span><span aria-hidden="true">→</span>
                   </button>
                 </div>
@@ -2477,8 +2496,25 @@ function App() {
           </section>
           <div className="inputGatewayMessage">
             <span>STEP 1 · INPUT</span>
-            <h1>Choose one of the two pathways above.</h1>
-            <p>Your shared assessment context is set here first. Then start with a Radiology Department or an AI Model &amp; Informatics assessment. You can switch pathways later without losing the assessment already in progress.</p>
+            <h1>{inputTarget ? `Continue to ${inputTarget === 'ai' ? 'AI Model & Informatics' : 'Radiology Department'}.` : 'Choose a pathway to continue.'}</h1>
+            <p>Review the shared context above first. These assumptions carry into either pathway; AI compute/deployment location is still set separately on the AI page.</p>
+            {inputTarget ? (
+              <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',marginTop:14}}>
+                <button type="button" onClick={()=>setPage(inputTarget)}>
+                  Continue to {inputTarget === 'ai' ? 'AI Model & Informatics' : 'Radiology Department'} →
+                </button>
+                <button type="button" className="inlineTextButton" onClick={()=>setInputTarget('')}>Choose a different pathway</button>
+              </div>
+            ) : (
+              <div className="startChoiceGrid" style={{marginTop:14,maxWidth:760}}>
+                <button type="button" className="startChoice department" onClick={()=>setPage('dashboard')}>
+                  <Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span>
+                </button>
+                <button type="button" className="startChoice ai" onClick={()=>setPage('ai')}>
+                  <Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Procure/deploy candidates or assess one model</small></span><span aria-hidden="true">→</span>
+                </button>
+              </div>
+            )}
           </div>
         </main>
       )}
@@ -2490,7 +2526,7 @@ function App() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div>
               <h1 style={{margin:0}}>Radiology Department</h1>
-              <div className="contextLine"><Globe size={13}/> <strong>Assessment context:</strong> {settings.region} · {settings.timePeriod} · {currencySym(settings.region)}{getPrice(settings.region, settings.electricityPrice)}/kWh {settings.electricityPrice ? '(user-entered)' : '(regional default)'}</div>
+              <div className="contextLine"><Globe size={13}/> <strong>Assessment context:</strong> {settings.region} · {settings.timePeriod} · {currencySym(settings.region)}{getPrice(settings.region, settings.electricityPrice)}/kWh {settings.electricityPrice ? '(user-entered)' : '(regional default)'} <button type="button" className="contextEditLink" onClick={()=>goToAssessmentContext('dashboard')}>Edit shared context →</button></div>
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadCSV(dash)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
@@ -3104,7 +3140,7 @@ function App() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div>
               <h1 style={{margin:0}}>AI Model &amp; Informatics</h1>
-              <div className="contextLine"><Globe size={13}/> <strong>Shared local context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={goToAssessmentContext}>Edit shared context →</button><span className="contextSep">·</span> <strong>AI compute region:</strong> {scen.cloudRegion || `${scen.cloudProvider} average`}</div>
+              <div className="contextLine"><Globe size={13}/> <strong>Shared local context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={()=>goToAssessmentContext('ai')}>Edit shared context →</button><span className="contextSep">·</span> <strong>AI compute region:</strong> {scen.cloudRegion || `${scen.cloudProvider} average`}</div>
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadAICSV(ai, scen, settings.region)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
@@ -3124,6 +3160,7 @@ function App() {
               onRoute={r => {
                 setS('aiRoute', r);
                 if (r === 'compare') {
+                  ensureBenchModels();
                   setAiOpen(o => ({...o, benchmark: true}));
                   if (compareCtx !== 'custom' || !(parseFloat(scen.inferStudiesMonth) > 0)) applyCompareCtx(compareCtx);
                 }
@@ -3134,12 +3171,35 @@ function App() {
               examples={AI_EXAMPLES} onExample={loadAiExample}
             />
           ) : (
-            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} onChange={() => setS('aiRoute', '')}/>
+            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode}
+              onComparison={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
+              onChange={() => setS('aiRoute', '')}/>
           )}
 
           {scen.aiRoute === 'compare' && (
-            <div style={{marginTop:12}}>
+            <div style={{marginTop:12,display:'grid',gap:10}}>
               <AiDeploymentContext ctxSource={compareCtx} dept={{region:settings.region, ci:getCI(settings.region, settings.customCi), studiesPerMonth:Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1))}} volume={scen.inferStudiesMonth} onCtxSource={applyCompareCtx} onVolume={v=>setScen(s=>({...s, compareVolumeSource:'custom', inferStudiesMonth:v}))}/>
+              <div className="inputSummary" style={{margin:0}}>
+                <h3 style={{margin:'0 0 8px',color:'#1b5e20',fontSize:15}}>Shared compute &amp; comparison context</h3>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8}}>
+                  <Sel label="Cloud / deployment" value={scen.cloudProvider} options={META.cloudProviders} onChange={setCloudProvider}/>
+                  <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>
+                    Compute region <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>shared across candidates</span>
+                    <select value={scen.cloudRegion} onChange={e=>setS('cloudRegion',e.target.value)}>
+                      {Object.entries(CLOUD_REGIONS[scen.cloudProvider]?.regions ?? {}).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}
+                    </select>
+                  </label>
+                  <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>
+                    Comparison basis
+                    <select value={scen.trainDisclosed === 'no' ? 'inference' : 'lifecycle'} onChange={e=>setS('trainDisclosed',e.target.value === 'inference' ? 'no' : 'yes')}>
+                      <option value="lifecycle">Carbon/study incl. amortised training</option>
+                      <option value="inference">Inference carbon/study only</option>
+                    </select>
+                  </label>
+                  {scen.trainDisclosed !== 'no' && <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>Expected deployment (months)<input type="number" min="1" value={scen.deployMonths} onChange={e=>setS('deployMonths',e.target.value)}/></label>}
+                </div>
+                <p className="note" style={{margin:'8px 0 0',fontSize:11}}>Workload, provider, compute region and amortisation basis are held constant so candidate differences reflect the model assumptions rather than a changed deployment scenario.</p>
+              </div>
             </div>
           )}
 
@@ -3151,11 +3211,89 @@ function App() {
 
           {scen.aiRoute === 'compare' && (
             <div className="inputSummary" style={{margin:'14px 0 10px'}}>
-              <h2 style={{margin:'0 0 4px', color:'#1b5e20'}}>Candidate builder</h2>
-              <p className="note" style={{margin:0}}>Configure one candidate below, then use <strong>Add current model</strong> in the comparison. Change the model/settings and add the next candidate. Deployment volume, provider and compute region are shared across candidates so the comparison is like-for-like.</p>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,flexWrap:'wrap'}}>
+                <div>
+                  <h2 style={{margin:'0 0 4px', color:'#1b5e20'}}>Candidate models</h2>
+                  <p className="note" style={{margin:0,maxWidth:900}}>
+                    Compare at least two candidates side by side under the same workload and compute context. Keep the clinical task and performance metric like-for-like. Optional procurement fields reflect the HAIP AI Vendor Disclosure Framework: intended use, validation, regulatory status and integration context.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/>
+                  </p>
+                </div>
+                <button type="button" onClick={addBenchModel} disabled={benchModels.length>=6}><Plus size={14}/> Add candidate</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(310px,1fr))',gap:14,marginTop:14}}>
+                {benchModels.map((candidate, index) => (
+                  <section key={candidate.id} style={{background:'#fff',border:'1px solid #c8e6c9',borderRadius:14,padding:'14px 16px',boxShadow:'none'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,marginBottom:10}}>
+                      <strong style={{color:'#1b5e20'}}>Candidate {String.fromCharCode(65 + index)}</strong>
+                      {benchModels.length>2 && <button type="button" title="Remove candidate" onClick={()=>removeBenchModel(candidate.id)} style={{background:'none',color:'#90a4ae',padding:3,boxShadow:'none'}}><Trash2 size={15}/></button>}
+                    </div>
+                    <div style={{display:'grid',gap:9}}>
+                      <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                        Product / model name
+                        <input value={candidate.label} onChange={e=>updateBenchLabel(candidate.id,e.target.value)} placeholder={`Candidate ${String.fromCharCode(65 + index)}`}/>
+                      </label>
+                      <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                        Clinical task / starting template
+                        <select value={candidate.modelKey} onChange={e=>updateBenchTemplate(candidate.id,e.target.value)}>
+                          {AI_MODEL_LIBRARY.map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
+                        </select>
+                      </label>
+                      <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                        Intended use <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
+                        <input value={candidate.intendedUse || ''} onChange={e=>updateBenchModel(candidate.id,'intendedUse',e.target.value)} placeholder="e.g. triage suspected PE on CTPA"/>
+                      </label>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                        <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                          Reported performance (%)
+                          <input type="number" min="0" max="100" step="0.1" value={candidate.accuracyPct} onChange={e=>updateBenchModel(candidate.id,'accuracyPct',e.target.value)}/>
+                        </label>
+                        <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                          Metric
+                          <select value={candidate.accuracyMetric} onChange={e=>updateBenchModel(candidate.id,'accuracyMetric',e.target.value)}>
+                            {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','Other'].map(m=><option key={m} value={m}>{m}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                      <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
+                        Validation basis
+                        <select value={candidate.validationBasis || 'Not specified'} onChange={e=>updateBenchModel(candidate.id,'validationBasis',e.target.value)}>
+                          {['Not specified','Development / internal validation only','External validation','Locally validated'].map(v=><option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </label>
+                      <div>
+                        <div style={{fontSize:11,fontWeight:700,color:'#607d66',marginBottom:5}}>Reported clinical effect <span style={{fontWeight:400}}>optional; enter 0 unless supported</span></div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Scan-time reduction (%)<input type="number" min="0" max="100" value={candidate.scanTimeReductPct || '0'} onChange={e=>updateBenchModel(candidate.id,'scanTimeReductPct',e.target.value)}/></label>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Low-value imaging avoided (%)<input type="number" min="0" max="100" value={candidate.lowValueReductPct || '0'} onChange={e=>updateBenchModel(candidate.id,'lowValueReductPct',e.target.value)}/></label>
+                        </div>
+                      </div>
+                      <details style={{borderTop:'1px solid #eef7ee',paddingTop:8}}>
+                        <summary style={{cursor:'pointer',fontSize:12,fontWeight:700,color:'#607d66'}}>Procurement context — optional</summary>
+                        <div style={{display:'grid',gap:8,marginTop:8}}>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Vendor / developer<input value={candidate.vendor || ''} onChange={e=>updateBenchModel(candidate.id,'vendor',e.target.value)} placeholder="optional"/></label>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Regulatory status<select value={candidate.regulatoryStatus || 'Not specified'} onChange={e=>updateBenchModel(candidate.id,'regulatoryStatus',e.target.value)}>{['Not specified','Cleared / approved for intended use','Not cleared / approved','Not regulated / vendor rationale provided','Unknown'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Integration path<select value={candidate.integrationPath || 'Not specified'} onChange={e=>updateBenchModel(candidate.id,'integrationPath',e.target.value)}>{['Not specified','Standalone','Partial integration','Full integration'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                        </div>
+                      </details>
+                      <details style={{borderTop:'1px solid #eef7ee',paddingTop:8}}>
+                        <summary style={{cursor:'pointer',fontSize:12,fontWeight:700,color:'#607d66'}}>Technical &amp; environmental details — optional</summary>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:8}}>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Architecture<select value={candidate.architecture} onChange={e=>updateBenchModel(candidate.id,'architecture',e.target.value)}>{META.architectures.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Parameters (M)<input type="number" min="0" value={candidate.paramsM} onChange={e=>updateBenchModel(candidate.id,'paramsM',e.target.value)}/></label>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Precision<select value={candidate.precision} onChange={e=>updateBenchModel(candidate.id,'precision',e.target.value)}>{META.precisions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                          <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Measured inference (kWh/study)<input type="number" min="0" step="0.0001" value={candidate.inferKwh || ''} onChange={e=>updateBenchModel(candidate.id,'inferKwh',e.target.value)} placeholder="optional"/></label>
+                        </div>
+                      </details>
+                    </div>
+                  </section>
+                ))}
+              </div>
+              <p className="note" style={{margin:'10px 0 0',fontSize:11}}>Architecture and parameter count are optional procurement details; use measured inference energy when available. CEDARS applies the shared workload, provider and compute region to every candidate so the environmental comparison remains like-for-like.</p>
             </div>
           )}
 
+          {/* The detailed single-model editor belongs to Develop / Assess. */}
+          {scen.aiRoute === 'own' && (<>
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls" style={{padding:'12px 16px'}}>
             {/* Model library picker + precision + cloud */}
@@ -3796,15 +3934,18 @@ function App() {
 
           )}
 
-          {/* ── Model benchmark (moved from Compare) ── */}
+          </>)}
+
+          {/* ── Candidate comparison (Procure / Deploy only) ── */}
+          {scen.aiRoute === 'compare' && (<>
           <button type="button" className="accHead" onClick={()=>toggleAi('benchmark')} aria-expanded={!!aiOpen['benchmark']}>
             <span className="accCaret">{aiOpen['benchmark']?'▾':'▸'}</span>
-            <span className="accTitle">Model benchmark — accuracy vs carbon</span>
+            <span className="accTitle">Candidate comparison — performance vs carbon</span>
             <span className="accVal">Pareto</span>
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:4}}>Model benchmark — accuracy vs carbon</h2>
+            <h2 style={{marginBottom:4}}>Candidate comparison — performance vs carbon</h2>
             <p className="note" style={{marginBottom:8}}>
               Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
             </p>
@@ -3857,17 +3998,14 @@ function App() {
             </div>
 
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
-              <button onClick={addBenchModel} disabled={benchModels.length>=6} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:benchModels.length>=6?0.5:1}}>
-                <Plus size={14}/> Add current model
-              </button>
               <button onClick={()=>loadAiExample('maistro-agentic')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7'}}>
-                See worked procurement example
+                Load worked procurement example
               </button>
               <span style={{fontSize:12,color:'#607d66'}}>{benchModels.length} / 6 candidates{benchModels.length>=6?' (max)':''}</span>
             </div>
 
             {benchResults.rows.length === 0 ? (
-              <p className="note">No candidates yet. Configure one model above and choose <strong>Add current model</strong>, or load the worked same-task mAIstro example to see the comparison workflow populated.</p>
+              <p className="note">No candidates yet. Add at least two candidate models above, or load the worked same-task example.</p>
             ) : (<>
             <div style={{overflowX:'auto',marginBottom:24}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:760}}>
@@ -3904,7 +4042,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',...hi(r.efficiency===best.efficiency)}}>{r.efficiency}</td>
                         <td style={{padding:'7px 10px'}}>
-                          <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>
+                          {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
                         </td>
                       </tr>
                     );
@@ -3914,7 +4052,7 @@ function App() {
             </div>
 
             <section style={{marginBottom:16}}>
-              <h2 style={{marginBottom:4}}>Accuracy vs carbon</h2>
+              <h2 style={{marginBottom:4}}>Performance vs carbon</h2>
               <p className="note" style={{marginBottom:12}}>Upper-left is best (high performance, low carbon). <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
               {benchResults.comparablePerformance ? <>
               {(()=>{
@@ -3944,6 +4082,8 @@ function App() {
           </section>
 
           )}
+
+          </>)}
 
           {scen.aiRoute === 'own' && (
             <div style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid">

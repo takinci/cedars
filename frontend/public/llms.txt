@@ -7,7 +7,8 @@ Source code: https://github.com/takinci/cedars
 
 ## Primary workflows
 
-- Input: assess a Radiology Department, or an AI Model & Informatics workflow (Compare candidate models for procurement/deployment, or Assess my own model for a developer disclosure, with a 'Help me measure' tool chooser and worked examples).
+- Input: set shared Assessment Context first, then continue to a Radiology Department or AI Model & Informatics workflow.
+- AI Model & Informatics: compare at least two like-for-like candidates for procurement/deployment under one workload and compute context, or assess one model in detail with measured, measurement-assisted, or specification-based inputs and worked examples.
 - Score & EcoLabel: calculate a CEDARS Score and generate a Department EcoLabel or AI Research Label.
 - Improve: model prospective interventions and projected environmental, operational, financial, and clinical effects.
 - Report (& Share): complete a reproducible disclosure, generate reporting outputs, and optionally create a reproducible link or contribute an assessment to CEDARS research.
