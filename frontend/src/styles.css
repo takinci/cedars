@@ -215,3 +215,6 @@
 .departmentContextHeader h2{margin:2px 0 0;font-size:17px;color:#1b5e20}
 .departmentContextHeader small{font-size:10px;color:#607d66;font-weight:700}
 @media(max-width:700px){.departmentContextHeader{align-items:flex-start;flex-direction:column;gap:4px}}
+
+/* AI pathway entry, record and tool-chooser layouts stack at phone width */
+@media(max-width:850px){.aiEntryGrid{grid-template-columns:1fr!important}.aiRecordGrid{grid-template-columns:1fr!important}.aiRecordGrid>div:last-child{position:static!important}.measureGrid{grid-template-columns:1fr!important}}

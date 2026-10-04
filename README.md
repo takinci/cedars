@@ -24,7 +24,7 @@ CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browse
 It deliberately separates two kinds of "AI":
 
 - **Clinical AI** — deployed tools that change imaging *operations* (denoising, protocol shortening, triage, avoided low-value scans). These live in the **Radiology Department**, where their net effect flows into the department's energy, efficiency, contrast, and EcoLabel.
-- **AI Footprint** — the environmental footprint of *building and running the AI itself* (training, inference, cloud/informatics). This has its own tab for research disclosure and model benchmarking.
+- **AI Model & Informatics** — the environmental footprint of *building and running the AI itself* (training, inference, cloud/informatics). This pathway serves two audiences: people **comparing candidate models** before procurement or deployment, and developers **assessing their own model** for a research disclosure.
 
 No installation or account is required. Assessment data remains in your browser by default. Data is transmitted only if you explicitly choose **Contribute this assessment** after reviewing the contribution permissions.
 
@@ -34,7 +34,7 @@ No installation or account is required. Assessment data remains in your browser 
 
 ## What can it do?
 
-The main workflow follows **Input → Score → Improve → Share**, with navigation for **Home · Radiology Department · AI Footprint · EcoLabel · Interventions · About**. A live EcoLabel badge sits in the header throughout.
+The site is organised as a four-step workflow rail — **1 Input → 2 Score & EcoLabel → 3 Improve → 4 Report (& Share)** — plus **Home** and **About**. Step 1 forks into two pathways, **Radiology Department** and **AI Model & Informatics**. A live score badge sits in the header throughout: it shows the Department score, or the AI model's score while you are in the AI pathway.
 
 ### 🏠 Home
 
@@ -54,9 +54,15 @@ Your equipment fleet (MRI by field strength, CT, PET-CT, radiography, mammograph
 | **Resource footprint** | Water, paper, hazardous waste, and **contrast media & contamination** (iodinated + gadolinium load to wastewater, contrast wasted) |
 | **Equivalencies + cost** | Car km, flights, tree-years, charges, household-electricity years, **and an editable electricity-cost estimate** (kWh × regional commercial tariff) |
 
-### 🤖 AI Footprint
+### 🤖 AI Model & Informatics
 
-The footprint of building and running a model — R&D / informatics, distinct from clinical effect:
+The footprint of building and running a model — R&D / informatics, distinct from clinical effect. The page opens on a choice of route:
+
+- **Compare candidate models** (procure / deploy) — start from the task-family library, set the deployment conditions once, and read the accuracy-versus-carbon trade-off on a benchmark chart.
+- **Assess my own model** (develop) — one model record with a provenance tag (*Measured / Estimated / Literature*) on every numeric field, and three ways in: enter measured energy, **Help me measure** (a short questionnaire that recommends an open-source measurement tool for your setup and says which CEDARS field it fills), or estimate from the model specification.
+- **See an example** — four finished assessments (a measured chest-radiograph classifier, a report-generation LLM via vendor API, the mAIstro multi-agent workflow, and RoentGen synthetic chest radiographs), each opening in the route it was made with and shareable by link.
+
+Underneath:
 
 - **Task-family model library** — editable, literature-anchored templates: Classification/triage, detection, 2D & 3D segmentation, reconstruction/denoising, diffusion synthesis, report generation (LLM/VLM), **agentic workflow (LLM orchestration)**, foundation/prompt models, Custom.
 - **Two inference units** — vision models scale physically with `params × resolution² (× slices)` in GPU-seconds; **LLM & agentic models are token-driven** (`calls/task × tokens/call × Wh/1k-tokens`), so a multi-step agent's 10–100× footprint is visible rather than hidden.
@@ -64,7 +70,8 @@ The footprint of building and running a model — R&D / informatics, distinct fr
 - **Performance is user-owned, never predicted** — reported accuracy (AUC/Dice/SSIM…) and clinical co-benefits are entered, defaulting to the cited reference.
 - **Lifecycle tabs** — Training · Testing · Inference · Carbon · Clinical · **Infrastructure** (full cloud-carbon: compute, storage, transfer, cross-region optimisation).
 - **Benchmark** — shortlist candidate models under one department context; read the **accuracy-vs-carbon trade-off** on a Pareto scatter (efficient models starred), plus a worked **single-pass vs agentic** token-multiplier example.
-- **Research label** — a standalone AI-model disclosure label for manuscript/paper submission, splitting **training (one-time) from inference (per-study)** and grading the **amortised** footprint per study (with token-based inference for LLM/agentic models).
+- **AI Research Label** — a disclosure label for manuscript/paper submission that is a *view* of the model record (not a second form), splitting **training (one-time) from inference (per-study)** and grading the **amortised** footprint per study (with token-based inference for LLM/agentic models). If training energy is marked *not disclosed by vendor*, the label grades inference only and says so.
+- **Water** — optional site cooling (WUE) and grid water-intensity inputs; until entered, the label shows a clearly-marked screening estimate.
 
 ### 🏷️ EcoLabel — CEDARS Score & Rating
 
@@ -76,7 +83,7 @@ The department's clean, citable, **current-state** disclosure, after the design 
 - **Live by default** — derived automatically from your Radiology Department state; override the headline figures (annual kWh, studies, region) with measured data for publication.
 - **Export** as a PNG badge, markdown table, or ready-to-paste paper/ESG paragraph.
 
-### 🛠️ Interventions
+### 🛠️ Improve (interventions)
 
 Build an **intervention program** — tick as many operational levers as you plan to implement (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, plus **data-storage levers**: store axial-only, migrate archive to cloud, apply a data-retention policy) and see their **combined** impact: before/after energy, carbon, **and cost (annual € /$ saved)**, with your **current → projected** EcoLabel grade side by side. The selection is **shared with the EcoLabel's Sustainability actions** — tick in either place and the (overlap-aware) numbers stay identical. Storage levers are modelled as a *change from* your current storage setup, so they never double-count.
 
@@ -97,7 +104,7 @@ Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports remain availab
 
 The full calculator configuration is encoded in the URL hash — **copy the link from the address bar to share your exact setup**. A recipient opening the link reproduces it precisely: the equipment inventory, region/grid and time period, storage and cost/commute assumptions, the AI scenario (model spec, cloud provider/region, scanner state), and the selected interventions. The link stays clean (no `#…`) while everything is at its defaults, and only the values you changed are stored, so shared links stay compact.
 
-_Not carried in the URL (they are document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name), the deployed-AI-tools list, the separate AI research-label form, and the Infrastructure tab's custom compute/storage line items._
+_Not carried in the URL (document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name, AI project name), the deployed-AI-tools list, and the Infrastructure tab's custom compute/storage line items. The AI model record itself — including the fields the AI Research Label reads — is in the URL, so a shared link reproduces the label exactly._
 
 The URL hash is intended for reproducibility, not confidentiality. Names, email addresses, contribution permissions, and patient-identifiable information are never intentionally added to the shareable URL.
 
@@ -165,9 +172,10 @@ Every default value is sourced from peer-reviewed literature and listed in **[so
 | AI footprint & lifecycle framework | Doo et al. *Radiology* 2024 · DOI [10.1148/radiol.232030](https://doi.org/10.1148/radiol.232030) |
 | LLM energy vs. model size | Doo et al. *Radiology* 2024 · DOI [10.1148/radiol.240320](https://doi.org/10.1148/radiol.240320) |
 | DICOM network energy (0.001 kWh/GB) | Aslan et al. *J Industrial Ecology* 2018 · DOI [10.1111/jiec.12630](https://doi.org/10.1111/jiec.12630) |
-| Software Carbon Intensity (SCI) | Green Software Foundation · SCI Specification v1.0 |
 | Intervention savings | McKee et al. *Radiology* 2024 · DOI [10.1148/radiol.240219](https://doi.org/10.1148/radiol.240219) |
+| Radiology ecolabel concept, AI lifecycle phases, GHG scopes for informatics | Doo et al. *J Am Coll Radiol* 2024 · DOI [10.1016/j.jacr.2023.11.019](https://doi.org/10.1016/j.jacr.2023.11.019) |
 | Ecolabel design logic | Energy Star · EU Energy Label (Regulation EU 2021/341) |
+| Software Carbon Intensity (SCI) | Green Software Foundation · ISO/IEC 21031:2024 |
 | AI model library anchors | CheXNet, U-Net, nnU-Net, MedSAM, diffusion recon (see sources.md) |
 
 > **All values are literature-derived defaults.** Replace them with your own scanner logs, utility bills, GPU measurements, or validation results for publication-quality reporting. CEDARS **models energy** but only **records performance** — it never predicts a model's accuracy.
@@ -210,7 +218,7 @@ npm run build   # outputs to ../docs/
 | Charts | Chart.js 4 + react-chartjs-2 |
 | Icons | Lucide React |
 | Testing | Vitest (reference tests, CI-gated) |
-| Hosting | GitHub Pages (static, no backend) |
+| Hosting | GitHub Pages (static); optional Cloudflare Worker + D1 only for explicit research contributions |
 | CI/CD | GitHub Actions |
 
 ---
@@ -224,6 +232,7 @@ The calculation core is factored into small, **dependency-free modules** so resu
 | **`calc.js`** | CEDARS Score & Rating, grid carbon-intensity and electricity-price helpers |
 | **`model.js`** | The department engine — `buildFleet`, `computeDashboard`, `computeInterventions` — plus the pure data tables it reads |
 | **`urlstate.js`** | Encode/decode of the full shareable-URL configuration |
+| **`ailabel.js`** | The AI model record → AI Research Label: provenance, grading basis, water, legacy save-file migration |
 
 Each has **reference tests** (`*.test.js`, Vitest) that pin **fixed inputs to known outputs**: the Score/Rating and cost logic, the department energy / carbon / GHG-scope math (including per-unit embodied carbon), and a URL **round-trip** proving a shared link restores exactly what was shared. **GitHub Actions runs `npm test` before every deploy**, so a change in the calculation results fails the build. A committed **`package-lock.json`** pins dependency versions for reproducible installs.
 
@@ -264,7 +273,9 @@ If you use CEDARS, please cite it — GitHub's **"Cite this repository"** button
 
 > **Disclaimer.** CEDARS is a research and estimation tool. Figures are literature-based **estimates**, not measured values, and are **not** medical, clinical, financial, or regulatory advice. Provided *as-is*, without warranty. Replace defaults with your own measured data for any reporting of record.
 >
-> **Privacy.** Runs entirely in your browser — no backend, no personal data collected, no cookies, nothing you enter leaves your device.
+> **Privacy.** Normal calculator use is browser-local: no account, no cookies, and nothing you enter is transmitted. Data leaves your device only if you explicitly choose **Contribute this assessment** (see above), or when you open an external reference link, which CEDARS announces before opening.
+
+> **Citations in the interface.** Every literature value or external resource shown in the AI pathway carries an inline reference with a direct DOI link, verified at the time of writing; external links open in a new tab after a short notice. The methods document behind the defaults remains [sources.md](./sources.md).
 
 ---
 

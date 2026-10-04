@@ -37,6 +37,16 @@ export const SCEN_DEFAULTS = {
   tokensPerCall: '', accuracyPct: '84', accuracyMetric: 'AUC', scanTimeReductPct: '0',
   lowValueReductPct: '12', trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500',
   deployMonths: '36', datasetSize: '', epochs: '', customPue: '', trainCustomTdpW: '',
+  // Record fields that used to live only on the AI Research Label (merged into the one record):
+  numRuns: '1', inferStudiesMonth: '', renewablePct: '0', trainKwhMeasured: '', trainDisclosed: 'yes',
+  trainTool: '', taskType: '',
+  // Water (optional): site water-use effectiveness and grid water intensity, L/kWh; 'screening' |
+  // 'notassessed' when neither is given.
+  wueOnsite: '', wueOffsite: '', waterMode: 'screening',
+  // Entry route on the AI page: '' (not chosen) | 'compare' | 'own'; and the developer sub-route.
+  aiRoute: '', ownMode: 'measured',
+  // Not in the URL by design (free text, authoring detail): projectName.
+  projectName: '',
 };
 
 // short key ↔ field name. Keys must stay unique across BOTH maps (they share one query string).
@@ -52,6 +62,8 @@ const SCEN_KEYS = {
   am: 'accuracyMetric', st: 'scanTimeReductPct', lv: 'lowValueReductPct', tg: 'trainGpu',
   tn: 'trainNumGpus', th: 'trainHours', ts: 'testStudies', dp: 'deployMonths',
   ds: 'datasetSize', ne: 'epochs', pu: 'customPue', tw: 'trainCustomTdpW',
+  nr: 'numRuns', im: 'inferStudiesMonth', rp: 'renewablePct', tk: 'trainKwhMeasured', td: 'trainDisclosed',
+  tt: 'trainTool', ty: 'taskType', wo: 'wueOnsite', wf: 'wueOffsite', wm: 'waterMode', ro: 'aiRoute', om: 'ownMode',
 };
 
 // equipment: `eq=ct~2-mri_15t~1` (non-zero devices only; `~` = count sep, `-` = item sep — both
