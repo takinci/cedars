@@ -13,7 +13,7 @@ import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
 import { REFS, refUrl } from './refs.js';
 import { labelFromScen, computeAiLabel, LABEL_TO_SCEN, migrateLegacyLabel, PROVENANCE } from './ailabel.js';
-import { AiEntryStep, AiRouteStrip, AI_ENTRY_REFS } from './AiEntry.jsx';
+import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AI_ENTRY_REFS } from './AiEntry.jsx';
 import { MeasureChooser } from './MeasureChooser.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
@@ -1454,8 +1454,8 @@ function App() {
     cloudRegion: Object.keys(CLOUD_REGIONS[prov]?.regions ?? {})[0] ?? '',
   }));
   const goToAssessmentContext = () => {
-    setPage('landing');
-    window.setTimeout(() => document.getElementById('assessment-context-title')?.scrollIntoView({behavior:'smooth', block:'start'}), 0);
+    setPage('input');
+    window.setTimeout(() => document.getElementById('assessment-context-title')?.scrollIntoView({behavior:'smooth', block:'start'}), 60);
   };
   // Cross-page workflow links should land on the relevant section, not merely the top of the page.
   // The calculator state remains in memory while switching pages; this only changes the visible view.
@@ -1473,15 +1473,20 @@ function App() {
     }, 60);
   };
   const [aiOpen, setAiOpen] = useState({model:true});
-  // Deployment context for the Compare route: the department in CEDARS, a practice-size preset
-  // (Doo et al., JACR 2024, Fig. 2), or entered by hand. Default: the department if it has volume,
-  // else the small-practice preset — stated on the chip so nobody mistakes it for their own data.
-  const [compareCtx, setCompareCtx] = useState(() => (initCfg.scen?.inferStudiesMonth ? 'manual' : 'department'));
-  // 'department' copies the Department's volume into the record; with no volume entered yet it
-  // falls back to the small-practice estimate, which the entry step says out loud.
-  const applyCompareCtx = c => {
-    const v = Math.round(dash.scopes.imagingScans || 0);
-    if (c === 'department') setS('inferStudiesMonth', String(v > 0 ? v : VOLUME_ESTIMATES[0].studiesPerMonth));
+  // Procurement comparison workload: source and numeric value are both persisted, so a shared
+  // link reproduces not only 5,100 studies/mo but whether it was a published preset, the current
+  // Radiology Department volume, or a user-entered value.
+  const compareCtx = scen.compareVolumeSource || 'small';
+  const applyCompareCtx = source => {
+    const deptVolume = Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1));
+    const preset = VOLUME_ESTIMATES.find(v => v.key === source);
+    const nextVolume = source === 'department' && deptVolume > 0 ? deptVolume
+      : preset ? preset.studiesPerMonth : null;
+    setScen(s => ({
+      ...s,
+      compareVolumeSource: source,
+      ...(nextVolume != null ? {inferStudiesMonth: String(nextVolume)} : {}),
+    }));
   };
   // Worked examples: replace the AI model record (never the Department) and, for the Compare
   // route, the benchmark candidates. Reproducible by link because the record is URL-encoded.
@@ -1533,7 +1538,7 @@ function App() {
   }, [page, ecoLabelMode]);
 
   // Scenario tab mode + AI model benchmark shortlist
-  const [benchModels, setBenchModels] = useState(() => ['cad','seg3d','report'].map(benchCfgFromLib));
+  const [benchModels, setBenchModels] = useState(() => []);
   const addBenchModel = () => setBenchModels(list =>
     list.length >= 6 ? list : [...list, {...pickAiCfg(scen), id: Date.now(),
       label: `${AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'Model'} (current)`}]);
@@ -1543,17 +1548,6 @@ function App() {
   const toggleDash = id => setDashOpen(o => ({...o, [id]: !o[id]}));
   const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
   const [equivScope, setEquivScope] = useState('scope2');
-  const [landingAIOpen, setLandingAIOpen] = useState(false);
-  // REVIEW (2026-09, not yet fixed) — `setLandingAIOpen` is never called: this flag is permanently
-  // false, so the `landingAIKwh` / `landingAICo2` memos below always short-circuit to 0 and the
-  // landing-page AI estimator (including its contribution to `equivData`) is dead code. Whatever
-  // control used to flip it was removed without removing the state.
-  // Fix: either wire the toggle back into the landing section, or delete landingAIOpen /
-  // landingAITools / landingAIKwh / landingAICo2 and drop the two `+ landingAI*` terms from
-  // equivData. Deleting is the safer default — the estimator's own arithmetic (fixed tdpKw × hours
-  // × 30 × PUE, with no amortised training and no utilisation factor) is cruder than the AI tab's,
-  // so silently re-enabling it would introduce a fourth, inconsistent AI energy formula.
-  const [landingAITools, setLandingAITools] = useState({});
   const [ecoCopied, setEcoCopied] = useState(false);
   // The label is a view of the model record: read via `ecoLabel` (derived below, after `ai`),
   // written through `setEco`, which maps the label's field names onto the record.
@@ -1835,24 +1829,38 @@ function App() {
   // model varies. Pareto-efficient = no other candidate is both more accurate and lower-carbon.
   const benchResults = useMemo(() => {
     const rows = benchModels.map(cfg => {
-      const r = aiResultFor(cfg, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides);
+      const sharedCfg = {
+        ...cfg,
+        cloudProvider: scen.cloudProvider,
+        cloudRegion: scen.cloudRegion,
+        inferStudiesMonth: scen.inferStudiesMonth,
+        deployMonths: scen.deployMonths,
+      };
+      const r = aiResultFor(sharedCfg, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides);
+      const lifetimeStudies = Math.max(0, (r.inference.studies || 0) * (parseFloat(scen.deployMonths) || 0));
+      const inferenceCo2G = rnd((r.inference.kwhPerStudy || 0) * r.cloudCi * 1000, 3);
+      const trainPerStudyG = lifetimeStudies > 0 ? rnd((r.training.kgCo2e || 0) * 1000 / lifetimeStudies, 3) : 0;
+      const carbonPerStudyG = rnd(inferenceCo2G + (scen.trainDisclosed === 'no' ? 0 : trainPerStudyG), 3);
       return {
         id: cfg.id, label: cfg.label, sizeLabel: r.modelSize, paramsM: r.paramsM,
         accuracyPct: rnd(r.accuracy * 100, 1), accuracyMetric: r.accuracyMetric,
         trainCo2: r.training.kgCo2e, kwhPerStudy: r.inference.kwhPerStudy,
+        carbonPerStudyG, inferenceCo2G, trainPerStudyG,
         netCo2: r.netKgCo2e, lifetimeCo2: r.lifetimeCo2, efficiency: r.efficiencyRatio,
       };
     });
+    const metrics = [...new Set(rows.map(r => r.accuracyMetric).filter(Boolean))];
+    const comparablePerformance = metrics.length <= 1;
     rows.forEach(a => {
-      a.pareto = !rows.some(b => b.id !== a.id &&
-        b.accuracyPct >= a.accuracyPct && b.lifetimeCo2 <= a.lifetimeCo2 &&
-        (b.accuracyPct > a.accuracyPct || b.lifetimeCo2 < a.lifetimeCo2));
+      a.pareto = comparablePerformance && !rows.some(b => b.id !== a.id &&
+        b.accuracyPct >= a.accuracyPct && b.carbonPerStudyG <= a.carbonPerStudyG &&
+        (b.accuracyPct > a.accuracyPct || b.carbonPerStudyG < a.carbonPerStudyG));
     });
     const minBy = key => rows.length ? Math.min(...rows.map(r => r[key])) : 0;
     const maxBy = key => rows.length ? Math.max(...rows.map(r => r[key])) : 0;
-    return {rows, best: {trainCo2: minBy('trainCo2'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
-      accuracyPct: maxBy('accuracyPct'), efficiency: maxBy('efficiency')}};
-  }, [benchModels, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
+    return {rows, metrics, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
+      accuracyPct: comparablePerformance ? maxBy('accuracyPct') : null, efficiency: maxBy('efficiency')}};
+  }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.inferStudiesMonth, scen.deployMonths, scen.trainDisclosed, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
   // agent, all on the SAME department volume — surfaces the token multiplier concretely.
@@ -1872,21 +1880,6 @@ function App() {
       ],
     };
   }, [settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
-
-  const landingAIKwh = useMemo(() => {
-    if (!landingAIOpen) return 0;
-    return rnd(Object.values(landingAITools).reduce((sum, cfg) => {
-      const tdpKw = GPU_PRESETS[cfg.gpu]?.tdpKw ?? 0.3;
-      const hours = parseFloat(cfg.hoursPerDay) || 0;
-      const n     = parseInt(cfg.numGpus, 10) || 1;
-      const pue   = CLOUD[cfg.deployment]?.pue ?? 1.5;
-      return sum + tdpKw * n * hours * 30 * pue;
-    }, 0), 2);
-  }, [landingAIOpen, landingAITools]);
-  const landingAICo2 = useMemo(() => {
-    if (!landingAIOpen) return 0;
-    return rnd(landingAIKwh * getCI(settings.region, settings.customCi), 2);
-  }, [landingAIOpen, landingAIKwh, settings.region, settings.customCi]);
 
   // ── Scope 3 extensions (Doo et al. JACR 2024) ──────────────────────────────
   const derivedStaffCount = useMemo(() =>
@@ -1957,9 +1950,9 @@ function App() {
 
   const equivData = useMemo(() => {
     const co2 = equivScope === 'scope2'
-      ? dash.scopes.scope2Kg + landingAICo2
-      : dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2 + landingAICo2;
-    const kwh = dash.totals.kwh + landingAIKwh;
+      ? dash.scopes.scope2Kg
+      : dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2;
+    const kwh = dash.totals.kwh;
     const price = getPrice(settings.region, settings.electricityPrice);
     return {
       co2, kwh,
@@ -1984,7 +1977,7 @@ function App() {
       barrels_oil:   rnd(co2 / 430, 1),             // crude oil combustion EPA (0.43 tCO₂/barrel)
       tonnes_coal:   rnd(co2 / 2350, 2),            // bituminous coal ~2 350 kgCO₂/tonne (IPCC)
     };
-  }, [dash, equivScope, landingAICo2, landingAIKwh, staffCommuteCo2, networkTransferCo2, settings.region, settings.electricityPrice]);
+  }, [dash, equivScope, staffCommuteCo2, networkTransferCo2, settings.region, settings.electricityPrice]);
 
   const ecoLabelData = useMemo(() => {
     const gpuLabel = scen.trainGpu === 'Custom (enter TDP below)'
@@ -2713,9 +2706,8 @@ function App() {
           {/* ── Sticky tab nav ── */}
           <div id="department-overview" className="stickyControls workflowAnchor">
             <div className="aiSummary">
-              <span>Total energy <b>{fmtKwh(dash.totals.kwh + landingAIKwh)}{dash.totals.label}</b></span>
-              <span>Scope 2 CO₂ <b>{fmtCo2(dash.scopes.scope2Kg + landingAICo2)}</b></span>
-              {landingAIOpen && Object.keys(landingAITools).length>0 && <span>AI tools ({Object.keys(landingAITools).length}) <b>{fmtCo2(landingAICo2)}</b></span>}
+              <span>Total energy <b>{fmtKwh(dash.totals.kwh)}{dash.totals.label}</b></span>
+              <span>Scope 2 CO₂ <b>{fmtCo2(dash.scopes.scope2Kg)}</b></span>
               <span>Avoidable idle <b>{fmtKwh(dash.totals.idleWasteKwh)}</b></span>
             </div>
           </div>
@@ -2824,8 +2816,8 @@ function App() {
 
             {/* Hero tiles */}
             <div className="cards" style={{marginBottom:18}}>
-              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`} value={fmtKwh(dash.totals.kwh + landingAIKwh)}       sub="All scanners, PACS, workstations."/>
-              <Card icon={<Leaf/>}         title="Carbon (Scope 2)"                          value={fmtCo2(dash.scopes.scope2Kg + landingAICo2)}  sub={`Grid ${dash.ci} kgCO₂e/kWh · ${settings.region}.`}/>
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`} value={fmtKwh(dash.totals.kwh)}       sub="Scanners, PACS, workstations, storage, and deployed Clinical AI where entered."/>
+              <Card icon={<Leaf/>}         title="Carbon (Scope 2)"                          value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid ${dash.ci} kgCO₂e/kWh · ${settings.region}.`}/>
               <Card icon={<Droplets/>}     title={`Electricity cost ${dash.totals.label}`}   value={fmtMoney(equivData.cost, equivData.sym)}      sub={`At ${equivData.sym}${equivData.pricePerKwh}/kWh. Editable under “What it means”.`}/>
               <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}             sub="Recoverable by standby / power-off — see Interventions."/>
             </div>
@@ -2899,19 +2891,18 @@ function App() {
           <button type="button" className="accHead" onClick={()=>toggleDash('energy')} aria-expanded={!!dashOpen['energy']}>
             <span className="accCaret">{dashOpen['energy']?'▾':'▸'}</span>
             <span className="accTitle">Energy consumption</span>
-            <span className="accVal">{fmtKwh(dash.totals.kwh + landingAIKwh)}</span>
+            <span className="accVal">{fmtKwh(dash.totals.kwh)}</span>
           </button>
           {dashOpen['energy'] && (
           <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>1. Energy consumption</h2>
             <div className="cards">
-              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh + landingAIKwh)}  sub={`Scanners, PACS, workstations${dash.storage.kwh>0?', and data storage':''}${landingAIOpen?', and AI tools':''}.`} style={{gridColumn:'span 4'}}/>
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh)}  sub={`Scanners, PACS, workstations${dash.storage.kwh>0?', data storage':''}${dash.clinicalMeta.active?', and deployed Clinical AI':''}.`} style={{gridColumn:'span 4'}}/>
               <Card icon={<Activity/>}     title={`Active scanning ${dash.totals.label}`}    value={fmtKwh(dash.totals.activeKwh)}            sub={`${dash.totals.activePct}% of total — energy during actual scan acquisition.`}/>
               <Card icon={<TrendingDown/>} title={`Idle + standby ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleKwh)}              sub={`${dash.totals.idlePct}% of total — between scans and overnight. Primary optimisation target.`}/>
               <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}         sub="Recoverable by standby / power-off policies."/>
               {dash.storage.kwh > 0 && <Card icon={<Database/>} title={`Data storage / archive ${dash.totals.label}`} value={fmtKwh(dash.storage.kwh)} sub={`${dash.storage.storedTB} TB held over ${dash.storage.retentionYears} yr (${dash.storage.cloud?'cloud':'on-prem'}) at ${dash.storage.intensity} kWh/TB/yr. Part of the total above — configure in Infrastructure.`}/>}
               <Card icon={<Activity/>}     title="Energy per imaging scan"                   value={`${dash.totals.energyPerScan} kWh`}       sub="Total ÷ all scans. Use for modality benchmarking and protocol optimisation."/>
-              {landingAIOpen && Object.keys(landingAITools).length>0 && <Card icon={<Cpu/>} title={`AI tools estimate ${dash.totals.label}`} value={fmtKwh(landingAIKwh)} sub={`${Object.keys(landingAITools).length} tool(s): ${Object.keys(landingAITools).map(k=>AI_PRESETS.find(p=>p.key===k)?.label??k).join(', ')}. For full analysis use AI Dashboard.`}/>}
               {sciPerStudy !== null && <Card icon={<Target/>} title="SCI — carbon per imaging study" value={`${sciPerStudy} kgCO₂e`} sub={`Software Carbon Intensity (Green Software Foundation): operational CO₂ (${dash.totals.energyPerScan} kWh × ${dash.ci} CI) + embodied carbon per study. Lower is better. (Doo et al. JACR 2024)`} style={{gridColumn:'span 4'}}/>}
             </div>
           </section>
@@ -2922,7 +2913,7 @@ function App() {
           <button type="button" className="accHead" onClick={()=>toggleDash('carbon')} aria-expanded={!!dashOpen['carbon']}>
             <span className="accCaret">{dashOpen['carbon']?'▾':'▸'}</span>
             <span className="accTitle">Carbon emissions — GHG scopes</span>
-            <span className="accVal">{fmtCo2(dash.scopes.scope2Kg + landingAICo2)} Scope 2</span>
+            <span className="accVal">{fmtCo2(dash.scopes.scope2Kg)} Scope 2</span>
           </button>
           {dashOpen['carbon'] && (
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
@@ -2941,7 +2932,7 @@ function App() {
             </div>
             <div className="cards">
               <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={fmtCo2(dash.scopes.scope1Kg)}       sub="Backup generators, medical gas. Estimated 8% of Scope 2 (McKee 2024)."/>
-              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg + landingAICo2)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}).${landingAICo2>0?` Includes ${fmtCo2(landingAICo2)} from AI tools.`:' Primary measured scope.'}`}/>
+              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Deployed Clinical AI is already included when entered above.`}/>
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={fmtCo2(dash.scopes.scope3TravelKg)} sub={`${dash.scopes.imagingScans.toLocaleString()} scans × ${PATIENT_KM_RT} km avg round trip.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
@@ -3113,7 +3104,7 @@ function App() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div>
               <h1 style={{margin:0}}>AI Model &amp; Informatics</h1>
-              <div className="contextLine"><Globe size={13}/> <strong>Local assessment context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={goToAssessmentContext}>Change local context →</button><span className="contextSep">·</span> <strong>Compute region:</strong> {scen.cloudRegion || `${scen.cloudProvider} average`}</div>
+              <div className="contextLine"><Globe size={13}/> <strong>Shared local context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={goToAssessmentContext}>Edit shared context →</button><span className="contextSep">·</span> <strong>AI compute region:</strong> {scen.cloudRegion || `${scen.cloudProvider} average`}</div>
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadAICSV(ai, scen, settings.region)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
@@ -3127,23 +3118,29 @@ function App() {
               route={scen.aiRoute} ownMode={scen.ownMode}
               basis={scen.trainDisclosed === 'no' ? 'inference' : 'amortised'}
               ctxSource={compareCtx}
-              dept={{region: settings.region, ci: getCI(settings.region, settings.customCi), studiesPerMonth: Math.round(dash.scopes.imagingScans || 0)}}
+              dept={{region: settings.region, ci: getCI(settings.region, settings.customCi), studiesPerMonth: Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1))}}
               volume={scen.inferStudiesMonth}
-              onVolume={v => setS('inferStudiesMonth', v)}
+              onVolume={v => setScen(s => ({...s, compareVolumeSource:'custom', inferStudiesMonth:v}))}
               onRoute={r => {
                 setS('aiRoute', r);
                 if (r === 'compare') {
                   setAiOpen(o => ({...o, benchmark: true}));
-                  if (!(parseFloat(scen.inferStudiesMonth) > 0)) applyCompareCtx(compareCtx);
+                  if (compareCtx !== 'custom' || !(parseFloat(scen.inferStudiesMonth) > 0)) applyCompareCtx(compareCtx);
                 }
               }}
               onOwnMode={m => setS('ownMode', m)}
               onBasis={b => setS('trainDisclosed', b === 'inference' ? 'no' : 'yes')}
-              onCtxSource={c => { setCompareCtx(c); applyCompareCtx(c); }}
+              onCtxSource={applyCompareCtx}
               examples={AI_EXAMPLES} onExample={loadAiExample}
             />
           ) : (
-            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} onChange={() => setS('aiRoute', '')} onLabel={() => {setEcoLabelMode('ai'); setPage('ecolabel');}}/>
+            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} onChange={() => setS('aiRoute', '')}/>
+          )}
+
+          {scen.aiRoute === 'compare' && (
+            <div style={{marginTop:12}}>
+              <AiDeploymentContext ctxSource={compareCtx} dept={{region:settings.region, ci:getCI(settings.region, settings.customCi), studiesPerMonth:Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1))}} volume={scen.inferStudiesMonth} onCtxSource={applyCompareCtx} onVolume={v=>setScen(s=>({...s, compareVolumeSource:'custom', inferStudiesMonth:v}))}/>
+            </div>
           )}
 
           {scen.aiRoute === 'own' && scen.ownMode === 'measure' && (
@@ -3151,6 +3148,13 @@ function App() {
           )}
 
           {scen.aiRoute && (<>
+
+          {scen.aiRoute === 'compare' && (
+            <div className="inputSummary" style={{margin:'14px 0 10px'}}>
+              <h2 style={{margin:'0 0 4px', color:'#1b5e20'}}>Candidate builder</h2>
+              <p className="note" style={{margin:0}}>Configure one candidate below, then use <strong>Add current model</strong> in the comparison. Change the model/settings and add the next candidate. Deployment volume, provider and compute region are shared across candidates so the comparison is like-for-like.</p>
+            </div>
+          )}
 
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls" style={{padding:'12px 16px'}}>
@@ -3802,11 +3806,17 @@ function App() {
           <section id="ai-benchmark" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4}}>Model benchmark — accuracy vs carbon</h2>
             <p className="note" style={{marginBottom:8}}>
-              Compare candidate AI models on the accuracy-vs-carbon trade-off. Every candidate is evaluated under the <strong>same department context</strong> ({settings.region}, your current equipment fleet) — only the model varies.
+              Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
             </p>
             <p className="note" style={{marginBottom:16,fontSize:12}}>
-              Performance values are <strong>user-reported</strong>, not predicted by CEDARS — set the current model's configuration in the tabs above, then add it as a candidate.
+              Performance values are <strong>user-reported</strong>, not predicted by CEDARS. Compare only candidates for the same clinical task using the same performance metric. Carbon/study is {scen.trainDisclosed==='no'?'inference only because training is marked unavailable':'inference + an amortised share of training over the expected deployment'}. The CEDARS AI Score keeps embodied hardware carbon as a separate disclosure rather than folding it into this operational per-study grade.
             </p>
+
+            {!benchResults.comparablePerformance && benchResults.rows.length>1 && (
+              <div style={{background:'#fff8e1', border:'1px solid #ffe082', borderRadius:12, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#5d4037'}}>
+                <strong>Performance metrics are mixed ({benchResults.metrics.join(' · ')}).</strong> CEDARS will show the carbon columns, but it will not calculate a Pareto frontier or plot unlike performance metrics against one another.
+              </div>
+            )}
 
             {/* Worked agentic example — the token multiplier */}
             <div style={{background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16,padding:'14px 18px',marginBottom:20}}>
@@ -3850,14 +3860,14 @@ function App() {
               <button onClick={addBenchModel} disabled={benchModels.length>=6} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:benchModels.length>=6?0.5:1}}>
                 <Plus size={14}/> Add current model
               </button>
-              <button onClick={()=>setBenchModels(['cad','seg3d','report'].map(benchCfgFromLib))} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7'}}>
-                Reset to reference set
+              <button onClick={()=>loadAiExample('maistro-agentic')} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7'}}>
+                See worked procurement example
               </button>
               <span style={{fontSize:12,color:'#607d66'}}>{benchModels.length} / 6 candidates{benchModels.length>=6?' (max)':''}</span>
             </div>
 
             {benchResults.rows.length === 0 ? (
-              <p className="note">No candidates. Add the current model, or reset to the reference set.</p>
+              <p className="note">No candidates yet. Configure one model above and choose <strong>Add current model</strong>, or load the worked same-task mAIstro example to see the comparison workflow populated.</p>
             ) : (<>
             <div style={{overflowX:'auto',marginBottom:24}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:760}}>
@@ -3868,6 +3878,7 @@ function App() {
                     <th style={{padding:'8px 10px'}}>Reported</th>
                     <th style={{padding:'8px 10px'}}>Training CO₂e</th>
                     <th style={{padding:'8px 10px'}}>kWh/study</th>
+                    <th style={{padding:'8px 10px'}}>gCO₂e/study</th>
                     <th style={{padding:'8px 10px'}}>Net CO₂e/mo</th>
                     <th style={{padding:'8px 10px'}}>Lifetime CO₂e</th>
                     <th style={{padding:'8px 10px'}}>Efficiency</th>
@@ -3888,6 +3899,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.accuracyPct===best.accuracyPct)}}>{r.accuracyPct}% <span style={{color:'#90a4ae',fontWeight:400,fontSize:11}}>{r.accuracyMetric}</span></td>
                         <td style={{padding:'7px 10px',...hi(r.trainCo2===best.trainCo2)}}>{fmtCo2(r.trainCo2)}</td>
                         <td style={{padding:'7px 10px'}}>{r.kwhPerStudy}</td>
+                        <td style={{padding:'7px 10px',...hi(r.carbonPerStudyG===best.carbonPerStudyG)}}>{r.carbonPerStudyG}</td>
                         <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',...hi(r.efficiency===best.efficiency)}}>{r.efficiency}</td>
@@ -3904,10 +3916,11 @@ function App() {
             <section style={{marginBottom:16}}>
               <h2 style={{marginBottom:4}}>Accuracy vs carbon</h2>
               <p className="note" style={{marginBottom:12}}>Upper-left is best (high performance, low carbon). <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
+              {benchResults.comparablePerformance ? <>
               {(()=>{
                 const data = {datasets:[{
                   label:'Candidates',
-                  data: benchResults.rows.map(r=>({x:r.lifetimeCo2, y:r.accuracyPct, _label:r.label})),
+                  data: benchResults.rows.map(r=>({x:r.carbonPerStudyG, y:r.accuracyPct, _label:r.label})),
                   pointBackgroundColor: benchResults.rows.map(r=>r.pareto?'#2E7D32':'#b0bec5'),
                   pointBorderColor: benchResults.rows.map(r=>r.pareto?'#1b5e20':'#90a4ae'),
                   pointRadius: benchResults.rows.map(r=>r.pareto?8:6),
@@ -3915,16 +3928,18 @@ function App() {
                 }]};
                 const opts = {
                   responsive:true, maintainAspectRatio:false,
-                  plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y}% · ${fmtCo2(ctx.parsed.x)} lifetime`}}},
+                  plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y}% · ${ctx.parsed.x} gCO₂e/study`}}},
                   scales:{
-                    x:{title:{display:true,text:'Lifetime CO₂e (kg)'}, beginAtZero:true},
+                    x:{title:{display:true,text:'Carbon per study (gCO₂e)'}, beginAtZero:true},
                     y:{title:{display:true,text:'Reported performance (%)'}},
                   },
                 };
                 return <div style={{height:320}}><Suspense fallback={<div style={{height:320}}/>}><Scatter data={data} options={opts}/></Suspense></div>;
               })()}
+              </> : <p className="note">Chart suppressed because the candidates use different reported performance metrics. Choose like-for-like candidates before interpreting an accuracy-versus-carbon frontier.</p>}
             </section>
-            <p className="note">Different reported metrics (AUC, Dice, SSIM…) are not directly comparable on the y-axis — compare like-for-like tasks. Carbon uses cloud CI; clinical savings use the {settings.region} grid.</p>
+            <p className="note">Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
+            <div style={{display:'flex', justifyContent:'flex-end', marginTop:14}}><button onClick={()=>{setEcoLabelMode('ai');setPage('ecolabel');}}>Continue to Score &amp; EcoLabel →</button></div>
             </>)}
           </section>
 
@@ -3983,7 +3998,7 @@ function App() {
             <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Model potential changes <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(select the scenario you want to test)</span></h2>
             <p className="note" style={{marginBottom:12}}>
               {scenario.count>0
-                ? <><strong style={{color:'#2E7D32'}}>{scenario.count} selected · −{scenario.savings.kwh.toLocaleString()} kWh · −{scenario.savings.co2.toLocaleString()} kgCO₂e{dash.totals.label}</strong> ({scenario.savings.pctEnergy}% energy · {scenario.savings.pctCo2}% carbon)</>
+                ? <><strong style={{color:'#2E7D32'}}>{scenario.count} selected · −{scenario.savings.kwh.toLocaleString()} kWh · −{scenario.savings.co2.toLocaleString()} kgCO₂e operational{scenario.embodied.savedCo2eKg>0?` · −${scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3`:''}</strong> ({scenario.savings.pctEnergy}% energy · {scenario.savings.pctCo2}% operational carbon)</>
                 : 'No interventions selected yet — tick one or more below to model their combined effect.'}
             </p>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
@@ -3994,7 +4009,7 @@ function App() {
                     <input type="checkbox" checked={active} onChange={()=>toggleScenarioIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
                     <div>
                       <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
-                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr`:''}{data.co2Pct?` · −${data.co2Pct}% carbon`:''}</div>
+                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr`:''}{data.co2Pct?` · −${data.co2Pct}% operational carbon`:''}{data.scope3EmbPct?` · −${data.scope3EmbPct}% embodied carbon`:''}</div>
                     </div>
                   </label>
                 );
@@ -4045,7 +4060,7 @@ function App() {
                   scenario.count === 0
                     ? <p className="note" style={{marginTop:8}}>Tick one or more interventions above to project their combined impact on your CEDARS Score.</p>
                     : projScore === cur.score
-                      ? <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} don't move your CEDARS Score band, but still cut {scenario.savings.co2.toLocaleString()} kgCO₂e{scenario.baseline.co2>0?` (${scenario.savings.pctEnergy}% energy)`:''}.</p>
+                      ? <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} don't move your operational CEDARS Score band. Modeled savings: {scenario.savings.co2.toLocaleString()} kgCO₂e operational{scenario.embodied.savedCo2eKg>0?` plus ${scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3`:''}{scenario.contrast.savedCo2eKg>0?` plus ${scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast Scope 3`:''}.</p>
                       : <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} shift your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
                 )}
               </div>
@@ -4081,6 +4096,9 @@ function App() {
                 <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
                 {scenario.contrast.savedCo2eKg > 0 && (
                   <p style={{fontSize:12,color:'#607d66',marginTop:4}}>+ −{scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast supply chain (Scope 3, not electricity)</p>
+                )}
+                {scenario.embodied.savedCo2eKg > 0 && (
+                  <p style={{fontSize:12,color:'#607d66',marginTop:4}}>+ −{scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied hardware (Scope 3, not electricity)</p>
                 )}
               </section>
               <section className="card">

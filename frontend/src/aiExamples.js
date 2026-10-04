@@ -44,7 +44,7 @@ export const AI_EXAMPLES = [
     ref: 'tzanis-maistro-2025',
     note: 'mAIstro (Tzanis & Klontzas, 2025) is a master agent coordinating eight task-specific agents; it is LLM-agnostic. The publication reports task success per LLM but no energy, so carbon here is an estimate from token counts and the agent count. The reasoning LLM is the lever.',
     scen: {
-      aiRoute: 'compare', projectName: 'mAIstro multi-agent workflow (example)',
+      aiRoute: 'compare', compareVolumeSource: 'custom', projectName: 'mAIstro multi-agent workflow (example)',
       modelKey: 'agentic', architecture: 'LLM / Agent (transformer)', taskType: 'Agentic workflow',
       trainDisclosed: 'no', callsPerTask: '9', tokensPerCall: '4000', whPer1kTokens: '0.4',
       inferStudiesMonth: '2500', deployMonths: '36',

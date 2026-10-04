@@ -130,6 +130,24 @@ export const REFS = {
     venue: 'electricitymaps.com', year: 2026, cite: 'live and annual averages',
     url: 'https://app.electricitymaps.com/', verified: '2026-10-04',
   },
+  'jegham-llm-2025': {
+    authors: 'Jegham N, Abdelatti M, Elmoubarki L, Hendawi A',
+    title: 'How Hungry is AI? Benchmarking Energy, Water, and Carbon Footprint of LLM Inference',
+    venue: 'arXiv', year: 2025, cite: '2025; arXiv:2505.09598',
+    doi: '10.48550/arXiv.2505.09598', verified: '2026-10-04',
+  },
+  'fernandez-llm-energy-2025': {
+    authors: 'Fernandez J, Na C, Tiwari V, Bisk Y, Luccioni S, Strubell E',
+    title: 'Energy Considerations of Large Language Model Inference and Efficiency Optimizations',
+    venue: 'arXiv', year: 2025, cite: '2025; arXiv:2504.17674',
+    doi: '10.48550/arXiv.2504.17674', verified: '2026-10-04',
+  },
+  'oviedo-inference-2025': {
+    authors: 'Oviedo F, Kazhamiaka F, Choukse E, Kim A, Luers A, Nakagawa M, Bianchini R, Lavista Ferres JM',
+    title: 'Energy Use of AI Inference: Efficiency Pathways and Test-Time Compute',
+    venue: 'arXiv', year: 2025, cite: '2025; arXiv:2509.20241',
+    doi: '10.48550/arXiv.2509.20241', verified: '2026-10-04',
+  },
   'owid-ci': {
     authors: 'Our World in Data',
     title: 'Carbon intensity of electricity generation',
