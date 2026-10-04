@@ -87,6 +87,16 @@ describe('computeInterventions — FLEET, delta from current config', () => {
     expect(iv.savings.kwh).toBe(0);
     expect(iv.projected.kwh).toBeCloseTo(iv.baseline.kwh, 2);
   });
+  it('hardware lifetime reduces embodied Scope 3 only, not operational electricity carbon', () => {
+    const base = computeDashboard('Germany', 'Annual', FLEET);
+    const iv = computeInterventions(
+      ['Extend hardware lifetime'],
+      'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby', {});
+    expect(iv.savings.kwh).toBe(0);
+    expect(iv.savings.co2).toBe(0);
+    expect(iv.projected.co2).toBeCloseTo(iv.baseline.co2, 1);
+    expect(iv.embodied.savedCo2eKg).toBeCloseTo(base.scopes.scope3EmbKg * 0.15, 1);
+  });
 });
 
 // Measured-data overrides (active_kw/idle_kw/standby_kw/off_kw/scans per device, and a custom

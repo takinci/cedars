@@ -236,18 +236,7 @@ const INTERVENTIONS = {
   // film processor and laser printer loads — uncited, editable estimate
   "Reduce paper and film printing":          {kwh:  120, note: "Printer and film processor elimination."},
   // embodied carbon amortised over more years (ESR PP 2025, Scope 3)
-  "Extend hardware lifetime":                {kwh:    0, co2Pct: 15, note: "Amortises embodied carbon over more years. (ESR PP 2025)"},
-  // REVIEW (2026-09, not yet fixed) — this lever reduces the WRONG scope. `co2Pct` is applied by
-  // computeInterventions to operational carbon, but extending a scanner's service life changes
-  // neither its electricity use nor the carbon intensity of that electricity; it spreads
-  // manufacturing carbon over more months, i.e. scope3EmbKg. As written, a department that keeps
-  // its CT for 18 years instead of 12 is credited with 15% less operational carbon.
-  // Fix: give interventions an explicit target scope rather than one undifferentiated co2Pct —
-  // e.g. `{scope3EmbPct: 15}` — and have computeInterventions apply scope-3 levers to
-  // base.scopes.scope3EmbKg while scope-2 levers keep applying to co2Kg. The contrast levers below
-  // already needed exactly this and got a bespoke side-channel (CONTRAST_LEVER_FRACTION); a
-  // general `{kwh, scope2Pct, scope3EmbPct, scope3ContrastPct}` shape would fold that special case
-  // back in and stop the next scope-3 lever from needing a third mechanism.
+  "Extend hardware lifetime":                {kwh: 0, scope3EmbPct: 15, note: "Amortises embodied hardware carbon over more years; does not reduce operational electricity. (ESR PP 2025)"},
   // virtualisation / right-sizing (Clinical-AI PDF, Doo 2024)
   "Consolidate servers":                     {kwh:  500, note: "Virtualisation reduces physical server count. (Doo 2024, Clinical-AI)"},
   // lighter models use less inference compute (LLM-Energy PDF)
@@ -686,6 +675,11 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   const contrastSavedKg  = rnd(contrastBaseKg * contrastFraction, 1);
   const contrastProjKg   = rnd(Math.max(0, contrastBaseKg - contrastSavedKg), 1);
 
+  const embodiedFraction = 1 - list.reduce((f, n) => f * (1 - ((INTERVENTIONS[n]?.scope3EmbPct ?? 0) / 100)), 1);
+  const embodiedBaseKg   = base.scopes.scope3EmbKg;
+  const embodiedSavedKg  = rnd(embodiedBaseKg * embodiedFraction, 1);
+  const embodiedProjKg   = rnd(Math.max(0, embodiedBaseKg - embodiedSavedKg), 1);
+
   const idleLevers  = list.filter(n => SCANNER_STATE_INTERVENTIONS.has(n));
   const idleSaving  = idleLevers.length ? Math.max(...idleLevers.map(leverKwh)) : 0;      // overlap → deepest one
   const otherSaving = list.filter(n => !SCANNER_STATE_INTERVENTIONS.has(n) && !STORAGE_INTERVENTIONS.has(n)).reduce((s, n) => s + leverKwh(n), 0);
@@ -734,6 +728,7 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
     projected: {kwh: projectedKwh,    co2: projectedCo2},
     savings:   {kwh: kwhSaved, co2: co2Saved, pctEnergy, pctCo2, co2Fraction},
     contrast:  {baselineCo2eKg: contrastBaseKg, savedCo2eKg: contrastSavedKg, projectedCo2eKg: contrastProjKg},
+    embodied:  {baselineCo2eKg: embodiedBaseKg, savedCo2eKg: embodiedSavedKg, projectedCo2eKg: embodiedProjKg},
   };
 }
 

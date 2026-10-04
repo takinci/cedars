@@ -45,6 +45,7 @@ export const SCEN_DEFAULTS = {
   wueOnsite: '', wueOffsite: '', waterMode: 'screening',
   // Entry route on the AI page: '' (not chosen) | 'compare' | 'own'; and the developer sub-route.
   aiRoute: '', ownMode: 'measured',
+  compareVolumeSource: 'small', // small | large | department | custom; preserves procurement workload provenance
   // Not in the URL by design (free text, authoring detail): projectName.
   projectName: '',
 };
@@ -64,6 +65,7 @@ const SCEN_KEYS = {
   ds: 'datasetSize', ne: 'epochs', pu: 'customPue', tw: 'trainCustomTdpW',
   nr: 'numRuns', im: 'inferStudiesMonth', rp: 'renewablePct', tk: 'trainKwhMeasured', td: 'trainDisclosed',
   tt: 'trainTool', ty: 'taskType', wo: 'wueOnsite', wf: 'wueOffsite', wm: 'waterMode', ro: 'aiRoute', om: 'ownMode',
+  vs: 'compareVolumeSource',
 };
 
 // equipment: `eq=ct~2-mri_15t~1` (non-zero devices only; `~` = count sep, `-` = item sep — both
