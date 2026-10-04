@@ -104,7 +104,7 @@ Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports remain availab
 
 The full calculator configuration is encoded in the URL hash — **copy the link from the address bar to share your exact setup**. A recipient opening the link reproduces it precisely: the equipment inventory, region/grid and time period, storage and cost/commute assumptions, the AI scenario (model spec, cloud provider/region, scanner state), and the selected interventions. The link stays clean (no `#…`) while everything is at its defaults, and only the values you changed are stored, so shared links stay compact.
 
-_Not carried in the URL (they are document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name), the deployed-AI-tools list, the separate AI research-label form, and the Infrastructure tab's custom compute/storage line items._
+_Not carried in the URL (document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name, AI project name), the deployed-AI-tools list, and the Infrastructure tab's custom compute/storage line items. The AI model record itself — including the fields the AI Research Label reads — is in the URL, so a shared link reproduces the label exactly._
 
 The URL hash is intended for reproducibility, not confidentiality. Names, email addresses, contribution permissions, and patient-identifiable information are never intentionally added to the shareable URL.
 
@@ -232,6 +232,7 @@ The calculation core is factored into small, **dependency-free modules** so resu
 | **`calc.js`** | CEDARS Score & Rating, grid carbon-intensity and electricity-price helpers |
 | **`model.js`** | The department engine — `buildFleet`, `computeDashboard`, `computeInterventions` — plus the pure data tables it reads |
 | **`urlstate.js`** | Encode/decode of the full shareable-URL configuration |
+| **`ailabel.js`** | The AI model record → AI Research Label: provenance, grading basis, water, legacy save-file migration |
 
 Each has **reference tests** (`*.test.js`, Vitest) that pin **fixed inputs to known outputs**: the Score/Rating and cost logic, the department energy / carbon / GHG-scope math (including per-unit embodied carbon), and a URL **round-trip** proving a shared link restores exactly what was shared. **GitHub Actions runs `npm test` before every deploy**, so a change in the calculation results fails the build. A committed **`package-lock.json`** pins dependency versions for reproducible installs.
 
