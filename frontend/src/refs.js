@@ -10,6 +10,30 @@ export const REFS = {
     venue: 'J Am Coll Radiol', year: 2024, cite: '2024;21:239–247',
     doi: '10.1016/j.jacr.2023.11.019', verified: '2026-10-04',
   },
+  'doo-jacr-cloud-2024': {
+    authors: 'Doo FX, Kulkarni P, Siegel EL, Toland M, Yi PH, Carlos RC, Parekh VS',
+    title: 'Economic and environmental costs of cloud technologies for medical imaging and radiology artificial intelligence',
+    venue: 'J Am Coll Radiol', year: 2024, cite: '2024;21:248–256',
+    doi: '10.1016/j.jacr.2023.11.011', verified: '2026-10-04',
+  },
+  'jia-eurradiol-2026': {
+    authors: 'Jia Y, Deng M, Burger R, Sheard S, Hanneman K, Drucker Iarovich M, Sala E, Avesani G, Illing RO, Rockall AG',
+    title: 'Greenhouse gas emissions due to long-term data storage of CT with reformats and strategies for mitigation',
+    venue: 'Eur Radiol', year: 2026, cite: '2026;36:2186–2197',
+    doi: '10.1007/s00330-025-12023-z', verified: '2026-10-04',
+  },
+  'doo-jacr-cloud-2024': {
+    authors: 'Doo FX, Kulkarni P, Siegel EL, Toland M, Yi PH, Carlos RC, Parekh VS',
+    title: 'Economic and environmental costs of cloud technologies for medical imaging and radiology artificial intelligence',
+    venue: 'J Am Coll Radiol', year: 2024, cite: '2024;21:248–256',
+    doi: '10.1016/j.jacr.2023.11.011', verified: '2026-10-04',
+  },
+  'jia-eurradiol-2026': {
+    authors: 'Jia Y, Deng M, Burger R, Sheard S, Hanneman K, Drucker Iarovich M, Sala E, Avesani G, Illing RO, Rockall AG',
+    title: 'Greenhouse gas emissions due to long-term data storage of CT with reformats and strategies for mitigation',
+    venue: 'Eur Radiol', year: 2026, cite: '2026;36:2186–2197',
+    doi: '10.1007/s00330-025-12023-z', verified: '2026-10-04',
+  },
   'tzanis-maistro-2025': {
     authors: 'Tzanis E, Klontzas ME',
     title: 'mAIstro: an open-source multi-agent system for automated end-to-end development of radiomics and deep learning models for medical imaging',

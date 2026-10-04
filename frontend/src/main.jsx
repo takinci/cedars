@@ -15,7 +15,7 @@ import { REFS, refUrl } from './refs.js';
 import { labelFromScen, computeAiLabel, LABEL_TO_SCEN, migrateLegacyLabel, PROVENANCE } from './ailabel.js';
 import { AiEntryStep, AiRouteStrip, AI_ENTRY_REFS } from './AiEntry.jsx';
 import { MeasureChooser } from './MeasureChooser.jsx';
-import { AI_EXAMPLES } from './aiExamples.js';
+import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
@@ -1325,10 +1325,14 @@ function WorkflowRail({page, onInput, onDepartment, onAi, onScore, onImprove, on
   return (
     <div className="workflowRailWrap" aria-label="CEDARS workflow navigation">
       <div className="workflowRail">
-        <button type="button" className={`workflowRailStep action ${stage===1?'active':''}`} onClick={onInput}>
-          <div className="workflowRailLabel"><span>1</span><strong>INPUT</strong></div>
-          <small>{selectedInput==='dashboard' ? 'Radiology Department' : selectedInput==='ai' ? 'AI Model & Informatics' : 'Choose what to assess'}</small>
-        </button>
+        {/* Step 1 carries the pathway choice as two small chips (same style as the Home page's quick-start chips). */}
+        <div className={`workflowRailStep ${stage===1?'active':''}`}>
+          <button type="button" className="workflowRailLabel workflowRailLabelButton" onClick={onInput}><span>1</span><strong>INPUT</strong></button>
+          <div className="pathwayChips" role="group" aria-label="Pathway">
+            <button type="button" className={selectedInput==='dashboard'?'on':''} aria-pressed={selectedInput==='dashboard'} onClick={onDepartment}>Radiology Department</button>
+            <button type="button" className={selectedInput==='ai'?'on':''} aria-pressed={selectedInput==='ai'} onClick={onAi}>AI Model &amp; Informatics</button>
+          </div>
+        </div>
         <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onScore}>
           <div className="workflowRailLabel"><span>2</span><strong>SCORE &amp; ECOLABEL</strong></div>
           <small>Score + label</small>
@@ -1342,25 +1346,6 @@ function WorkflowRail({page, onInput, onDepartment, onAi, onScore, onImprove, on
           <small>Disclosure + outputs</small>
         </button>
       </div>
-      {stage===1 && (
-        <div className="workflowInputChooser workflowInputChooserProminent" aria-label="Choose input pathway">
-          <div className="workflowInputChooserLabel">
-            <span>START HERE</span>
-            <strong>Choose pathway</strong>
-            <small>Select either pathway. Your choice stays full-size so switching remains obvious.</small>
-          </div>
-          <button type="button" className={selectedInput==='dashboard'?'selected':''} onClick={onDepartment} aria-pressed={selectedInput==='dashboard'}>
-            <Activity size={19}/>
-            <span><strong>Radiology Department</strong><small>Equipment, operations, resources &amp; clinical AI</small></span>
-            <span className="workflowInputAction" aria-hidden="true">{selectedInput==='dashboard' ? 'Selected ✓' : 'Start →'}</span>
-          </button>
-          <button type="button" className={selectedInput==='ai'?'selected':''} onClick={onAi} aria-pressed={selectedInput==='ai'}>
-            <Cpu size={19}/>
-            <span><strong>AI Model &amp; Informatics</strong><small>Training, inference, compute &amp; deployment</small></span>
-            <span className="workflowInputAction" aria-hidden="true">{selectedInput==='ai' ? 'Selected ✓' : 'Start →'}</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1488,7 +1473,16 @@ function App() {
     }, 60);
   };
   const [aiOpen, setAiOpen] = useState({model:true});
-  const [compareCtx, setCompareCtx] = useState('manual');
+  // Deployment context for the Compare route: the department in CEDARS, a practice-size preset
+  // (Doo et al., JACR 2024, Fig. 2), or entered by hand. Default: the department if it has volume,
+  // else the small-practice preset — stated on the chip so nobody mistakes it for their own data.
+  const [compareCtx, setCompareCtx] = useState(() => (initCfg.scen?.inferStudiesMonth ? 'manual' : 'department'));
+  // 'department' copies the Department's volume into the record; with no volume entered yet it
+  // falls back to the small-practice estimate, which the entry step says out loud.
+  const applyCompareCtx = c => {
+    const v = Math.round(dash.scopes.imagingScans || 0);
+    if (c === 'department') setS('inferStudiesMonth', String(v > 0 ? v : VOLUME_ESTIMATES[0].studiesPerMonth));
+  };
   // Worked examples: replace the AI model record (never the Department) and, for the Compare
   // route, the benchmark candidates. Reproducible by link because the record is URL-encoded.
   const loadAiExample = key => {
@@ -2007,8 +2001,6 @@ function App() {
     });
   }, [scen, ai]);
 
-  // The AI tab's hero grades the same record the label grades.
-  const aiLiveGrade = ecoLabelData;
 
   const deptLabelData = useMemo(() => {
     // Live-by-default: derive from the Radiology Department state; the EcoLabel form
@@ -2165,6 +2157,7 @@ function App() {
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023'];
+  const DEPT_STORAGE_REFS = ['jia-eurradiol-2026', 'doo-jacr-cloud-2024'];
   const DEPT_WATER_REFS = ['heye-radiology-2020', 'li-thirsty-2023'];
 
   const renderAiRecordForm = () => (
@@ -2298,8 +2291,8 @@ function App() {
             </div>
             <div className="grid grid3">
               <label>
-                Monthly study volume
-                <input type="number" min="0" value={ecoLabel.inferStudiesMonth} onChange={e=>setEco('inferStudiesMonth',e.target.value)} placeholder="e.g. 1200"/>
+                Monthly study volume <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>your own count, or a published estimate: small US practice {VOLUME_ESTIMATES[0].studiesPerMonth.toLocaleString()} · large {VOLUME_ESTIMATES[1].studiesPerMonth.toLocaleString()}<Ref id="doo-jacr-cloud-2024" order={AI_PAGE_REFS}/></span>
+                <input type="number" min="0" value={ecoLabel.inferStudiesMonth} onChange={e=>setEco('inferStudiesMonth',e.target.value)} placeholder={`e.g. ${VOLUME_ESTIMATES[0].studiesPerMonth}`}/>
               </label>
               {ecoLabel.inferMode==='tokens' ? (
                 <>
@@ -2999,7 +2992,7 @@ function App() {
             <div className="inputSummary" style={{marginTop:16}}>
               <h3 style={{marginTop:0,marginBottom:6,color:'#1b5e20',fontSize:15}}>Data storage &amp; archiving</h3>
               <p className="note" style={{marginBottom:12,fontSize:12}}>
-                Long-term PACS/archive footprint, derived from your fleet's study volumes × per-modality file sizes, held over the retention period and added to the department total above. Separate from the PACS/reading servers and from DICOM transfer. Editable estimates — Jia et al. <em>Eur Radiol</em> 2026; Doo et al. <em>JACR</em> 2024.
+                Long-term PACS/archive footprint, derived from your fleet's study volumes × per-modality file sizes, held over the retention period and added to the department total above. Separate from the PACS/reading servers and from DICOM transfer. Editable estimates — storage levers and savings from Jia et al. <em>Eur Radiol</em> 2026<Ref id="jia-eurradiol-2026" order={DEPT_STORAGE_REFS}/> (axial-only storage −69%, cloud −40 to −80%, 8-year retention −38%, all three −89%); per-modality file sizes from Doo et al. <em>JACR</em> 2024<Ref id="doo-jacr-cloud-2024" order={DEPT_STORAGE_REFS}/>.
               </p>
               <div style={{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>
                 <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,fontWeight:700,color:'#2E7D32'}}>
@@ -3031,6 +3024,7 @@ function App() {
               <p className="note" style={{marginTop:8,fontSize:11}}>
                 These toggles set your <strong>current</strong> storage practice. The same three strategies also appear as tickable actions on the <strong>Interventions</strong> and <strong>EcoLabel</strong> tabs, where their savings are modelled as a <em>change from</em> this current setup (so they never double-count). Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
               </p>
+              <ReferenceList ids={DEPT_STORAGE_REFS} compact/>
             </div>
 
             <section style={{marginTop:12}}>
@@ -3126,41 +3120,30 @@ function App() {
               <button className="download" onClick={handlePrint} style={{padding:'8px 14px',fontSize:13}}><Download/>Print / PDF</button>
             </div>
           </div>
-          <p className="note" style={{margin:'2px 0 14px',fontSize:11,color:'#78909c'}}>* Recycling Pyramid priority: Prevent unnecessary scans → Reduce scan/compute energy → Recover or reuse existing data. Implementation Guide §1.</p>
-
-          {/* ── AI Grade hero (always visible; live off the current model config, not the
-               separately-edited Research Label — that label is an independent disclosure with
-               its own "no department context" state, see the note on the EcoLabel page) ── */}
-          <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:aiLiveGrade.ratingBg,border:`2px solid ${aiLiveGrade.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
-            <div style={{textAlign:'center',flexShrink:0}}>
-              <div style={{fontSize:52,fontWeight:900,color:aiLiveGrade.ratingColor,lineHeight:1}}>{aiLiveGrade.graded?aiLiveGrade.score:'—'}</div>
-              <div style={{fontSize:10,fontWeight:700,color:aiLiveGrade.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-            </div>
-            <div>
-              <LeafRating leaves={aiLiveGrade.leaves} size={24} color={aiLiveGrade.ratingColor}/>
-              <div style={{fontWeight:700,fontSize:16,color:aiLiveGrade.ratingColor,marginTop:4}}>{aiLiveGrade.ratingLabel}</div>
-              <div style={{fontSize:13,color:'#263238',marginTop:2}}>
-                {aiLiveGrade.graded ? `${aiLiveGrade.perInferCo2g} gCO₂e/study`
-                  : 'Select a model above to calculate'}
-              </div>
-            </div>
-            <button onClick={()=>{setEcoLabelMode('ai');setPage('ecolabel');}} style={{marginLeft:'auto'}}>Full AI Research Label →</button>
-          </div>
 
           {/* ── Entry step: which route (procure/deploy vs develop) ── */}
           {!scen.aiRoute ? (
             <AiEntryStep
               route={scen.aiRoute} ownMode={scen.ownMode}
               basis={scen.trainDisclosed === 'no' ? 'inference' : 'amortised'}
-              ctxSource={compareCtx} hasDepartment={dash.scopes.imagingScans > 0}
-              onRoute={r => { setS('aiRoute', r); if (r === 'compare') setAiOpen(o => ({...o, benchmark: true})); }}
+              ctxSource={compareCtx}
+              dept={{region: settings.region, ci: getCI(settings.region, settings.customCi), studiesPerMonth: Math.round(dash.scopes.imagingScans || 0)}}
+              volume={scen.inferStudiesMonth}
+              onVolume={v => setS('inferStudiesMonth', v)}
+              onRoute={r => {
+                setS('aiRoute', r);
+                if (r === 'compare') {
+                  setAiOpen(o => ({...o, benchmark: true}));
+                  if (!(parseFloat(scen.inferStudiesMonth) > 0)) applyCompareCtx(compareCtx);
+                }
+              }}
               onOwnMode={m => setS('ownMode', m)}
               onBasis={b => setS('trainDisclosed', b === 'inference' ? 'no' : 'yes')}
-              onCtxSource={c => { setCompareCtx(c); if (c === 'department') setS('inferStudiesMonth', String(Math.round(dash.scopes.imagingScans || 0))); }}
+              onCtxSource={c => { setCompareCtx(c); applyCompareCtx(c); }}
               examples={AI_EXAMPLES} onExample={loadAiExample}
             />
           ) : (
-            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} onChange={() => setS('aiRoute', '')}/>
+            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} onChange={() => setS('aiRoute', '')} onLabel={() => {setEcoLabelMode('ai'); setPage('ecolabel');}}/>
           )}
 
           {scen.aiRoute === 'own' && scen.ownMode === 'measure' && (

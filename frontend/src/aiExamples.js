@@ -75,3 +75,12 @@ export const AI_EXAMPLES = [
     },
   },
 ];
+
+// Published monthly study volumes for a small and a large US radiology practice
+// (Doo FX et al., J Am Coll Radiol 2024;21:248–256, Fig. 2). Used as a labelled fallback when no
+// department volume has been entered; visitors are asked to replace them with their own counts.
+export const VOLUME_ESTIMATES = [
+  {key: 'small', label: 'Small US practice', studiesPerMonth: 5100},
+  {key: 'large', label: 'Large US practice', studiesPerMonth: 17000},
+];
+export const VOLUME_ESTIMATE_REF = 'doo-jacr-cloud-2024';

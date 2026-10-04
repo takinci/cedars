@@ -1,12 +1,13 @@
 import React from 'react';
 import {TrendingUp, Cpu} from 'lucide-react';
 import {Ref} from './Refs.jsx';
+import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 
 // The first thing on the AI Model & Informatics page: which route the visitor is on.
 //   compare → procure/deploy: library templates + benchmark under one deployment context
 //   own     → develop: one model record, three ways in (measured · measure · spec)
 // Both routes grade the same record shape; the choice only decides what the page shows first.
-export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022'];
+export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026'];
 
 const seg = (on) => ({
   display:'inline-flex', alignItems:'center', gap:6, minHeight:36, padding:'0 12px', borderRadius:999,
@@ -18,7 +19,8 @@ const inset = {background:'#f7fbf8', border:'1px solid #e0efe2', borderRadius:12
 const card = {background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'18px 20px', display:'flex', flexDirection:'column', gap:12};
 const kicker = {display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'.04em', padding:'3px 10px', borderRadius:999, background:'#fff', border:'1px solid #c8e6c9', color:'#1b5e20', marginBottom:4};
 
-export function AiEntryStep({route, ownMode, basis, ctxSource, hasDepartment, onRoute, onOwnMode, onBasis, onCtxSource, examples, onExample}) {
+export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onRoute, onOwnMode, onBasis, onCtxSource, onVolume, examples, onExample}) {
+  const hasVolume = dept.studiesPerMonth > 0;
   return (
     <div style={{border:'2px solid #2E7D32', borderRadius:16, padding:'20px 22px', background:'#fff', display:'flex', flexDirection:'column', gap:14}}>
       <div style={{display:'flex', alignItems:'baseline', gap:12, flexWrap:'wrap'}}>
@@ -48,11 +50,25 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, hasDepartment, on
             <div>
               <p style={q}>Where would the models run?</p>
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-                <button type="button" style={{...seg(ctxSource==='department'), opacity: hasDepartment ? 1 : 0.55}} onClick={()=>hasDepartment && onCtxSource('department')} title={hasDepartment ? '' : 'Nothing entered under Radiology Department yet'}>
-                  Use the department already in CEDARS — its region, grid and study volume carry over{!hasDepartment && ' (nothing entered yet)'}
+                <button type="button" style={seg(ctxSource==='department')} onClick={()=>onCtxSource('department')}>
+                  The department in CEDARS — {dept.region} · {dept.ci} kgCO₂e/kWh · {hasVolume ? `${dept.studiesPerMonth.toLocaleString()} studies/mo` : 'no study volume yet'}
                 </button>
-                <button type="button" style={seg(ctxSource==='manual')} onClick={()=>onCtxSource('manual')}>Another site — I'll enter region and study volume</button>
+                <button type="button" style={seg(ctxSource==='manual')} onClick={()=>onCtxSource('manual')}>Another site — I'll set region and study volume</button>
               </div>
+              {(ctxSource==='manual' || !hasVolume) && (
+                <div style={{marginTop:8}}>
+                  <p style={{...q, marginBottom:4}}>Study volume {!hasVolume && ctxSource==='department' ? <span style={{fontWeight:400, color:'#455a64'}}>— none entered under Radiology Department, so a published estimate is used until you add equipment there</span> : null}</p>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:6, alignItems:'center'}}>
+                    {VOLUME_ESTIMATES.map(v => (
+                      <button key={v.key} type="button" style={seg(volume===String(v.studiesPerMonth))} onClick={()=>onVolume(String(v.studiesPerMonth))}>{v.label} · {v.studiesPerMonth.toLocaleString()}/mo</button>
+                    ))}
+                    <label style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'#1b3a22'}}>My own:
+                      <input type="number" min="0" value={VOLUME_ESTIMATES.some(v=>String(v.studiesPerMonth)===volume) ? '' : volume} placeholder="studies/mo" onChange={e=>onVolume(e.target.value)} style={{width:110, minHeight:34, padding:'0 8px', border:'1px solid #c8e6c9', borderRadius:8, fontSize:12}}/>
+                    </label>
+                  </div>
+                  <p className="note" style={{margin:'6px 0 0'}}>The two presets are published monthly volumes for a small and a large US practice<Ref id={VOLUME_ESTIMATE_REF} order={AI_ENTRY_REFS}/>; the small practice is the default. Please replace them with your own study counts whenever you can.</p>
+                </div>
+              )}
             </div>
           </div>
           <div style={{marginTop:'auto'}}><button type="button" className={route==='compare'?'':'download'} onClick={()=>onRoute('compare')}>Compare models →</button></div>
@@ -103,14 +119,17 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, hasDepartment, on
 }
 
 // Compact strip shown once a route is chosen.
-export function AiRouteStrip({route, ownMode, onChange}) {
+export function AiRouteStrip({route, ownMode, onChange, onLabel}) {
   const label = route === 'compare' ? 'Procure · deploy — Compare candidate models'
     : `Develop — Assess my own model · ${ownMode === 'measured' ? 'measured numbers' : ownMode === 'measure' ? 'help me measure' : 'from specification'}`;
   return (
     <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', border:'1px solid #c8e6c9', borderRadius:12, padding:'8px 14px', background:'#fff'}}>
       <span style={{...kicker, background:'#e8f5e9', border:'none', marginBottom:0}}>ROUTE</span>
       <strong style={{fontSize:13}}>{label}</strong>
-      <button type="button" className="inlineTextButton" onClick={onChange} style={{marginLeft:'auto'}}>Change route →</button>
+      <span style={{marginLeft:'auto', display:'flex', gap:14, alignItems:'center'}}>
+        <button type="button" className="inlineTextButton" onClick={onChange}>Change route</button>
+        {onLabel && <button type="button" onClick={onLabel} style={{minHeight:36, padding:'0 14px', fontSize:13}}>Full AI Research Label →</button>}
+      </span>
     </div>
   );
 }
