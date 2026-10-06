@@ -50,6 +50,133 @@ const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedba
 const DASH_SECTIONS = ['efficiency','energy','carbon','charts','infrastructure','resources'];
 const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark'];
 
+// Improve-page presentation metadata. These labels explain the existing intervention engine;
+// they do not introduce a second calculation path.
+const IMPROVE_INTERVENTION_META = {
+  'Turn MRI/CT scanners off overnight': {
+    description:'Power down eligible MRI/CT systems outside operating hours when vendor guidance and service requirements allow.',
+    category:'Idle energy', status:'Modeled',
+    reason:'Driven by MRI/CT idle and off-state energy in your entered fleet.',
+    links:[['Woolen et al., Radiology 2023','https://doi.org/10.1148/radiol.230441'],['Heye et al., Radiology 2020','https://doi.org/10.1148/radiol.2020192084']],
+  },
+  'Use standby mode during inactive periods': {
+    description:'Use a lower-power standby state during inactive periods when full shutdown is not appropriate.',
+    category:'Idle energy', status:'Modeled',
+    reason:'Driven by the gap between idle and standby energy in your entered fleet.',
+    links:[['Brown et al., CARJ 2022','https://doi.org/10.1177/08465371221133074']],
+  },
+  'Reduce low-value imaging': {
+    description:'Reduce imaging that is unlikely to add clinical value through appropriateness and ordering strategies.',
+    category:'Active scanning', status:'Scenario estimate',
+    reason:'Acts on the active-scanner energy pool using the stated scenario reduction.',
+    links:[['McKee et al., Radiology 2024','https://doi.org/10.1148/radiol.240219'],['Rockall et al., JACR 2025','https://doi.org/10.1016/j.jacr.2025.02.009']],
+  },
+  'Optimize scheduling': {
+    description:'Reduce avoidable idle time by aligning scanner availability, staffing, and patient flow.',
+    category:'Idle energy', status:'Scenario estimate',
+    reason:'Acts on the avoidable-idle pool in your entered fleet.',
+    links:[['MRI scheduling / operational efficiency','https://doi.org/10.1108/IJHCQA-10-2016-0153']],
+  },
+  'Shorten protocols': {
+    description:'Reduce active acquisition time when shorter protocols remain clinically appropriate.',
+    category:'Active scanning', status:'Scenario estimate',
+    reason:'Acts on remaining active-scanner energy after any avoided-study effect.',
+    links:[['Woolen et al., Radiology 2025','https://doi.org/10.1148/radiol.243453']],
+  },
+  'Reduce repeat scans': {
+    description:'Reduce repeat or rejected examinations through protocol, acquisition, and quality-improvement measures.',
+    category:'Active scanning', status:'Scenario estimate',
+    reason:'Acts on remaining active-scanner energy using the stated repeat-scan scenario.',
+    links:[['AJR CT footprint study 2023','https://doi.org/10.2214/AJR.23.30189']],
+  },
+  'Move computation to lower-carbon regions': {
+    description:'Run eligible computation in a lower-carbon region or provider when clinical, privacy, and legal requirements allow.',
+    category:'Compute', status:'Modeled',
+    reason:'Changes the carbon intensity of the computation pool without claiming an energy reduction.',
+    links:[['Our World in Data — electricity carbon intensity','https://ourworldindata.org/grapher/carbon-intensity-electricity']],
+  },
+  'Use renewable electricity': {
+    description:'Increase the renewable share of local operational electricity rather than crediting the same renewable supply twice.',
+    category:'Electricity supply', status:'Modeled',
+    reason:'Uses the renewable share already entered for this assessment and models only the remaining change.',
+    links:[['ESR Green Imaging Department','https://www.myesr.org/greenid/']],
+  },
+  'Reduce paper and film printing': {
+    description:'Reduce unnecessary paper and film use; CEDARS does not award automatic electricity savings without measured printer/processor data.',
+    category:'Materials', status:'Guidance only',
+    reason:'No automatic numerical credit is applied without local measured equipment or material data.',
+    links:[['CEDARS methods & sources','https://github.com/takinci/cedars/blob/main/sources.md']],
+  },
+  'Extend hardware lifetime': {
+    description:'Extend safe, supportable equipment life to spread manufacturing emissions over a longer service period.',
+    category:'Hardware', status:'Scenario estimate',
+    reason:'Changes embodied Scope 3 only; it does not reduce operational electricity.',
+    links:[['Rockall et al., JACR 2025','https://doi.org/10.1016/j.jacr.2025.02.009']],
+  },
+  'Consolidate servers': {
+    description:'Consolidate under-used server capacity through right-sizing or virtualization where reliability requirements permit.',
+    category:'Compute', status:'Modeled',
+    reason:'Acts on the modeled server/compute energy pool rather than the entire department.',
+    links:[['Doo et al., JACR 2024','https://doi.org/10.1016/j.jacr.2023.11.011']],
+  },
+  'Use smaller or more efficient AI models': {
+    description:'Prefer the least resource-intensive model that still meets the required clinical performance.',
+    category:'AI inference', status:'Scenario estimate',
+    reason:'Acts only on deployed Clinical AI inference energy when Clinical AI is configured.',
+    links:[['Doo et al., Radiology 2024','https://doi.org/10.1148/radiol.240320']],
+  },
+  'Store only acquired axial series (avoid reformats)': {
+    description:'Avoid retaining non-essential reformatted CT/PET series when local clinical and legal requirements permit.',
+    category:'Data storage', status:'Modeled',
+    reason:'Recalculates the archive from the study volumes and storage practice entered in this assessment.',
+    links:[['Jia et al., European Radiology 2026','https://doi.org/10.1007/s00330-025-12023-z']],
+  },
+  'Migrate imaging archive to cloud': {
+    description:'Test a more energy-efficient cloud archive using its own storage energy and carbon context.',
+    category:'Data storage', status:'Modeled',
+    reason:'Recalculates archive energy and carbon from the current storage configuration.',
+    links:[['Jia et al., European Radiology 2026','https://doi.org/10.1007/s00330-025-12023-z'],['Doo et al., JACR 2024','https://doi.org/10.1016/j.jacr.2023.11.011']],
+  },
+  'Apply an imaging data-retention policy': {
+    description:'Move older studies to lower-power archival storage according to an appropriate retention policy.',
+    category:'Data storage', status:'Modeled',
+    reason:'Recalculates the held archive against the current retention period.',
+    links:[['Jia et al., European Radiology 2026','https://doi.org/10.1007/s00330-025-12023-z']],
+  },
+  'Right-size contrast vials to dose (vial optimization)': {
+    description:'Match iodinated contrast vial size more closely to the required dose to reduce supply-chain waste.',
+    category:'Contrast', status:'Scenario estimate',
+    reason:'Changes modeled iodinated-contrast Scope 3 rather than department electricity.',
+    links:[['Nghiem et al., JACR 2026','https://doi.org/10.1016/j.jacr.2025.09.027']],
+  },
+  'Switch to multidose contrast injector system': {
+    description:'Test a multidose vial/injector strategy that reduces iodinated-contrast and packaging waste.',
+    category:'Contrast', status:'Scenario estimate',
+    reason:'Changes modeled iodinated-contrast Scope 3 rather than department electricity.',
+    links:[['Nghiem et al., JACR 2026','https://doi.org/10.1016/j.jacr.2025.09.027']],
+  },
+};
+
+const AI_IMPROVE_GROUPS = [
+  {title:'Model & inference', items:[
+    ['Right-size the model','Prefer the smallest model that meets the required clinical performance.',['doo-radiology-llm-2024']],
+    ['Use efficient precision','Use mixed/lower precision where validation confirms acceptable performance.',['doo-radiology-llm-2024','fernandez-llm-energy-2025']],
+    ['Reduce unnecessary inference','Avoid duplicate runs, retries, excessive test-time reasoning, and repeated agent/LLM calls that do not add clinical value.',['jegham-llm-2025','oviedo-inference-2025']],
+  ]},
+  {title:'Compute & serving', items:[
+    ['Lower-carbon compute','Move training or inference to a lower-carbon region/provider when clinically and legally appropriate.',['doo-jacr-cloud-2024','oviedo-inference-2025']],
+    ['Optimize serving','Batch, cache, consolidate, and right-size servers/accelerators instead of maintaining under-used dedicated capacity.',['fernandez-llm-energy-2025','oviedo-inference-2025']],
+    ['Use lower-carbon electricity','Document renewable procurement and actual compute-region carbon intensity rather than assuming the hospital grid.',['doo-jacr-cloud-2024','owid-ci']],
+  ]},
+  {title:'Data & hardware', items:[
+    ['Reduce data storage','Keep necessary acquired series, avoid redundant reformats, use efficient archives, and apply an appropriate retention policy.',['jia-eurradiol-2026','doo-jacr-cloud-2024']],
+    ['Extend hardware life','Reuse suitable hardware and extend service life when performance, security, and reliability allow.',['doo-jacr-2024']],
+  ]},
+  {title:'Measurement', items:[
+    ['Measure before estimating','Replace literature/vendor defaults with measured kWh, workload, PUE, and deployment values when available.',['doo-jacr-2024','codecarbon']],
+  ]},
+];
+
 import {
   MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
 } from './model.js';
@@ -2243,7 +2370,7 @@ function App() {
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023'];
-  const AI_IMPROVE_REFS = ['doo-radiology-llm-2024', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025'];
+  const AI_IMPROVE_REFS = ['doo-jacr-2024', 'doo-radiology-llm-2024', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025', 'owid-ci', 'codecarbon'];
   const DEPT_STORAGE_REFS = ['jia-eurradiol-2026', 'doo-jacr-cloud-2024'];
   const DEPT_WATER_REFS = ['heye-radiology-2020', 'li-thirsty-2023'];
   const DEPT_SUPPORT_REFS = ['heye-radiology-2020', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'li-thirsty-2023'];
@@ -4203,170 +4330,158 @@ function App() {
       {page==='scenario' && (
         <main>
           <h1 style={{margin:'0 0 6px'}}>Improve</h1>
-          <p className="note" style={{margin:'0 0 12px',fontSize:14}}>Model potential interventions and compare their projected environmental, operational, financial, and clinical effects before implementation.</p>
-          <section className="inputSummary" style={{marginBottom:16}}>
-              <h2 style={{margin:'0 0 6px',color:'#1b5e20'}}>AI / informatics improvements</h2>
-              <p className="note" style={{margin:'0 0 10px'}}>Use these as design and procurement checks for the active model record. They do not create automatic savings unless CEDARS has enough measured inputs to model the change.</p>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:8}}>
-                {[
-                  ['Lower-carbon compute','Move training or inference to a lower-carbon region/provider when clinically and legally appropriate.'],
-                  ['Right-size the model','Prefer the smallest model that meets the required clinical performance; larger LLMs can add substantial inference energy.'],
-                  ['Reduce unnecessary inference','Avoid duplicate runs, retries, excessive test-time reasoning, and repeated agent/LLM calls that do not add clinical value.'],
-                  ['Use efficient precision','Use mixed/lower precision where validation confirms acceptable performance.'],
-                  ['Optimize serving','Batch, cache, consolidate, and right-size servers/accelerators instead of maintaining under-used dedicated capacity.'],
-                  ['Reduce data storage','Keep necessary acquired series; avoid redundant reformats, use efficient archives, and apply an appropriate retention policy.'],
-                  ['Extend hardware life','Reuse suitable hardware and extend service life when performance, security, and reliability allow.'],
-                  ['Use lower-carbon electricity','Document renewable procurement and the actual compute-region carbon intensity rather than assuming the hospital grid.'],
-                  ['Measure before estimating','Replace literature/vendor defaults with measured kWh, workload, PUE, and deployment values when available.'],
-                ].map(([title,body])=><div key={title} style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'9px 11px',background:'#fff'}}><strong style={{fontSize:12,color:'#1b5e20'}}>{title}</strong><div className="note" style={{fontSize:11,marginTop:3}}>{body}</div></div>)}
-              </div>
-              <p className="note" style={{fontSize:10,margin:'10px 0 0'}}>Evidence anchors include Doo et al. on LLM right-sizing and radiology cloud costs, Jia et al. on long-term imaging storage, and recent LLM inference-energy work on serving, batching and test-time compute.<Ref id="doo-radiology-llm-2024" order={AI_IMPROVE_REFS}/><Ref id="doo-jacr-cloud-2024" order={AI_IMPROVE_REFS}/><Ref id="jia-eurradiol-2026" order={AI_IMPROVE_REFS}/><Ref id="jegham-llm-2025" order={AI_IMPROVE_REFS}/></p>
-              <ReferenceList ids={AI_IMPROVE_REFS}/>
-            </section>
-          <div id="future-scenario" className="workflowBridge workflowAnchor" aria-label="Current state and future scenario workflow">
-            <div className="workflowBridgeNav">
-              <button type="button" className="workflowBridgeChoice" onClick={()=>goToWorkflowSection('report','current-practices')}>
-                <span className="stateContextTag current">CURRENT STATE</span>
-                <strong>Review / edit current practices</strong>
-              </button>
-              <span className="workflowBridgeArrow">→</span>
-              <div className="workflowBridgeChoice active future">
-                <span className="stateContextTag future">FUTURE SCENARIO</span>
-                <strong>Model potential changes</strong>
-              </div>
-            </div>
-            <p>These selections model <strong>potential future changes</strong> and remain separate from practices already documented in Report (& Share), so savings are not double-counted.</p>
-            <div className="workflowPersistence"><Save size={13}/> Your entries stay with this assessment as you move between CEDARS pages. Use <strong>Save</strong> in the header to preserve them for a later visit.</div>
-          </div>
-
-          {/* Multi-select prospective intervention scenario — separate from current EcoLabel practices */}
-          <div className="inputSummary" style={{marginBottom:16}}>
-            <h2 style={{marginTop:0,marginBottom:6,color:'#1b5e20'}}>Model potential changes <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(select the scenario you want to test)</span></h2>
-            <p className="note" style={{marginBottom:12}}>
-              {scenario.count>0
-                ? <><strong style={{color:'#2E7D32'}}>{scenario.count} selected · −{scenario.savings.kwh.toLocaleString()} kWh · −{scenario.savings.co2.toLocaleString()} kgCO₂e operational{scenario.embodied.savedCo2eKg>0?` · −${scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3`:''}</strong> ({scenario.savings.pctEnergy}% energy · {scenario.savings.pctCo2}% operational carbon)</>
-                : 'No interventions selected yet — tick one or more below to model their combined effect.'}
-            </p>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
-              {Object.entries(INTERVENTIONS).map(([name, data]) => {
-                const active = scenarioInterventions.includes(name);
-                return (
-                  <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
-                    <input type="checkbox" checked={active} onChange={()=>toggleScenarioIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
-                    <div>
-                      <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
-                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.guidanceOnly?' · guidance only':data.fraction?` · modeled scenario default ${Math.round(data.fraction*100)}% of the relevant energy pool`:''}{data.renewableTargetPct?` · target ≥${data.renewableTargetPct}% renewable`:''}{data.scope3EmbPct?` · −${data.scope3EmbPct}% embodied carbon`:''}</div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Global assumptions — applied to whichever ticked levers use them */}
-          <div className="grid" style={{marginBottom:8}}>
-            <Sel label={<span>Scanner state target {scenario.usesScanner ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
-                 value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>
-            <Sel label={<span>Cloud provider {scenario.usesCloud ? <span className="badge">in use</span> : <span style={{fontWeight:400,color:'#aaa',fontSize:11}}>no ticked lever uses this</span>}</span>}
-                 value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
-          </div>
-          <p className="note" style={{marginBottom:16}}>
-            Global assumptions applied to whichever ticked levers use them.
-            {scenario.usesScanner && <> Scanner state target sets how deep the overnight/standby power-down goes (Standby saves less than Off).</>}
-            {scenario.usesCloud   && <> Cloud provider sets the carbon intensity of compute ({scen.cloudProvider}: {(CLOUD[scen.cloudProvider]??CLOUD["Local compute"]).ci} kgCO₂e/kWh vs region {getCI(settings.region, settings.customCi)} kgCO₂e/kWh).</>}
-          </p>
-          {/* Impact on your EcoLabel — current → projected */}
-          {(()=>{
-            const cur = deptLabelData;
-            const frac = scenario.baseline.co2 > 0 ? scenario.savings.co2 / scenario.baseline.co2 : 0;
-            const projCo2Study = rnd(cur.co2PerStudy * (1 - frac), 3);
-            const projScore = cur.hasData ? cedarsScore(projCo2Study, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
-            const projRating = projScore != null ? cedarsRating(projScore) : null;
-            const mkBox = (title, score, leaves, color, bg, label) => (
-              <div style={{flex:1,minWidth:210,background:bg,border:`2px solid ${color}`,borderRadius:16,padding:'14px 18px'}}>
-                <div style={{fontSize:11,fontWeight:700,color:'#607d66',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>{title}</div>
-                <div style={{display:'flex',alignItems:'center',gap:14}}>
-                  <div style={{fontSize:42,fontWeight:900,color,lineHeight:1}}>{score ?? '—'}</div>
-                  <div>
-                    <LeafRating leaves={leaves} size={16} color={color}/>
-                    <div style={{fontSize:13,fontWeight:700,color,marginTop:3}}>{label}</div>
-                  </div>
-                </div>
-              </div>
-            );
-            return (
-              <div style={{marginBottom:24}}>
-                <h2 style={{marginBottom:8}}>Impact on your EcoLabel</h2>
-                <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-                  {mkBox('Current', cur.hasData?cur.score:null, cur.leaves, cur.ratingColor, cur.ratingBg, cur.ratingLabel)}
-                  <ArrowRight size={26} style={{color:'#90a4ae',flexShrink:0}}/>
-                  {mkBox(scenario.count>0?`Projected · ${scenario.count} intervention${scenario.count===1?'':'s'}`:'Projected', projScore, projRating?.leaves ?? 0, projRating?.color ?? '#90a4ae', projRating?.bg ?? '#f5f5f5', projRating?.label ?? '')}
-                </div>
-                {projScore != null && (
-                  scenario.count === 0
-                    ? <p className="note" style={{marginTop:8}}>Tick one or more interventions above to project their combined impact on your CEDARS Score.</p>
-                    : projScore === cur.score
-                      ? <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} don't move your operational CEDARS Score band. Modeled savings: {scenario.savings.co2.toLocaleString()} kgCO₂e operational{scenario.embodied.savedCo2eKg>0?` plus ${scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3`:''}{scenario.contrast.savedCo2eKg>0?` plus ${scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast Scope 3`:''}.</p>
-                      : <p className="note" style={{marginTop:8}}>Your {scenario.count} selected intervention{scenario.count===1?'':'s'} shift your CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>
-                )}
-              </div>
-            );
-          })()}
+          <p className="note" style={{margin:'0 0 12px',fontSize:14}}>Test potential changes and compare their projected environmental, operational, financial, and clinical effects before implementation.</p>
 
           {(()=>{
             const price = getPrice(settings.region, settings.electricityPrice);
-            const sym   = currencySym(settings.region);
-            const mult  = TIME_MULT[settings.timePeriod] ?? 1;
-            const annualSaved = scenario.savings.kwh / mult * 12 * price;
-            return (
-            <>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-              <h2 style={{margin:0}}>Energy, carbon &amp; cost — before vs after</h2>
-              <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,color:'#2E7D32',fontWeight:700}}>
-                Electricity price ({sym}/kWh)
-                <input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price ?? 0.20)} style={{width:84,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
-              </label>
-            </div>
-            <div className="scenarioGrid">
-              <section className="card">
-                <div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div>
-                <p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p>
-                <p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p>
-                <p style={{color:'#607d66'}}>{fmtMoney(scenario.baseline.kwh*price, sym)}</p>
+            const sym = currencySym(settings.region);
+            const periodNoun = settings.timePeriod === 'Annual' ? 'year' : settings.timePeriod === 'Quarterly' ? 'quarter' : 'month';
+            const individual = Object.entries(INTERVENTIONS).map(([name,data])=>{
+              const result = computeInterventions([name], settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct);
+              const totalCo2 = rnd((result.savings.co2||0) + (result.embodied?.savedCo2eKg||0) + (result.contrast?.savedCo2eKg||0), 1);
+              return {name,data,result,totalCo2,meta:IMPROVE_INTERVENTION_META[name]||{description:data.note,category:'Other',status:data.guidanceOnly?'Guidance only':'Scenario estimate',reason:'Uses the current CEDARS intervention assumptions.',links:[]}};
+            });
+            const individualByName = Object.fromEntries(individual.map(x=>[x.name,x]));
+            const ranked = individual.filter(x=>x.totalCo2>0).sort((x,y)=>y.totalCo2-x.totalCo2).slice(0,3);
+            const selectedRows = scenarioInterventions.map(name=>individualByName[name]).filter(Boolean);
+            const totalCarbonSaving = rnd((scenario.savings.co2||0)+(scenario.embodied.savedCo2eKg||0)+(scenario.contrast.savedCo2eKg||0),1);
+            const periodCostSaving = scenario.savings.kwh * price;
+            const statusClass = status => status === 'Modeled' ? 'modeled' : status === 'Guidance only' ? 'guidance' : 'estimate';
+            const impactText = row => {
+              if (row.meta.status==='Guidance only') return 'No automatic numerical credit';
+              const parts = [];
+              if (row.result.savings.kwh>0) parts.push(`−${row.result.savings.kwh.toLocaleString()} kWh`);
+              if (row.totalCo2>0) parts.push(`−${row.totalCo2.toLocaleString()} kgCO₂e`);
+              return parts.length ? parts.join(' · ') : 'No change with the current assessment inputs';
+            };
+
+            return <>
+              <div className="improveStateStrip" aria-label="Improve workflow status">
+                <div><span>CURRENT ASSESSMENT</span><strong>Baseline</strong></div>
+                <ArrowRight size={18}/>
+                <div className="active"><span>YOUR SCENARIO</span><strong>{scenario.count} change{scenario.count===1?'':'s'} selected</strong></div>
+                <ArrowRight size={18}/>
+                <div><span>PROJECTED ASSESSMENT</span><strong>{scenario.count>0?'Calculated below':'Add a change to compare'}</strong></div>
+              </div>
+
+              <section className="inputSummary improveWorkspace" style={{marginBottom:20}}>
+                <div className="improveWorkspaceHeading">
+                  <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Start with the largest modeled opportunities for this assessment, or browse all changes below.</p></div>
+                  <div className="improveWorkspaceCount">{scenario.count} selected</div>
+                </div>
+
+                <div className="improveWorkspaceGrid">
+                  <div className="improveChooser">
+                    <section className="improveOpportunities">
+                      <h3>Opportunities for this assessment</h3>
+                      <p className="note">Ranked by modeled carbon reduction using the assessment you entered. Local feasibility and clinical appropriateness still need to be assessed.</p>
+                      {ranked.length>0 ? <div className="improveOpportunityList">
+                        {ranked.map((row,i)=>{
+                          const active=scenarioInterventions.includes(row.name);
+                          return <div key={row.name} className="improveOpportunityRow">
+                            <div className="improveRank">{i+1}</div>
+                            <div className="improveOpportunityText"><strong>{row.name}</strong><span>−{row.totalCo2.toLocaleString()} kgCO₂e · {row.meta.reason}</span></div>
+                            <button type="button" className={active?'added':''} disabled={active} onClick={()=>toggleScenarioIntervention(row.name)}>{active?'Added ✓':'Add to scenario'}</button>
+                          </div>;
+                        })}
+                      </div> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
+                    </section>
+
+                    <section className="improveAllChanges">
+                      <div className="improveSectionHeading"><div><h3>All modeled changes</h3><p>Choose any combination. Detailed assumptions and paper links stay available without crowding the card.</p></div></div>
+                      <div className="improveChangeGrid">
+                        {individual.map(row=>{
+                          const active=scenarioInterventions.includes(row.name);
+                          return <div key={row.name} className={`improveChangeCard ${active?'active':''}`}>
+                            <label className="improveChangeSelect">
+                              <input type="checkbox" checked={active} onChange={()=>toggleScenarioIntervention(row.name)}/>
+                              <span><strong>{row.name}</strong><small>{row.meta.description}</small></span>
+                            </label>
+                            <div className="improveBadges"><span className={`improveStatus ${statusClass(row.meta.status)}`}>{row.meta.status}</span><span>{row.meta.category}</span></div>
+                            <div className="improveStandalone"><span>Standalone effect</span><strong>{impactText(row)}</strong></div>
+                            <details className="improveEvidence">
+                              <summary>Evidence &amp; assumptions</summary>
+                              <div><p>{row.data.note}</p>{row.meta.links.length>0&&<p className="improveEvidenceLinks">{row.meta.links.map(([label,href],i)=><React.Fragment key={href}>{i>0&&' · '}<ExternalLink href={href}>{label}</ExternalLink></React.Fragment>)}</p>}</div>
+                            </details>
+                          </div>;
+                        })}
+                      </div>
+                    </section>
+
+                    {(scenario.usesScanner||scenario.usesCloud) && <section className="improveAssumptions">
+                      <h3>Scenario-specific assumptions</h3>
+                      <div className="grid">
+                        {scenario.usesScanner&&<Sel label="Scanner state target" value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>}
+                        {scenario.usesCloud&&<Sel label="Cloud provider" value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>}
+                      </div>
+                      <p className="note">{scenario.usesScanner&&<>The scanner target controls the modeled depth of overnight/standby power reduction. </>}{scenario.usesCloud&&<>The compute-region scenario uses {scen.cloudProvider}'s modeled carbon intensity rather than the local department grid.</>}</p>
+                    </section>}
+                  </div>
+
+                  <aside className="improveReceipt">
+                    <div className="improveReceiptHeader"><span>YOUR SCENARIO</span><strong>{scenario.count} change{scenario.count===1?'':'s'} selected</strong></div>
+                    {selectedRows.length>0 ? <div className="improveReceiptRows">
+                      {selectedRows.map(row=><div key={row.name} className="improveReceiptRow">
+                        <button type="button" aria-label={`Remove ${row.name}`} onClick={()=>toggleScenarioIntervention(row.name)}>×</button>
+                        <div><strong>{row.name}</strong><span>{impactText(row)}</span></div>
+                      </div>)}
+                    </div> : <div className="improveReceiptEmpty">Select a change to build a scenario. The combined result will appear here.</div>}
+                    <div className="improveReceiptTotal">
+                      <span>COMBINED PROJECTED EFFECT</span>
+                      <strong>{scenario.count>0?`−${scenario.savings.kwh.toLocaleString()} kWh`:'—'}</strong>
+                      <strong>{scenario.count>0?`−${totalCarbonSaving.toLocaleString()} kgCO₂e`:'—'}</strong>
+                      <strong className="money">{scenario.count>0?`≈ ${fmtMoney(periodCostSaving,sym)} electricity saved / ${periodNoun}`:'—'}</strong>
+                      {scenario.count>0&&<div className="improveReceiptPills"><span>{scenario.savings.pctEnergy}% energy</span><span>{scenario.savings.pctCo2}% operational carbon</span></div>}
+                    </div>
+                    <p className="improveReceiptNote">Standalone rows help compare options. The <strong>combined scenario</strong> is the authoritative total because CEDARS accounts for overlapping energy pools rather than simply adding every row.</p>
+                    <button type="button" disabled={scenario.count===0} onClick={()=>document.getElementById('improve-before-after')?.scrollIntoView({behavior:'smooth',block:'start'})}>Compare before &amp; after ↓</button>
+                  </aside>
+                </div>
               </section>
-              <section className="card savings">
-                <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
-                <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
-                <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
-                {scenario.savings.co2>0&&<p style={{fontSize:11,color:'#607d66',marginTop:2}}>≈ {fmtBig(scenario.savings.co2/CAR_CO2_KG_KM)} km of typical car-travel emissions avoided for this {resultPeriodNoun}.</p>}
-                <p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price, sym)}{dash.totals.label}</p>
-                <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
-                {scenario.contrast.savedCo2eKg > 0 && (
-                  <p style={{fontSize:12,color:'#607d66',marginTop:4}}>+ −{scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast supply chain (Scope 3, not electricity)</p>
-                )}
-                {scenario.embodied.savedCo2eKg > 0 && (
-                  <p style={{fontSize:12,color:'#607d66',marginTop:4}}>+ −{scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied hardware (Scope 3, not electricity)</p>
-                )}
+
+              <section id="improve-before-after" className="inputSummary improveResultSection" style={{marginBottom:18}}>
+                <h2>Projected effect on your EcoLabel</h2>
+                {(()=>{
+                  const cur=deptLabelData;
+                  const frac=scenario.baseline.co2>0?scenario.savings.co2/scenario.baseline.co2:0;
+                  const projCo2Study=rnd(cur.co2PerStudy*(1-frac),3);
+                  const projScore=cur.hasData?cedarsScore(projCo2Study,CEDARS_DEPT_LO,CEDARS_DEPT_HI):null;
+                  const projRating=projScore!=null?cedarsRating(projScore):null;
+                  const mkBox=(title,score,leaves,color,bg,label)=><div className="improveScoreBox" style={{background:bg,borderColor:color}}><span>{title}</span><div><strong style={{color}}>{score??'—'}</strong><div><LeafRating leaves={leaves} size={16} color={color}/><small style={{color}}>{label}</small></div></div></div>;
+                  return <><div className="improveScoreCompare">{mkBox('Current',cur.hasData?cur.score:null,cur.leaves,cur.ratingColor,cur.ratingBg,cur.ratingLabel)}<ArrowRight size={24}/>{mkBox(scenario.count>0?`Projected · ${scenario.count} change${scenario.count===1?'':'s'}`:'Projected',projScore,projRating?.leaves??0,projRating?.color??'#90a4ae',projRating?.bg??'#f5f5f5',projRating?.label??'')}</div>
+                    {projScore!=null&&(scenario.count===0?<p className="note">Add one or more changes above to project their combined impact.</p>:projScore===cur.score?<p className="note">The selected changes reduce the modeled footprint, but not enough to move the current operational CEDARS Score band. Modeled reduction: <strong>{scenario.savings.co2.toLocaleString()} kgCO₂e operational</strong>{scenario.embodied.savedCo2eKg>0?` plus ${scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3`:''}{scenario.contrast.savedCo2eKg>0?` plus ${scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast Scope 3`:''}.</p>:<p className="note">The selected scenario shifts the CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>)}
+                  </>;
+                })()}
               </section>
-              <section className="card">
-                <div className="cardHead"><Leaf/><span>After interventions</span></div>
-                <p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p>
-                <p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p>
-                <p style={{color:'#607d66'}}>{fmtMoney(scenario.projected.kwh*price, sym)}</p>
+
+              <section className="inputSummary improveResultSection" style={{marginBottom:18}}>
+                <div className="improveResultHeading"><div><h2>Energy, carbon &amp; cost — before vs after</h2><p>Combined results use the same intervention engine as the scenario builder above.</p></div><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label></div>
+                <div className="scenarioGrid">
+                  <section className="card"><div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div><p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p><p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p><p style={{color:'#607d66'}}>{fmtMoney(scenario.baseline.kwh*price,sym)}</p></section>
+                  <section className="card savings"><div className="cardHead"><TrendingDown/><span>Projected savings</span></div><b>−{scenario.savings.kwh.toLocaleString()} kWh</b><p>−{scenario.savings.co2.toLocaleString()} kgCO₂e operational</p>{scenario.savings.co2>0&&<p className="note" style={{fontSize:10}}>≈ {fmtBig(scenario.savings.co2/CAR_CO2_KG_KM)} km of typical car-travel emissions for this {periodNoun}.</p>}<p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price,sym)}{dash.totals.label}</p><p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>{scenario.contrast.savedCo2eKg>0&&<p style={{fontSize:11,color:'#607d66'}}>+ {scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast Scope 3</p>}{scenario.embodied.savedCo2eKg>0&&<p style={{fontSize:11,color:'#607d66'}}>+ {scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3</p>}</section>
+                  <section className="card"><div className="cardHead"><Leaf/><span>After interventions</span></div><p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p><p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p><p style={{color:'#607d66'}}>{fmtMoney(scenario.projected.kwh*price,sym)}</p></section>
+                </div>
+                <div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section></div>
               </section>
-            </div>
-            {scenario.count>0 && scenario.savings.kwh>0 && (
-              <p className="note" style={{marginTop:12,padding:'10px 14px',background:'#e8f5e9',borderRadius:12,fontSize:13}}>
-                <strong style={{color:'#1b5e20'}}>≈ {fmtMoney(annualSaved, sym)}/year</strong> in avoided electricity cost — most operational levers (overnight power-down, standby) need little or no capital outlay. Electricity cost only; an editable estimate at {sym}{price}/kWh.
-              </p>
-            )}
-            </>
-            );
+
+              <section className="inputSummary improveAiGuidance" style={{marginBottom:18}}>
+                <div className="improveGuidanceHeading"><span>ADDITIONAL GUIDANCE</span><h2>AI &amp; informatics design checks</h2><p>These actions may improve an AI system's footprint, but they do not automatically change the modeled Department result unless CEDARS has enough measured data to quantify them.</p></div>
+                <div className="improveGuidanceGroups">
+                  {AI_IMPROVE_GROUPS.map(group=><div key={group.title} className="improveGuidanceGroup"><h3>{group.title}</h3><div>{group.items.map(([title,body,refs])=><div key={title} className="improveGuidanceCard"><div><strong>{title}</strong><span className="improveStatus guidance">Guidance only</span></div><p>{body}</p><small>Evidence {refs.map(id=><Ref key={id} id={id} order={AI_IMPROVE_REFS}/>)}</small></div>)}</div></div>)}
+                </div>
+                <details className="methodologyDetails improveWorkedExample">
+                  <summary>Worked example: why right-sizing an LLM matters</summary>
+                  <div>
+                    <p>If two models meet the same clinical performance requirement, the smaller or more efficient option can reduce energy repeatedly across every inference. CEDARS therefore compares candidate performance and energy under the same workload rather than assuming a larger model is preferable. Published medical-LLM and inference-energy studies show why architecture, model size, serving setup, prompt length, and test-time reasoning all matter.<Ref id="doo-radiology-llm-2024" order={AI_IMPROVE_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_IMPROVE_REFS}/><Ref id="oviedo-inference-2025" order={AI_IMPROVE_REFS}/></p>
+                    <p className="note">Use measured inference energy from your own deployment when available; the example is educational and does not create an automatic Department saving.</p>
+                  </div>
+                </details>
+                <ReferenceList ids={AI_IMPROVE_REFS}/>
+              </section>
+
+              <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
+            </>;
           })()}
-          <div className="charts" style={{marginTop:24}}>
-            <section><h2>Chart</h2><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section>
-          </div>
-          <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
         </main>
       )}
 
