@@ -21,9 +21,9 @@ describe('CEDARS Score — log-scale 0–100', () => {
     expect(cedarsScore(4.0, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI)).toBe(43); // AI label: 4 gCO₂e/study
   });
   it('clamps out-of-range and non-numeric input', () => {
-    expect(cedarsScore(-5, 0.1, 20)).toBe(100);    // ≤ lo
+    expect(cedarsScore(-5, 0.1, 20)).toBe(0);       // invalid negative fails closed
     expect(cedarsScore(1000, 0.1, 20)).toBe(0);     // ≥ hi
-    expect(cedarsScore('abc', 0.1, 20)).toBe(100);  // NaN → 0 → ≤ lo
+    expect(cedarsScore('abc', 0.1, 20)).toBe(0);    // invalid input fails closed
   });
 });
 
@@ -65,3 +65,6 @@ describe('Electricity price — getPrice / currencySym', () => {
     expect(currencySym('Germany')).toBe('€');
   });
 });
+
+
+describe('phase 3 numeric input hardening',()=>{it('rejects inherited-region keys and invalid custom CI',()=>{expect(getCI('__proto__')).toBe(0.25);expect(getCI('Editable custom','-5')).toBe(0.30);expect(getCI('Editable custom','1e999')).toBe(0.30);});});

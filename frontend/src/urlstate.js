@@ -9,9 +9,10 @@
 //  - Interventions are encoded as indices into ALL_INTERVENTIONS (stable order; append new ones at
 //    the end) to keep URLs compact rather than embedding long human-readable strings.
 import {
-  DEFAULT_EQUIPMENT, INTERVENTIONS, OVERRIDABLE_FIELDS,
+  DEFAULT_EQUIPMENT, INTERVENTIONS, OVERRIDABLE_FIELDS, TIME_MULT, CLOUD,
   STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER,
 } from './model.js';
+import {CARBON_INTENSITY} from './calc.js';
 
 // Canonical intervention order — the array index is the URL code. Department levers first (from
 // the INTERVENTIONS table), then the three storage levers. IMPORTANT: only ever append, so codes
@@ -79,6 +80,13 @@ const SCEN_KEYS = {
   ifp: 'inferenceProvider', ir: 'inferenceRegion', ipu: 'inferencePue', irp: 'inferenceRenewablePct', tb: 'trainingBoundary',
 };
 
+const own = (obj,key) => Object.prototype.hasOwnProperty.call(obj,key);
+const finiteIn = (v,min=-Infinity,max=Infinity,integer=false) => { if(v==null||String(v).trim()==='')return false; const n=Number(v); return Number.isFinite(n)&&n>=min&&n<=max&&(!integer||Number.isInteger(n)); };
+const oneOf = values => v => values.includes(v);
+const SETTINGS_VALIDATORS={intendedUse:oneOf(['Estimate annual footprint','Compare modalities','Track monthly sustainability KPIs','Evaluate AI tool impact','Estimate savings from an intervention']),region:v=>own(CARBON_INTENSITY,v),metricType:oneOf(['Energy','Carbon','Water','AI net impact']),timePeriod:v=>own(TIME_MULT,v),customCi:v=>finiteIn(v,0),actualStudiesYear:v=>finiteIn(v,0),staffCommuteKm:v=>finiteIn(v,0),electricityPrice:v=>finiteIn(v,0),storageRetentionYears:v=>finiteIn(v,0,100),storageReformats:oneOf(['all','axial']),storageIntensityCustom:v=>finiteIn(v,0.000001)};
+const SCEN_VALIDATORS={cloudProvider:v=>own(CLOUD,v),scannerState:oneOf(['Active','Idle','Standby','Off']),paramsM:v=>finiteIn(v,0),resolution:v=>finiteIn(v,1),slices:v=>finiteIn(v,1),inferSec:v=>finiteIn(v,0),inferKwh:v=>finiteIn(v,0),whPer1kTokens:v=>finiteIn(v,0),callsPerTask:v=>finiteIn(v,1,Infinity,true),tokensPerCall:v=>finiteIn(v,0),accuracyPct:v=>finiteIn(v,0),scanTimeReductPct:v=>finiteIn(v,0,100),lowValueReductPct:v=>finiteIn(v,0,100),trainNumGpus:v=>finiteIn(v,1,Infinity,true),trainHours:v=>finiteIn(v,0),testStudies:v=>finiteIn(v,0),deployMonths:v=>finiteIn(v,1),datasetSize:v=>finiteIn(v,0),epochs:v=>finiteIn(v,0),customPue:v=>finiteIn(v,1),trainCustomTdpW:v=>finiteIn(v,0),numRuns:v=>finiteIn(v,1,Infinity,true),inferStudiesMonth:v=>finiteIn(v,0),renewablePct:v=>finiteIn(v,0,100),trainKwhMeasured:v=>finiteIn(v,0),wueOnsite:v=>finiteIn(v,0),wueOffsite:v=>finiteIn(v,0),aiRoute:oneOf(['','compare','own']),ownMode:oneOf(['measured','measure','spec']),compareVolumeSource:oneOf(['small','large','department','custom']),performanceDirection:oneOf(['higher','lower']),trainingProvider:v=>v===''||own(CLOUD,v),trainingPue:v=>v===''||finiteIn(v,1),trainingRenewablePct:v=>v===''||finiteIn(v,0,100),inferenceProvider:v=>v===''||own(CLOUD,v),inferencePue:v=>v===''||finiteIn(v,1),inferenceRenewablePct:v=>v===''||finiteIn(v,0,100),trainingBoundary:oneOf(['upstream','allocated-local']),trainDisclosed:oneOf(['yes','no']),waterMode:oneOf(['screening','notassessed'])};
+const validScalar=(validators,field,value)=>!validators[field]||validators[field](value);
+
 // equipment: `eq=ct~2-mri_15t~1` (non-zero devices only; `~` = count sep, `-` = item sep — both
 // URL-safe and absent from every device key).
 const encodeEquip = eq => Object.entries(eq || {})
@@ -91,7 +99,7 @@ const decodeEquip = str => {
     const [k, n] = part.split('~');
     if (k && Object.prototype.hasOwnProperty.call(DEFAULT_EQUIPMENT, k)) {
       const v = parseInt(n, 10);
-      if (v > 0) out[k] = v;
+      if (v > 0 && v <= 999) out[k] = v;
     }
   }
   return out;
@@ -119,9 +127,8 @@ const decodeEquipOverrides = str => {
     const fields = {};
     for (const pair of fieldsStr.split(',')) {
       const [f, v] = pair.split('=');
-      if (f && OVERRIDABLE_FIELDS.includes(f) && v !== undefined && v !== '' && !isNaN(parseFloat(v))) {
-        fields[f] = parseFloat(v);
-      }
+      const n=Number(v);
+      if (f && OVERRIDABLE_FIELDS.includes(f) && v !== undefined && v !== '' && Number.isFinite(n) && n >= 0) { fields[f]=n; }
     }
     if (Object.keys(fields).length) out[key] = fields;
   }
@@ -162,43 +169,9 @@ export function encodeConfig({ settings = {}, scen = {}, activeInterventions = [
 // present in the URL (caller merges these over its defaults). `settings.equipment`, when present,
 // is a partial map of non-zero devices.
 export function decodeConfig(hashOrStr) {
-  const q = new URLSearchParams(String(hashOrStr || '').replace(/^#/, ''));
-  const settings = {}, scen = {};
-  for (const [k, f] of Object.entries(SETTINGS_KEYS)) if (q.has(k)) settings[f] = q.get(k);
-  if (q.has('sc')) settings.storageCloud = q.get('sc') === '1';
-  if (q.has('eq')) settings.equipment = decodeEquip(q.get('eq'));
-  if (q.has('eo')) settings.equipmentOverrides = decodeEquipOverrides(q.get('eo'));
-  for (const [k, f] of Object.entries(SCEN_KEYS)) if (q.has(k)) scen[f] = q.get(k);
-  const out = {};
-  if (Object.keys(settings).length) out.settings = settings;
-  if (Object.keys(scen).length) out.scen = scen;
-  if (q.has('in')) out.activeInterventions = decodeInterv(q.get('in'));
-  if (q.has('ip')) out.currentPractices = decodeInterv(q.get('ip'));
-  return out;
+  const q=new URLSearchParams(String(hashOrStr||'').replace(/^#/,'')); const settings={},scen={},rejectedFields=[];
+  for(const [k,f] of Object.entries(SETTINGS_KEYS))if(q.has(k)){const v=q.get(k);if(validScalar(SETTINGS_VALIDATORS,f,v))settings[f]=v;else rejectedFields.push(f);}
+  if(q.has('sc'))settings.storageCloud=q.get('sc')==='1'; if(q.has('eq'))settings.equipment=decodeEquip(q.get('eq')); if(q.has('eo'))settings.equipmentOverrides=decodeEquipOverrides(q.get('eo'));
+  for(const [k,f] of Object.entries(SCEN_KEYS))if(q.has(k)){const v=q.get(k);if(validScalar(SCEN_VALIDATORS,f,v))scen[f]=v;else rejectedFields.push(f);}
+  const out={}; if(Object.keys(settings).length)out.settings=settings; if(Object.keys(scen).length)out.scen=scen; if(q.has('in'))out.activeInterventions=decodeInterv(q.get('in')); if(q.has('ip'))out.currentPractices=decodeInterv(q.get('ip')); if(rejectedFields.length)out.rejectedFields=[...new Set(rejectedFields)]; return out;
 }
-// REVIEW (2026-09, not yet fixed) — this is the tool's trust boundary, but every
-// SETTINGS_KEYS / SCEN_KEYS field is copied out of the hash as an arbitrary string
-// and spread straight over the defaults in main.jsx, so the URL can set region to '__proto__'
-// (NaN dashboard, see calc.js getCI), customCi to '-5' or '1e999', retentionYears to 'abc' (archive
-// footprint silently 0, see model.js), and equipment counts to 999999999. Validation is limited,
-// not absent: `eq`/`eo` check known device and field names, `sc` maps only the exact string "1" to
-// true, and intervention indices are filtered through ALL_INTERVENTIONS. Those checks still do not
-// enforce finite/ranged numeric values, and the scalar settings have no enum or numeric validation.
-// Why it matters beyond robustness: the output is a printable EcoLabel with a leaf rating that the
-// user can copy to the clipboard or print for institutional reporting, and cedarsScore can map
-// invalid values to 5 leaves (see calc.js). A crafted link can therefore produce a misleading
-// label. This is an input-integrity problem, not evidence of code execution or an authenticated
-// certification bypass: even validated client-side inputs remain self-reported, not verified.
-// Fix: validate at decode time, in this function, so every consumer inherits it —
-//   - enum fields (region, timePeriod, metricType, cloudProvider, scannerState, precision,
-//     architecture, storageReformats): accept only values present in the corresponding table via
-//     hasOwnProperty; otherwise drop the key and let the default stand.
-//   - numeric fields: distinguish absent, invalid, and valid zero values; require finite values
-//     and field-specific ranges. Reject invalid fields or explicitly disclose any clamping;
-//     silently clamping a bad input to a favourable boundary can still produce misleading labels.
-//   - unknown query params: ignore (already the behaviour, since iteration is over the key maps).
-// Dropping an invalid key rather than substituting a default is deliberate: the caller merges over
-// SETTINGS_DEFAULTS, so a dropped key IS the default, and there is no second place to keep the
-// fallback values in sync. Consider also returning a list of rejected keys so the UI can say "this
-// link contained invalid settings that were ignored" instead of silently rendering something the
-// sender didn't send.

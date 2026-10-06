@@ -41,3 +41,6 @@ describe('canonical AI records', () => {
     expect(performanceMetricFromScen({accuracyMetric:'MAE', accuracyPct:'2.4', performanceUnit:'mm', performanceDirection:'lower'})).toMatchObject({metric:'MAE', value:'2.4', unit:'mm', direction:'lower'});
   });
 });
+
+
+it('round-trips a department training allocation percentage',()=>{const state=buildAiState({modelId:'model-a'},[{id:'dep-a',modelId:'model-a',studiesShare:'50',trainingBoundary:'allocated-local',trainingAllocationPct:'40'}]);expect(state.aiDeployments[0].trainingAllocationPct).toBe('40');expect(toolFromDeployment(state.aiDeployments[0]).trainingAllocationPct).toBe('40');});

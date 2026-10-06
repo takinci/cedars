@@ -4,7 +4,7 @@
 // hand (e.g. imaging scans = Σ(unit scans × count) × 12; travel = scans × 20 km × 0.17 kg/km).
 // Run: `npm test`.
 import { describe, it, expect } from 'vitest';
-import { buildFleet, computeDashboard, computeInterventions } from './model.js';
+import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, sanitizeRetentionYears } from './model.js';
 
 // One reference department: 2 CT, 1 MRI 1.5T, 3 Radiography, 2 Ultrasound, 1 PACS, 5 workstations.
 const FLEET = { ct: 2, mri_15t: 1, xray: 3, ultrasound: 2, pacs: 1, workstations: 5 };
@@ -152,4 +152,13 @@ describe('computeInterventions — overrides flow into the baseline used for sav
     expect(iv.baseline.kwh).toBeCloseTo(base.totals.kwh, 2);
     expect(base.scopes.scope3EmbKg).toBeGreaterThan(0);
   });
+});
+
+
+describe('phase 3 integrity guards',()=>{
+  it('applies avoided studies before scan-time savings without double-counting',()=>{const s=computeClinicalScannerSavings({imagingScans:100,scannerActiveKwh:100,avoidedFrac:0.2,scanTimeFrac:0.5});expect(s.scansAvoided).toBe(20);expect(s.avoidedEnergyKwh).toBe(20);expect(s.scanTimeEnergyKwh).toBe(40);expect(s.savedKwh).toBe(60);expect(s.remainingScans).toBe(80);});
+  it('bounds impossible clinical effects',()=>{const s=computeClinicalScannerSavings({imagingScans:100,scannerActiveKwh:25,avoidedFrac:4,scanTimeFrac:7});expect(s.savedKwh).toBeLessThanOrEqual(25);expect(s.avoidedFrac).toBe(0.95);expect(s.scanTimeFrac).toBe(0.95);});
+  it('invalid retention falls back to 10 years',()=>{expect(sanitizeRetentionYears('abc')).toBe(10);const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {retentionYears:'abc',cloud:false,reformats:'all'}, {});expect(d.storage.retentionYears).toBe(10);expect(d.storage.kwh).toBeGreaterThan(0);});
+  it('department clinical savings use the same helper',()=>{const base=computeDashboard('Germany','Monthly',FLEET);const expected=computeClinicalScannerSavings({imagingScans:base.clinicalBasis.imagingScans,scannerActiveKwh:base.clinicalBasis.scannerActiveKwh,avoidedFrac:0.2,scanTimeFrac:0.5});const d=computeDashboard('Germany','Monthly',FLEET,undefined,{avoidedFrac:0.2,scanTimeFrac:0.5});expect(d.clinicalMeta.scannerSavedKwh).toBeCloseTo(expected.savedKwh,1);});
+  it('zero scan-volume does not produce Infinity',()=>{const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {ct:{scans:0}});expect(d.byEquipment.find(x=>x.modality==='CT').energyPerScan).toBeNull();});
 });

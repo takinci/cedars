@@ -87,6 +87,7 @@ export function deploymentFromTool(tool = {}, index = 0) {
     useSharePct: text(tool.studiesShare == null ? '100' : tool.studiesShare),
     deploymentMonths: text(tool.deployMonths || '36'),
     trainingBoundary: tool.trainingBoundary === 'allocated-local' ? 'allocated-local' : 'upstream',
+    trainingAllocationPct: text(tool.trainingAllocationPct == null ? '100' : tool.trainingAllocationPct),
     inference: {kwhPerStudy: text(tool.inferKwhPerStudy)},
     clinicalEffects: {
       lowValueReductionPct: text(tool.lowValueReductPct || '0'),
@@ -105,6 +106,7 @@ export function toolFromDeployment(deployment = {}, index = 0) {
     studiesShare: text(deployment.useSharePct == null ? '100' : deployment.useSharePct),
     deployMonths: text(deployment.deploymentMonths || '36'),
     trainingBoundary: deployment.trainingBoundary === 'allocated-local' ? 'allocated-local' : 'upstream',
+    trainingAllocationPct: text(deployment.trainingAllocationPct == null ? '100' : deployment.trainingAllocationPct),
     lowValueReductPct: text(deployment.clinicalEffects?.lowValueReductionPct || '0'),
     scanTimeReductPct: text(deployment.clinicalEffects?.scanTimeReductionPct || '0'),
     contrastReductPct: text(deployment.clinicalEffects?.contrastReductionPct || '0'),

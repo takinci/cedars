@@ -336,13 +336,21 @@ const CONTRAST = {
 };
 
 const ICM_MODALITIES = ["CT", "PET-CT", "Angio/IR", "Fluoroscopy"];
+const IMAGING_MODALITIES = new Set(["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","Radiography","Ultrasound"]);
 
 // ── Calculation functions ─────────────────────────────────────────────────────
 const rnd = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
+const own = (obj,key) => Object.prototype.hasOwnProperty.call(obj,key);
+const boundedFraction = value => { const n=Number(value); return Number.isFinite(n)?Math.min(0.95,Math.max(0,n)):0; };
+const safeTimeMult = period => own(TIME_MULT,period)?TIME_MULT[period]:1;
+const safeTimeLabel = period => own(TIME_LABEL,period)?TIME_LABEL[period]:TIME_LABEL.Monthly;
+const safeCloud = provider => own(CLOUD,provider)?CLOUD[provider]:CLOUD["Local compute"];
+function sanitizeRetentionYears(value,fallback=10){const n=Number(value);return Number.isFinite(n)&&n>=0&&n<=100?n:fallback;}
+function computeClinicalScannerSavings({imagingScans=0,scannerActiveKwh=0,avoidedFrac=0,scanTimeFrac=0}={}){const scans=Number.isFinite(Number(imagingScans))?Math.max(0,Number(imagingScans)):0;const activeKwh=Number.isFinite(Number(scannerActiveKwh))?Math.max(0,Number(scannerActiveKwh)):0;const avoid=boundedFraction(avoidedFrac),scan=boundedFraction(scanTimeFrac);const avoidedEnergyKwh=activeKwh*avoid;const remainingActiveKwh=Math.max(0,activeKwh-avoidedEnergyKwh);const scanTimeEnergyKwh=remainingActiveKwh*scan;const savedKwh=Math.min(activeKwh,avoidedEnergyKwh+scanTimeEnergyKwh);return{avoidedFrac:avoid,scanTimeFrac:scan,scansAvoided:Math.round(scans*avoid),remainingScans:scans*(1-avoid),avoidedEnergyKwh:rnd(avoidedEnergyKwh,2),scanTimeEnergyKwh:rnd(scanTimeEnergyKwh,2),savedKwh:rnd(savedKwh,2)};}
 
 function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}, overrides = {}) {
   const ci       = getCI(region, customCi);
-  const mult     = TIME_MULT[timePeriod] ?? 1;
+  const mult     = safeTimeMult(timePeriod);
   // REVIEW (2026-09, not yet fixed) — same inherited-key hole as getCI (see calc.js): `timePeriod`
   // comes straight from the URL (`t=` in urlstate.js), and `TIME_MULT['__proto__']` returns
   // Object.prototype, which is not nullish, so `?? 1` never fires and every period-scaled figure
@@ -360,12 +368,12 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     const kgco2e       = kwh * ci;
     const idleWasteKwh = eq.idle_kw * eq.avoidable_idle_h * mult;
     const scans        = eq.scans * mult;
-    const isImaging    = ["MRI","CT","PET-CT","Radiography","Ultrasound"].includes(eq.modality);
+    const isImaging    = IMAGING_MODALITIES.has(eq.modality);
     return {equipment: eq.name, modality: eq.modality,
             kwh: rnd(kwh), activeKwh: rnd(activeKwh), idleKwh: rnd(idleKwh),
             kgco2e: rnd(kgco2e), scans,
             // energyPerScan only meaningful for patient-imaging rows; null for PACS/Workstation
-            energyPerScan: isImaging ? rnd(kwh / scans, 3) : null,
+            energyPerScan: isImaging && scans > 0 ? rnd(kwh / scans, 3) : null,
             idleWasteKwh: rnd(idleWasteKwh), confidence: eq.overridden ? "measured" : "estimated"};
   });
   // REVIEW (2026-09, not yet fixed) — three issues in the block above.
@@ -394,59 +402,39 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   let   totalCo2       = byEquipment.reduce((s, e) => s + e.kgco2e, 0);
   const totalScans     = byEquipment.reduce((s, e) => s + e.scans, 0);
   const totalIdle      = byEquipment.reduce((s, e) => s + e.idleWasteKwh, 0);
-  const label          = TIME_LABEL[timePeriod];
+  const label          = safeTimeLabel(timePeriod);
 
-  // Patient-generating imaging scans only (MRI/CT/Radiography/US) — excludes PACS and Workstation rows
-  let imagingScans = fleet
-    .filter(e => ["MRI","CT","PET-CT","Angio/IR","Fluoroscopy","Radiography","Ultrasound"].includes(e.modality))
-    .reduce((s, e) => s + e.scans * mult, 0);
+  // Patient-generating imaging scans only; one shared modality set is used throughout.
+  const baseImagingScans=fleet.filter(e=>IMAGING_MODALITIES.has(e.modality)).reduce((s,e)=>s+e.scans*mult,0);
+  const scannerActiveKwh=fleet.filter(e=>IMAGING_MODALITIES.has(e.modality)).reduce((s,e)=>s+e.active_kw*e.active_h*mult,0);
+  let imagingScans=baseImagingScans;
+  const _contrast=boundedFraction(clinicalAdj.contrastFrac||0);
+  const clinicalSavings=computeClinicalScannerSavings({imagingScans:baseImagingScans,scannerActiveKwh,avoidedFrac:clinicalAdj.avoidedFrac||0,scanTimeFrac:clinicalAdj.scanTimeFrac||0});
+  const _avoid=clinicalSavings.avoidedFrac,_scanT=clinicalSavings.scanTimeFrac;
+  const _aiKwh=rnd(baseImagingScans*(clinicalAdj.inferKwhPerStudy||0)+(clinicalAdj.trainKwhMonthly||0)*mult,2);
+  const _aiEmbodiedKg=rnd((clinicalAdj.aiEmbodiedKgMonthly||0)*mult,2);
+  const _scannerSaved=clinicalSavings.savedKwh;
+  const contrastScale=(1-_avoid)*(1-_contrast);
+  totalKwh=rnd(Math.max(0,totalKwh-_scannerSaved+_aiKwh),2); totalActiveKwh=rnd(Math.max(0,totalActiveKwh-_scannerSaved+_aiKwh),2); totalCo2=totalKwh*ci; imagingScans=clinicalSavings.remainingScans;
+  const clinicalMeta={aiKwh:_aiKwh,aiEmbodiedKg:_aiEmbodiedKg,scannerSavedKwh:rnd(_scannerSaved,1),avoidedEnergyKwh:clinicalSavings.avoidedEnergyKwh,scanTimeEnergyKwh:clinicalSavings.scanTimeEnergyKwh,avoidedPct:rnd(_avoid*100,0),scanTimePct:rnd(_scanT*100,0),contrastPct:rnd(_contrast*100,0),active:_aiKwh>0||_scannerSaved>0||_aiEmbodiedKg>0};
 
-  // ── Deployed clinical AI adjustment ──────────────────────────────────────────
-  // Clinical AI changes operations: adds inference/amortised-training compute, and
-  // subtracts scanner energy (avoided low-value scans + shorter protocols) and contrast.
-  // Reassigning the base totals here means every derived figure below (scopes, per-scan,
-  // resources, contrast, equivalencies) recomputes from the adjusted values automatically.
-  const _avoid    = Math.min(0.95, Math.max(0, clinicalAdj.avoidedFrac  || 0));
-  const _scanT    = Math.min(0.95, Math.max(0, clinicalAdj.scanTimeFrac || 0));
-  const _contrast = Math.min(0.95, Math.max(0, clinicalAdj.contrastFrac || 0));
-  const _aiKwh    = rnd(imagingScans * (clinicalAdj.inferKwhPerStudy || 0) + (clinicalAdj.trainKwhMonthly || 0) * mult, 2);
-  const _aiEmbodiedKg = rnd((clinicalAdj.aiEmbodiedKgMonthly || 0) * mult, 2);
-  const _scannerSaved = totalActiveKwh * Math.min(0.95, _avoid + _scanT);
-  const contrastScale = (1 - _avoid) * (1 - _contrast);
-  totalKwh       = rnd(Math.max(0, totalKwh - _scannerSaved + _aiKwh), 2);
-  totalActiveKwh = rnd(Math.max(0, totalActiveKwh - _scannerSaved + _aiKwh), 2);
-  totalCo2       = totalKwh * ci;
-  imagingScans   = imagingScans * (1 - _avoid);
-  const clinicalMeta = {aiKwh: _aiKwh, aiEmbodiedKg: _aiEmbodiedKg, scannerSavedKwh: rnd(_scannerSaved, 1),
-    avoidedPct: rnd(_avoid*100, 0), scanTimePct: rnd(_scanT*100, 0), contrastPct: rnd(_contrast*100, 0),
-    active: _aiKwh > 0 || _scannerSaved > 0 || _aiEmbodiedKg > 0};
-
-  // ── Data storage & archiving (Jia et al. 2026; Doo et al. 2024) ──────────────
+  // ── Data storage & archiving (Jia et al. 2026; Doo et al. 2024) ──────────────  // ── Data storage & archiving (Jia et al. 2026; Doo et al. 2024) ──────────────
   // Fleet-driven: annual data = Σ (studies/yr × MB/study); held for `retentionYears` at a per-TB/yr
   // energy intensity (on-prem or cloud). Axial-only avoids non-essential CT/PET reformats. The
   // period-scaled result is added to the department totals, so it flows into carbon, cost, and grade.
-  const _retention  = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
-  // REVIEW (2026-09, not yet fixed) — `parseFloat('abc') || 0` turns an unparseable retention
-  // period into 0 years, which makes the ENTIRE archive footprint vanish silently: verified with
-  // retentionYears:'abc' on a single CT, storage.kwh is 0 while annualDataTB is still 15.12, so the UI shows real
-  // data being generated and no energy to store it. Failing to the default (10) or to null-and-warn
-  // avoids silently treating invalid input as a footprint-reducing retention policy.
-  // Fix: `const v = parseFloat(storage.retentionYears); const _retention = Number.isFinite(v) && v
-  // >= 0 && v <= 100 ? v : 10;` (100 would be an application sanity bound).
-  // intensityCustom uses a different `> 0` gate: invalid text falls back correctly, but Infinity
-  // passes. Separately audit `|| default` parsing in main.jsx — see the note at clinicalAdj.
+  const _retention = sanitizeRetentionYears(storage.retentionYears, 10);
   const _reformat   = mod => (storage.reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
   // REVIEW (2026-09, not yet fixed) — the model uses a 60% reduction while the intervention note
   // cites "up to ~69% less CT storage" (Jia 2026). These can legitimately coexist: 60% may be a
   // conservative modelling assumption and 69% a reported best case. The code should document that
   // distinction and use a named assumption constant (e.g. AXIAL_ONLY_RETAINED_FRACTION) so the
   // modelled default is explicit; the citation text need not be forced to equal the default.
-  const _annualDataTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * _reformat(eq.modality), 0) / 1e6;
+  const _annualDataTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * _reformat(eq.modality), 0) / 1e6 * (1 - _avoid);
   const _storedTB   = _annualDataTB * _retention;
   // Custom intensity (measured server density/PUE) fully overrides whichever on-prem/cloud
   // default would otherwise apply — see sources.md Data storage section.
-  const _customInt  = parseFloat(storage.intensityCustom);
-  const _storageInt = _customInt > 0 ? _customInt : (storage.cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM);
+  const _customInt  = Number(storage.intensityCustom);
+  const _storageInt = Number.isFinite(_customInt) && _customInt > 0 ? _customInt : (storage.cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM);
   const storageKwh  = rnd(_storedTB * _storageInt * mult / 12, 2);   // annual → period
   totalKwh = rnd(totalKwh + storageKwh, 2);
   totalCo2 = totalKwh * ci;
@@ -537,6 +525,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     // Whether benefit is under- or overstated depends on provider CI relative to local CI;
     // a provider-wide average is only a disclosed fallback, not a universal cloud factor.
     clinicalMeta,
+    clinicalBasis:{imagingScans:baseImagingScans,scannerActiveKwh:rnd(scannerActiveKwh,2)},
     // REVIEW (2026-09, not yet fixed) — every divisor below is duplicated as a bare literal in
     // main.jsx's `equivData` memo (car 0.17, phone 0.012, household 3500, trees 21, flights 255),
     // so the same equivalency is maintained in two places and can diverge on a future edit. Worse,
@@ -601,17 +590,18 @@ const CONTRAST_LEVER_FRACTION = {[CONTRAST_VIAL_OPT_LEVER]: 0.064, [CONTRAST_MUL
 // avoidable-idle pool (standby ⊇ scanners-off) so we take the deepest ONE rather than summing;
 // all other energy levers add; carbon-% levers stack multiplicatively. Everything floors at 0.
 function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}, overrides = {}, clinicalAdj = {}) {
-  const list  = Array.isArray(names) ? names.filter(n => INTERVENTIONS[n]) : (names && INTERVENTIONS[names] ? [names] : []);
-  const ci    = getCI(region, customCi);
-  const mult  = TIME_MULT[timePeriod] ?? 1;
+  const hasIntervention=n=>typeof n==='string'&&own(INTERVENTIONS,n);
+  const list=Array.isArray(names)?names.filter(hasIntervention):(hasIntervention(names)?[names]:[]);
+  const ci=getCI(region,customCi);
+  const mult=safeTimeMult(timePeriod);
   // Prospective interventions start from the current department, including deployed Clinical AI.
   // This keeps the Improve baseline aligned with the Dashboard and prevents a pre-AI counterfactual
   // from appearing as the user's current state.
   const base  = computeDashboard(region, timePeriod, equipment, customCi, clinicalAdj, storage, overrides);
   const fleet = buildFleet(equipment, overrides);
-  const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
+  const cf    = safeCloud(cloudProvider);
   const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};
-  const targetField = STATE_FIELD[scannerState] ?? 'standby_kw';
+  const targetField = own(STATE_FIELD,scannerState)?STATE_FIELD[scannerState]:'standby_kw';
 
   // Per-lever energy saving (kWh, at this period's scale).
   const leverKwh = name => {
@@ -627,7 +617,7 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
         .reduce((s, eq) => s + (eq.active_kw*eq.active_h + eq.idle_kw*eq.idle_h + eq.standby_kw*eq.standby_h + eq.off_kw*eq.off_h) * mult, 0);
       return rnd(computeKwh * Math.max(0, 1 - cf.pue / localPue));
     }
-    return rnd((INTERVENTIONS[name]?.kwh ?? 0) * mult);
+    const item=own(INTERVENTIONS,name)?INTERVENTIONS[name]:null; return rnd((item?.kwh??0)*mult);
   };
   // Per-lever operational-CO₂ % reduction (multiplicative levers).
   const leverCo2Pct = name => {
@@ -637,19 +627,21 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
       const ciDeltaFraction = ci > cf.ci ? (ci - cf.ci) / ci : 0;
       return base.totals.co2Kg > 0 ? rnd(computeCo2 * ciDeltaFraction / base.totals.co2Kg * 100, 1) : 0;
     }
-    return INTERVENTIONS[name]?.co2Pct ?? 0;
+    return own(INTERVENTIONS,name)?(INTERVENTIONS[name]?.co2Pct??0):0;
   };
 
   // Data-storage levers: recompute archive energy under the selected strategies vs the current
   // config, and take the delta — so ticking a lever the storage module already applies saves 0.
-  const stgRet    = Math.max(0, parseFloat(storage.retentionYears ?? 10) || 0);
+  const stgRet    = sanitizeRetentionYears(storage.retentionYears,10);
   const stgCloud  = !!storage.cloud;
   const stgRef    = storage.reformats === 'axial' ? 'axial' : 'all';
-  const stgCustom = parseFloat(storage.intensityCustom);
+  const stgCustomRaw=Number(storage.intensityCustom);
+  const stgCustom=Number.isFinite(stgCustomRaw)&&stgCustomRaw>0?stgCustomRaw:null;
+  const clinicalStorageKeep=1-boundedFraction(clinicalAdj.avoidedFrac||0);
   const storageKwhFor = (cloud, reformats, retention) => {
     const rf = mod => (reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
-    const annualTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * rf(eq.modality), 0) / 1e6;
-    const intensity = stgCustom > 0 ? stgCustom : (cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM);
+    const annualTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * rf(eq.modality), 0) / 1e6 * clinicalStorageKeep;
+    const intensity = stgCustom != null ? stgCustom : (cloud ? STORAGE_KWH_PER_TB_CLOUD : STORAGE_KWH_PER_TB_ONPREM);
     return annualTB * retention * intensity * mult / 12;
   };
   const stgCurrent = storageKwhFor(stgCloud, stgRef, stgRet);
@@ -744,7 +736,10 @@ export {
   HAZ_WASTE_G_SCAN,
   CONTRAST,
   ICM_MODALITIES,
+  IMAGING_MODALITIES,
   rnd,
+  sanitizeRetentionYears,
+  computeClinicalScannerSavings,
   computeDashboard,
   SCANNER_STATE_INTERVENTIONS,
   CLOUD_INTERVENTIONS,
