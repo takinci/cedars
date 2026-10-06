@@ -6,183 +6,125 @@
 
 ### Carbon, Energy Diagnostics and Reporting for Sustainability
 
-**Measure the environmental footprint of clinical imaging — energy, carbon, water, and AI — and turn it into a standardised, shareable disclosure, directly in your browser.**
+**A browser-based research platform for estimating, improving, and reporting the environmental footprint of radiology departments and clinical AI.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-cedarsleaf.com-2E7D32?style=for-the-badge&logo=github)](https://cedarsleaf.com)
-[![Built with React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
-[![Chart.js](https://img.shields.io/badge/Chart.js-4-FF6384?style=flat-square&logo=chartdotjs)](https://www.chartjs.org)
-[![GitHub Pages](https://img.shields.io/badge/Deployed-GitHub%20Pages-222?style=flat-square&logo=github)](https://cedarsleaf.com)
+[![Live site](https://img.shields.io/badge/Live-cedarsleaf.com-2E7D32?style=for-the-badge)](https://cedarsleaf.com)
+[![License](https://img.shields.io/badge/code-Apache--2.0-455A64?style=flat-square)](./LICENSE)
+[![Content](https://img.shields.io/badge/content-CC%20BY%204.0-455A64?style=flat-square)](https://creativecommons.org/licenses/by/4.0/)
 
 </div>
 
 ---
 
-## What is CEDARS?
+## Project status
 
-CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a browser-based tool that takes a radiology department through an **Input → Score → Improve → Share** workflow: enter local equipment and operating context, review a standardised **CEDARS Score & Rating** ecolabel, model interventions, and preserve or share the resulting assessment. Published literature defaults can be replaced with local values, with provenance recorded where supported. A **live EcoLabel badge follows you on every tab** and updates as you change inputs.
+> **Research software · active development**
+>
+> CEDARS is an open research platform. A manuscript describing CEDARS has been **submitted for peer review**. The software, interface, defaults, and methods remain under active development and may evolve as validation and evidence improve. The CEDARS Score and EcoLabel are research outputs, **not an external certification**.
 
-It deliberately separates two kinds of "AI":
-
-- **Clinical AI** — deployed tools that change imaging *operations* (denoising, protocol shortening, triage, avoided low-value scans). These live in the **Radiology Department**, where their net effect flows into the department's energy, efficiency, contrast, and EcoLabel.
-- **AI Model & Informatics** — the environmental footprint of *building and running the AI itself* (training, inference, cloud/informatics). This pathway serves two audiences: people **comparing candidate models** before procurement or deployment, and developers **assessing their own model** for a research disclosure.
-
-No installation or account is required. Assessment data remains in your browser by default. Data is transmitted only if you explicitly choose **Contribute this assessment** after reviewing the contribution permissions.
-
-**→ Try it live: [cedarsleaf.com](https://cedarsleaf.com)**
+**Live application:** [cedarsleaf.com](https://cedarsleaf.com)
 
 ---
 
-## What can it do?
+## What CEDARS does
 
-The site is organised as a four-step workflow rail — **1 Input → 2 Score & EcoLabel → 3 Improve → 4 Report (& Share)** — plus **Home** and **About**. Step 1 forks into two pathways, **Radiology Department** and **AI Model & Informatics**. A live score badge sits in the header throughout: it shows the Department score, or the AI model's score while you are in the AI pathway.
+CEDARS turns radiology sustainability data into a structured workflow:
 
-### 🏠 Home
-
-A numbered **1 → 2 → 3 → 4 walkthrough** guides first-time users through **Input your department → See your score → Improve your footprint → Save & share**. Equipment is edited directly on the landing page.
-
-### 🔋 Radiology Department
-
-Your equipment fleet (MRI by field strength, CT, PET-CT, radiography, mammography, ultrasound, angio/IR, fluoroscopy, PACS, workstations) and everything the department footprint contains. The page opens on a compact **Overview** (grade + headline tiles); each area below is an **expand-in-place row** (with expand/collapse-all) so the whole picture is visible without a wall of detail:
-
-| Section | What it tracks |
+| Step | Purpose |
 |---|---|
-| **Efficiency — energy into healthcare** | Fleet **utilisation** (studies vs capacity), **CO₂ per study** at your actual volume, and **non-productive energy %** — so a busy department scores well even at a high absolute footprint |
-| **Clinical AI** | Deploy clinical AI (from the model library, an imported model, or manual entry); each **adds** compute and **subtracts** clinical savings (avoided scans, shorter protocols, contrast reduction), adjusting the *whole* department consistently |
-| **Energy** | Total kWh/MWh, active vs idle, avoidable idle, energy per scan |
-| **Carbon (GHG Scopes)** | Scope 1 · Scope 2 · Scope 3 (embodied hardware, patient travel, **staff commute** auto-estimated from the fleet, **DICOM data transfer**) + per-study **Software Carbon Intensity (SCI)** |
-| **Infrastructure — incl. data storage & archiving** | Idle-waste opportunities, **modality energy benchmarks** (published energy as reported; CO₂ normalised to a common grid factor for comparability), and a fleet-driven **data storage** footprint: annual data (Σ studies × per-modality file size) held over a retention period at a per-TB/yr intensity — with **axial-only / cloud / retention** levers (Jia *Eur Radiol* 2026; Doo *JACR* 2024) |
-| **Resource footprint** | Water, paper, hazardous waste, and **contrast media & contamination** (iodinated + gadolinium load to wastewater, contrast wasted) |
-| **Equivalencies + cost** | Car km, flights, tree-years, charges, household-electricity years, **and an editable electricity-cost estimate** (kWh × regional commercial tariff) |
+| **1 · Input** | Describe a Radiology Department or an AI model / informatics workload |
+| **2 · Score & EcoLabel** | Interpret the current footprint using the CEDARS Score, Rating, and standardized label |
+| **3 · Improve** | Test prospective changes separately from the current state and compare projected effects |
+| **4 · Report (& Share)** | Review reporting details, prepare CEDARS materials, and preserve or share the assessment |
 
-### 🤖 AI Model & Informatics
+No account or installation is required for the public site.
 
-The footprint of building and running a model — R&D / informatics, distinct from clinical effect. The page opens on a choice of route:
+### Two related AI concepts
 
-- **Compare candidate models** (procure / deploy) — start from the task-family library, set the deployment conditions once, and read the accuracy-versus-carbon trade-off on a benchmark chart.
-- **Assess my own model** (develop) — one model record with a provenance tag (*Measured / Estimated / Literature*) on every numeric field, and three ways in: enter measured energy, **Help me measure** (a short questionnaire that recommends an open-source measurement tool for your setup and says which CEDARS field it fills), or estimate from the model specification.
-- **See an example** — four finished assessments (a measured chest-radiograph classifier, a report-generation LLM via vendor API, the mAIstro multi-agent workflow, and RoentGen synthetic chest radiographs), each opening in the route it was made with and shareable by link.
+CEDARS deliberately separates:
 
-Underneath:
+- **Clinical AI** — how an AI system is used in a Radiology Department. Local use can add compute while also changing imaging operations, such as scan time, avoided studies, or contrast use.
+- **AI Model & Informatics** — the lifecycle characteristics of the AI system itself, including model/task context, training, inference, compute location, deployment assumptions, provenance, and model comparison.
 
-- **Task-family model library** — editable, literature-anchored templates: Classification/triage, detection, 2D & 3D segmentation, reconstruction/denoising, diffusion synthesis, report generation (LLM/VLM), **agentic workflow (LLM orchestration)**, foundation/prompt models, Custom.
-- **Two inference units** — vision models scale physically with `params × resolution² (× slices)` in GPU-seconds; **LLM & agentic models are token-driven** (`calls/task × tokens/call × Wh/1k-tokens`), so a multi-step agent's 10–100× footprint is visible rather than hidden.
-- **GPU training-energy estimator** — training kWh from GPU × count × hours × PUE, or a measured value.
-- **Performance is user-owned, never predicted** — reported accuracy (AUC/Dice/SSIM…) and clinical co-benefits are entered, defaulting to the cited reference.
-- **Lifecycle tabs** — Training · Testing · Inference · Carbon · Clinical · **Infrastructure** (full cloud-carbon: compute, storage, transfer, cross-region optimisation).
-- **Benchmark** — shortlist candidate models under one department context; read the **accuracy-vs-carbon trade-off** on a Pareto scatter (efficient models starred), plus a worked **single-pass vs agentic** token-multiplier example.
-- **AI Research Label** — a disclosure label for manuscript/paper submission that is a *view* of the model record (not a second form), splitting **training (one-time) from inference (per-study)** and grading the **amortised** footprint per study (with token-based inference for LLM/agentic models). If training energy is marked *not disclosed by vendor*, the label grades inference only and says so.
-- **Water** — optional site cooling (WUE) and grid water-intensity inputs; until entered, the label shows a clearly-marked screening estimate.
-
-### 🏷️ EcoLabel — CEDARS Score & Rating
-
-The department's clean, citable, **current-state** disclosure, after the design logic of Energy Star and the EU Energy Label:
-
-- **CEDARS Score** — a continuous **0–100** value from the per-study footprint.
-- **CEDARS Rating** — a recognisable **1–5 leaf** badge mapped from the Score.
-- **Disclosure checklist** — the minimum items for a reproducible footprint (hardware, energy, grid intensity, cloud/PUE, training–inference split, water, Score + Rating), modelled on CLAIM/DEAL.
-- **Live by default** — derived automatically from your Radiology Department state; override the headline figures (annual kWh, studies, region) with measured data for publication.
-- **Export** as a PNG badge, markdown table, or ready-to-paste paper/ESG paragraph.
-
-### 🛠️ Improve (interventions)
-
-Build an **intervention program** — tick as many operational levers as you plan to implement (scanners off overnight, standby, reduce low-value imaging, shorten protocols, renewable electricity, lower-carbon region, plus **data-storage levers**: store axial-only, migrate archive to cloud, apply a data-retention policy) and see their **combined** impact: before/after energy, carbon, **and cost (annual € /$ saved)**, with your **current → projected** EcoLabel grade side by side. The selection is **shared with the EcoLabel's Sustainability actions** — tick in either place and the (overlap-aware) numbers stay identical. Storage levers are modelled as a *change from* your current storage setup, so they never double-count.
-
-### 💾 Save, Share & Export
-
-CEDARS supports four distinct persistence/sharing modes:
-
-- **Save on this device only** — browser-local storage; nothing is uploaded, but the saved copy can disappear if browser storage is cleared or the user changes browser/device.
-- **Download / Open CEDARS file** — a portable, versioned `.cedars.json` backup processed locally in the browser.
-- **Copy shareable link** — reproduces the calculator configuration using the existing URL hash. The link is reproducible, not private; anyone with the full link can open it.
-- **Contribute this assessment** — an optional, explicit research submission. Normal calculator use does not transmit assessment data.
-
-Per-dashboard CSV reports, print-to-PDF, and the EcoLabel exports remain available. A **Feedback** link in the footer opens a pre-filled GitHub issue for bugs and suggestions.
+The technical model is described once; local Department use is configured separately.
 
 ---
 
-## Configurable inputs
+## Core capabilities
 
-The full calculator configuration is encoded in the URL hash — **copy the link from the address bar to share your exact setup**. A recipient opening the link reproduces it precisely: the equipment inventory, region/grid and time period, storage and cost/commute assumptions, the AI scenario (model spec, cloud provider/region, scanner state), and the selected interventions. The link stays clean (no `#…`) while everything is at its defaults, and only the values you changed are stored, so shared links stay compact.
+### Radiology Department
 
-_Not carried in the URL (document/authoring details rather than calculator inputs): the free-text label identity fields (department/hospital name, AI project name), the deployed-AI-tools list, and the Infrastructure tab's custom compute/storage line items. The AI model record itself — including the fields the AI Research Label reads — is in the URL, so a shared link reproduces the label exactly._
+CEDARS can estimate and contextualize equipment energy, utilization, energy/carbon per study, electricity emissions, modeled Scope 3 categories, storage/archiving, clinical AI, contrast-media and resource indicators, current practices, and projected intervention scenarios. Local measured values can replace defaults where supported.
 
-The URL hash is intended for reproducibility, not confidentiality. Names, email addresses, contribution permissions, and patient-identifiable information are never intentionally added to the shareable URL.
+### AI Model & Informatics
 
-Configurable inputs include:
+CEDARS supports one selected model or like-for-like candidate comparison; single-task imaging AI, LLM/foundation-model, and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an **AI Research Label**. CEDARS does not predict model performance.
 
-- **Equipment fleet** — set the count of each device type (or start from a **department preset**, below)
-- **Actual imaging studies / year** (optional) — drives fleet utilisation and the live EcoLabel; blank uses the fleet estimate
-- **Region / grid** — Switzerland, France, Germany, United States, United Kingdom, EU average, Global average, or a custom carbon intensity
-- **Time period** — Monthly, Quarterly, Annual
-- **Renewable %** and **custom grid intensity** where applicable
-- **Cloud provider & region** — Local / AWS / Azure / Google Cloud, with per-region grid intensity for AI and infrastructure
-- **Electricity price** — a regional commercial default (editable) that turns energy into an approximate cost
-- **Data storage** — retention years, on-premises vs cloud, and store-all-series vs axial-only
+### Improve
 
-Staff-commute headcount is derived automatically from the device fleet (illustrative FTE-per-device estimate, not a literature-sourced ratio — see `sources.md`), so it needs no manual entry.
+The Improve workspace separates **current practice** from **future scenarios**. Opportunities are ranked from the current assessment when CEDARS can model them; guidance-only AI/informatics checks remain explicitly non-quantified unless sufficient inputs exist.
 
-### Department presets
+### Report (& Share)
 
-To avoid building a fleet device-by-device, the Home page offers a subtle **"Quick start"** row that fills a realistic starting fleet — then every count stays editable. Sizes are **illustrative archetypes**, not authoritative; adjust to your department. Selecting a preset resets the other devices to zero.
+Reporting is organized around:
 
-| Preset | Starting fleet |
+1. **Review & finalize**
+2. **Prepare your CEDARS materials**
+3. **Preserve or share**
+
+Outputs include EcoLabels, reporting text, structured methods/reproducibility fields, and portable assessment files.
+
+---
+
+## Evidence and methodology
+
+CEDARS is **literature-informed**, but not every model parameter has equally strong evidence. Some values are published measurements; others are transparent estimates, proxies, or illustrative defaults where direct evidence is limited.
+
+- The authoritative assumptions, parameter provenance, evidence limitations, and full bibliography are maintained in **[`sources.md`](./sources.md)**.
+- Relevant references are also linked directly from the public interface where they affect interpretation or guidance.
+- Local measurements should replace defaults for reporting of record whenever available.
+- Model performance is user-supplied and is not predicted by CEDARS.
+
+Keeping the detailed bibliography in `sources.md` avoids duplicating partial reference lists that can drift out of date.
+
+---
+
+## Saving, sharing, and privacy
+
+Normal calculator use is browser-local by default.
+
+| Option | Purpose |
 |---|---|
-| **Community hospital** | 1× MRI 1.5T · 1× CT · 2× radiography · 2× ultrasound · 1× mammography · 1× PACS · 6 workstations |
-| **Regional hospital** | 1× MRI 1.5T · 1× MRI 3T · 2× CT · 1× fluoroscopy · 1× angio/IR · 3× radiography · 3× ultrasound · 1× mammography · 1× PACS · 12 workstations |
-| **Academic center** | 2× MRI 1.5T · 2× MRI 3T · 1× MRI 7T · 4× CT · 1× PET-CT · 2× angio/IR · 2× fluoroscopy · 5× radiography · 6× ultrasound · 2× mammography · 2× PACS · 30 workstations |
-| **Outpatient imaging** | 1× MRI 1.5T · 1× CT · 2× radiography · 3× ultrasound · 1× mammography · 1× PACS · 6 workstations |
-| **Teleradiology hub** | 2× PACS · 15 workstations *(reading/informatics — no scanners)* |
+| **Save on this device** | Browser-local working copy |
+| **Complete CEDARS file** | Portable, versioned `.cedars.json` assessment for backup or exact transfer |
+| **Reproducible link** | Compact current calculator/current AI-model configuration; not a complete multi-model backup |
+| **Contribute this assessment** | Optional research submission after explicit review and consent |
 
+A reproducible URL is **not private**: anyone with the full link can open the encoded configuration. Names, email addresses, consent choices, and patient-identifiable information are not intentionally placed in the shareable URL.
 
----
-
-## About the CEDARS Collaborative
-
-The public **About** page lists current collaborators and their display affiliations. Affiliations are provided for identification only and do not imply organizational review, endorsement, sponsorship, or official participation. Organizational logos are not used for this purpose without explicit approval.
+Research contribution is separate from normal saving and sharing. Until the optional contribution service is deployed/configured, that action remains disabled.
 
 ---
 
-## Optional research contributions
+## Reproducibility
 
-The frontend contains an optional **Contribute this assessment** workflow. Contribution is separate from local saving and sharing, and keeps three permissions distinct: assessment sharing (required to submit), acknowledgment/contributor listing (optional), and future contact (optional). Users are instructed not to submit patient-identifiable information.
+The calculation logic is kept in testable modules rather than duplicated in the interface:
 
-The optional backend scaffold lives in [`cloudflare/`](./cloudflare/) and uses a Cloudflare Worker with D1 storage. Until that Worker is deployed and the GitHub repository variable `VITE_CEDARS_CONTRIBUTE_URL` is configured, the contribution form will not transmit data. See [`cloudflare/README.md`](./cloudflare/README.md).
-
----
-
-## Collaboration notes
-
-- [`ROADMAP.md`](./ROADMAP.md) tracks planned and in-progress work.
-- [`CHANGELOG.md`](./CHANGELOG.md) records completed/unreleased user-facing changes.
-- GitHub Issues and pull requests should be used for task ownership and code review so multiple contributors do not unknowingly implement the same change.
-
----
-
-## Scientific basis
-
-Every default value is sourced from peer-reviewed literature and listed in **[sources.md](./sources.md)**. Selected references:
-
-| Area | Source |
+| Module | Responsibility |
 |---|---|
-| Sustainability framework & policy (multi-society) | Rockall et al. *J Am Coll Radiol* 2025 · DOI [10.1016/j.jacr.2025.02.009](https://doi.org/10.1016/j.jacr.2025.02.009) |
-| MRI active power (≈30 kW, 3T) | Chaban et al. *J Magn Reson Imaging* 2023 · DOI [10.1002/jmri.28994](https://doi.org/10.1002/jmri.28994) |
-| CT active power (40–80 kW) | Acra 2024 · DOI [10.1016/j.acra.2024.05.004](https://doi.org/10.1016/j.acra.2024.05.004) |
-| Interventional imaging power (direct sensor) | Vosshenrich et al. *AJR* 2024 · DOI [10.2214/AJR.24.30988](https://doi.org/10.2214/AJR.24.30988) |
-| Carbon intensity by region | Our World in Data 2022–2023 · [ourworldindata.org](https://ourworldindata.org/grapher/carbon-intensity-electricity) |
-| AI footprint & lifecycle framework | Doo et al. *Radiology* 2024 · DOI [10.1148/radiol.232030](https://doi.org/10.1148/radiol.232030) |
-| LLM energy vs. model size | Doo et al. *Radiology* 2024 · DOI [10.1148/radiol.240320](https://doi.org/10.1148/radiol.240320) |
-| DICOM network energy (0.001 kWh/GB) | Aslan et al. *J Industrial Ecology* 2018 · DOI [10.1111/jiec.12630](https://doi.org/10.1111/jiec.12630) |
-| Intervention savings | McKee et al. *Radiology* 2024 · DOI [10.1148/radiol.240219](https://doi.org/10.1148/radiol.240219) |
-| Radiology ecolabel concept, AI lifecycle phases, GHG scopes for informatics | Doo et al. *J Am Coll Radiol* 2024 · DOI [10.1016/j.jacr.2023.11.019](https://doi.org/10.1016/j.jacr.2023.11.019) |
-| Ecolabel design logic | Energy Star · EU Energy Label (Regulation EU 2021/341) |
-| Software Carbon Intensity (SCI) | Green Software Foundation · ISO/IEC 21031:2024 |
-| AI model library anchors | CheXNet, U-Net, nnU-Net, MedSAM, diffusion recon (see sources.md) |
+| `calc.js` | CEDARS Score/Rating and regional carbon/cost helpers |
+| `model.js` | Department fleet, dashboard, clinical effects, storage, and intervention calculations |
+| `urlstate.js` | Validation and encode/decode of shareable calculator state |
+| `ailabel.js` | AI model record → AI Research Label calculations and reporting fields |
+| `aiRecords.js` | Canonical AI model records and Department-use persistence |
 
-> **All values are literature-derived defaults.** Replace them with your own scanner logs, utility bills, GPU measurements, or validation results for publication-quality reporting. CEDARS **models energy** but only **records performance** — it never predicts a model's accuracy.
+Vitest regression tests pin fixed inputs to known outputs, and the production build runs through GitHub Actions before deployment. `package-lock.json` is committed for reproducible dependency resolution.
 
 ---
 
 ## Run locally
+
+Requirements: **Node ≥22.12**.
 
 ```bash
 git clone https://github.com/takinci/cedars.git
@@ -191,98 +133,61 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
-
-Run the reference tests (see [Reproducibility & testing](#reproducibility--testing)):
+Open `http://localhost:5173`.
 
 ```bash
-npm test        # Vitest — pins the calculation core to known outputs
+npm test
+npm run build
 ```
 
-To build for deployment:
-
-```bash
-npm run build   # outputs to ../docs/
-```
-
-> Requires Node 22+ (Vite 5).
+Current frontend stack includes React 18, Vite 8, Chart.js, Lucide React, and Vitest.
 
 ---
 
-## Tech stack
+## Repository guide
 
-| Layer | Technology |
-|---|---|
-| UI framework | React 18 |
-| Build tool | Vite 5 |
-| Charts | Chart.js 4 + react-chartjs-2 |
-| Icons | Lucide React |
-| Testing | Vitest (reference tests, CI-gated) |
-| Hosting | GitHub Pages (static); optional Cloudflare Worker + D1 only for explicit research contributions |
-| CI/CD | GitHub Actions |
+- [`sources.md`](./sources.md) — scientific assumptions, provenance, evidence limitations, and references
+- [`CHANGELOG.md`](./CHANGELOG.md) — user-facing changes
+- [`ROADMAP.md`](./ROADMAP.md) — active/planned work
+- [`CITATION.cff`](./CITATION.cff) — software citation metadata
+- [`cloudflare/README.md`](./cloudflare/README.md) — optional research-contribution backend
+- [GitHub Issues](https://github.com/takinci/cedars/issues) — bugs, feedback, and feature suggestions
 
----
-
-## Reproducibility & testing
-
-The calculation core is factored into small, **dependency-free modules** so results are a single source of truth (the app and its tests run the *same* code) and can be verified in isolation:
-
-| Module | Responsibility |
-|---|---|
-| **`calc.js`** | CEDARS Score & Rating, grid carbon-intensity and electricity-price helpers |
-| **`model.js`** | The department engine — `buildFleet`, `computeDashboard`, `computeInterventions` — plus the pure data tables it reads |
-| **`urlstate.js`** | Encode/decode of the full shareable-URL configuration |
-| **`ailabel.js`** | The AI model record → AI Research Label: provenance, grading basis, water, legacy save-file migration |
-
-Each has **reference tests** (`*.test.js`, Vitest) that pin **fixed inputs to known outputs**: the Score/Rating and cost logic, the department energy / carbon / GHG-scope math (including per-unit embodied carbon), and a URL **round-trip** proving a shared link restores exactly what was shared. **GitHub Actions runs `npm test` before every deploy**, so a change in the calculation results fails the build. A committed **`package-lock.json`** pins dependency versions for reproducible installs.
+The public **About CEDARS** page lists current collaborators. Displayed affiliations identify collaborators and do not imply institutional review, endorsement, or sponsorship.
 
 ---
 
-## Who is it for?
+## Citation
 
-- **Radiologists and clinical leads** — understand your department's footprint and find quick wins
-- **Sustainability officers** — generate Scope 1/2/3 estimates and CEDARS disclosures for ESG reporting
-- **Medical physicists** — benchmark scanner energy against published literature
-- **AI developers and governance teams** — model a model's build/run footprint, benchmark candidates on accuracy-vs-carbon, and generate a research-disclosure label; deploy clinical AI to a department to see its net operational effect
-- **Academic researchers** — generate a standardised CEDARS EcoLabel for a manuscript, with a reproducible disclosure checklist
-- **Healthcare executives** — communicate performance in accessible equivalencies
+A manuscript describing CEDARS has been submitted for peer review. Until a publication citation is available, please cite the software using GitHub's **Cite this repository** function, which reads [`CITATION.cff`](./CITATION.cff).
+
+When the associated manuscript is published, the preferred article citation will be added to `CITATION.cff`.
 
 ---
 
-## Assumptions and governance
+## License
 
-1. Prefer measured data — scanner logs, smart meters, utility bills, GPU measurements always override defaults
-2. Literature values are transparent defaults, not authoritative truth
-3. Mark every input as *measured*, *estimated*, or *assumed*
-4. Carbon intensity must be editable and region-specific
-5. Separate AI gross footprint from estimated sustainability benefits
-6. Report Scope 1, 2, and 3 separately
-7. **Energy may be modelled; model performance may only be recorded** — accuracy and clinical benefit are user-entered, never predicted
+- **Software/source code:** [Apache License 2.0](./LICENSE)
+- **Content, methodology, documentation, and generated labels/badges:** [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
-See [sources.md](./sources.md) for the full assumptions-governance document.
+Suggested content attribution: *CEDARS (cedarsleaf.com), CC BY 4.0.*
+
+The names **CEDARS**, the leaf mark, and **CEDARS Score / Rating** identify this project; Apache-2.0 does not grant trademark rights.
 
 ---
 
-## License & citation
+## Disclaimer
 
-- **Software / source code** — [Apache License 2.0](./LICENSE).
-- **Content, methodology, documentation, and generated labels/badges** — [Creative Commons Attribution 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). Attribute as: *"CEDARS (cedarsleaf.com), CC BY 4.0."*
-- The names **CEDARS**, the leaf mark, and **CEDARS Score / Rating** identify this project; the Apache-2.0 licence does not grant rights to use them (LICENSE §6).
+CEDARS is a **research and estimation tool**. Outputs may include literature-based estimates, modeled values, proxies, and user-entered data. They are not medical, clinical, financial, regulatory, or certification advice and are provided as-is without warranty.
 
-If you use CEDARS, please cite it — GitHub's **"Cite this repository"** button uses [`CITATION.cff`](./CITATION.cff) (and please cite the associated paper once published).
-
-> **Disclaimer.** CEDARS is a research and estimation tool. Figures are literature-based **estimates**, not measured values, and are **not** medical, clinical, financial, or regulatory advice. Provided *as-is*, without warranty. Replace defaults with your own measured data for any reporting of record.
->
-> **Privacy.** Normal calculator use is browser-local: no account, no cookies, and nothing you enter is transmitted. Data leaves your device only if you explicitly choose **Contribute this assessment** (see above), or when you open an external reference link, which CEDARS announces before opening.
-
-> **Citations in the interface.** Every literature value or external resource shown in the AI pathway carries an inline reference with a direct DOI link, verified at the time of writing; external links open in a new tab after a short notice. The methods document behind the defaults remains [sources.md](./sources.md).
+For scientific or operational reporting of record, review the assumptions in [`sources.md`](./sources.md) and replace defaults with appropriate local measured data where available.
 
 ---
 
 <div align="center">
 
-Built for radiology sustainability research · Evidence-based · Apache-2.0 (code) + CC BY 4.0 (content)
+**[Open CEDARS →](https://cedarsleaf.com)**
 
-[**→ Open CEDARS**](https://cedarsleaf.com)
+Radiology sustainability · Clinical AI · Transparent environmental reporting
 
 </div>

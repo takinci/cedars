@@ -1,8 +1,9 @@
 cff-version: 1.2.0
 title: "CEDARS — Carbon, Energy Diagnostics and Reporting for Sustainability"
 message: >-
-  If you use CEDARS in your work, please cite this software
-  (and the associated paper once it is published).
+  If you use CEDARS in your work, please cite this software.
+  A manuscript describing CEDARS has been submitted for peer review;
+  preferred article citation information will be added if and when available.
 type: software
 authors:
   - given-names: Tugba
@@ -38,7 +39,7 @@ keywords:
 license: Apache-2.0
 version: "1.0.0"
 date-released: "2026-07-23"
-# ── Once the paper is published, fill in and CEDARS will be cited via it: ──
+# ── A manuscript describing CEDARS has been submitted for peer review. Once published, add the preferred citation below. ──
 # preferred-citation:
 #   type: article
 #   title: "<paper title>"

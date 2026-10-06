@@ -1113,6 +1113,23 @@ function generateDeptText(d) {
     ` Sustainability metrics were estimated using CEDARS (${d.date}), benchmarked against published radiology carbon-intensity data (e.g. McKee BJ et al., Radiology 2024, DOI: 10.1148/radiol.240219); full methodology and sources: https://github.com/takinci/cedars/blob/main/sources.md.`
   );
 }
+function generateAiMethodsText(d) {
+  if (!d) return '';
+  const training = d.trainDisclosed
+    ? `${d.projectName} used ${d.gpuHardware}${d.totalGpuHours>0?` for ${d.totalGpuHours} GPU-hours`:''} across ${d.numRuns} training run${d.numRuns===1?'':'s'}, consuming ${d.totalEnergyKwh} kWh and producing an estimated ${d.trainCo2} kgCO₂e (${d.trainingProvider}, ${d.trainingRegion || 'provider average'}, ${d.trainingEffectiveCi} kgCO₂e/kWh).`
+    : `Training energy for ${d.projectName} was not disclosed by the developer or vendor.`;
+  const inference = d.perInferCo2g>0
+    ? ` Inference was estimated at ${d.perInferCo2g} gCO₂e per study (${d.inferenceProvider}, ${d.inferenceRegion || 'provider average'}, ${d.inferenceEffectiveCi} kgCO₂e/kWh; PUE ${d.pue}).`
+    : '';
+  const amortised = d.hasInference
+    ? ` Across ${d.lifetimeInferences.toLocaleString()} studies over ${d.deployMonths} months, the amortised training-plus-inference footprint was ${d.effectivePerStudyG} gCO₂e per study.`
+    : '';
+  const water = d.waterProv==='not-disclosed'
+    ? ' Water use was not assessed.'
+    : d.waterLitres>0 ? ` Operational water use was estimated at ${d.waterLitres.toLocaleString()} L for training${d.waterProv==='screening'?' using a screening factor':''}.` : '';
+  const score = d.graded ? ` The resulting CEDARS Score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}).` : '';
+  return `Environmental impact. ${training}${inference}${amortised}${water}${score} Sustainability metrics were assessed using CEDARS (${d.date}); detailed assumptions and provenance should be reported with the study where relevant.`;
+}
 
 // Shared label-card row height: both PNG label cards (Department EcoLabel, AI Research Label)
 // share the same fixed width but have very different row counts (7-9 vs 10-13), so a fixed
@@ -1676,6 +1693,7 @@ function App() {
   const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
   const [equivScope, setEquivScope] = useState('scope2');
   const [ecoCopied, setEcoCopied] = useState(false);
+  const [aiParagraphCopied, setAiParagraphCopied] = useState(false);
   // The label is a view of the model record: read via `ecoLabel` (derived below, after `ai`),
   // written through `setEco`, which maps the label's field names onto the record.
   const setEco = (key, val) => {
@@ -4467,7 +4485,7 @@ function App() {
               <section className="inputSummary improveAiGuidance" style={{marginBottom:18}}>
                 <div className="improveGuidanceHeading"><span>ADDITIONAL GUIDANCE</span><h2>AI &amp; informatics design checks</h2><p>These actions may improve an AI system's footprint, but they do not automatically change the modeled Department result unless CEDARS has enough measured data to quantify them.</p></div>
                 <div className="improveGuidanceGroups">
-                  {AI_IMPROVE_GROUPS.map(group=><div key={group.title} className="improveGuidanceGroup"><h3>{group.title}</h3><div>{group.items.map(([title,body,refs])=><div key={title} className="improveGuidanceCard"><div><strong>{title}</strong><span className="improveStatus guidance">Guidance only</span></div><p>{body}</p><small>Evidence {refs.map(id=><Ref key={id} id={id} order={AI_IMPROVE_REFS}/>)}</small></div>)}</div></div>)}
+                  {AI_IMPROVE_GROUPS.map(group=><div key={group.title} className="improveGuidanceGroup"><h3>{group.title}</h3><div>{group.items.map(([title,body,refs])=><div key={title} className="improveGuidanceCard"><div><strong>{title}</strong><span className="improveStatus guidance">Guidance only</span></div><p>{body}</p><div className="improveEvidenceChips"><span>Evidence</span>{refs.map(id=>{const r=REFS[id];const author=(r?.authors||id).split(',')[0].split(' ')[0];return <ExternalLink key={id} href={refUrl(r)} className="improveEvidenceChip">{author} · {r?.venue||'Source'} {r?.year||''}</ExternalLink>;})}</div></div>)}</div></div>)}
                 </div>
                 <details className="methodologyDetails improveWorkedExample">
                   <summary>Worked example: why right-sizing an LLM matters</summary>
@@ -4491,7 +4509,7 @@ function App() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div>
               <h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Score & EcoLabel' : 'Report (& Share)'}</h1>
-              {page==='report' && <p className="note" style={{margin:0,fontSize:13}}>Complete a reproducible disclosure, generate reporting outputs, and optionally share or contribute your assessment.</p>}
+              {page==='report' && <p className="note" style={{margin:0,fontSize:13}}>Review your reporting details, prepare CEDARS materials, and preserve or share the assessment.</p>}
             </div>
           </div>
           <div className="researchAssessmentNotice">
@@ -4543,9 +4561,9 @@ function App() {
               </div>
             </div>
             <div className="reportSteps" aria-label="Report and share workflow">
-              <div><span>1</span><strong>Complete disclosure</strong><small>Verify reporting details</small></div>
-              <div><span>2</span><strong>Generate outputs</strong><small>Checklist, label, text</small></div>
-              <div><span>3</span><strong>Optional share</strong><small>Link or research contribution</small></div>
+              <div><span>1</span><strong>Review &amp; finalize</strong><small>Check the information used in your CEDARS result</small></div>
+              <div><span>2</span><strong>Prepare your CEDARS materials</strong><small>EcoLabel, reporting text, methods &amp; reproducibility</small></div>
+              <div><span>3</span><strong>Preserve or share</strong><small>Save, transfer, link, or optionally contribute</small></div>
             </div>
           </>}
           <div style={{display:ecoLabelMode==='department'?'block':'none'}}>
@@ -4637,11 +4655,27 @@ function App() {
             {page==='report' && <>
             <div className="ecoDisclosureHeader">
               <div>
-                <h2>Complete your disclosure</h2>
-                <p>CEDARS has already imported the information available from your assessment. Complete or verify the items below to make the label more informative and reproducible.</p>
+                <h2>Review &amp; finalize your Department EcoLabel</h2>
+                <p>CEDARS has already brought forward the values available from your Radiology Department assessment. Review them here and replace modeled values with measured reporting data when available.</p>
               </div>
               <button className="download" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);}} style={{padding:'6px 10px',fontSize:11}}>Edit department inputs →</button>
             </div>
+            {(()=>{
+              const checks = [
+                ['Annual imaging volume', deptLabelData.annualStudies>0],
+                ['Annual electricity', deptLabelData.annualKwh>0],
+                ['Grid context', !!deptLabelData.region],
+                ['Annual carbon footprint', deptLabelData.totalAnnualCo2>0],
+                ['CEDARS Score & Rating', deptLabelData.hasData],
+              ];
+              const done = checks.filter(([,ok])=>ok).length;
+              const missing = checks.filter(([,ok])=>!ok).map(([name])=>name);
+              return <div className="reportReadiness">
+                <div><span>DEPARTMENT ECOLABEL READINESS</span><strong>{done} of {checks.length} core items ready</strong></div>
+                <div className="reportReadinessBar"><span style={{width:`${Math.round(done/checks.length*100)}%`}}/></div>
+                <p>{missing.length ? <>Still needed: <strong>{missing.join(' · ')}</strong></> : <>Core EcoLabel fields are ready. Optional identity fields and measured overrides can still improve the final report.</>}</p>
+              </div>;
+            })()}
             <div className="ecoLiveCallout">
               <div className="ecoLiveValue">
                 <strong>Using live Radiology Department data.</strong> Equipment, grid region, electricity, imaging volume, and clinical AI flow into this label automatically.
@@ -4650,7 +4684,7 @@ function App() {
             </div>
 
             <div className="inputSummary ecoDisclosureStep" style={{marginBottom:24}}>
-              <div className="ecoStepHeading"><span>1</span><div><h2>Identify the assessment</h2><p>Add the human-readable details that should appear with the label.</p></div></div>
+              <div className="ecoStepHeading reportSubsectionHeading"><div><h2>Assessment identity</h2><p>Add the human-readable details that should appear with the label.</p></div></div>
               <div className="grid grid3">
                 <label>Department name<input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
                 <label>Hospital / institution<input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
@@ -4664,7 +4698,7 @@ function App() {
             </div>
 
             <div className="inputSummary ecoDisclosureStep" style={{marginBottom:24}}>
-              <div className="ecoStepHeading"><span>2</span><div><h2>Verify reporting inputs</h2><p>Use live department values by default; override only when you have better measured reporting data.</p></div></div>
+              <div className="ecoStepHeading reportSubsectionHeading"><div><h2>Reporting values</h2><p>Use live department values by default; override only when you have better measured reporting data.</p></div></div>
               <p className="note" style={{marginBottom:12}}>
                 {deptLabelData.isLive
                   ? <>Currently <strong style={{color:'#2E7D32'}}>live</strong> from your Radiology Department state. Leave blank to keep it live; enter a value to override.</>
@@ -4686,40 +4720,35 @@ function App() {
               </p>
             </div>
 
-            <div id="current-practices" className="inputSummary ecoDisclosureStep workflowAnchor" style={{marginBottom:32}}>
-              <div className="ecoStepHeading"><span>3</span><div><h2>Document current sustainability practices</h2><p>Record what is already happening today; these items support disclosure and do not create new projected savings.</p></div></div>
-              <div className="workflowBridge compact" aria-label="Current state and future scenario workflow">
-                <div className="workflowBridgeNav">
-                  <div className="workflowBridgeChoice active current">
-                    <span className="stateContextTag current">CURRENT STATE</span>
-                    <strong>Document what is implemented now</strong>
+            <div id="current-practices" className="inputSummary ecoDisclosureStep workflowAnchor" style={{marginBottom:24}}>
+              <div className="ecoStepHeading reportSubsectionHeading"><div><h2>Current practices</h2><p>Record what is already implemented today. These items describe the current state and do not create projected savings.</p></div></div>
+              <div className="reportPracticeSummary">
+                <div><strong>{deptLabel.activeInterventions.length} current practice{deptLabel.activeInterventions.length===1?'':'s'} documented</strong><span>Future changes belong in Improve, where CEDARS models the projected effect separately.</span></div>
+                <button type="button" className="download" onClick={()=>setPage('scenario')}>Go to Improve →</button>
+              </div>
+              <details className="reportDisclosureDetails">
+                <summary>Review / edit current practices</summary>
+                <div className="reportDisclosureDetailsBody">
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
+                    {Object.entries(INTERVENTIONS).map(([name, data]) => {
+                      const active = deptLabel.activeInterventions.includes(name);
+                      return (
+                        <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
+                          <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
+                          <div>
+                            <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
+                            <div style={{fontSize:12,color:'#607d66'}}>{data.note}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
-                  <span className="workflowBridgeArrow">→</span>
-                  <button type="button" className="workflowBridgeChoice" onClick={()=>goToWorkflowSection('scenario','future-scenario')}>
-                    <span className="stateContextTag future">FUTURE SCENARIO</span>
-                    <strong>Model potential interventions</strong>
-                  </button>
                 </div>
-                <p>Already-implemented actions belong here. Use <strong>Improve</strong> to test additional changes and projected savings separately.</p>
-                <div className="workflowPersistence"><Save size={13}/> Your entries stay with this assessment as you move between CEDARS pages. Use <strong>Save</strong> in the header to preserve them for a later visit.</div>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:10}}>
-                {Object.entries(INTERVENTIONS).map(([name, data]) => {
-                  const active = deptLabel.activeInterventions.includes(name);
-                  return (
-                    <label key={name} style={{flexDirection:'row',alignItems:'flex-start',gap:10,fontWeight:400,color:'#263238',cursor:'pointer',background:active?'#e8f5e9':'#fafafa',borderRadius:10,padding:'10px 12px',border:active?'1.5px solid #81C784':'1px solid #e0e0e0'}}>
-                      <input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
-                      <div>
-                        <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
-                        <div style={{fontSize:12,color:'#607d66'}}>{data.note}</div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+              </details>
             </div>
 
-            <h2>Label preview</h2>
+            <h2>Your Department EcoLabel</h2>
+
             <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
               <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
                 <div style={{background:'#1b5e20',padding:'14px 18px'}}>
@@ -4764,11 +4793,11 @@ function App() {
                   <Download/> Download PNG badge
                 </button>
                 <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} disabled={deptLabelData.annualStudies===0} style={deptCopied?{background:'#26A69A'}:undefined}>
-                  <FileText/> {deptCopied ? 'Copied!' : 'Copy ESG paragraph'}
+                  <FileText/> {deptCopied ? 'Copied!' : 'Copy reporting paragraph'}
                 </button>
                 <p className="note" style={{maxWidth:220,fontSize:12,margin:0}}>
-                  PNG badge: embed in sustainability reports, posters, or accreditation submissions.<br/><br/>
-                  ESG paragraph: paste into your hospital's annual sustainability report or ESR Green Imaging self-assessment.
+                  PNG badge: use in sustainability reports, posters, presentations, or accreditation materials.<br/><br/>
+                  Reporting paragraph: a concise starting point for a main report or sustainability-methods section; adapt it to your local reporting requirements.
                 </p>
                 <div style={{marginTop:8}}>
                   <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
@@ -4870,28 +4899,30 @@ function App() {
             {page==='report' && <>
             <div className="ecoDisclosureHeader">
               <div>
-                <h2>Complete your AI disclosure</h2>
-                <p>This is the same model record as on AI Model &amp; Informatics. Each energy line carries its provenance — measured, estimated or literature — so verify the deployment context and replace estimates with measured values when you have them.</p>
+                <h2>Review &amp; finalize your AI Research Label</h2>
+                <p>Report &amp; Share summarizes the model record you built in AI Model &amp; Informatics. Review readiness here; edit the full technical record only when something needs to change.</p>
               </div>
             </div>
 
-          {/* ── Pre-fill from dashboards ── */}
-          <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:24,padding:'12px 16px',background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16}}>
-            <button onClick={()=>setS('inferStudiesMonth', String(Math.round(dash.scopes.imagingScans || 0)))} style={{
-              display:'inline-flex',alignItems:'center',gap:7,
-              background:'#2E7D32',color:'white',border:'none',borderRadius:10,
-              padding:'7px 16px',cursor:'pointer',fontSize:12,fontWeight:700,
-            }}>
-              <ArrowRight size={13}/> Pre-fill deployment volume from dashboards
-            </button>
-            <span style={{fontSize:11,color:'#607d66'}}>
-              This form edits the same model record as the AI Model &amp; Informatics page; every output reads from it. The button copies your Radiology Department's monthly study volume into <em>Monthly study volume</em>, which switches the grade from inference-only to the amortised training + inference figure.</span>
-          </div>
+          <section className="inputSummary reportAiSummary" style={{marginBottom:22}}>
+            <div className="reportAiSummaryHeader">
+              <div><span>AI MODEL CEDARS SUMMARY</span><h2>AI model CEDARS summary</h2><p>The reporting view summarizes the existing model record rather than creating a second copy.</p></div>
+              <div className="reportAiReadiness"><strong>{aiChecklistDone} / {aiChecklist.length}</strong><span>AI Research Label readiness</span></div>
+            </div>
+            <div className="reportAiSummaryGrid">
+              <div><span>Model</span><strong>{ecoLabelData.projectName || 'Unnamed model'}</strong><small>{ecoLabelData.taskType || 'Task not specified'}</small></div>
+              <div><span>Training</span><strong>{ecoLabelData.trainDisclosed ? `${ecoLabelData.totalEnergyKwh} kWh` : 'Not disclosed'}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Provenance not set'}</small></div>
+              <div><span>Inference</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
+              <div><span>Deployment volume</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Missing'}</strong><small>{ecoLabelData.hasInference ? `${ecoLabelData.deployMonths} month deployment` : 'Needed for an amortised in-use grade'}</small></div>
+            </div>
+            {aiChecklistDone < aiChecklist.length && <div className="reportMissing"><strong>Still open:</strong> {aiChecklist.filter(([,ok])=>!ok).map(([name])=>name).join(' · ')}</div>}
+            <div className="reportSummaryActions">
+              {!ecoLabelData.hasInference && dash.scopes.imagingScans>0 && <button type="button" className="download" onClick={()=>setS('inferStudiesMonth', String(Math.round(dash.scopes.imagingScans || 0)))}>Use Department study volume</button>}
+              <button type="button" onClick={()=>setPage('ai')}>Edit full model details →</button>
+            </div>
+          </section>
 
-          {renderAiRecordForm()}
-
-          {/* ── Preview ── */}
-          <h2>Label preview</h2>
+          <h2>Your AI Research Label</h2>
           <div style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Visual card */}
             <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
@@ -4971,17 +5002,17 @@ function App() {
               <button
                 className="download"
                 onClick={()=>{
-                  navigator.clipboard.writeText(generateEcoMarkdown(ecoLabelData));
-                  setEcoCopied(true);
-                  setTimeout(()=>setEcoCopied(false), 2000);
+                  navigator.clipboard.writeText(generateAiMethodsText(ecoLabelData));
+                  setAiParagraphCopied(true);
+                  setTimeout(()=>setAiParagraphCopied(false), 2000);
                 }}
-                style={ecoCopied ? {background:'#26A69A'} : undefined}
+                style={aiParagraphCopied ? {background:'#26A69A'} : undefined}
               >
-                <FileText/> {ecoCopied ? 'Copied!' : 'Copy markdown table'}
+                <FileText/> {aiParagraphCopied ? 'Copied!' : 'Copy methods / impact paragraph'}
               </button>
-              <p className="note" style={{maxWidth:220, fontSize:12, margin:0}}>
-                PNG badge: embed in posters, slides, or PDF appendices.<br/><br/>
-                Markdown table: paste into LaTeX supplementary files, GitHub READMEs, or preprint appendices.
+              <p className="note" style={{maxWidth:240, fontSize:12, margin:0}}>
+                PNG badge: use in presentations, posters, reports, or model documentation.<br/><br/>
+                Methods / impact paragraph: a concise starting point for the main Methods or Environmental Impact text when appropriate; adapt it to the venue.
               </p>
               <div style={{marginTop:8}}>
                 <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
@@ -4997,76 +5028,53 @@ function App() {
             </div>
           </div>
 
-          {/* ── CEDARS disclosure checklist ── */}
-          <section style={{marginBottom:24}}>
-            <h2 style={{marginBottom:4}}>CEDARS disclosure checklist</h2>
-            <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible environmental footprint — a reporting standard modelled on CLAIM/DEAL. Report these alongside your study.</p>
-            {(()=>{
-              const d = ecoLabelData;
-              const items = [
-                ['1', 'Compute hardware (type, count)', d.gpuHardware, d.gpuHardware !== '—', 'AI workload'],
-                ['2', 'Total energy (kWh) / GPU-hours', d.hasData ? `${d.totalEnergyKwh.toLocaleString()} kWh · ${d.totalGpuHours} GPU-h` : '—', d.hasData, 'AI workload'],
-                ['3', 'Training compute context', `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`, !!d.trainingProvider, 'Training'],
-                ['4', 'Inference compute context', `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`, !!d.inferenceProvider, 'Inference'],
-                ['5', 'Training vs inference split', `Training ${d.trainCo2} kgCO₂e · Inference ${d.hasInference ? `${d.inferCo2Month} kgCO₂e/mo` : 'not reported'}`, d.hasData, 'AI workload'],
-                ['6', 'Water footprint', d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L` : 'not reported', d.waterLitres > 0, 'Water use'],
-                ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'add inference volume to grade', d.graded, 'Score / Rating'],
-              ];
-              return (
-                <div style={{border:'1px solid #c8e6c9', borderRadius:14, overflow:'hidden'}}>
-                  {items.map(([n, item, val, ok, mod], i)=>(
-                    <div key={n} style={{display:'grid', gridTemplateColumns:'28px 1.6fr 2fr 110px', gap:10, alignItems:'center', padding:'9px 14px', background:i%2===0?'#f1f8f1':'white', fontSize:13}}>
-                      <span style={{color: ok ? '#2E7D32' : '#bdbdbd', fontWeight:900}}>{ok ? '✓' : '○'}</span>
-                      <span style={{color:'#263238', fontWeight:600}}>{item}</span>
-                      <span style={{color:'#607d66'}}>{val}</span>
-                      <span style={{fontSize:11, color:'#90a4ae', textAlign:'right'}}>{mod}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </section>
+          <section className="inputSummary reportMethodsOptions" style={{marginTop:4,marginBottom:22}}>
+            <div className="reportMethodsHeading">
+              <span>METHODS &amp; REPRODUCIBILITY OPTIONS</span>
+              <h2>Methods &amp; reproducibility options</h2>
+              <p>Choose the level of detail that fits your venue. For many manuscripts, the concise text above can sit directly in the main Methods or Environmental Impact section. Expand the structured fields when a journal, conference, model card, repository, or technical audience needs more detail.</p>
+            </div>
 
-          {/* ── Markdown preview ── */}
-          <section>
-            <h2>Markdown table</h2>
-            <pre style={{background:'#f1f8f1', borderRadius:14, padding:'16px 20px', fontSize:12, lineHeight:1.6, overflow:'auto', border:'1px solid #c8e6c9', fontFamily:'monospace', whiteSpace:'pre-wrap'}}>
-              {generateEcoMarkdown(ecoLabelData)}
-            </pre>
-          </section>
+            <details className="reportDisclosureDetails">
+              <summary>AI Research Label checklist · {aiChecklistDone} of {aiChecklist.length} ready</summary>
+              <div className="reportDisclosureDetailsBody">
+                {(()=>{
+                  const d = ecoLabelData;
+                  const items = [
+                    ['1', 'Compute hardware (type, count)', d.gpuHardware, d.gpuHardware !== '—', 'AI workload'],
+                    ['2', 'Total energy (kWh) / GPU-hours', d.hasData ? `${d.totalEnergyKwh.toLocaleString()} kWh · ${d.totalGpuHours} GPU-h` : '—', d.hasData, 'AI workload'],
+                    ['3', 'Training compute context', `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`, !!d.trainingProvider, 'Training'],
+                    ['4', 'Inference compute context', `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`, !!d.inferenceProvider, 'Inference'],
+                    ['5', 'Training vs inference split', `Training ${d.trainCo2} kgCO₂e · Inference ${d.hasInference ? `${d.inferCo2Month} kgCO₂e/mo` : 'not reported'}`, d.hasData, 'AI workload'],
+                    ['6', 'Water footprint', d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L` : 'not reported', d.waterLitres > 0, 'Water use'],
+                    ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'add inference volume to grade', d.graded, 'Score / Rating'],
+                  ];
+                  return <div className="reportChecklist">
+                    {items.map(([num,item,val,ok,mod],i)=><div key={num} className={i%2===0?'alt':''}>
+                      <span className={ok?'ok':''}>{ok?'✓':'○'}</span><strong>{item}</strong><span>{val}</span><small>{mod}</small>
+                    </div>)}
+                  </div>;
+                })()}
+              </div>
+            </details>
 
-          {/* ── Paper text ── */}
-          <section style={{marginTop:24}}>
-            <h2>Ready-to-paste paragraph</h2>
-            <p className="note" style={{marginBottom:8}}>Copy this into a dedicated <strong>Environmental Impact</strong> section or supplementary material of your submission.</p>
-            <pre style={{background:'#f1f8f1', borderRadius:14, padding:'16px 20px', fontSize:12, lineHeight:1.8, border:'1px solid #c8e6c9', fontFamily:'monospace', whiteSpace:'pre-wrap'}}>
-              {(ecoLabelData.trainDisclosed
-                 ? `Environmental impact. ${ecoLabelData.projectName} was trained using ${ecoLabelData.gpuHardware}` +
-                   (ecoLabelData.totalGpuHours > 0 ? ` for ${ecoLabelData.totalGpuHours} GPU-hours` : '') +
-                   ` across ${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns>1?'s':''}. ` +
-                   `Total training energy consumption was ${ecoLabelData.totalEnergyKwh} kWh `
-                 : `Environmental impact. Training energy for ${ecoLabelData.projectName} was not disclosed by the developer or vendor; the figures below cover inference only. `) +
-               (ecoLabelData.trainDisclosed
-                 ? `(${ecoLabelData.energyPerRunKwh} kWh per run, ${ecoLabelData.trainProv === 'measured' ? 'directly measured' + (ecoLabelData.trainTool ? ' with ' + ecoLabelData.trainTool : '') : ecoLabelData.trainProv === 'estimated' ? 'estimated from GPU TDP × hours' : 'a literature-anchored estimate for this task family'}), ` +
-                   `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e `
-                 : '') +
-               `(training: ${ecoLabelData.trainingProvider}, ${ecoLabelData.trainingRegion || 'provider average'}, ${ecoLabelData.trainingEffectiveCi} kgCO₂e/kWh; ` +
-               `inference: ${ecoLabelData.inferenceProvider}, ${ecoLabelData.inferenceRegion || 'provider average'}, ${ecoLabelData.inferenceEffectiveCi} kgCO₂e/kWh, PUE ${ecoLabelData.pue}). ` +
-               (ecoLabelData.waterProv === 'not-disclosed'
-                 ? `Water use was not assessed. `
-                 : ecoLabelData.waterProv === 'screening'
-                   ? `A screening estimate for operational water use, applying ${ecoLabelData.waterPerKwh} L/kWh (a data-centre proxy; site cooling and electricity-generation water were not separated), is ${ecoLabelData.waterLitres.toLocaleString()} L for training. `
-                   : `Operational water use, applying ${ecoLabelData.waterPerKwh} L/kWh (site cooling plus electricity-generation water), is ${ecoLabelData.waterLitres.toLocaleString()} L for training. `) +
-               (ecoLabelData.perInferCo2g > 0
-                 ? ` Inference costs ${ecoLabelData.perInferCo2g} gCO₂e per study.`
-                 : '') +
-               (ecoLabelData.hasInference
-                 ? ` Amortised over ${ecoLabelData.lifetimeInferences.toLocaleString()} studies (${ecoLabelData.deployMonths}-month deployment), the effective footprint is ${ecoLabelData.effectivePerStudyG} gCO₂e per study` +
-                   (ecoLabelData.breakEvenStudies != null ? ` (training-cost break-even at ~${ecoLabelData.breakEvenStudies.toLocaleString()} studies)` : '') + '.'
-                 : '') +
-               (ecoLabelData.graded ? ` This corresponds to a CEDARS Score of ${ecoLabelData.score}/100 (${ecoLabelData.leaves}/5 leaves — ${ecoLabelData.ratingLabel}).` : '') +
-               ` Sustainability metrics were estimated using CEDARS (${ecoLabelData.date}), following the lifecycle framework of Doo FX et al. (J Am Coll Radiol 2024, DOI: 10.1016/j.jacr.2023.11.019) and the reporting recommendations of Doo FX et al. (Radiology 2024, DOI: 10.1148/radiol.232030).`}
-            </pre>
+            <details className="reportDisclosureDetails">
+              <summary>Structured methods table · Markdown export available</summary>
+              <div className="reportDisclosureDetailsBody">
+                <p className="note" style={{marginTop:0}}>This is an optional structured version of the same reporting fields. Use it for model cards, repositories, technical appendices, computational-science venues, or other settings where a field-by-field record is useful. It does not need to be a separate manuscript table.</p>
+                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateEcoMarkdown(ecoLabelData));setEcoCopied(true);setTimeout(()=>setEcoCopied(false),2000);}} style={ecoCopied?{background:'#26A69A'}:undefined}><FileText/> {ecoCopied?'Copied!':'Copy table as Markdown'}</button>
+                <pre className="reportTextPreview">{generateEcoMarkdown(ecoLabelData)}</pre>
+              </div>
+            </details>
+
+            <details className="reportDisclosureDetails">
+              <summary>Methods-ready environmental impact text</summary>
+              <div className="reportDisclosureDetailsBody">
+                <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section.</p>
+                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateAiMethodsText(ecoLabelData));setAiParagraphCopied(true);setTimeout(()=>setAiParagraphCopied(false),2000);}} style={aiParagraphCopied?{background:'#26A69A'}:undefined}><FileText/> {aiParagraphCopied?'Copied!':'Copy methods / impact paragraph'}</button>
+                <pre className="reportTextPreview">{generateAiMethodsText(ecoLabelData)}</pre>
+              </div>
+            </details>
           </section>
             </>}
           </section>
