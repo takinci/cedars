@@ -4564,11 +4564,22 @@ function App() {
               </div>
             )}
           </> : <>
-            <div className="reportContextBar">
-              <div><span>REPORTING PRODUCT</span><strong>{ecoLabelMode==='department' ? 'Department EcoLabel' : 'AI Research Label'}</strong></div>
-              <div className="reportContextChoices">
-                <button className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}>Department</button>
-                <button className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}>AI Research</button>
+            <div className="reportProductTabsWrap">
+              <div className="reportProductTabsHeading">
+                <span>REPORT TYPE</span>
+                <strong>Choose the CEDARS product you are preparing</strong>
+              </div>
+              <div className="reportProductTabs" role="tablist" aria-label="CEDARS reporting product">
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}>
+                  <Activity size={19}/>
+                  <span><strong>Department EcoLabel</strong><small>Radiology Department assessment</small></span>
+                  {ecoLabelMode==='department' && <b>Selected</b>}
+                </button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}>
+                  <Brain size={19}/>
+                  <span><strong>AI Research Label</strong><small>AI model &amp; informatics assessment</small></span>
+                  {ecoLabelMode==='ai' && <b>Selected</b>}
+                </button>
               </div>
             </div>
             <div className="reportSteps" aria-label="Report and share workflow">
@@ -4696,16 +4707,10 @@ function App() {
               })()}
 
             <div className="reportReviewSection">
-              <div className="ecoStepHeading reportSubsectionHeading"><div><h3>Label details</h3><p>Add the names that should appear on the EcoLabel. The grid region is included here because it is part of the reported assessment context.</p></div></div>
-              <div className="grid grid3">
-                <label>Department name<input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
-                <label>Hospital / institution<input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
-                <label>Grid region
-                  <select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}>
-                    <option value="">— use current ({settings.region}) —</option>
-                    {META.regions.map(r=><option key={r} value={r}>{r}</option>)}
-                  </select>
-                </label>
+              <div className="ecoStepHeading reportSubsectionHeading"><div><h3>Label details</h3><p>Optional display information for the EcoLabel. Leaving these fields blank does not change the CEDARS Score or reporting readiness.</p></div></div>
+              <div className="grid reportLabelDetailsGrid">
+                <label>Department name <span className="reportOptional">optional · shown on EcoLabel</span><input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
+                <label>Hospital / institution <span className="reportOptional">optional · shown on EcoLabel</span><input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
               </div>
             </div>
 
@@ -4716,7 +4721,8 @@ function App() {
                   ? <>Currently <strong style={{color:'#2E7D32'}}>live</strong> from your Radiology Department state. Leave blank to keep it live; enter a value to override.</>
                   : <>Using your <strong>overridden</strong> figures. Clear a field to return it to the live value.</>}
               </p>
-              <div className="grid grid3">
+              <div className="grid reportValuesGrid">
+                <label>Grid region<select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}><option value="">— use current ({settings.region}) —</option>{META.regions.map(r=><option key={r} value={r}>{r}</option>)}</select></label>
                 <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
                 <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder={`live: ${deptLabelData.annualStudies.toLocaleString()}`}/></label>
                 <label>Renewable energy (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
@@ -5139,10 +5145,28 @@ function App() {
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
           />
-          <div className="reportCompletion">
-            <div><span>✓</span><div><strong>Your CEDARS assessment is ready</strong><small>Save a browser copy or CEDARS file if you want to return to this exact assessment later.</small></div></div>
-            <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
-          </div>
+          {(()=>{
+            const departmentReady = !!(deptLabelData.hasData && deptLabelData.annualStudies>0 && deptLabelData.annualKwh>0 && deptLabelData.region);
+            const aiReady = !!(ecoLabelData.hasData && ecoLabelData.graded);
+            const reportReady = ecoLabelMode==='department' ? departmentReady : aiReady;
+            return reportReady ? (
+              <div className="reportCompletion">
+                <div><span>✓</span><div><strong>Your CEDARS result is ready to preserve or share</strong><small>Save on this device or download a complete CEDARS file above if you want to return to this exact assessment later.</small></div></div>
+                <div className="reportCompletionActions">
+                  <button type="button" onClick={saveOnThisDevice}><Save size={15}/> Save on this device</button>
+                  <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
+                </div>
+              </div>
+            ) : (
+              <div className="reportCompletion needsWork">
+                <div><span>!</span><div><strong>This CEDARS report still needs assessment data</strong><small>{ecoLabelMode==='department' ? 'Complete the core Radiology Department inputs before treating this as a final Department EcoLabel.' : 'Complete the AI model and deployment information needed for an in-use AI Research Label.'} You can still save incomplete work using the controls above.</small></div></div>
+                <div className="reportCompletionActions">
+                  <button type="button" onClick={()=>ecoLabelMode==='department' ? (setPage('dashboard'),setDeptSetupOpen(true)) : setPage('ai')}>{ecoLabelMode==='department' ? 'Complete Department input →' : 'Edit AI model details →'}</button>
+                  <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
+                </div>
+              </div>
+            );
+          })()}
           </>}
         </main>
       )}
