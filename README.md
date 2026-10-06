@@ -22,7 +22,10 @@
 >
 > CEDARS is an open research platform. A manuscript describing CEDARS has been **submitted for peer review**. The software, interface, defaults, and methods remain under active development and may evolve as validation and evidence improve. The CEDARS Score and EcoLabel are research outputs, **not an external certification**.
 
-**Live application:** [cedarsleaf.com](https://cedarsleaf.com)
+**Live application:** [cedarsleaf.com](https://cedarsleaf.com)  
+**About the CEDARS Collaborative:** [international collaborators, institutions, and project background →](https://cedarsleaf.com/?page=about)
+
+CEDARS is a multi-person, multi-institutional, international collaboration spanning radiology, clinical AI, sustainability, and health systems. Collaborator affiliations identify contributors and do not imply institutional endorsement or sponsorship.
 
 ---
 
@@ -150,6 +153,7 @@ Current frontend stack includes React 18, Vite 8, Chart.js, Lucide React, and Vi
 - [`CHANGELOG.md`](./CHANGELOG.md) — user-facing changes
 - [`ROADMAP.md`](./ROADMAP.md) — active/planned work
 - [`CITATION.cff`](./CITATION.cff) — software citation metadata
+- [About the CEDARS Collaborative](https://cedarsleaf.com/?page=about) — collaborators, institutions, and project background
 - [`cloudflare/README.md`](./cloudflare/README.md) — optional research-contribution backend
 - [GitHub Issues](https://github.com/takinci/cedars/issues) — bugs, feedback, and feature suggestions
 

@@ -4497,6 +4497,17 @@ function App() {
                 <ReferenceList ids={AI_IMPROVE_REFS}/>
               </section>
 
+              <div className="workflowNextStep">
+                <div className="workflowNextCopy">
+                  <span>NEXT STEP</span>
+                  <strong>Ready to prepare your CEDARS materials?</strong>
+                  <small>Your current assessment and tested scenario remain separate in the final reporting workflow.</small>
+                </div>
+                <div className="workflowNextActions">
+                  <button className="workflowNextPrimary" onClick={()=>setPage('report')}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
+                  <button className="download" onClick={()=>setPage('ecolabel')}>Back to Score &amp; EcoLabel</button>
+                </div>
+              </div>
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
           })()}
@@ -4647,44 +4658,45 @@ function App() {
               </details>
             </div>
 
-            <div className="scoreNextActions">
-              <button onClick={()=>setPage('report')}>Continue to Report (&amp; Share) <ArrowRight size={15}/></button>
-              <button className="download" onClick={()=>setPage('scenario')}>Improve first →</button>
+            <div className="workflowNextStep">
+              <div className="workflowNextCopy">
+                <span>NEXT STEP</span>
+                <strong>Prepare and preserve your CEDARS results</strong>
+                <small>Continue to Report &amp; Share, or test potential changes first.</small>
+              </div>
+              <div className="workflowNextActions">
+                <button className="workflowNextPrimary" onClick={()=>setPage('report')}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
+                <button className="download" onClick={()=>setPage('scenario')}>Improve first</button>
+              </div>
             </div>
             </>}
             {page==='report' && <>
-            <div className="ecoDisclosureHeader">
-              <div>
-                <h2>Review &amp; finalize your Department EcoLabel</h2>
-                <p>CEDARS has already brought forward the values available from your Radiology Department assessment. Review them here and replace modeled values with measured reporting data when available.</p>
+            <section className="reportStageCard">
+              <div className="reportStageHeading">
+                <div className="reportStageNumber">1</div>
+                <div>
+                  <span>REVIEW &amp; FINALIZE</span>
+                  <h2>Review &amp; finalize your Department EcoLabel</h2>
+                  <p>CEDARS has carried forward your Radiology Department values. Review the label details and reporting values below; replace modeled values only when you have better measured data.</p>
+                </div>
+                <button className="download reportEditButton" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);}}>Edit department inputs →</button>
               </div>
-              <button className="download" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);}} style={{padding:'6px 10px',fontSize:11}}>Edit department inputs →</button>
-            </div>
-            {(()=>{
-              const checks = [
-                ['Annual imaging volume', deptLabelData.annualStudies>0],
-                ['Annual electricity', deptLabelData.annualKwh>0],
-                ['Grid context', !!deptLabelData.region],
-                ['Annual carbon footprint', deptLabelData.totalAnnualCo2>0],
-                ['CEDARS Score & Rating', deptLabelData.hasData],
-              ];
-              const done = checks.filter(([,ok])=>ok).length;
-              const missing = checks.filter(([,ok])=>!ok).map(([name])=>name);
-              return <div className="reportReadiness">
-                <div><span>DEPARTMENT ECOLABEL READINESS</span><strong>{done} of {checks.length} core items ready</strong></div>
-                <div className="reportReadinessBar"><span style={{width:`${Math.round(done/checks.length*100)}%`}}/></div>
-                <p>{missing.length ? <>Still needed: <strong>{missing.join(' · ')}</strong></> : <>Core EcoLabel fields are ready. Optional identity fields and measured overrides can still improve the final report.</>}</p>
-              </div>;
-            })()}
-            <div className="ecoLiveCallout">
-              <div className="ecoLiveValue">
-                <strong>Using live Radiology Department data.</strong> Equipment, grid region, electricity, imaging volume, and clinical AI flow into this label automatically.
-              </div>
-              <div className="ecoLiveValue">Measured utility/RIS figures can override the live estimates below.</div>
-            </div>
+              {(()=>{
+                const checks = [
+                  ['annual imaging volume', deptLabelData.annualStudies>0],
+                  ['annual electricity', deptLabelData.annualKwh>0],
+                  ['grid region', !!deptLabelData.region],
+                  ['annual carbon footprint', deptLabelData.totalAnnualCo2>0],
+                  ['CEDARS Score & Rating', deptLabelData.hasData],
+                ];
+                const missing = checks.filter(([,ok])=>!ok).map(([name])=>name);
+                return missing.length===0
+                  ? <div className="reportReadyChip">✓ Ready to prepare</div>
+                  : <div className="reportNeedsReview"><strong>{missing.length} item{missing.length===1?'':'s'} need review</strong><span>{missing.join(' · ')}</span></div>;
+              })()}
 
-            <div className="inputSummary ecoDisclosureStep" style={{marginBottom:24}}>
-              <div className="ecoStepHeading reportSubsectionHeading"><div><h2>Assessment identity</h2><p>Add the human-readable details that should appear with the label.</p></div></div>
+            <div className="reportReviewSection">
+              <div className="ecoStepHeading reportSubsectionHeading"><div><h3>Label details</h3><p>Add the names that should appear on the EcoLabel. The grid region is included here because it is part of the reported assessment context.</p></div></div>
               <div className="grid grid3">
                 <label>Department name<input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
                 <label>Hospital / institution<input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
@@ -4697,8 +4709,8 @@ function App() {
               </div>
             </div>
 
-            <div className="inputSummary ecoDisclosureStep" style={{marginBottom:24}}>
-              <div className="ecoStepHeading reportSubsectionHeading"><div><h2>Reporting values</h2><p>Use live department values by default; override only when you have better measured reporting data.</p></div></div>
+            <div className="reportReviewSection">
+              <div className="ecoStepHeading reportSubsectionHeading"><div><h3>Reporting values</h3><p>Use the live Department values by default. Enter an override only when you have a better measured value for reporting.</p></div></div>
               <p className="note" style={{marginBottom:12}}>
                 {deptLabelData.isLive
                   ? <>Currently <strong style={{color:'#2E7D32'}}>live</strong> from your Radiology Department state. Leave blank to keep it live; enter a value to override.</>
@@ -4720,7 +4732,7 @@ function App() {
               </p>
             </div>
 
-            <div id="current-practices" className="inputSummary ecoDisclosureStep workflowAnchor" style={{marginBottom:24}}>
+            <div id="current-practices" className="reportReviewSection workflowAnchor">
               <div className="ecoStepHeading reportSubsectionHeading"><div><h2>Current practices</h2><p>Record what is already implemented today. These items describe the current state and do not create projected savings.</p></div></div>
               <div className="reportPracticeSummary">
                 <div><strong>{deptLabel.activeInterventions.length} current practice{deptLabel.activeInterventions.length===1?'':'s'} documented</strong><span>Future changes belong in Improve, where CEDARS models the projected effect separately.</span></div>
@@ -4746,8 +4758,17 @@ function App() {
                 </div>
               </details>
             </div>
+            </section>
 
-            <h2>Your Department EcoLabel</h2>
+            <section className="reportStageCard reportMaterialsStage">
+              <div className="reportStageHeading compact">
+                <div className="reportStageNumber">2</div>
+                <div>
+                  <span>PREPARE YOUR CEDARS MATERIALS</span>
+                  <h2>Your Department EcoLabel</h2>
+                  <p>Download the EcoLabel or copy a concise reporting paragraph. More detailed reporting and reproducibility fields are available below when needed.</p>
+                </div>
+              </div>
 
             <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
               <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
@@ -4813,10 +4834,10 @@ function App() {
               </div>
             </div>
 
-            {/* ── CEDARS disclosure checklist (department) ── */}
-            <section style={{marginBottom:24}}>
-              <h2 style={{marginBottom:4}}>CEDARS disclosure checklist</h2>
-              <p className="note" style={{marginBottom:12}}>The minimum set of items for a reproducible department footprint — a reporting standard modelled on CLAIM/DEAL.</p>
+            <details className="reportDisclosureDetails reportMaterialsDetail">
+              <summary>Reporting details &amp; reproducibility</summary>
+              <div className="reportDisclosureDetailsBody">
+                <p className="note reportDetailIntro">Review the fields CEDARS uses to make the Department EcoLabel understandable and reproducible. This detail can support a Methods section, sustainability report, accreditation documentation, or technical appendix when appropriate.</p>
               {(()=>{
                 const d = deptLabelData;
                 const items = [
@@ -4842,17 +4863,20 @@ function App() {
                   </div>
                 );
               })()}
-            </section>
+              </div>
+            </details>
 
             {deptLabelData.annualStudies>0 && (
-              <section style={{marginTop:0}}>
-                <h2>Ready-to-paste ESG paragraph</h2>
-                <p className="note" style={{marginBottom:8}}>Copy into your hospital's annual sustainability report, ESR Green Imaging self-assessment, or accreditation documentation.</p>
-                <pre style={{background:'#f1f8f1',borderRadius:14,padding:'16px 20px',fontSize:12,lineHeight:1.8,border:'1px solid #c8e6c9',fontFamily:'monospace',whiteSpace:'pre-wrap'}}>
-                  {generateDeptText(deptLabelData)}
-                </pre>
-              </section>
+              <details className="reportDisclosureDetails reportMaterialsDetail">
+                <summary>Reporting paragraph</summary>
+                <div className="reportDisclosureDetailsBody">
+                  <p className="note reportDetailIntro">A concise starting point for a main sustainability report, Methods section, accreditation document, or institutional report. Review and adapt it for your local context.</p>
+                  <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} style={deptCopied?{background:'#26A69A'}:undefined}><FileText/> {deptCopied?'Copied!':'Copy reporting paragraph'}</button>
+                  <pre className="reportTextPreview">{generateDeptText(deptLabelData)}</pre>
+                </div>
+              </details>
             )}
+            </section>
 
             </>}
           </div>
@@ -4891,23 +4915,35 @@ function App() {
               </details>
             </div>
 
-            <div className="scoreNextActions">
-              <button onClick={()=>setPage('report')}>Continue to Report (&amp; Share) <ArrowRight size={15}/></button>
-              <button className="download" onClick={()=>setPage('scenario')}>Improve first →</button>
+            <div className="workflowNextStep">
+              <div className="workflowNextCopy">
+                <span>NEXT STEP</span>
+                <strong>Prepare and preserve your CEDARS results</strong>
+                <small>Continue to Report &amp; Share, or test potential changes first.</small>
+              </div>
+              <div className="workflowNextActions">
+                <button className="workflowNextPrimary" onClick={()=>setPage('report')}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
+                <button className="download" onClick={()=>setPage('scenario')}>Improve first</button>
+              </div>
             </div>
             </>}
             {page==='report' && <>
-            <div className="ecoDisclosureHeader">
-              <div>
-                <h2>Review &amp; finalize your AI Research Label</h2>
-                <p>Report &amp; Share summarizes the model record you built in AI Model &amp; Informatics. Review readiness here; edit the full technical record only when something needs to change.</p>
+            <section className="reportStageCard">
+              <div className="reportStageHeading">
+                <div className="reportStageNumber">1</div>
+                <div>
+                  <span>REVIEW &amp; FINALIZE</span>
+                  <h2>AI model CEDARS summary</h2>
+                  <p>Review the model record you built in AI Model &amp; Informatics. Report &amp; Share summarizes that record rather than creating a second copy.</p>
+                </div>
               </div>
-            </div>
 
-          <section className="inputSummary reportAiSummary" style={{marginBottom:22}}>
+          <div className="reportAiSummary">
             <div className="reportAiSummaryHeader">
-              <div><span>AI MODEL CEDARS SUMMARY</span><h2>AI model CEDARS summary</h2><p>The reporting view summarizes the existing model record rather than creating a second copy.</p></div>
-              <div className="reportAiReadiness"><strong>{aiChecklistDone} / {aiChecklist.length}</strong><span>AI Research Label readiness</span></div>
+              <div><span>AI MODEL CEDARS SUMMARY</span><h3>{ecoLabelData.projectName || 'Unnamed model'}</h3><p>{ecoLabelData.taskType || 'Task not specified'}</p></div>
+              {aiChecklistDone===aiChecklist.length
+                ? <div className="reportReadyChip">✓ Ready to prepare</div>
+                : <div className="reportNeedsReview compact"><strong>{aiChecklist.length-aiChecklistDone} item{aiChecklist.length-aiChecklistDone===1?'':'s'} need review</strong></div>}
             </div>
             <div className="reportAiSummaryGrid">
               <div><span>Model</span><strong>{ecoLabelData.projectName || 'Unnamed model'}</strong><small>{ecoLabelData.taskType || 'Task not specified'}</small></div>
@@ -4920,9 +4956,18 @@ function App() {
               {!ecoLabelData.hasInference && dash.scopes.imagingScans>0 && <button type="button" className="download" onClick={()=>setS('inferStudiesMonth', String(Math.round(dash.scopes.imagingScans || 0)))}>Use Department study volume</button>}
               <button type="button" onClick={()=>setPage('ai')}>Edit full model details →</button>
             </div>
-          </section>
+          </div>
+            </section>
 
-          <h2>Your AI Research Label</h2>
+          <section className="reportStageCard reportMaterialsStage">
+            <div className="reportStageHeading compact">
+              <div className="reportStageNumber">2</div>
+              <div>
+                <span>PREPARE YOUR CEDARS MATERIALS</span>
+                <h2>Your AI Research Label</h2>
+                <p>Download the label or copy concise Methods / Environmental Impact text. Expand the structured options only when your venue or technical audience needs them.</p>
+              </div>
+            </div>
           <div style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Visual card */}
             <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
@@ -5076,10 +5121,11 @@ function App() {
               </div>
             </details>
           </section>
+          </section>
             </>}
           </section>
 
-          {page==='report' && (
+          {page==='report' && <>
           <SaveSharePanel
             localSavedAt={localSavedAt}
             status={saveShareStatus}
@@ -5093,7 +5139,11 @@ function App() {
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
           />
-          )}
+          <div className="reportCompletion">
+            <div><span>✓</span><div><strong>Your CEDARS assessment is ready</strong><small>Save a browser copy or CEDARS file if you want to return to this exact assessment later.</small></div></div>
+            <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
+          </div>
+          </>}
         </main>
       )}
 
