@@ -43,9 +43,18 @@ export const SCEN_DEFAULTS = {
   // Water (optional): site water-use effectiveness and grid water intensity, L/kWh; 'screening' |
   // 'notassessed' when neither is given.
   wueOnsite: '', wueOffsite: '', waterMode: 'screening',
-  // Entry route on the AI page: '' (not chosen) | 'compare' | 'own'; and the developer sub-route.
+  // Entry route on the AI page: '' (not chosen) | 'compare' | 'own'; comparison is optional.
   aiRoute: '', ownMode: 'measured',
   compareVolumeSource: 'small', // small | large | department | custom; preserves procurement workload provenance
+  // Stable record identity + typed performance semantics. accuracyPct/accuracyMetric remain the
+  // legacy bridge so old links and calculations continue to load unchanged.
+  modelId: 'model-primary', performanceUnit: 'percent', performanceDirection: 'higher',
+  performanceValidationContext: '', performanceSource: '',
+  // Training and inference may happen in different compute contexts. Blank values inherit the
+  // legacy shared cloudProvider/cloudRegion/customPue/renewablePct fields.
+  trainingProvider: '', trainingRegion: '', trainingPue: '', trainingRenewablePct: '',
+  inferenceProvider: '', inferenceRegion: '', inferencePue: '', inferenceRenewablePct: '',
+  trainingBoundary: 'upstream', // upstream | allocated-local when attached to a department
   // Not in the URL by design (free text, authoring detail): projectName.
   projectName: '',
 };
@@ -65,7 +74,9 @@ const SCEN_KEYS = {
   ds: 'datasetSize', ne: 'epochs', pu: 'customPue', tw: 'trainCustomTdpW',
   nr: 'numRuns', im: 'inferStudiesMonth', rp: 'renewablePct', tk: 'trainKwhMeasured', td: 'trainDisclosed',
   tt: 'trainTool', ty: 'taskType', wo: 'wueOnsite', wf: 'wueOffsite', wm: 'waterMode', ro: 'aiRoute', om: 'ownMode',
-  vs: 'compareVolumeSource',
+  vs: 'compareVolumeSource', mid: 'modelId', punit: 'performanceUnit', pd: 'performanceDirection', pv: 'performanceValidationContext', ps: 'performanceSource',
+  tp: 'trainingProvider', tr: 'trainingRegion', tpu: 'trainingPue', trp: 'trainingRenewablePct',
+  ifp: 'inferenceProvider', ir: 'inferenceRegion', ipu: 'inferencePue', irp: 'inferenceRenewablePct', tb: 'trainingBoundary',
 };
 
 // equipment: `eq=ct~2-mri_15t~1` (non-zero devices only; `~` = count sep, `-` = item sep — both

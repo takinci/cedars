@@ -383,19 +383,20 @@ const META = {
 // {gpuKw, inferSec, trainMwh, embCo2Kg, paramsM, dim, resolution, slices,
 //  accuracy (0–1), accuracyMetric, scanTimeReductPct, lowValueReductPct}.
 function computeAI(cloudProvider, region, model, precision, architecture, customCi, equipment, overrides = {}, equipOverrides = {}) {
-  // Cloud carbon: use the specific deployment region's grid CI when given (shared with the
-  // Infrastructure tab), falling back to the provider's coarse average.
-  const baseCf   = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
-  const provData = CLOUD_REGIONS[cloudProvider];
-  const regionCi = (provData && overrides.cloudRegion != null) ? provData.regions[overrides.cloudRegion] : undefined;
-  const customPue = parseFloat(overrides.customPue);
-  const cf    = {
-    // Custom PUE overrides the provider default — e.g. reproducing a paper that measured a
-    // single lab GPU directly rather than a colocated data-centre rack (no distribution/cooling
-    // overhead in that setup, so PUE ≈ 1.0 there vs the ~1.5 CEDARS assumes for "Local compute").
-    pue: customPue > 0 ? customPue : (provData?.pue ?? baseCf.pue),
-    ci:  (regionCi != null) ? regionCi : baseCf.ci,
+  // Training and inference can occur in different facilities. Legacy records leave the split
+  // fields blank and therefore inherit the historical shared provider/region/PUE/renewable context.
+  const resolveContext = (provider, computeRegion, pueOverride, renewableOverride) => {
+    const p = provider || cloudProvider || 'Local compute';
+    const base = CLOUD[p] ?? CLOUD['Local compute'];
+    const regions = CLOUD_REGIONS[p];
+    const regionCi = (regions && computeRegion) ? regions.regions[computeRegion] : undefined;
+    const pueValue = parseFloat(pueOverride);
+    const renewable = Math.min(100, Math.max(0, parseFloat(renewableOverride) || 0));
+    const rawCi = regionCi != null ? regionCi : base.ci;
+    return {provider:p, region:computeRegion || '', pue:pueValue > 0 ? pueValue : (regions?.pue ?? base.pue), rawCi, ci:rnd(rawCi * (1 - renewable / 100), 4), renewablePct:renewable};
   };
+  const trainCf = resolveContext(overrides.trainingProvider || cloudProvider, overrides.trainingRegion || overrides.cloudRegion, overrides.trainingPue || overrides.customPue, overrides.trainingRenewablePct || overrides.renewablePct);
+  const inferCf = resolveContext(overrides.inferenceProvider || cloudProvider, overrides.inferenceRegion || overrides.cloudRegion, overrides.inferencePue || overrides.customPue, overrides.inferenceRenewablePct || overrides.renewablePct);
   const ci    = getCI(region, customCi);
   const arch  = AI_ARCHITECTURES[architecture] ?? AI_ARCHITECTURES["CNN / ResNet"];
   const ampF  = PRECISION_FACTOR[precision]    ?? 1.0;
@@ -456,7 +457,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // or capable models just for being large (see sources.md, CEDARS Score & leaf rating methodology).
   const trainKwhReference    = rnd(model.trainMwh * 1000 * arch.trainFactor * trainSizeRatio, 2);
   const trainVsReferenceRatio = trainKwhReference > 0 ? rnd(trainKwhTotal / trainKwhReference, 2) : null;
-  const trainKgCo2e    = rnd(trainKwhTotal * cf.ci, 1);
+  const trainKgCo2e    = rnd(trainKwhTotal * trainCf.ci, 1);
   // "Estimated GPU compute time": when the user has told us the actual Hours × #GPUs directly
   // (the measured path), echo that back exactly — no PUE factor, since PUE scales facility
   // energy overhead, not wall-clock GPU runtime. Only fall back to back-solving hours from
@@ -481,20 +482,20 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // One-time inference run over hold-out test set.
   // Proxy: DLP/CTDIvol dose metrics correlate with net scan energy R²=0.87–0.92 (Schoen et al.)
   const testKwhTotal   = isToken
-    ? rnd(tokenKwhPerStudy * TEST_STUDIES * cf.pue * ampF, 4)
+    ? rnd(tokenKwhPerStudy * TEST_STUDIES * inferCf.pue * ampF, 4)
     : inferKwhCustom !== null
       ? rnd(inferKwhCustom * TEST_STUDIES, 4)
-      : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * TEST_STUDIES * cf.pue * ampF, 4);
-  const testKgCo2e     = rnd(testKwhTotal * cf.ci, 4);
+      : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * TEST_STUDIES * inferCf.pue * ampF, 4);
+  const testKgCo2e     = rnd(testKwhTotal * inferCf.ci, 4);
 
   // ── Phase 3: Inference & Deployment ─────────────────────────────────────
   // Inference energy per study; scales with every request — dominant lifetime cost.
   // MRI cooling adds +45% energy overhead during active acquisition (Heye/Vosshenrich)
   const inferKwhPerStudy = isToken
-    ? rnd(tokenKwhPerStudy * cf.pue * ampF, 6)
+    ? rnd(tokenKwhPerStudy * inferCf.pue * ampF, 6)
     : inferKwhCustom !== null
       ? inferKwhCustom
-      : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * cf.pue * ampF, 6);
+      : rnd(model.gpuKw * arch.inferFactor * (model.inferSec / 3600) * inferCf.pue * ampF, 6);
   const inferKwhMonthly  = rnd(inferKwhPerStudy * STUDIES, 4);
   const inferKwhLifetime = rnd(inferKwhMonthly * DEPLOY_MO, 1);
   const ampSavingPct     = rnd((1 - ampF) * 100, 0);
@@ -502,7 +503,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   // ── Monthly totals (inference + amortised training) ─────────────────────
   const totalMonthlyKwh  = rnd(inferKwhMonthly + trainKwhMonth, 3);
   const embGpuKgCo2e     = rnd(model.embCo2Kg / DEPLOY_MO, 2);
-  const grossKgCo2e      = rnd(totalMonthlyKwh * cf.ci + embGpuKgCo2e, 3);
+  const grossKgCo2e      = rnd(inferKwhMonthly * inferCf.ci + trainKwhMonth * trainCf.ci + embGpuKgCo2e, 3);
 
   // ── Clinical co-benefits ─────────────────────────────────────────────────
   // Scan time reduction → direct scanner energy savings at local grid CI
@@ -535,9 +536,10 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
 
   // ── Infrastructure & efficiency ──────────────────────────────────────────
   const waterLitres     = rnd(totalMonthlyKwh * WATER_PER_KWH, 1);
-  // Accuracy % per monthly inference kWh — Green AI efficiency metric
-  // Captures diminishing returns of larger models (Implementation Guide §3)
-  const efficiencyRatio = inferKwhMonthly > 0 ? rnd((model.accuracy * 100) / inferKwhMonthly, 1) : 0;
+  // Reported performance per monthly inference kWh. The metric/unit/direction are carried
+  // explicitly so this ratio is only compared like-for-like; percent-based legacy records retain
+  // the same numerator they had before this schema change.
+  const efficiencyRatio = inferKwhMonthly > 0 ? rnd((model.performanceValue || 0) / inferKwhMonthly, 3) : 0;
   // Rebound risk: faster reads may induce more scan orders, negating savings (§4 counter-metric)
   const reboundRisk     = model.scanTimeReductPct > 60 ? "High" : model.scanTimeReductPct > 30 ? "Moderate" : "Low";
 
@@ -551,10 +553,11 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     inference: {kwhPerStudy: inferKwhPerStudy, kwhMonthly: inferKwhMonthly, kwhLifetime: inferKwhLifetime, studies: STUDIES},
     inferKwhMeasured: inferKwhCustom !== null,
     trainMeasured: trainKwhCustom !== null,
-    monthly:   {kwh: totalMonthlyKwh, co2: rnd(totalMonthlyKwh * cf.ci, 3)},
+    monthly:   {kwh: totalMonthlyKwh, co2: rnd(inferKwhMonthly * inferCf.ci + trainKwhMonth * trainCf.ci, 3)},
     ampSavingPct, grossKgCo2e, embGpuKgCo2e, savingsKgCo2e, netKgCo2e,
-    pue: cf.pue, cloudCi: cf.ci, waterLitres, efficiencyRatio,
+    pue: inferCf.pue, cloudCi: inferCf.ci, trainPue: trainCf.pue, inferPue: inferCf.pue, trainingCi: trainCf.ci, inferenceCi: inferCf.ci, trainingRawCi: trainCf.rawCi, inferenceRawCi: inferCf.rawCi, trainingContext: trainCf, inferenceContext: inferCf, waterLitres, efficiencyRatio,
     accuracy: model.accuracy, accuracyMetric: model.accuracyMetric,
+    performanceValue: model.performanceValue, performanceUnit: model.performanceUnit, performanceDirection: model.performanceDirection,
     scanTimeReductPct: model.scanTimeReductPct, lowValueReductPct: model.lowValueReductPct,
     scansAvoided, scanEnergySaved, reboundRisk,
     unit: isToken ? 'tokens' : 'gpu', tokensPerStudy, callsPerTask, tokensPerCall, whPer1kTokens: model.whPer1kTokens || 0,
@@ -581,8 +584,11 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     : gpuPreset?.tdpKw;
   const trainH    = parseFloat(cfg.trainHours) || 0;
   const trainN    = Math.max(1, parseInt(cfg.trainNumGpus) || 1);
-  const customPue = parseFloat(cfg.customPue);
-  const pue       = customPue > 0 ? customPue : (CLOUD[cfg.cloudProvider]?.pue ?? 1.5);
+  const trainingProvider = cfg.trainingProvider || cfg.cloudProvider;
+  const trainingRegion = cfg.trainingRegion || cfg.cloudRegion;
+  const trainingPueValue = parseFloat(cfg.trainingPue || cfg.customPue);
+  const trainingPueDefault = CLOUD_REGIONS[trainingProvider]?.pue ?? CLOUD[trainingProvider]?.pue ?? 1.5;
+  const pue = trainingPueValue > 0 ? trainingPueValue : trainingPueDefault;
   const trainKwhMeasured = parseFloat(cfg.trainKwhMeasured) || 0;
   const trainKwh  = trainKwhMeasured > 0 ? rnd(trainKwhMeasured, 3)
     : (trainGpuTdpKw != null && trainH > 0 ? rnd(trainGpuTdpKw * trainN * trainH * pue, 3) : 0);
@@ -626,21 +632,27 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     inferSec:   inferSecManual ?? inferSecDerived,
     accuracy:   Math.min(1, Math.max(0, (parseFloat(cfg.accuracyPct) || 0) / 100)),
     accuracyMetric: cfg.accuracyMetric || lib.accuracyMetric,
+    performanceValue: parseFloat(cfg.accuracyPct) || 0,
+    performanceUnit: cfg.performanceUnit || 'percent',
+    performanceDirection: cfg.performanceDirection === 'lower' ? 'lower' : 'higher',
     scanTimeReductPct: Math.max(0, parseFloat(cfg.scanTimeReductPct) || 0),
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
   const result = computeAI(cfg.cloudProvider, region, model, cfg.precision, cfg.architecture, customCi, equipment,
-    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: trainGpuTdpKw, trainGpuHoursMeasured, customPue: cfg.customPue, inferKwh: cfg.inferKwh}, equipOverrides);
-  const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.cloudCi + result.embCo2KgTotal, 1);
+    {trainKwh, testStudies: cfg.testStudies, deployMonths: cfg.deployMonths, cloudRegion: cfg.cloudRegion, trainGpuKw: trainGpuTdpKw, trainGpuHoursMeasured, customPue: cfg.customPue, inferKwh: cfg.inferKwh,
+      renewablePct: cfg.renewablePct, trainingProvider: cfg.trainingProvider, trainingRegion: cfg.trainingRegion, trainingPue: cfg.trainingPue, trainingRenewablePct: cfg.trainingRenewablePct,
+      inferenceProvider: cfg.inferenceProvider, inferenceRegion: cfg.inferenceRegion, inferencePue: cfg.inferencePue, inferenceRenewablePct: cfg.inferenceRenewablePct}, equipOverrides);
+  const lifetimeCo2 = rnd(result.training.kgCo2e + result.inference.kwhLifetime * result.inferenceCi + result.embCo2KgTotal, 1);
   return {...result, inferSecDerived, inferSecAuto, lifetimeCo2};
 }
 
 // The AI-model config fields snapshotted into a benchmark candidate (department context —
 // region, equipment, customCi — is held constant and applied at compute time).
-const AI_CFG_FIELDS = ['modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec','inferKwh',
+const AI_CFG_FIELDS = ['modelId','modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec','inferKwh',
   'whPer1kTokens','callsPerTask','tokensPerCall',
-  'accuracyPct','accuracyMetric','scanTimeReductPct','lowValueReductPct',
-  'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','trainCustomTdpW','testStudies','deployMonths','customPue'];
+  'accuracyPct','accuracyMetric','performanceUnit','performanceDirection','performanceValidationContext','performanceSource','scanTimeReductPct','lowValueReductPct',
+  'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','trainCustomTdpW','testStudies','deployMonths','customPue','renewablePct',
+  'trainingProvider','trainingRegion','trainingPue','trainingRenewablePct','inferenceProvider','inferenceRegion','inferencePue','inferenceRenewablePct','trainingBoundary'];
 function pickAiCfg(s) {
   return AI_CFG_FIELDS.reduce((o, k) => (o[k] = s[k], o), {});
 }
@@ -650,9 +662,9 @@ function benchCfgFromLib(key) {
     id: `ref-${key}`, label: m.label, modelKey: key, architecture: m.architecture, precision: 'float32 (standard)',
     paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '',
     whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
-    accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
+    accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric, performanceUnit:'percent', performanceDirection:'higher', performanceValidationContext:'', performanceSource:'',
     scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
-    cloudProvider: 'Local compute', cloudRegion: 'On-premise (Switzerland)',
+    cloudProvider: 'Local compute', cloudRegion: 'On-premise (Switzerland)', trainingProvider:'', trainingRegion:'', trainingPue:'', trainingRenewablePct:'', inferenceProvider:'', inferenceRegion:'', inferencePue:'', inferenceRenewablePct:'', trainingBoundary:'upstream',
     trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500', deployMonths: '36',
   };
 }
@@ -910,8 +922,8 @@ function downloadAICSV(ai, scen, region) {
 
     row(['EFFICIENCY & RESOURCES']),
     row(['Metric', 'Value', 'Unit']),
-    row(['Efficiency ratio',             ai.efficiencyRatio,          'acc%/kWh']),
-    row(['Reported performance',         `${rnd(ai.accuracy * 100, 1)}% ${ai.accuracyMetric}`,'user-entered']),
+    row(['Efficiency ratio',             ai.efficiencyRatio,          ai.performanceUnit === 'percent' ? 'reported %-points/monthly kWh' : `${ai.performanceUnit}/monthly kWh`]),
+    row(['Reported performance',         `${ai.performanceValue} ${ai.performanceUnit} · ${ai.accuracyMetric}`,'user-entered']),
     row(['Monthly water footprint',      ai.waterLitres,              'L']),
   ];
 
@@ -1563,6 +1575,24 @@ function App() {
     return {...benchCfgFromLib(modelKey), id:m.id, label:m.label, scanTimeReductPct:m.scanTimeReductPct || '0', lowValueReductPct:m.lowValueReductPct || '0', validationBasis:m.validationBasis || 'Not specified', intendedUse:m.intendedUse || '', vendor:m.vendor || '', regulatoryStatus:m.regulatoryStatus || 'Not specified', integrationPath:m.integrationPath || 'Not specified'};
   }));
   const updateBenchLabel = (id, label) => updateBenchModel(id, 'label', label);
+  const useBenchModel = id => {
+    const chosen = benchModels.find(m => m.id === id);
+    if (!chosen) return;
+    setScen(s => ({
+      ...s, ...pickAiCfg(chosen),
+      // Comparison context is shared; choosing a candidate must not silently replace it with the
+      // template's default provider/region.
+      cloudProvider:s.cloudProvider, cloudRegion:s.cloudRegion, customPue:s.customPue, renewablePct:s.renewablePct,
+      trainingProvider:s.trainingProvider, trainingRegion:s.trainingRegion, trainingPue:s.trainingPue, trainingRenewablePct:s.trainingRenewablePct,
+      inferenceProvider:s.inferenceProvider, inferenceRegion:s.inferenceRegion, inferencePue:s.inferencePue, inferenceRenewablePct:s.inferenceRenewablePct,
+      inferStudiesMonth:s.inferStudiesMonth, deployMonths:s.deployMonths, trainDisclosed:s.trainDisclosed,
+      modelId:`model-${String(chosen.id).replace(/[^a-z0-9-]/gi,'-').toLowerCase()}`, projectName:chosen.label || s.projectName,
+      performanceValidationContext:chosen.performanceValidationContext || chosen.validationBasis || s.performanceValidationContext,
+      aiRoute:'own', ownMode:'spec',
+    }));
+    setAiOpen(o => ({...o, benchmark:false, model:true}));
+    window.setTimeout(() => window.scrollTo({top:0, behavior:'smooth'}), 0);
+  };
   const [dashOpen, setDashOpen] = useState({clinicalai:true});
   const toggleDash = id => setDashOpen(o => ({...o, [id]: !o[id]}));
   const openDash   = id => { setDashOpen(o => ({...o, [id]: true})); setTimeout(()=>document.getElementById('dash-'+id)?.scrollIntoView({behavior:'smooth',block:'start'}), 50); };
@@ -1804,40 +1834,36 @@ function App() {
   // contrast-reduction fractions, stacked multiplicatively.)
   const clinicalAdj = useMemo(() => {
     const tools = deptLabel.aiTools || [];
-    let inferKwhPerStudy = 0, trainKwhMonthly = 0, avoidKeep = 1, scanKeep = 1, contrastKeep = 1;
+    let inferKwhPerStudy = 0, avoidKeep = 1, scanKeep = 1, contrastKeep = 1;
+    const trainingByModel = new Map();
+    const embodiedByModel = new Map();
     tools.forEach(t => {
-      const share = Math.min(1, Math.max(0, (parseFloat(t.studiesShare) || 100) / 100));
+      const shareRaw = parseFloat(t.studiesShare);
+      const share = Number.isFinite(shareRaw) ? Math.min(1, Math.max(0, shareRaw / 100)) : 1;
       inferKwhPerStudy += (parseFloat(t.inferKwhPerStudy) || 0) * share;
-      trainKwhMonthly  += (parseFloat(t.trainKwhTotal) || 0) / Math.max(1, parseInt(t.deployMonths) || 36);
+      const modelRef = t.modelId || `legacy-${String(t.id)}`;
+      const months = Math.max(1, parseInt(t.deployMonths) || 36);
+      if (t.trainingBoundary === 'allocated-local') {
+        const monthly = (parseFloat(t.trainKwhTotal) || 0) / months;
+        trainingByModel.set(modelRef, Math.max(trainingByModel.get(modelRef) || 0, monthly));
+      }
+      const embodiedMonthly = (parseFloat(t.embCo2Kg) || 0) / months;
+      embodiedByModel.set(modelRef, Math.max(embodiedByModel.get(modelRef) || 0, embodiedMonthly));
       avoidKeep    *= (1 - Math.max(0, parseFloat(t.lowValueReductPct) || 0) / 100 * share);
       scanKeep     *= (1 - Math.max(0, parseFloat(t.scanTimeReductPct) || 0) / 100 * share);
       contrastKeep *= (1 - Math.max(0, parseFloat(t.contrastReductPct) || 0) / 100 * share);
     });
-    return {inferKwhPerStudy, trainKwhMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
+    const trainKwhMonthly = [...trainingByModel.values()].reduce((s,v)=>s+v,0);
+    const aiEmbodiedKgMonthly = [...embodiedByModel.values()].reduce((s,v)=>s+v,0);
+    return {inferKwhPerStudy, trainKwhMonthly, aiEmbodiedKgMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools]);
-  // REVIEW (2026-09, not yet fixed) — three things about the aggregation above.
-  //  a) EMBODIED GPU CARBON IS COLLECTED BUT NEVER USED. Each tool carries `embCo2Kg` (set in the
-  //     AI-tools form, ~lines 2490/2501/2507), but this memo never reads it, so it never reaches
-  //     computeDashboard and never lands in any scope. The function that WOULD have consumed it,
-  //     `aiToolDeptContribution` (~line 1031), is fully written and never called anywhere — the
-  //     aggregation path was built and left unwired. Fix: either add
-  //     `embCo2Monthly += embCo2Kg / deployMonths` here and fold it into scope3EmbKg in
-  //     computeDashboard, with validated deployment periods and explicit hardware allocation.
-  //     Do not simply add aiToolDeptContribution's net result: compute and clinical savings are
-  //     already included, and its aggregate carbon return loses scope distinctions. Consolidate
-  //     shared logic rather than keeping competing clinical-benefit implementations.
-  //  b) `parseFloat(t.studiesShare) || 100` fails OPEN on a deliberate 0: a tool applied to 0% of
-  //     studies is silently treated as applied to 100%. By contrast, zero deployment months (and
-  //     zero calls per task elsewhere) is invalid, not a meaningful zero. Parse explicitly, accept
-  //     and clamp studiesShare in [0,100], require deployMonths/callsPerTask > 0, and use defaults
-  //     only for absent or invalid values.
-  //  c) Multiplying `1 - reduction * share` across tools is an expected-population calculation that
-  //     assumes tool coverage/effects are independent or randomly distributed. It does not assume
-  //     disjoint cohorts and may misstate savings when tools systematically target the same (or
-  //     different) studies. Known overlap requires explicit study cohorts or joint-coverage inputs.
+  // Training and embodied allocations are deduplicated by model ID. Math.max makes the result
+  // deterministic if two deployment adapters for the same model carry inconsistent legacy
+  // amortisation values; the record should still be reconciled before publication. Clinical-effect
+  // fractions remain an expected-population approximation when deployed tools overlap on studies.
   const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom};
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
-  const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
+  const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides, clinicalAdj]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
@@ -1862,23 +1888,29 @@ function App() {
       const carbonPerStudyG = rnd(inferenceCo2G + (scen.trainDisclosed === 'no' ? 0 : trainPerStudyG), 3);
       return {
         id: cfg.id, label: cfg.label, sizeLabel: r.modelSize, paramsM: r.paramsM,
-        accuracyPct: rnd(r.accuracy * 100, 1), accuracyMetric: r.accuracyMetric,
+        performanceValue: parseFloat(cfg.accuracyPct) || 0, performanceMetric: cfg.accuracyMetric || r.accuracyMetric,
+        performanceUnit: cfg.performanceUnit || 'percent', performanceDirection: cfg.performanceDirection === 'lower' ? 'lower' : 'higher',
+        performanceValidationContext: cfg.performanceValidationContext || cfg.validationBasis || '',
         trainCo2: r.training.kgCo2e, kwhPerStudy: r.inference.kwhPerStudy,
         carbonPerStudyG, inferenceCo2G, trainPerStudyG,
         netCo2: r.netKgCo2e, lifetimeCo2: r.lifetimeCo2, efficiency: r.efficiencyRatio,
       };
     });
-    const metrics = [...new Set(rows.map(r => r.accuracyMetric).filter(Boolean))];
+    const metrics = [...new Set(rows.map(r => `${r.performanceMetric}|${r.performanceUnit}|${r.performanceDirection}|${r.performanceValidationContext}`))];
     const comparablePerformance = metrics.length <= 1;
     rows.forEach(a => {
-      a.pareto = comparablePerformance && !rows.some(b => b.id !== a.id &&
-        b.accuracyPct >= a.accuracyPct && b.carbonPerStudyG <= a.carbonPerStudyG &&
-        (b.accuracyPct > a.accuracyPct || b.carbonPerStudyG < a.carbonPerStudyG));
+      a.pareto = comparablePerformance && !rows.some(b => {
+        if (b.id === a.id || b.carbonPerStudyG > a.carbonPerStudyG) return false;
+        const perfAtLeast = a.performanceDirection === 'lower' ? b.performanceValue <= a.performanceValue : b.performanceValue >= a.performanceValue;
+        const perfStrict = a.performanceDirection === 'lower' ? b.performanceValue < a.performanceValue : b.performanceValue > a.performanceValue;
+        return perfAtLeast && (perfStrict || b.carbonPerStudyG < a.carbonPerStudyG);
+      });
     });
     const minBy = key => rows.length ? Math.min(...rows.map(r => r[key])) : 0;
     const maxBy = key => rows.length ? Math.max(...rows.map(r => r[key])) : 0;
+    const bestPerformance = !comparablePerformance || !rows.length ? null : rows[0].performanceDirection === 'lower' ? minBy('performanceValue') : maxBy('performanceValue');
     return {rows, metrics, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
-      accuracyPct: comparablePerformance ? maxBy('accuracyPct') : null, efficiency: maxBy('efficiency')}};
+      performanceValue: bestPerformance, efficiency: rows[0]?.performanceDirection === 'lower' ? minBy('efficiency') : maxBy('efficiency')}};
   }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.inferStudiesMonth, scen.deployMonths, scen.trainDisclosed, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
@@ -2161,14 +2193,15 @@ function App() {
   const aiChecklist = [
     ['Hardware (GPU, count)', !!scen.trainGpu || ecoLabelData.trainProv === 'not-disclosed'],
     ['Training energy, with the tool named', ecoLabelData.trainProv === 'measured' ? !!ecoLabelData.trainTool : ecoLabelData.trainProv !== 'literature'],
-    ['Grid carbon intensity and its source', !!scen.cloudRegion],
-    ['PUE / compute region', parseFloat(scen.customPue) > 0 || !!scen.cloudRegion],
+    ['Grid carbon intensity and its source', !!(scen.inferenceRegion || scen.cloudRegion)],
+    ['PUE / compute region', parseFloat(scen.inferencePue || scen.customPue) > 0 || !!(scen.inferenceRegion || scen.cloudRegion)],
     ['Training–inference split', ecoLabelData.gradeBasis === 'amortised' || ecoLabelData.trainProv === 'not-disclosed'],
     ['Water: site cooling and grid water intensity', ecoLabelData.waterProv !== 'screening'],
     ['CEDARS Score and Rating', ecoLabelData.graded],
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023'];
+  const AI_IMPROVE_REFS = ['doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025'];
   const DEPT_STORAGE_REFS = ['jia-eurradiol-2026', 'doo-jacr-cloud-2024'];
   const DEPT_WATER_REFS = ['heye-radiology-2020', 'li-thirsty-2023'];
 
@@ -2271,6 +2304,23 @@ function App() {
               </label>
             </div>
             <p className="note" style={{marginTop:8}}>Renewable energy % reduces the effective carbon intensity. Set to 100 for green tariff or matched renewable certificates (RECs).</p>
+            <details style={{marginTop:12,borderTop:'1px solid #e0eee2',paddingTop:10}}>
+              <summary style={{cursor:'pointer',fontWeight:700,color:'#2E7D32'}}>Set training and inference compute separately</summary>
+              <p className="note" style={{fontSize:11}}>Leave these blank to inherit the shared deployment context above. Use them when training occurred elsewhere from inference (for example, vendor pretraining in one region and local/cloud deployment in another).</p>
+              {['training','inference'].map(kind => {
+                const providerKey = `${kind}Provider`, regionKey = `${kind}Region`, pueKey = `${kind}Pue`, renewableKey = `${kind}RenewablePct`;
+                const provider = scen[providerKey] || scen.cloudProvider;
+                return <div key={kind} style={{marginTop:10}}>
+                  <strong style={{fontSize:12,color:'#1b5e20',textTransform:'capitalize'}}>{kind} context</strong>
+                  <div className="grid grid3" style={{marginTop:6}}>
+                    <label>Provider<select value={scen[providerKey]} onChange={e=>setS(providerKey,e.target.value)}><option value="">Inherit {scen.cloudProvider}</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                    <label>Region<select value={scen[regionKey]} onChange={e=>setS(regionKey,e.target.value)}><option value="">Inherit {scen.cloudRegion || 'provider average'}</option>{Object.keys(CLOUD_REGIONS[provider]?.regions || {}).map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                    <label>Custom PUE<input type="number" min="1" step="0.05" value={scen[pueKey]} onChange={e=>setS(pueKey,e.target.value)} placeholder="inherit"/></label>
+                    <label>Renewable energy (%)<input type="number" min="0" max="100" value={scen[renewableKey]} onChange={e=>setS(renewableKey,e.target.value)} placeholder={`inherit ${scen.renewablePct || 0}%`}/></label>
+                  </div>
+                </div>;
+              })}
+            </details>
             <h3 style={{margin:'16px 0 8px', fontSize:14, color:'#1b5e20'}}>Water <span style={{fontWeight:400, fontSize:12, color:'#607d66'}}>optional · screening estimate unless you enter values<Ref id="li-thirsty-2023" order={AI_PAGE_REFS}/></span></h3>
             <div className="grid grid3">
               <label>
@@ -2385,7 +2435,7 @@ function App() {
           onDepartment={()=>setPage('dashboard')}
           onAi={()=>setPage('ai')}
           onScore={()=>{if(page==='ai') setEcoLabelMode('ai'); setPage('ecolabel');}}
-          onImprove={()=>setPage('scenario')}
+          onImprove={()=>{if(page==='ai') setEcoLabelMode('ai'); setPage('scenario');}}
           onReport={()=>setPage('report')}
         />
       )}
@@ -2762,7 +2812,7 @@ function App() {
           <section id="dash-clinicalai" className="aiSection clinicalAiPrimaryBody">
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
             <p className="note" style={{marginBottom:12}}>
-              Each deployed tool <strong>adds</strong> inference + amortised-training compute and <strong>subtracts</strong> clinical savings — avoided low-value scans, shorter protocols, and contrast reduction. The net effect flows into energy, efficiency, contrast, and your EcoLabel.
+              Each deployed tool adds inference compute and subtracts supported clinical savings — avoided scans, shorter protocols, and contrast reduction. Training is counted in department electricity only when you explicitly choose <strong>Allocate training locally</strong>; vendor/external pretraining stays an upstream model-lifecycle disclosure.
               {dash.clinicalMeta.active && <> <strong style={{color:'#2E7D32'}}>Net now: +{fmtKwh(dash.clinicalMeta.aiKwh)} compute − {fmtKwh(dash.clinicalMeta.scannerSavedKwh)} scanner{dash.totals.label}{dash.clinicalMeta.avoidedPct>0?` · ${dash.clinicalMeta.avoidedPct}% scans avoided`:''}{dash.clinicalMeta.contrastPct>0?` · ${dash.clinicalMeta.contrastPct}% less contrast`:''}.</strong></>}
             </p>
 
@@ -2776,7 +2826,7 @@ function App() {
                     ? rnd((m.callsPerTask||1)*(m.tokensPerCall||0)/1000*(m.whPer1kTokens||0)/1000*1.2, 4) // tokens/study × Wh/1k × PUE
                     : rnd(m.gpuKw * m.inferSec / 3600 * 1.2, 4)), // gpuKw × s/study × PUE
                   trainKwhTotal: String(Math.round(m.trainMwh * 1000)),
-                  embCo2Kg: String(m.embCo2Kg), deployMonths: '36',
+                  embCo2Kg: String(m.embCo2Kg), deployMonths: '36', modelId:`library-${m.key}`, trainingBoundary:'upstream',
                   scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
                   contrastReductPct: '0', studiesShare: '100',
                 });
@@ -2785,15 +2835,15 @@ function App() {
                 {AI_MODEL_LIBRARY.filter(m=>m.key!=='custom').map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
               </select>
               <button disabled={(deptLabel.aiTools||[]).length>=5} onClick={()=>addDeptAiTool({
-                id: Date.now(), label: AI_MODEL_BY_KEY[scen.modelKey]?.label ?? 'AI model',
-                inferKwhPerStudy: String(ai.inference.kwhPerStudy), trainKwhTotal: String(ai.training.kwhTotal),
+                id: Date.now(), label: scen.projectName || AI_MODEL_BY_KEY[scen.modelKey]?.label || 'AI model', modelId:scen.modelId || 'model-primary',
+                inferKwhPerStudy: String(ai.inference.kwhPerStudy), trainKwhTotal: String(ai.training.kwhTotal), trainingBoundary:scen.trainingBoundary || 'upstream',
                 embCo2Kg: String(ai.embCo2KgTotal), deployMonths: String(scen.deployMonths || '36'),
                 scanTimeReductPct: String(ai.scanTimeReductPct), lowValueReductPct: String(ai.lowValueReductPct), contrastReductPct: '0', studiesShare: '100',
               })} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:(deptLabel.aiTools||[]).length>=5?0.5:1}}>
                 <ArrowRight size={13}/> Import current AI model
               </button>
               <button disabled={(deptLabel.aiTools||[]).length>=5} onClick={()=>addDeptAiTool({
-                id: Date.now(), label: '', inferKwhPerStudy: '', trainKwhTotal: '', embCo2Kg: '0',
+                id: Date.now(), label: '', inferKwhPerStudy: '', trainKwhTotal: '', embCo2Kg: '0', trainingBoundary:'upstream',
                 deployMonths: '36', scanTimeReductPct: '0', lowValueReductPct: '0', contrastReductPct: '0', studiesShare: '100',
               })} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7',opacity:(deptLabel.aiTools||[]).length>=5?0.5:1}}>
                 <Plus size={13}/> Add clinical AI tool
@@ -2823,6 +2873,15 @@ function App() {
                       <input type="number" min="0" step={step} value={t[key]??''} placeholder={ph} onChange={e=>updateDeptAiTool(t.id,key,e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/>
                     </label>
                   ))}
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginTop:9}}>
+                  <label style={{display:'flex',alignItems:'center',gap:7,fontSize:11,fontWeight:700,color:'#2E7D32'}}>Training accounting
+                    <select value={t.trainingBoundary || 'upstream'} onChange={e=>updateDeptAiTool(t.id,'trainingBoundary',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}>
+                      <option value="upstream">Upstream lifecycle only</option>
+                      <option value="allocated-local">Allocate training locally</option>
+                    </select>
+                  </label>
+                  <span className="note" style={{fontSize:10,margin:0}}>Inference is counted for this deployment. A reused model's training allocation is counted at most once per model ID.</span>
                 </div>
               </div>
             ))}
@@ -3140,7 +3199,7 @@ function App() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div>
               <h1 style={{margin:0}}>AI Model &amp; Informatics</h1>
-              <div className="contextLine"><Globe size={13}/> <strong>Shared local context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={()=>goToAssessmentContext('ai')}>Edit shared context →</button><span className="contextSep">·</span> <strong>AI compute region:</strong> {scen.cloudRegion || `${scen.cloudProvider} average`}</div>
+              <div className="contextLine"><Globe size={13}/> <strong>Shared local context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={()=>goToAssessmentContext('ai')}>Edit shared context →</button><span className="contextSep">·</span> <strong>Training:</strong> {scen.trainingRegion || scen.cloudRegion || `${scen.trainingProvider || scen.cloudProvider} average`}<span className="contextSep">·</span> <strong>Inference:</strong> {scen.inferenceRegion || scen.cloudRegion || `${scen.inferenceProvider || scen.cloudProvider} average`}</div>
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadAICSV(ai, scen, settings.region)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
@@ -3242,17 +3301,19 @@ function App() {
                         Intended use <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
                         <input value={candidate.intendedUse || ''} onChange={e=>updateBenchModel(candidate.id,'intendedUse',e.target.value)} placeholder="e.g. triage suspected PE on CTPA"/>
                       </label>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
                         <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                          Reported performance (%)
-                          <input type="number" min="0" max="100" step="0.1" value={candidate.accuracyPct} onChange={e=>updateBenchModel(candidate.id,'accuracyPct',e.target.value)}/>
+                          Reported performance value
+                          <input type="number" step="0.001" value={candidate.accuracyPct} onChange={e=>updateBenchModel(candidate.id,'accuracyPct',e.target.value)}/>
                         </label>
                         <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
                           Metric
                           <select value={candidate.accuracyMetric} onChange={e=>updateBenchModel(candidate.id,'accuracyMetric',e.target.value)}>
-                            {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','Other'].map(m=><option key={m} value={m}>{m}</option>)}
+                            {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','MAE','Other'].map(m=><option key={m} value={m}>{m}</option>)}
                           </select>
                         </label>
+                        <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Unit<select value={candidate.performanceUnit || 'percent'} onChange={e=>updateBenchModel(candidate.id,'performanceUnit',e.target.value)}>{['percent','fraction','mm','seconds','ordinal','custom'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                        <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:11}}>Better direction<select value={candidate.performanceDirection || 'higher'} onChange={e=>updateBenchModel(candidate.id,'performanceDirection',e.target.value)}><option value="higher">Higher is better</option><option value="lower">Lower is better</option></select></label>
                       </div>
                       <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
                         Validation basis
@@ -3539,13 +3600,13 @@ function App() {
               </div>
               <div className="modelSummaryItem">
                 <div className="modelSummaryLabel"><Target size={14}/> Reported {ai.accuracyMetric}</div>
-                <div className="modelSummaryValue">{rnd(ai.accuracy*100,1)}%</div>
+                <div className="modelSummaryValue">{ai.performanceValue} {ai.performanceUnit}</div>
                 <div className="modelSummarySub">Reported value; edit below.</div>
               </div>
               <div className="modelSummaryItem">
                 <div className="modelSummaryLabel"><BarChart3 size={14}/> Efficiency ratio</div>
-                <div className="modelSummaryValue">{ai.efficiencyRatio} acc%/kWh</div>
-                <div className="modelSummarySub">Compare like-for-like tasks.</div>
+                <div className="modelSummaryValue">{ai.efficiencyRatio} {ai.performanceUnit}/monthly kWh</div>
+                <div className="modelSummarySub">Only compare the same metric, unit, direction, and validation context.</div>
               </div>
             </div>
 
@@ -3557,15 +3618,19 @@ function App() {
               </p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
                 <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                  Performance value (%)
-                  <input type="number" min="0" max="100" step="0.1" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
+                  Performance value
+                  <input type="number" step="0.001" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
                 </label>
                 <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
                   Metric
                   <select value={scen.accuracyMetric} onChange={e=>setS('accuracyMetric',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}>
-                    {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','Other'].map(m=><option key={m} value={m}>{m}</option>)}
+                    {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','MAE','Other'].map(m=><option key={m} value={m}>{m}</option>)}
                   </select>
                 </label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Unit<select value={scen.performanceUnit} onChange={e=>setS('performanceUnit',e.target.value)}>{['percent','fraction','mm','seconds','ordinal','custom'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Better direction<select value={scen.performanceDirection} onChange={e=>setS('performanceDirection',e.target.value)}><option value="higher">Higher is better</option><option value="lower">Lower is better</option></select></label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Validation context<input value={scen.performanceValidationContext} onChange={e=>setS('performanceValidationContext',e.target.value)} placeholder="e.g. external validation"/></label>
+                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Source / provenance<input value={scen.performanceSource} onChange={e=>setS('performanceSource',e.target.value)} placeholder="publication, local study, vendor"/></label>
                 <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
                   Scan-time reduction (%)
                   <input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
@@ -3593,7 +3658,7 @@ function App() {
             <p className="note" style={{marginBottom:12}}>One-time energy cost. Track with CodeCarbon, EcoLogits, or Carbontracker. (Implementation Guide §4 · Metric 1)</p>
             <div className="cards">
               <Card icon={<Zap/>}        title="Total training energy"    value={`${ai.training.kwhTotal.toLocaleString()} kWh`}  sub={`One-time. Scaled by architecture (${scen.architecture}) and model size. (LLM-Energy PDF)`}/>
-              <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.cloudCi} kgCO₂e/kWh (${scen.cloudProvider}). Consider low-CI region for training jobs.`}/>
+              <Card icon={<Leaf/>}       title="Training CO₂e"            value={`${ai.training.kgCo2e} kgCO₂e`}                sub={`At ${ai.trainingCi} kgCO₂e/kWh (${ai.trainingContext?.provider || scen.trainingProvider || scen.cloudProvider}). Training and inference contexts may differ.`}/>
               <Card icon={<Gauge/>}      title={ai.trainMeasured ? "GPU compute (measured)" : "Estimated GPU compute"}    value={`${ai.trainMeasured ? '' : '~'}${ai.training.gpuHours.toLocaleString()} h`}  sub={ai.trainMeasured ? `Your entered Hours × #GPUs, exactly as typed below — not derived from energy, so PUE doesn't affect it.` : GPU_PRESETS[scen.trainGpu] ? `Estimated GPU hours at the selected ${scen.trainGpu} power draw. Actual depends on parallelism.` : "Estimated GPU hours at this template's power draw — pick a Training GPU below for a hardware-specific estimate."}/>
               <Card icon={<BarChart3/>}  title="Training efficiency"      value={ai.trainMeasured ? `${ai.training.vsReferenceRatio}× reference` : '— (needs measured training data)'}
                 sub={ai.trainMeasured
@@ -4034,14 +4099,15 @@ function App() {
                           <input value={r.label} onChange={e=>updateBenchLabel(r.id,e.target.value)} style={{width:150,padding:'4px 6px',border:'1px solid #e0e0e0',borderRadius:8,fontSize:12}}/>
                         </td>
                         <td style={{padding:'7px 10px',color:'#607d66'}}>{r.paramsM.toLocaleString()}M</td>
-                        <td style={{padding:'7px 10px',...hi(r.accuracyPct===best.accuracyPct)}}>{r.accuracyPct}% <span style={{color:'#90a4ae',fontWeight:400,fontSize:11}}>{r.accuracyMetric}</span></td>
+                        <td style={{padding:'7px 10px',...hi(r.performanceValue===best.performanceValue)}}>{r.performanceValue} {r.performanceUnit} <span style={{color:'#90a4ae',fontWeight:400,fontSize:11}}>{r.performanceMetric}</span></td>
                         <td style={{padding:'7px 10px',...hi(r.trainCo2===best.trainCo2)}}>{fmtCo2(r.trainCo2)}</td>
                         <td style={{padding:'7px 10px'}}>{r.kwhPerStudy}</td>
                         <td style={{padding:'7px 10px',...hi(r.carbonPerStudyG===best.carbonPerStudyG)}}>{r.carbonPerStudyG}</td>
                         <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',...hi(r.efficiency===best.efficiency)}}>{r.efficiency}</td>
-                        <td style={{padding:'7px 10px'}}>
+                        <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
+                          <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this model</button>
                           {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
                         </td>
                       </tr>
@@ -4053,12 +4119,12 @@ function App() {
 
             <section style={{marginBottom:16}}>
               <h2 style={{marginBottom:4}}>Performance vs carbon</h2>
-              <p className="note" style={{marginBottom:12}}>Upper-left is best (high performance, low carbon). <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
+              <p className="note" style={{marginBottom:12}}>{benchResults.rows[0]?.performanceDirection==='lower'?'Lower-left':'Upper-left'} is best for the selected metric direction. <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
               {benchResults.comparablePerformance ? <>
               {(()=>{
                 const data = {datasets:[{
                   label:'Candidates',
-                  data: benchResults.rows.map(r=>({x:r.carbonPerStudyG, y:r.accuracyPct, _label:r.label})),
+                  data: benchResults.rows.map(r=>({x:r.carbonPerStudyG, y:r.performanceValue, _label:r.label, _unit:r.performanceUnit})),
                   pointBackgroundColor: benchResults.rows.map(r=>r.pareto?'#2E7D32':'#b0bec5'),
                   pointBorderColor: benchResults.rows.map(r=>r.pareto?'#1b5e20':'#90a4ae'),
                   pointRadius: benchResults.rows.map(r=>r.pareto?8:6),
@@ -4066,10 +4132,10 @@ function App() {
                 }]};
                 const opts = {
                   responsive:true, maintainAspectRatio:false,
-                  plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y}% · ${ctx.parsed.x} gCO₂e/study`}}},
+                  plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y} ${ctx.raw._unit} · ${ctx.parsed.x} gCO₂e/study`}}},
                   scales:{
                     x:{title:{display:true,text:'Carbon per study (gCO₂e)'}, beginAtZero:true},
-                    y:{title:{display:true,text:'Reported performance (%)'}},
+                    y:{title:{display:true,text:`${benchResults.rows[0]?.performanceMetric || 'Reported performance'} (${benchResults.rows[0]?.performanceUnit || 'value'})`}},
                   },
                 };
                 return <div style={{height:320}}><Suspense fallback={<div style={{height:320}}/>}><Scatter data={data} options={opts}/></Suspense></div>;
@@ -4117,6 +4183,27 @@ function App() {
         <main>
           <h1 style={{margin:'0 0 6px'}}>Improve</h1>
           <p className="note" style={{margin:'0 0 12px',fontSize:14}}>Model potential interventions and compare their projected environmental, operational, financial, and clinical effects before implementation.</p>
+          {ecoLabelMode === 'ai' && (
+            <section className="inputSummary" style={{marginBottom:16}}>
+              <h2 style={{margin:'0 0 6px',color:'#1b5e20'}}>AI / informatics improvements</h2>
+              <p className="note" style={{margin:'0 0 10px'}}>Use these as design and procurement checks for the active model record. They do not create automatic savings unless CEDARS has enough measured inputs to model the change.</p>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:8}}>
+                {[
+                  ['Lower-carbon compute','Move training or inference to a lower-carbon region/provider when clinically and legally appropriate.'],
+                  ['Right-size the model','Prefer the smallest model that meets the required clinical performance; larger LLMs can add substantial inference energy.'],
+                  ['Reduce unnecessary inference','Avoid duplicate runs, retries, excessive test-time reasoning, and repeated agent/LLM calls that do not add clinical value.'],
+                  ['Use efficient precision','Use mixed/lower precision where validation confirms acceptable performance.'],
+                  ['Optimize serving','Batch, cache, consolidate, and right-size servers/accelerators instead of maintaining under-used dedicated capacity.'],
+                  ['Reduce data storage','Keep necessary acquired series; avoid redundant reformats, use efficient archives, and apply an appropriate retention policy.'],
+                  ['Extend hardware life','Reuse suitable hardware and extend service life when performance, security, and reliability allow.'],
+                  ['Use lower-carbon electricity','Document renewable procurement and the actual compute-region carbon intensity rather than assuming the hospital grid.'],
+                  ['Measure before estimating','Replace literature/vendor defaults with measured kWh, workload, PUE, and deployment values when available.'],
+                ].map(([title,body])=><div key={title} style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'9px 11px',background:'#fff'}}><strong style={{fontSize:12,color:'#1b5e20'}}>{title}</strong><div className="note" style={{fontSize:11,marginTop:3}}>{body}</div></div>)}
+              </div>
+              <p className="note" style={{fontSize:10,margin:'10px 0 0'}}>Evidence anchors already used in CEDARS include Doo et al. on radiology AI sustainability and cloud costs, Jia et al. on long-term imaging storage, and recent LLM inference-energy studies.<Ref id="doo-jacr-cloud-2024" order={AI_IMPROVE_REFS}/><Ref id="jia-eurradiol-2026" order={AI_IMPROVE_REFS}/><Ref id="jegham-llm-2025" order={AI_IMPROVE_REFS}/></p>
+              <ReferenceList ids={AI_IMPROVE_REFS}/>
+            </section>
+          )}
           <div id="future-scenario" className="workflowBridge workflowAnchor" aria-label="Current state and future scenario workflow">
             <div className="workflowBridgeNav">
               <button type="button" className="workflowBridgeChoice" onClick={()=>goToWorkflowSection('report','current-practices')}>

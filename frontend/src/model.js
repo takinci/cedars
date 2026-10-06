@@ -410,15 +410,16 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   const _scanT    = Math.min(0.95, Math.max(0, clinicalAdj.scanTimeFrac || 0));
   const _contrast = Math.min(0.95, Math.max(0, clinicalAdj.contrastFrac || 0));
   const _aiKwh    = rnd(imagingScans * (clinicalAdj.inferKwhPerStudy || 0) + (clinicalAdj.trainKwhMonthly || 0) * mult, 2);
+  const _aiEmbodiedKg = rnd((clinicalAdj.aiEmbodiedKgMonthly || 0) * mult, 2);
   const _scannerSaved = totalActiveKwh * Math.min(0.95, _avoid + _scanT);
   const contrastScale = (1 - _avoid) * (1 - _contrast);
   totalKwh       = rnd(Math.max(0, totalKwh - _scannerSaved + _aiKwh), 2);
   totalActiveKwh = rnd(Math.max(0, totalActiveKwh - _scannerSaved + _aiKwh), 2);
   totalCo2       = totalKwh * ci;
   imagingScans   = imagingScans * (1 - _avoid);
-  const clinicalMeta = {aiKwh: _aiKwh, scannerSavedKwh: rnd(_scannerSaved, 1),
+  const clinicalMeta = {aiKwh: _aiKwh, aiEmbodiedKg: _aiEmbodiedKg, scannerSavedKwh: rnd(_scannerSaved, 1),
     avoidedPct: rnd(_avoid*100, 0), scanTimePct: rnd(_scanT*100, 0), contrastPct: rnd(_contrast*100, 0),
-    active: _aiKwh > 0 || _scannerSaved > 0};
+    active: _aiKwh > 0 || _scannerSaved > 0 || _aiEmbodiedKg > 0};
 
   // ── Data storage & archiving (Jia et al. 2026; Doo et al. 2024) ──────────────
   // Fleet-driven: annual data = Σ (studies/yr × MB/study); held for `retentionYears` at a per-TB/yr
@@ -499,7 +500,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // proxy when unavailable. A department with no direct-emission sources can enter zero. If an
   // editable percentage proxy is retained, label it as an assumption; the McKee citation's
   // support for this specific 8% factor still needs independent verification.
-  const scope3EmbKg     = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0));
+  const scope3EmbKg     = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0) + _aiEmbodiedKg);
   const scope3TravelKg  = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
   const scope3ContrastKg = contrastCo2eKg;
   const scope3Kg        = rnd(scope3EmbKg + scope3TravelKg + scope3ContrastKg);
@@ -599,23 +600,14 @@ const CONTRAST_LEVER_FRACTION = {[CONTRAST_VIAL_OPT_LEVER]: 0.064, [CONTRAST_MUL
 // fleet-based saving, then combines: the two idle-reduction levers overlap on the same
 // avoidable-idle pool (standby ⊇ scanners-off) so we take the deepest ONE rather than summing;
 // all other energy levers add; carbon-% levers stack multiplicatively. Everything floors at 0.
-function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}, overrides = {}) {
+function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}, overrides = {}, clinicalAdj = {}) {
   const list  = Array.isArray(names) ? names.filter(n => INTERVENTIONS[n]) : (names && INTERVENTIONS[names] ? [names] : []);
   const ci    = getCI(region, customCi);
   const mult  = TIME_MULT[timePeriod] ?? 1;
-  const base  = computeDashboard(region, timePeriod, equipment, customCi, {}, storage, overrides);
-  // REVIEW (2026-09, not yet fixed) — the `{}` is an empty clinicalAdj, so the intervention
-  // baseline silently ignores any deployed clinical AI the user configured, while the dashboard on
-  // the same page includes it. Reproduced with 2 MRI 3T + 2 CT, Germany, Monthly, avoidedFrac 0.2
-  // and scanTimeFrac 0.3 (no added AI compute): dashboard 19,499.44 kWh versus intervention
-  // baseline 24,779.44 kWh. Intervention percentages therefore describe a pre-AI counterfactual,
-  // not the dashboard's current adjusted footprint.
-  // Fix: pass the real clinicalAdj through from main.jsx (it is already computed there as a memo
-  // and handed to computeDashboard) rather than defaulting it away. Callers that genuinely want the
-  // pre-AI baseline should ask for it explicitly. Worth adding a regression test asserting
-  // `computeInterventions(...).baseline.kwh === computeDashboard(...).totals.kwh` when both are
-  // requested for the same current configuration. Also derive intervention savings from the
-  // adjusted energy/study pools so AI and interventions do not claim the same savings twice.
+  // Prospective interventions start from the current department, including deployed Clinical AI.
+  // This keeps the Improve baseline aligned with the Dashboard and prevents a pre-AI counterfactual
+  // from appearing as the user's current state.
+  const base  = computeDashboard(region, timePeriod, equipment, customCi, clinicalAdj, storage, overrides);
   const fleet = buildFleet(equipment, overrides);
   const cf    = CLOUD[cloudProvider] ?? CLOUD["Local compute"];
   const STATE_FIELD = {Active:'active_kw', Idle:'idle_kw', Standby:'standby_kw', Off:'off_kw'};

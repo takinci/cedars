@@ -144,4 +144,12 @@ describe('computeInterventions — overrides flow into the baseline used for sav
     const iv   = computeInterventions([], 'Germany', 'Annual', FLEET, undefined, 'Local compute', 'Standby', {}, overrides);
     expect(iv.baseline.kwh).toBeCloseTo(base.totals.kwh, 2);
   });
+
+  it('baseline includes the same deployed clinical AI adjustment as the dashboard', () => {
+    const clinicalAdj = {inferKwhPerStudy:0.002, trainKwhMonthly:10, avoidedFrac:0.1, scanTimeFrac:0.05, aiEmbodiedKgMonthly:2};
+    const base = computeDashboard('Germany', 'Monthly', FLEET, undefined, clinicalAdj, {}, {});
+    const iv = computeInterventions([], 'Germany', 'Monthly', FLEET, undefined, 'Local compute', 'Standby', {}, {}, clinicalAdj);
+    expect(iv.baseline.kwh).toBeCloseTo(base.totals.kwh, 2);
+    expect(base.scopes.scope3EmbKg).toBeGreaterThan(0);
+  });
 });

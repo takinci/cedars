@@ -106,18 +106,24 @@ export function computeAiLabel(scen, ai, opts) {
   const hoursPerRun = num(scen.trainHours);
   const numRuns = Math.max(1, parseInt(scen.numRuns) || 1);
   const renewablePct = Math.min(100, Math.max(0, num(scen.renewablePct)));
+  const trainRenewablePct = scen.trainingRenewablePct === '' || scen.trainingRenewablePct == null ? renewablePct : Math.min(100, Math.max(0, num(scen.trainingRenewablePct)));
+  const inferRenewablePct = scen.inferenceRenewablePct === '' || scen.inferenceRenewablePct == null ? renewablePct : Math.min(100, Math.max(0, num(scen.inferenceRenewablePct)));
   const trainProv = trainingProvenance(scen);
   const inferProv = inferenceProvenance(scen, ai);
 
-  const ci = ai.cloudCi;
-  const effectiveCi = rnd(ci * (1 - renewablePct / 100), 4);
-  const pue = ai.pue;
+  // aiResultFor supplies context-specific effective intensities. Synthetic/legacy callers that do
+  // not have those fields retain the historical shared-CI + renewable calculation.
+  const ci = ai.inferenceRawCi ?? ai.cloudCi;
+  const trainingEffectiveCi = ai.trainingCi ?? rnd(ai.cloudCi * (1 - trainRenewablePct / 100), 4);
+  const inferenceEffectiveCi = ai.inferenceCi ?? rnd(ai.cloudCi * (1 - inferRenewablePct / 100), 4);
+  const effectiveCi = inferenceEffectiveCi;
+  const pue = ai.inferPue ?? ai.pue;
 
   // Training: the engine already applied the measured-kWh / GPU-hours / literature precedence.
   const energyPerRunKwh = trainProv === 'not-disclosed' ? 0 : rnd(ai.training.kwhTotal, 2);
   const totalEnergyKwh = rnd(energyPerRunKwh * numRuns, 2);
   const totalGpuHours = rnd(gpuCount * hoursPerRun * numRuns, 1);
-  const trainCo2 = rnd(totalEnergyKwh * effectiveCi, 2);
+  const trainCo2 = rnd(totalEnergyKwh * trainingEffectiveCi, 2);
 
   // Inference: the SAME figure the AI tab's hero uses.
   const tokenMode = ai.unit === 'tokens';
@@ -125,7 +131,7 @@ export function computeAiLabel(scen, ai, opts) {
   const inferKwhPerStudy = num(ai.inference?.kwhPerStudy);
   const inferStudies = num(scen.inferStudiesMonth);
   const inferMonthlyKwh = rnd(inferStudies * inferKwhPerStudy, 4);
-  const inferCo2Month = rnd(inferMonthlyKwh * effectiveCi, 4);
+  const inferCo2Month = rnd(inferMonthlyKwh * inferenceEffectiveCi, 4);
 
   // Water: explicit site WUE + grid water intensity when given; otherwise the screening factor,
   // or nothing if the user chose to report water as not assessed.
@@ -139,7 +145,7 @@ export function computeAiLabel(scen, ai, opts) {
   // Two-phase footprint: training is one-time, inference is per study; grade the amortised sum.
   const deployMonths = Math.max(1, parseInt(scen.deployMonths) || 36);
   const lifetimeInferences = Math.round(inferStudies * deployMonths);
-  const perInferCo2Kg = inferKwhPerStudy * effectiveCi;
+  const perInferCo2Kg = inferKwhPerStudy * inferenceEffectiveCi;
   const perInferCo2g = rnd(perInferCo2Kg * 1000, 3);
   const hasInferenceData = inferStudies > 0 && inferKwhPerStudy > 0;
   const trainPerStudyG = lifetimeInferences > 0 ? rnd(trainCo2 * 1000 / lifetimeInferences, 3) : null;
@@ -163,8 +169,11 @@ export function computeAiLabel(scen, ai, opts) {
     totalGpuHours, numRuns, energyPerRunKwh, totalEnergyKwh, trainCo2,
     trainProv, trainTool: scen.trainTool || '', trainDisclosed: trainProv !== 'not-disclosed',
     inferProv, waterProv, waterPerKwh,
-    renewablePct, cloudProvider: scen.cloudProvider, ciSource,
-    ci, effectiveCi, waterLitres, waterPerStudyMl, pue,
+    renewablePct: inferRenewablePct, cloudProvider: scen.inferenceProvider || scen.cloudProvider, ciSource,
+    ci, effectiveCi, trainingEffectiveCi, inferenceEffectiveCi,
+    trainingProvider: scen.trainingProvider || scen.cloudProvider, inferenceProvider: scen.inferenceProvider || scen.cloudProvider,
+    trainingRegion: scen.trainingRegion || scen.cloudRegion, inferenceRegion: scen.inferenceRegion || scen.cloudRegion,
+    waterLitres, waterPerStudyMl, pue,
     hasInference: hasInferenceData,
     inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
     energyMeasured: trainProv === 'measured',

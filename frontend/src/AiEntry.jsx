@@ -67,17 +67,17 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
         <h2 style={{margin:0, fontSize:19}}>What do you want to do?</h2>
       </div>
       <p className="note" style={{margin:0}}>
-        Either route gives each model its own CEDARS Score, leaf rating and AI Research Label, shown live in the top-right badge and calculated the same way, following the lifecycle framework in Doo et al.<Ref id="doo-jacr-2024" order={AI_ENTRY_REFS}/> Choose the route that matches what you have in hand — or, if you are not sure where to start, <a href="#ai-examples" style={{color:'#2E7D32'}}>see an example ↓</a>
+        Start with one reusable model record. Candidate comparison is optional: use it when you are choosing between models, then promote the selected candidate into that same record with <strong>Use this model</strong>. Each model uses the same CEDARS lifecycle framework.<Ref id="doo-jacr-2024" order={AI_ENTRY_REFS}/> If you are not sure where to start, <a href="#ai-examples" style={{color:'#2E7D32'}}>see an example ↓</a>
       </p>
 
       <div style={{display:'grid', gridTemplateColumns:'1fr 1.25fr', gap:16}} className="aiEntryGrid">
         {/* Procure / deploy */}
-        <div style={{...card, borderColor: route==='compare' ? '#2E7D32' : '#c8e6c9'}}>
+        <div style={{...card, order:2, borderColor: route==='compare' ? '#2E7D32' : '#c8e6c9'}}>
           <div style={{display:'flex', alignItems:'center', gap:10}}>
             <TrendingUp size={20} style={{color:'#2E7D32', flexShrink:0}}/>
-            <div><span style={kicker}>PROCURE · DEPLOY</span><br/><strong style={{fontSize:16}}>Compare candidate models</strong></div>
+            <div><span style={kicker}>OPTIONAL COMPARISON</span><br/><strong style={{fontSize:16}}>Compare candidate models</strong></div>
           </div>
-          <p className="note" style={{margin:0}}>For choosing, buying or deploying a model someone else built. Set the deployment conditions once, compare at least two like-for-like candidates, and review environmental impact alongside intended use, validation and implementation context.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
+          <p className="note" style={{margin:0}}>Use this only when comparison helps the decision. Compare at least two like-for-like candidates under one workload, then continue with the selected candidate as the active model record.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
           <div style={inset}>
             <div>
               <p style={q}>How should the models be ranked?</p>
@@ -92,16 +92,16 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
             For LLM/agentic candidates, recent inference studies show that energy varies substantially with prompt length, reasoning/test-time compute, hardware, batching and serving stack; CEDARS therefore treats published query-energy figures as sanity checks rather than one universal carbon-per-study default.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/>
           </p>
           <div style={{marginTop:'auto', display:'flex', gap:8, flexWrap:'wrap'}}>
-            <button type="button" className={route==='compare'?'':'download'} onClick={()=>onRoute('compare')}>Start candidate comparison →</button>
+            <button type="button" className={route==='compare'?'':'download'} onClick={()=>onRoute('compare')}>Compare candidates (optional) →</button>
             <button type="button" className="download" onClick={()=>onExample('maistro-agentic')}>See worked procurement example</button>
           </div>
         </div>
 
         {/* Develop */}
-        <div style={{...card, borderColor: route==='own' ? '#2E7D32' : '#c8e6c9'}}>
+        <div style={{...card, order:1, borderColor: route==='own' ? '#2E7D32' : '#c8e6c9'}}>
           <div style={{display:'flex', alignItems:'center', gap:10}}>
             <Cpu size={20} style={{color:'#2E7D32', flexShrink:0}}/>
-            <div><span style={kicker}>DEVELOP · ASSESS</span><br/><strong style={{fontSize:16}}>Assess one model in detail</strong></div>
+            <div><span style={kicker}>ASSESS</span><br/><strong style={{fontSize:16}}>Assess one model</strong></div>
           </div>
           <p className="note" style={{margin:0}}>For one model you built, are evaluating, or received from a vendor/publication. Create a reproducible environmental disclosure for a manuscript, model card, local evaluation, or regulatory submission.</p>
           <div style={inset}>
@@ -117,7 +117,7 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
               </label>
             ))}
           </div>
-          <div><button type="button" className={route==='own'?'':'download'} onClick={()=>onRoute('own')}>Continue →</button></div>
+          <div><button type="button" className={route==='own'?'':'download'} onClick={()=>onRoute('own')}>Assess this model →</button></div>
         </div>
       </div>
 
@@ -143,8 +143,8 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
 
 // Compact strip shown once a route is chosen.
 export function AiRouteStrip({route, ownMode, onComparison, onChange}) {
-  const label = route === 'compare' ? 'Procure · deploy — Compare candidate models'
-    : `Develop · assess — One model · ${ownMode === 'measured' ? 'measured numbers' : ownMode === 'measure' ? 'help me measure' : 'from specification'}`;
+  const label = route === 'compare' ? 'Compare candidates (optional)'
+    : `Assess one model · ${ownMode === 'measured' ? 'measured numbers' : ownMode === 'measure' ? 'help me measure' : 'from specification'}`;
   return (
     <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', border:'1px solid #c8e6c9', borderRadius:12, padding:'8px 14px', background:'#fff'}}>
       <span style={{...kicker, background:'#e8f5e9', border:'none', marginBottom:0}}>AI PATHWAY</span>

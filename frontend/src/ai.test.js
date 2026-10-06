@@ -88,6 +88,14 @@ describe('computeAiLabel — pinned grades', () => {
     expect(d.effectiveCi).toBe(0.05);
     expect(d.perInferCo2g).toBe(0.021);
   });
+  it('uses separate training and inference carbon intensities when supplied by the engine', () => {
+    const split = {...aiVision, trainingCi:0.02, inferenceCi:0.30, inferenceRawCi:0.30, trainPue:1.0, inferPue:1.2};
+    const d = computeAiLabel({...SCEN_DEFAULTS, inferStudiesMonth:'1000'}, split, opts);
+    expect(d.trainCo2).toBe(0.83);
+    expect(d.perInferCo2g).toBe(0.126);
+    expect(d.trainingEffectiveCi).toBe(0.02);
+    expect(d.inferenceEffectiveCi).toBe(0.30);
+  });
   it('training not disclosed by vendor: no training line, inference-only grade, stated as such', () => {
     const d = computeAiLabel({...SCEN_DEFAULTS, trainDisclosed: 'no', inferStudiesMonth: '2500'}, aiVision, opts);
     expect(d.trainDisclosed).toBe(false);
