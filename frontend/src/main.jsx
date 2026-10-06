@@ -1312,6 +1312,7 @@ function App() {
   const [aiEntryOrigin, setAiEntryOrigin] = useState('');
   const [aiEntryOriginModelId, setAiEntryOriginModelId] = useState('');
   const [aiExampleLoaded, setAiExampleLoaded] = useState('');
+  const [clearClinicalAiConfirmOpen, setClearClinicalAiConfirmOpen] = useState(false);
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
   // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
@@ -1612,7 +1613,16 @@ function App() {
       {id:'example-recon', modelId:recon.id, label:'MRI reconstruction', studiesShare:'35', deployMonths:'36', trainingBoundary:'upstream', trainingAllocationPct:'100', embodiedBoundary:'upstream', embodiedAllocationPct:'100', effectBasis:'scenario', lowValueReductPct:'0', scanTimeReductPct:'20', contrastReductPct:'0'},
     ]}));
   };
-  const clearClinicalAi = () => setDeptLabel(d => ({...d, aiTools:[]}));
+  const clearClinicalAi = () => {
+    setDeptLabel(d => ({...d, aiTools:[]}));
+    setDeptModelChoice('');
+    setAiExampleLoaded('');
+    setClearClinicalAiConfirmOpen(false);
+  };
+  const requestClearClinicalAi = () => {
+    if ((deptLabel.aiTools || []).length > 0) setClearClinicalAiConfirmOpen(true);
+    else clearClinicalAi();
+  };
   const loadAiModelRecord = modelId => {
     const record = aiModels[modelId];
     if (!record) return;
@@ -2064,6 +2074,8 @@ function App() {
       tonnes_coal:   rnd(co2 / 2350, 2),            // bituminous coal ~2 350 kgCO₂/tonne (IPCC)
     };
   }, [dash, equivScope, staffCommuteCo2, networkTransferCo2, settings.region, settings.electricityPrice]);
+  const resultPeriodPhrase = settings.timePeriod === 'Annual' ? 'For one year' : settings.timePeriod === 'Quarterly' ? 'For this quarter' : 'For this month';
+  const resultPeriodNoun = settings.timePeriod === 'Annual' ? 'year' : settings.timePeriod === 'Quarterly' ? 'quarter' : 'month';
 
   const ecoLabelData = useMemo(() => {
     const gpuLabel = scen.trainGpu === 'Custom (enter TDP below)'
@@ -2845,7 +2857,20 @@ function App() {
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI</h2>
             <p className="note" style={{marginBottom:12}}>Add the AI models used by this department, then describe each local use. A model's technical details — energy, hardware, performance, and compute location — live in one shared model entry; this section records where and how your department uses it.</p>
 
-            <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Quick start or enter your own Clinical AI</strong><p>The example is illustrative, not measured local data. It shows two linked models with different local uses. Verify every study share and clinical-effect assumption before using the result.</p><div className="quickStartChoices"><button type="button" onClick={clearClinicalAi}>Start empty / clear Clinical AI</button><button type="button" onClick={loadClinicalAiExample}>Load example Clinical AI</button></div></div></div>
+            <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Quick start or enter your own Clinical AI</strong><p>The example is illustrative, not measured local data. Verify every study share and clinical-effect assumption before using the result.</p><div className="quickStartChoices"><button type="button" onClick={requestClearClinicalAi}>{(deptLabel.aiTools||[]).length>0?'Clear Clinical AI setup':'Start with no Clinical AI'}</button><button type="button" onClick={loadClinicalAiExample}>Load example Clinical AI</button></div></div></div>
+
+            {clearClinicalAiConfirmOpen && (
+              <div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setClearClinicalAiConfirmOpen(false);}} style={{position:'fixed',inset:0,zIndex:1100,background:'rgba(20,35,25,.42)',display:'grid',placeItems:'center',padding:18}}>
+                <div role="dialog" aria-modal="true" aria-labelledby="clear-clinical-ai-title" style={{width:'min(540px,100%)',background:'white',borderRadius:18,padding:20,boxShadow:'0 24px 80px rgba(0,0,0,.22)',border:'1px solid #dce9dc'}}>
+                  <h3 id="clear-clinical-ai-title" style={{margin:'0 0 8px',color:'#1b5e20'}}>Clear Clinical AI setup?</h3>
+                  <p className="note" style={{fontSize:13,lineHeight:1.6,margin:'0 0 16px'}}>This removes the Clinical AI uses configured for this Radiology Department and removes their effects from the Department footprint. Model details already entered in <strong>AI Model &amp; Informatics</strong> will remain available.</p>
+                  <div style={{display:'flex',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}>
+                    <button type="button" className="download" onClick={()=>setClearClinicalAiConfirmOpen(false)}>Cancel</button>
+                    <button type="button" onClick={clearClinicalAi}>Clear Clinical AI uses</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{border:'1px solid #dfe3d6',borderRadius:12,padding:'12px 14px',background:'#fff',marginBottom:10}}>
               <strong style={{fontSize:13,color:'#1b5e20'}}>1 · Choose a model</strong>
@@ -2859,9 +2884,9 @@ function App() {
               {deptModelChoice&&<div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginTop:8,padding:'8px 10px',background:'#f7fbf8',borderRadius:9}}><span style={{fontSize:11,flex:1}}>Selected model: <strong>{aiModels[deptModelChoice]?.name||deptModelChoice}</strong></span><button type="button" className="download" onClick={()=>openAiModelWorkspaceFromDepartment(deptModelChoice)} style={{padding:'5px 9px',fontSize:11}}>Edit selected model →</button></div>}
             </div>
 
-            <div style={{border:'1px solid #c8e6c9',borderRadius:12,padding:'12px 14px',background:'#fafffa',marginBottom:12}}>
+            <div style={{display:deptModelChoice?'block':'none',border:'1px solid #c8e6c9',borderRadius:12,padding:'12px 14px',background:'#fafffa',marginBottom:12}}>
               <strong style={{fontSize:13,color:'#1b5e20'}}>2 · Set how the model is used in your department</strong>
-              <p className="note" style={{fontSize:11,margin:'5px 0 8px'}}>A model can support more than one workflow. Add each local use underneath its model; the technical model record stays shared.</p>
+              <p className="note" style={{fontSize:11,margin:'5px 0 8px'}}>Describe how the selected model is used in this department. Add a local use to enter study share, deployment period, and any locally supported clinical effects.</p>
               {deptModelChoice?<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:10}}><span style={{fontSize:12}}>For <strong>{aiModels[deptModelChoice]?.name||deptModelChoice}</strong></span><button type="button" onClick={()=>addDeptDeployment(deptModelChoice)}><Plus size={13}/> Add a local use</button></div>:<div className="note" style={{fontSize:11,marginBottom:10}}>Choose a model above before adding a local use.</div>}
               <div className="note" style={{fontSize:10,marginBottom:(deptLabel.aiTools||[]).length?10:0}}>{(deptLabel.aiTools||[]).length===0?'0 local AI uses configured — this is valid if the department currently uses no Clinical AI.':`${(deptLabel.aiTools||[]).length} local AI use${(deptLabel.aiTools||[]).length===1?'':'s'} configured.`}</div>
 
@@ -2896,6 +2921,13 @@ function App() {
               <Card icon={<Droplets/>}     title={`Electricity cost ${dash.totals.label}`}   value={fmtMoney(equivData.cost, equivData.sym)}      sub={`At ${equivData.sym}${equivData.pricePerKwh}/kWh. Editable under “What it means”.`}/>
               <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}             sub="Recoverable by standby / power-off — see Interventions."/>
             </div>
+
+            {dash.scopes.scope2Kg>0 && (
+              <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',margin:'-6px 0 14px',fontSize:11,color:'#607d66'}}>
+                <span><strong style={{color:'#455a64'}}>Carbon in context:</strong> about {fmtBig(dash.scopes.scope2Kg/CAR_CO2_KG_KM)} km driven by a typical car for this {resultPeriodNoun}.</span>
+                <button type="button" className="inlineTextButton" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');window.setTimeout(()=>document.getElementById('score-everyday-title')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>See everyday equivalents →</button>
+              </div>
+            )}
 
             {/* Next steps */}
             <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
@@ -3741,24 +3773,7 @@ function App() {
                 <p>{ai.netKgCo2e < 0 ? "Net positive — clinical savings outweigh full AI footprint." : "Net negative — AI costs currently exceed measured savings."}</p>
               </section>
             </div>
-            <h3 style={{marginTop:24,marginBottom:12,color:'#2E7D32',fontSize:15}}>What this AI footprint means in everyday terms</h3>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}}>
-              {[
-                {icon:<Car/>,      n:Math.round(ai.grossKgCo2e/0.17).toLocaleString(),          label:'km driven by car',       note:'Gross monthly CO₂ at 0.17 kgCO₂/km (DEFRA 2023)'},
-                {icon:<Plane/>,    n:String(rnd(ai.grossKgCo2e/255,1)),                          label:'short-haul flights',     note:'~255 kgCO₂e per economy seat (ICAO 2023)'},
-                {icon:<TreePine/>, n:Math.round(ai.grossKgCo2e/21).toLocaleString(),             label:'tree-years to offset',   note:'One mature tree sequesters ~21 kgCO₂/yr'},
-                {icon:<Activity/>, n:Math.round(ai.inference.kwhMonthly/0.012).toLocaleString(), label:'smartphone charges',     note:'Monthly inference energy equivalent at 12 Wh/charge'},
-              ].map((e,i)=>(
-                <div key={i} style={{background:'#f1f8f1',borderRadius:16,padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
-                  <span style={{color:'#2E7D32',flexShrink:0}}>{e.icon}</span>
-                  <div>
-                    <div style={{fontWeight:900,fontSize:22,color:'#1b5e20',lineHeight:1}}>{e.n}</div>
-                    <div style={{fontSize:12,fontWeight:700,color:'#263238',marginTop:2}}>{e.label}</div>
-                    <div style={{fontSize:11,color:'#607d66',marginTop:1}}>{e.note}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {ai.grossKgCo2e>0 && <div style={{marginTop:14,padding:'9px 12px',background:'#f7fbf8',border:'1px solid #dce9dc',borderRadius:10,fontSize:11,color:'#607d66'}}><strong style={{color:'#455a64'}}>Carbon in context:</strong> the gross monthly AI footprint is about {fmtBig(ai.grossKgCo2e/CAR_CO2_KG_KM)} km driven by a typical car. Illustrative comparison only.</div>}
           </section>
 
           )}
@@ -4323,6 +4338,7 @@ function App() {
                 <div className="cardHead"><TrendingDown/><span>Projected savings</span></div>
                 <b>−{scenario.savings.kwh.toLocaleString()} kWh</b>
                 <p>−{scenario.savings.co2.toLocaleString()} kgCO₂e</p>
+                {scenario.savings.co2>0&&<p style={{fontSize:11,color:'#607d66',marginTop:2}}>≈ {fmtBig(scenario.savings.co2/CAR_CO2_KG_KM)} km of typical car-travel emissions avoided for this {resultPeriodNoun}.</p>}
                 <p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price, sym)}{dash.totals.label}</p>
                 <p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>
                 {scenario.contrast.savedCo2eKg > 0 && (
@@ -4446,31 +4462,45 @@ function App() {
                 <div>
                   <span>INTERPRET THE RESULT</span>
                   <h2 id="score-everyday-title">What it means in everyday terms</h2>
-                  <p>Translate the department footprint into familiar equivalents for easier interpretation.</p>
+                  <p>{resultPeriodPhrase}, this footprint is approximately equivalent to:</p>
                 </div>
-                <div className="scoreScopeToggle" aria-label="Carbon scope for everyday equivalents">
-                  <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}>Scope 2</button>
-                  <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}>All scopes</button>
-                </div>
-              </div>
-              <div className="scoreEverydayGrid">
-                {[
-                  {icon:<Car/>, n:fmtBig(equivData.car_km), unit:`km driven by car${dash.totals.label}`},
-                  {icon:<Plane/>, n:fmtBig(equivData.flights_short), unit:`short-haul flights${dash.totals.label}`},
-                  {icon:<TreePine/>, n:fmtBig(equivData.trees_year), unit:'trees absorbing CO₂ for 1 year'},
-                  {icon:<Home/>, n:fmtBig(equivData.homes), unit:`home electricity years${dash.totals.label}`},
-                ].map((item,i)=>(
-                  <div key={i} className="scoreEverydayItem">
-                    <span className="scoreEverydayIcon">{item.icon}</span>
-                    <strong>{item.n}</strong>
-                    <small>{item.unit}</small>
+                <div>
+                  <div className="scoreScopeToggle" aria-label="Emissions included in everyday equivalents">
+                    <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}>Electricity emissions</button>
+                    <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}>All modeled emissions</button>
                   </div>
-                ))}
+                  {equivScope==='all'&&!dash.scopes.scope1Assessed&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Direct fuel/gas emissions are not included because Scope 1 has not been assessed.</div>}
+                </div>
               </div>
-              <div className="scoreEverydayFoot">
-                <span>≈ {fmtMoney(equivData.cost, equivData.sym)} in electricity{dash.totals.label} at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}</span>
+
+              {equivData.co2>0 ? (
+                <>
+                  <div className="scoreEverydayGrid">
+                    {[
+                      {icon:<Car/>, n:fmtBig(equivData.car_km), unit:'km driven by a typical car'},
+                      {icon:<Plane/>, n:fmtBig(equivData.flights_short), unit:'short-haul passenger flights'},
+                      {icon:<TreePine/>, n:fmtBig(equivData.trees_year), unit:'mature trees’ annual CO₂ uptake'},
+                      {icon:<Car/>, n:fmtBig(equivData.car_years), unit:'years of average car emissions'},
+                    ].map((item,i)=>(
+                      <div key={i} className="scoreEverydayItem">
+                        <span className="scoreEverydayIcon">{item.icon}</span>
+                        <strong>{item.n}</strong>
+                        <small>{item.unit}</small>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>Illustrative comparisons only. Tree uptake is a way to understand scale and does not represent a carbon offset.</p>
+                </>
+              ) : (
+                <div style={{padding:'18px 16px',border:'1px dashed #c8d6c9',borderRadius:12,background:'#fafcfb',color:'#607d66',fontSize:12}}>
+                  Everyday comparisons will appear here once your assessment has a calculated carbon footprint.
+                </div>
+              )}
+
+              <div className="scoreEverydayFoot" style={{marginTop:12}}>
+                {equivData.kwh>0 ? <span><strong>Estimated electricity cost:</strong> {fmtMoney(equivData.cost, equivData.sym)} for this {resultPeriodNoun} at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}. Department electricity use is about {fmtBig(equivData.homes)} average household electricity-years.</span> : <span>Estimated electricity cost will appear once electricity use is calculated.</span>}
                 <button type="button" className="inlineTextButton" onClick={()=>setPage('input')}>Edit assessment context →</button>
-                <span>Inspired by EPA greenhouse-gas equivalencies; detailed methodology remains in the source documentation.</span>
+                <span>Equivalencies are interpretive aids; detailed factors and methodology remain in the source documentation.</span>
               </div>
             </section>
 
