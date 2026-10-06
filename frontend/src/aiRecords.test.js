@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {buildAiState, migrateLegacyAiState, performanceMetricFromScen, modelScenFromRecord, toolFromDeployment} from './aiRecords.js';
+import {buildAiState, migrateLegacyAiState, performanceMetricFromScen, modelScenFromRecord, deploymentFromTool, toolFromDeployment} from './aiRecords.js';
 
 describe('canonical AI records', () => {
   it('wraps the legacy single-model fields without losing them', () => {
@@ -44,3 +44,7 @@ describe('canonical AI records', () => {
 
 
 it('round-trips a department training allocation percentage',()=>{const state=buildAiState({modelId:'model-a'},[{id:'dep-a',modelId:'model-a',studiesShare:'50',trainingBoundary:'allocated-local',trainingAllocationPct:'40'}]);expect(state.aiDeployments[0].trainingAllocationPct).toBe('40');expect(toolFromDeployment(state.aiDeployments[0]).trainingAllocationPct).toBe('40');});
+
+describe('deployment accounting/provenance fields',()=>{
+  it('round-trips effect provenance and embodied allocation',()=>{const tool={id:'x',modelId:'m',studiesShare:'50',deployMonths:'24',trainingBoundary:'upstream',embodiedBoundary:'allocated-local',embodiedAllocationPct:'25',effectBasis:'validated-local',lowValueReductPct:'5',scanTimeReductPct:'3',contrastReductPct:'0'};const dep=deploymentFromTool(tool);const back=toolFromDeployment(dep);expect(back.effectBasis).toBe('validated-local');expect(back.embodiedBoundary).toBe('allocated-local');expect(back.embodiedAllocationPct).toBe('25');});
+});

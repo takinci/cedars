@@ -51,7 +51,7 @@ const DASH_SECTIONS = ['efficiency','energy','carbon','charts','infrastructure',
 const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark'];
 
 import {
-  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeClinicalScannerSavings, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
+  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
 } from './model.js';
 
 
@@ -526,7 +526,7 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     performanceValue: model.performanceValue, performanceUnit: model.performanceUnit, performanceDirection: model.performanceDirection,
     scanTimeReductPct: model.scanTimeReductPct, lowValueReductPct: model.lowValueReductPct,
     scansAvoided, avoidedEnergySaved, scanTimeEnergySaved, scanEnergySaved, reboundRisk,
-    unit: isToken ? 'tokens' : 'gpu', tokensPerStudy, callsPerTask, tokensPerCall, whPer1kTokens: model.whPer1kTokens || 0,
+    unit: isToken ? 'tokens' : 'gpu', tokensPerStudy, callsPerTask, tokensPerCall, whPer1kTokens: model.whPer1kTokens || 0, deployMonths:DEPLOY_MO,
   };
 }
 
@@ -783,7 +783,7 @@ function downloadCSV(dash) {
 
     row(['CARBON — GHG PROTOCOL SCOPES']),
     row(['Scope', 'kgCO2e']),
-    row(['Scope 1 — Direct',           dash.scopes.scope1Kg]),
+    row(['Scope 1 — Direct',           dash.scopes.scope1Assessed ? dash.scopes.scope1Kg : 'Not assessed']),
     row(['Scope 2 — Electricity',      dash.scopes.scope2Kg]),
     row(['Scope 3 — Embodied carbon',  dash.scopes.scope3EmbKg]),
     row(['Scope 3 — Patient travel',   dash.scopes.scope3TravelKg]),
@@ -814,8 +814,8 @@ function downloadCSV(dash) {
     ),
     // Data storage/archive is part of the total electricity but is not a device — list it so the
     // breakdown reconciles with Total electricity above.
-    row([`Data storage / archive (${dash.storage.storedTB} TB over ${dash.storage.retentionYears} yr, ${dash.storage.cloud ? 'cloud' : 'on-prem'})`,
-      'Storage', dash.storage.kwh, dash.storage.co2, '', 'N/A', '', 'estimated']),
+    row([`Data storage / archive (${dash.storage.storedTB} TB over ${dash.storage.retentionYears} yr, ${dash.storage.cloud ? `cloud ${dash.storage.provider||''} ${dash.storage.region||''}`.trim() : 'on-prem'})`,
+      'Storage', dash.storage.kwh, dash.storage.co2, '', 'N/A', '', `estimated; CI ${dash.storage.ci} kgCO2e/kWh`]),
   ];
 
   const blob = new Blob([lines.join('\n')], {type: 'text/csv'});
@@ -836,14 +836,17 @@ function downloadAICSV(ai, scen, region) {
 
   const lines = [
     row(['CEDARS AI Sustainability Report']),
-    row(['Region', region, 'Cloud / deployment', scen.cloudProvider]),
+    row(['Department context', region]),
+    row(['Training provider', ai.trainingContext?.provider || scen.trainingProvider || scen.cloudProvider, 'Training region', ai.trainingContext?.region || scen.trainingRegion || scen.cloudRegion]),
+    row(['Training CI (kgCO2e/kWh)', ai.trainingCi, 'Training PUE', ai.trainPue]),
+    row(['Inference provider', ai.inferenceContext?.provider || scen.inferenceProvider || scen.cloudProvider, 'Inference region', ai.inferenceContext?.region || scen.inferenceRegion || scen.cloudRegion]),
+    row(['Inference CI (kgCO2e/kWh)', ai.inferenceCi, 'Inference PUE', ai.inferPue]),
     row(['Model template', AI_MODEL_BY_KEY[scen.modelKey]?.label ?? scen.modelKey, 'Reference', AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? '']),
     row(['Architecture', scen.architecture, 'Model size', ai.modelSize]),
     row(['Parameters (M)', ai.paramsM, 'Dimensionality', ai.dim]),
     row([ai.dim==='3D'?'In-plane resolution (px)':'Input resolution (px)', ai.resolution, ai.dim==='3D'?'Through-plane slices':'Slices / passes per study', ai.slices]),
     ...(ai.slices > 1 ? [row(['Per-study elements (px/voxels)', Math.round((parseFloat(ai.resolution)||0)**2 * (parseFloat(ai.slices)||0))])] : []),
-    row(['Precision / AMP', scen.precision, 'Cloud CI (kgCO2e/kWh)', ai.cloudCi]),
-    row(['PUE', ai.pue]),
+    row(['Precision / AMP', scen.precision]),
     blank,
 
     row(['TRAINING (one-time)']),
@@ -851,7 +854,7 @@ function downloadAICSV(ai, scen, region) {
     row(['Training energy',              ai.training.kwhTotal.toFixed(3), 'kWh']),
     row(['Training CO2e',                ai.training.kgCo2e,      'kgCO2e']),
     row([ai.trainMeasured ? 'GPU compute (measured)' : 'Estimated GPU compute', ai.training.gpuHours, 'h']),
-    row(['Amortised training / month',   ai.training.kwhAmortised,'kWh/mo (36-month deployment)']),
+    row(['Amortised training / month',   ai.training.kwhAmortised,`kWh/mo (${ai.deployMonths}-month deployment)`]),
     blank,
 
     row(['TESTING / VALIDATION (one-time)']),
@@ -866,7 +869,7 @@ function downloadAICSV(ai, scen, region) {
     row(['Studies per month',            ai.inference.studies,        'studies/mo']),
     row(['Energy per study',             ai.inference.kwhPerStudy,    'kWh/study']),
     row(['Monthly inference energy',     ai.inference.kwhMonthly,     'kWh/mo']),
-    row(['Lifetime inference energy',    ai.inference.kwhLifetime,    'kWh (36 months)']),
+    row(['Lifetime inference energy',    ai.inference.kwhLifetime,    `kWh (${ai.deployMonths} months)`]),
     row(['AMP energy saving',            ai.ampSavingPct,             '%']),
     blank,
 
@@ -972,39 +975,6 @@ function downloadCloudCSV(result, tracker) {
 // no second, unjustified skew. Provisional, open to consensus revision.
 // CEDARS_RATINGS, cedarsRating, cedarsScore, and the Score anchors (CEDARS_AI/DEPT/AIUSE_LO/HI)
 // live in ./calc.js (imported above) and are covered by reference tests in calc.test.js.
-
-// Net annual CO₂ a deployed AI tool adds to a department: amortised training + inference +
-// embodied GPU, minus clinical savings (shorter protocols + avoided low-value scans). Net,
-// so a tool can be net-negative (reduce department footprint).
-// REVIEW (2026-09, not yet fixed) — DEAD CODE: this function has no callers anywhere in the
-// codebase. It is the only place that consumes a deployed tool's embodied GPU carbon (`t.embCo2Kg`,
-// collected by the AI-tools form), so the fact that it is unwired is exactly why embodied AI carbon
-// never appears in any department total (see the note at `clinicalAdj`). It also duplicates, with
-// different bounding rules, the clinical-savings arithmetic in computeAI and in model.js's
-// computeDashboard — a third copy of the same concept.
-// Fix: consolidate the shared clinical-benefit logic, but do not wire this helper in unchanged:
-// it still overlaps savings, uses allocated facility energy, maps 0% share to 100%, and accepts
-// Infinity. Its net-carbon return cannot replace the scope-specific energy/carbon adjustments
-// needed by computeDashboard. Adding it on top of those existing adjustments would double-count.
-// Carry embodied GPU carbon separately into the department's embodied scope; the department
-// EcoLabel currently reports operational carbon only, so including manufacturing there would
-// additionally require an explicit change to the label's accounting boundary.
-function aiToolDeptContribution(t, annualStudies, facilityKwhPerStudy, effectiveCi) {
-  const share     = Math.min(100, Math.max(0, parseFloat(t.studiesShare) || 100)) / 100;
-  const studiesAI = annualStudies * share;
-  const inferKwhPerStudy = Math.max(0, parseFloat(t.inferKwhPerStudy) || 0);
-  const trainKwhTotal    = Math.max(0, parseFloat(t.trainKwhTotal)    || 0);
-  const embCo2Kg         = Math.max(0, parseFloat(t.embCo2Kg)         || 0);
-  const deployMo  = Math.max(1, parseInt(t.deployMonths) || 36);
-  const scanRed   = Math.max(0, parseFloat(t.scanTimeReductPct) || 0) / 100;
-  const lowVal    = Math.max(0, parseFloat(t.lowValueReductPct) || 0) / 100;
-  const kwhYr     = studiesAI * inferKwhPerStudy + trainKwhTotal / deployMo * 12;
-  const embCo2Yr  = embCo2Kg / deployMo * 12;
-  const grossCo2Yr  = rnd(kwhYr * effectiveCi + embCo2Yr, 1);
-  const energySavedYr = studiesAI * facilityKwhPerStudy * scanRed + studiesAI * lowVal * facilityKwhPerStudy;
-  const savingsCo2Yr  = rnd(energySavedYr * effectiveCi, 1);
-  return {studiesAI: Math.round(studiesAI), kwhYr: rnd(kwhYr, 0), grossCo2Yr, savingsCo2Yr, netCo2Yr: rnd(grossCo2Yr - savingsCo2Yr, 1)};
-}
 
 function generateDeptText(d) {
   if (!d.annualStudies) return '';
@@ -1156,9 +1126,8 @@ function generateEcoMarkdown(d) {
     ['Energy per run',           d.trainDisclosed ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.label.toLowerCase()}${d.trainTool ? ', ' + d.trainTool : ''})` : 'not disclosed by vendor'],
     ['Total training energy',    d.trainDisclosed ? `${d.totalEnergyKwh} kWh over ${d.numRuns} run${d.numRuns===1?'':'s'}` : 'not disclosed by vendor'],
     ['Training CO₂e (one-time)', `${d.trainCo2} kgCO₂e`],
-    ['Renewable energy',         `${d.renewablePct}%`],
-    ['Compute provider / PUE',   `${d.cloudProvider} · PUE ${d.pue}`],
-    ['Cloud grid CI',            `${d.ci} kgCO₂e/kWh (${d.ciSource})`],
+    ['Training compute',         `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`],
+    ['Inference compute',        `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
     ...(d.tokenMode && d.tokensPerStudy > 0 ? [['Inference tokens / study', `${d.tokensPerStudy.toLocaleString()} tokens · ${d.inferKwhPerStudy} kWh`]] : []),
     ...(d.perInferCo2g > 0 ? [['Inference CO₂e / study (marginal)', `${d.perInferCo2g} gCO₂e`]] : []),
@@ -1192,8 +1161,8 @@ function downloadEcoPNG(d) {
     ['Energy / run',             d.trainDisclosed ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.short.toLowerCase()})` : 'not disclosed'],
     ['Total training energy',    d.trainDisclosed ? `${d.totalEnergyKwh} kWh` : 'not disclosed'],
     [`Training CO₂e`,       `${d.trainCo2} kgCO₂e`],
-    ['Renewable energy',         `${d.renewablePct}%`],
-    ['Compute / grid',           `${d.cloudProvider} · ${d.ciSource} · ${d.ci} kgCO₂e/kWh`],
+    ['Training compute',         `${d.trainingProvider} · ${d.trainingRegion || 'avg'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`],
+    ['Inference compute',        `${d.inferenceProvider} · ${d.inferenceRegion || 'avg'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh`],
     ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
     ...(d.perInferCo2g > 0 ? [['Inference / study', `${d.perInferCo2g} gCO₂e`]] : []),
     ...(d.hasInference ? [
@@ -1356,6 +1325,7 @@ function App() {
   // Decode a shared link once: the full configuration (settings + equipment + scenario +
   // interventions) is restored into the relevant state objects below.
   const initCfg = useMemo(() => (typeof window !== 'undefined' ? decodeConfig(window.location.hash) : {}), []);
+  const rejectedSharedFields = initCfg.rejectedFields || [];
   const { equipment: initEquip, equipmentOverrides: initEquipOverrides, ...initSettings } = initCfg.settings || {};
 
   // Shared settings — drive all calculations; initialised from the URL hash if present.
@@ -1370,12 +1340,6 @@ function App() {
   // came from without changing the calculation. It is kept in local/portable saves and research
   // contributions, but not in the compact shareable URL.
   const [provenance, setProvenance] = useState({equipment:{}});
-  // REVIEW (2026-09, not yet fixed) — `...initSettings` spreads URL-decoded strings over the
-  // defaults with no validation, so anything decodeConfig lets through lands directly in the state
-  // that drives every calculation. See the note at the end of urlstate.js for the full fix (validate
-  // at the decode boundary, not here). Flagged at this line too because this is where an unvalidated
-  // value becomes indistinguishable from one the user typed: after this spread there is no marker of
-  // provenance, so no later code can treat link-supplied input more cautiously than form input.
   const setEquip = (key, val) => set('equipment', {...settings.equipment, [key]: val});
   // Local override for one field of one device type (active_kw/idle_kw/standby_kw/off_kw/scans).
   // Blank clears back to the literature default; provenance records whether an entered value was
@@ -1572,7 +1536,8 @@ function App() {
       inferenceProvider:s.inferenceProvider, inferenceRegion:s.inferenceRegion, inferencePue:s.inferencePue, inferenceRenewablePct:s.inferenceRenewablePct,
       inferStudiesMonth:s.inferStudiesMonth, deployMonths:s.deployMonths, trainDisclosed:s.trainDisclosed,
       modelId:`model-${String(chosen.id).replace(/[^a-z0-9-]/gi,'-').toLowerCase()}`, projectName:chosen.label || s.projectName,
-      performanceValidationContext:chosen.performanceValidationContext || chosen.validationBasis || s.performanceValidationContext,
+      taskType:s.compareClinicalTask || s.taskType,
+      performanceValidationContext:[s.compareEndpoint,s.compareCohort].filter(Boolean).join(' · ') || chosen.performanceValidationContext || chosen.validationBasis || s.performanceValidationContext,
       aiRoute:'own', ownMode:'spec',
     }));
     setAiOpen(o => ({...o, benchmark:false, model:true}));
@@ -1632,6 +1597,7 @@ function App() {
     const cfg = modelScenFromRecord(record, SCEN_DEFAULTS);
     addDeptAiTool({
       id:Date.now(), modelId, label:'', studiesShare:'100', deployMonths:String(cfg.deployMonths || '36'), trainingBoundary:'upstream', trainingAllocationPct:'100',
+      embodiedBoundary:'upstream', embodiedAllocationPct:'100', effectBasis:'none',
       lowValueReductPct:'0', scanTimeReductPct:'0', contrastReductPct:'0',
     });
   };
@@ -1642,8 +1608,8 @@ function App() {
     setAiModels(models => ({...models, [triage.id]:triage, [recon.id]:recon}));
     setDeptModelChoice(triage.id);
     setDeptLabel(d => ({...d, aiTools:[
-      {id:'example-triage', modelId:triage.id, label:'ED triage', studiesShare:'100', deployMonths:'36', trainingBoundary:'upstream', trainingAllocationPct:'100', lowValueReductPct:'0', scanTimeReductPct:'0', contrastReductPct:'0'},
-      {id:'example-recon', modelId:recon.id, label:'MRI reconstruction', studiesShare:'35', deployMonths:'36', trainingBoundary:'upstream', trainingAllocationPct:'100', lowValueReductPct:'0', scanTimeReductPct:'20', contrastReductPct:'0'},
+      {id:'example-triage', modelId:triage.id, label:'ED triage', studiesShare:'100', deployMonths:'36', trainingBoundary:'upstream', trainingAllocationPct:'100', embodiedBoundary:'upstream', embodiedAllocationPct:'100', effectBasis:'scenario', lowValueReductPct:'0', scanTimeReductPct:'0', contrastReductPct:'0'},
+      {id:'example-recon', modelId:recon.id, label:'MRI reconstruction', studiesShare:'35', deployMonths:'36', trainingBoundary:'upstream', trainingAllocationPct:'100', embodiedBoundary:'upstream', embodiedAllocationPct:'100', effectBasis:'scenario', lowValueReductPct:'0', scanTimeReductPct:'20', contrastReductPct:'0'},
     ]}));
   };
   const clearClinicalAi = () => setDeptLabel(d => ({...d, aiTools:[]}));
@@ -1747,12 +1713,14 @@ function App() {
         totalTrainingEnergyKwh: ecoLabelData.totalEnergyKwh,
         trainingCo2Kg: ecoLabelData.trainCo2,
         energyMeasured: ecoLabelData.energyMeasured,
-        renewablePct: ecoLabelData.renewablePct,
-        cloudProvider: ecoLabelData.cloudProvider,
-        computeRegion: ecoLabelData.ciSource,
-        pue: ecoLabelData.pue,
-        gridCiKgCo2ePerKwh: ecoLabelData.ci,
-        effectiveGridCiKgCo2ePerKwh: ecoLabelData.effectiveCi,
+        trainingProvider: ecoLabelData.trainingProvider,
+        trainingRegion: ecoLabelData.trainingRegion,
+        trainingPue: ai.trainPue,
+        trainingGridCiKgCo2ePerKwh: ai.trainingCi,
+        inferenceProvider: ecoLabelData.inferenceProvider,
+        inferenceRegion: ecoLabelData.inferenceRegion,
+        inferencePue: ai.inferPue,
+        inferenceGridCiKgCo2ePerKwh: ai.inferenceCi,
         waterLitres: ecoLabelData.waterLitres,
         inferenceStudiesPerMonth: ecoLabelData.inferStudies,
         inferenceEnergyKwhPerStudy: ecoLabelData.inferKwhPerStudy,
@@ -1894,7 +1862,7 @@ function App() {
   // contrast-reduction fractions, stacked multiplicatively.)
   const clinicalAdj = useMemo(() => {
     const tools = deptLabel.aiTools || [];
-    let inferKwhPerStudy = 0, avoidKeep = 1, scanKeep = 1, contrastKeep = 1;
+    let inferKwhPerStudy = 0, aiLocalInferKwhPerStudy = 0, aiCloudInferKwhPerStudy = 0, aiCloudInferCo2PerStudy = 0, avoidKeep = 1, scanKeep = 1, contrastKeep = 1;
     const trainingByModel = new Map();
     const embodiedByModel = new Map();
     tools.forEach(t => {
@@ -1910,31 +1878,50 @@ function App() {
       const modelTrainKwh = modelResult?.training?.kwhTotal ?? (parseFloat(t.trainKwhTotal) || 0);
       const modelEmbodiedKg = modelResult?.embCo2KgTotal ?? (parseFloat(t.embCo2Kg) || 0);
       inferKwhPerStudy += modelInferKwh * share;
+      const inferProvider = modelResult?.inferenceContext?.provider || cfg?.inferenceProvider || cfg?.cloudProvider || 'Local compute';
+      const inferCi = modelResult?.inferenceCi ?? getCI(settings.region, settings.customCi);
+      if (inferProvider === 'Local compute') aiLocalInferKwhPerStudy += modelInferKwh * share;
+      else { aiCloudInferKwhPerStudy += modelInferKwh * share; aiCloudInferCo2PerStudy += modelInferKwh * inferCi * share; }
       const months = Math.max(1, parseInt(t.deployMonths) || 36);
       if (t.trainingBoundary === 'allocated-local') {
         const allocationRaw = parseFloat(t.trainingAllocationPct);
         const allocation = Number.isFinite(allocationRaw) ? Math.min(1, Math.max(0, allocationRaw / 100)) : 1;
         const monthly = modelTrainKwh * allocation / months;
-        trainingByModel.set(modelRef, Math.max(trainingByModel.get(modelRef) || 0, monthly));
+        const trainProvider = modelResult?.trainingContext?.provider || cfg?.trainingProvider || cfg?.cloudProvider || 'Local compute';
+        const trainCi = modelResult?.trainingCi ?? getCI(settings.region, settings.customCi);
+        const prior = trainingByModel.get(modelRef);
+        const candidate = {kwh:monthly, co2:monthly*trainCi, local:trainProvider==='Local compute'};
+        if (!prior || candidate.kwh > prior.kwh) trainingByModel.set(modelRef, candidate);
       }
-      const embodiedMonthly = modelEmbodiedKg / months;
-      embodiedByModel.set(modelRef, Math.max(embodiedByModel.get(modelRef) || 0, embodiedMonthly));
+      if (t.embodiedBoundary === 'allocated-local') {
+        const embAllocationRaw = parseFloat(t.embodiedAllocationPct);
+        const embAllocation = Number.isFinite(embAllocationRaw) ? Math.min(1, Math.max(0, embAllocationRaw / 100)) : 1;
+        const embodiedMonthly = modelEmbodiedKg * embAllocation / months;
+        embodiedByModel.set(modelRef, Math.max(embodiedByModel.get(modelRef) || 0, embodiedMonthly));
+      }
       const boundedPct = value => { const n = parseFloat(value); return Number.isFinite(n) ? Math.min(1, Math.max(0, n / 100)) : 0; };
-      avoidKeep    *= (1 - boundedPct(t.lowValueReductPct) * share);
-      scanKeep     *= (1 - boundedPct(t.scanTimeReductPct) * share);
-      contrastKeep *= (1 - boundedPct(t.contrastReductPct) * share);
+      const currentEffectEligible = t.effectBasis === 'observed-local' || t.effectBasis === 'validated-local';
+      if (currentEffectEligible) {
+        avoidKeep    *= (1 - boundedPct(t.lowValueReductPct) * share);
+        scanKeep     *= (1 - boundedPct(t.scanTimeReductPct) * share);
+        contrastKeep *= (1 - boundedPct(t.contrastReductPct) * share);
+      }
     });
-    const trainKwhMonthly = [...trainingByModel.values()].reduce((s,v)=>s+v,0);
+    const trainingRows=[...trainingByModel.values()];
+    const trainKwhMonthly=trainingRows.reduce((s,v)=>s+v.kwh,0);
+    const aiLocalTrainKwhMonthly=trainingRows.filter(v=>v.local).reduce((s,v)=>s+v.kwh,0);
+    const aiCloudTrainKwhMonthly=trainingRows.filter(v=>!v.local).reduce((s,v)=>s+v.kwh,0);
+    const aiCloudTrainCo2Monthly=trainingRows.filter(v=>!v.local).reduce((s,v)=>s+v.co2,0);
     const aiEmbodiedKgMonthly = [...embodiedByModel.values()].reduce((s,v)=>s+v,0);
-    return {inferKwhPerStudy, trainKwhMonthly, aiEmbodiedKgMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
+    return {inferKwhPerStudy, trainKwhMonthly, aiLocalInferKwhPerStudy, aiCloudInferKwhPerStudy, aiCloudInferCo2PerStudy, aiLocalTrainKwhMonthly, aiCloudTrainKwhMonthly, aiCloudTrainCo2Monthly, aiEmbodiedKgMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
   }, [deptLabel.aiTools, aiModels, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
   // Training and embodied allocations are deduplicated by model ID. Math.max makes the result
   // deterministic if two deployment adapters for the same model carry inconsistent legacy
   // amortisation values; the record should still be reconciled before publication. Clinical-effect
   // fractions remain an expected-population approximation when deployed tools overlap on studies.
-  const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom};
-  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides]);
-  const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.equipmentOverrides, clinicalAdj]);
+  const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom, provider:settings.storageProvider, region:settings.storageRegion, cloudCi:settings.storageCloudCi, scope1AnnualKg:settings.scope1AnnualKg};
+  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides]);
+  const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
@@ -1970,7 +1957,8 @@ function App() {
       };
     });
     const metrics = [...new Set(rows.map(r => `${r.performanceMetric}|${r.performanceUnit}|${r.performanceDirection}|${r.performanceValidationContext}`))];
-    const comparablePerformance = metrics.length <= 1;
+    const comparisonDefinitionComplete = [scen.compareClinicalTask, scen.compareEndpoint, scen.compareCohort].every(v => String(v || '').trim().length > 0);
+    const comparablePerformance = comparisonDefinitionComplete && metrics.length <= 1;
     rows.forEach(a => {
       a.pareto = comparablePerformance && !rows.some(b => {
         if (b.id === a.id || b.carbonPerStudyG > a.carbonPerStudyG) return false;
@@ -1982,9 +1970,9 @@ function App() {
     const minBy = key => rows.length ? Math.min(...rows.map(r => r[key])) : 0;
     const maxBy = key => rows.length ? Math.max(...rows.map(r => r[key])) : 0;
     const bestPerformance = !comparablePerformance || !rows.length ? null : rows[0].performanceDirection === 'lower' ? minBy('performanceValue') : maxBy('performanceValue');
-    return {rows, metrics, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
+    return {rows, metrics, comparisonDefinitionComplete, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
       performanceValue: bestPerformance, efficiency: rows[0]?.performanceDirection === 'lower' ? minBy('efficiency') : maxBy('efficiency')}};
-  }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.trainingProvider, scen.trainingRegion, scen.trainingPue, scen.trainingRenewablePct, scen.inferenceProvider, scen.inferenceRegion, scen.inferencePue, scen.inferenceRenewablePct, scen.inferStudiesMonth, scen.deployMonths, scen.trainDisclosed, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
+  }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.trainingProvider, scen.trainingRegion, scen.trainingPue, scen.trainingRenewablePct, scen.inferenceProvider, scen.inferenceRegion, scen.inferencePue, scen.inferenceRenewablePct, scen.inferStudiesMonth, scen.deployMonths, scen.trainDisclosed, scen.compareClinicalTask, scen.compareEndpoint, scen.compareCohort, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
   // agent, all on the SAME department volume — surfaces the token multiplier concretely.
@@ -2035,41 +2023,16 @@ function App() {
   // studies: underused fleets → high per-study footprint; busy fleets → low, even at
   // high absolute CO₂. Utilisation = actual studies ÷ fleet's typical throughput.
   const efficiency = useMemo(() => {
-    const capacityYr = Object.entries(settings.equipment).reduce((s, [key, n]) => {
-      const u = EQUIPMENT_UNITS[key];
-      if (!u || !IMAGING_MODALITIES.has(u.modality)) return s;
-      const scansPerMo = settings.equipmentOverrides?.[key]?.scans ?? u.scans; // respect measured-volume override
-      return s + Math.max(0, n || 0) * scansPerMo * 12;
-    }, 0);
-    const entered   = parseFloat(settings.actualStudiesYear) > 0 ? parseFloat(settings.actualStudiesYear) : null;
-    const studiesYr = entered ?? capacityYr;                 // blank → fleet estimate (utilisation 100%)
-    const util      = capacityYr > 0 ? studiesYr / capacityYr : 0;
-    const dEnergy   = dash.totals.energyPerScan;             // kWh/study at typical throughput
-    const dCo2      = rnd(dEnergy * dash.ci, 3);
-    const band = util >= 0.85 ? {label:'High utilisation',    color:'#2E7D32', bg:'#e8f5e9'}
-               : util >= 0.40 ? {label:'Typical utilisation', color:'#F57F17', bg:'#fff8e1'}
-               : {label:'Under-used fleet',    color:'#c62828', bg:'#ffebee'};
-    return {
-      capacityYr: Math.round(capacityYr), studiesYr: Math.round(studiesYr), isEstimate: !entered,
-      utilPct: rnd(util * 100, 0), util,
-      energyPerStudy: util > 0 ? rnd(dEnergy / util, 3) : dEnergy,
-      co2PerStudy:    util > 0 ? rnd(dCo2 / util, 3)    : dCo2,
-      // REVIEW (2026-09, not yet fixed) — `util` can exceed 1 because capacityYr is a configured
-      // default throughput, not a proven physical maximum; values above 100% may therefore be real
-      // and should not simply be clamped. The defect is that `dEnergy / util` treats the fleet's
-      // entire energy as fixed while study volume changes. Active acquisition energy should scale
-      // with actual studies, while idle/standby/off and other fixed loads should be amortised over
-      // them. Model those pools separately, and flag unusually high utilisation for review without
-      // preventing legitimate fixed-energy amortisation. The same simplified `util` also feeds
-      // `nonProductivePct`, where values above 1 can pin the result at 0.
-      designedCo2PerStudy: dCo2,
-      // Active energy scales with actual volume, so under-utilisation raises the
-      // non-productive share (idle/standby/off + unused capacity). At 100% utilisation
-      // this equals the fleet's baseline duty cycle; it rises as utilisation falls.
-      nonProductivePct: rnd(Math.max(0, 100 - dash.totals.activePct * util), 0),
-      band,
-    };
-  }, [settings.equipment, settings.equipmentOverrides, settings.actualStudiesYear, dash.totals.energyPerScan, dash.totals.activePct, dash.ci]);
+    const mult = TIME_MULT[settings.timePeriod] ?? 1;
+    const capacityYr = Object.entries(settings.equipment).reduce((s,[key,n])=>{const u=EQUIPMENT_UNITS[key];if(!u||!IMAGING_MODALITIES.has(u.modality))return s;const scansPerMo=settings.equipmentOverrides?.[key]?.scans??u.scans;return s+Math.max(0,n||0)*scansPerMo*12;},0);
+    const entered=parseFloat(settings.actualStudiesYear)>0?parseFloat(settings.actualStudiesYear):null;
+    const studiesYr=entered??capacityYr;
+    const annualKwh=rnd(dash.totals.kwh/mult*12,2), annualActiveKwh=rnd(Math.max(0,dash.totals.activeKwh-(dash.clinicalMeta?.aiTrainingKwh||0))/mult*12,2);
+    const adjusted=computeUtilizationAdjustedEnergy({annualKwh,annualActiveKwh,capacityYr,studiesYr});
+    const util=adjusted.util;
+    const band=util>=0.85?{label:'High utilisation',color:'#2E7D32',bg:'#e8f5e9'}:util>=0.40?{label:'Typical utilisation',color:'#F57F17',bg:'#fff8e1'}:{label:'Under-used fleet',color:'#c62828',bg:'#ffebee'};
+    return{capacityYr:Math.round(capacityYr),studiesYr:Math.round(studiesYr),isEstimate:!entered,utilPct:rnd(util*100,0),util,energyPerStudy:adjusted.energyPerStudy,co2PerStudy:rnd(adjusted.energyPerStudy*dash.ci,3),designedCo2PerStudy:rnd(dash.totals.energyPerScan*dash.ci,3),nonProductivePct:adjusted.nonProductivePct,modeledAnnualKwh:adjusted.modeledAnnualKwh,band};
+  }, [settings.equipment,settings.equipmentOverrides,settings.actualStudiesYear,settings.timePeriod,dash.totals.kwh,dash.totals.activeKwh,dash.totals.energyPerScan,dash.ci]);
 
   const equivData = useMemo(() => {
     const co2 = equivScope === 'scope2'
@@ -2106,12 +2069,12 @@ function App() {
     const gpuLabel = scen.trainGpu === 'Custom (enter TDP below)'
       ? `Custom GPU (${scen.trainCustomTdpW || 300} W TDP)`
       : (scen.trainGpu || 'GPU not specified');
-    const provData = CLOUD_REGIONS[scen.cloudProvider];
-    const regionCi = (provData && scen.cloudRegion) ? provData.regions[scen.cloudRegion] : undefined;
+    const inferenceProvider = ai.inferenceContext?.provider || scen.inferenceProvider || scen.cloudProvider;
+    const inferenceRegion = ai.inferenceContext?.region || scen.inferenceRegion || scen.cloudRegion;
     return computeAiLabel(scen, ai, {
       gpuLabel,
       libTaskType: LIB_TASK[scen.modelKey] || '',
-      ciSource: regionCi != null ? scen.cloudRegion : `${scen.cloudProvider} average`,
+      ciSource: inferenceRegion || `${inferenceProvider} average`,
       waterPerKwhDefault: WATER_PER_KWH,
       score: g => { const score = cedarsScore(g, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI); return {score, rating: cedarsRating(score)}; },
     });
@@ -2126,12 +2089,16 @@ function App() {
     const ci = getCI(region, settings.customCi);
     const renewablePct = Math.min(100, Math.max(0, parseFloat(deptLabel.renewablePct) || 0));
     const effectiveCi = rnd(ci * (1 - renewablePct / 100), 4);
-    const liveAnnualKwh     = rnd(dash.totals.kwh / mult * 12, 0);
+    const liveAnnualKwh     = rnd(efficiency.modeledAnnualKwh || (dash.totals.kwh / mult * 12), 0);
     const liveAnnualStudies = efficiency.studiesYr;
     const annualKwh     = parseFloat(deptLabel.annualKwh)     > 0 ? parseFloat(deptLabel.annualKwh)     : liveAnnualKwh;
     const annualStudies = parseFloat(deptLabel.annualStudies) > 0 ? parseFloat(deptLabel.annualStudies) : liveAnnualStudies;
     const isLive = !(parseFloat(deptLabel.annualKwh) > 0) && !(parseFloat(deptLabel.annualStudies) > 0);
-    const facilityCo2 = rnd(annualKwh * effectiveCi, 1);
+    const localPoolKwh = Math.max(0, dash.carbonPools?.localKwh || dash.totals.kwh);
+    const cloudStorageKwh = Math.max(0, dash.carbonPools?.cloudStorageKwh || 0);
+    const cloudAiKwh = Math.max(0, dash.carbonPools?.cloudAiKwh || 0), cloudAiCo2 = Math.max(0, dash.carbonPools?.cloudAiCo2 || 0);
+    const weightedOperationalCi = (localPoolKwh + cloudStorageKwh + cloudAiKwh) > 0 ? (localPoolKwh * effectiveCi + cloudStorageKwh * (dash.storage.ci || ci) + cloudAiCo2) / (localPoolKwh + cloudStorageKwh + cloudAiKwh) : effectiveCi;
+    const facilityCo2 = rnd(annualKwh * weightedOperationalCi, 1);
     const kwhPerStudy = annualStudies > 0 ? rnd(annualKwh / annualStudies, 2) : 0;
     // Efficiency of converting energy into delivered care: per-study CO₂ already drives
     // the Score; utilisation (studies vs the configured fleet's typical throughput) is
@@ -2151,19 +2118,8 @@ function App() {
     // do not automatically subtract savings from the modeled baseline (avoids double-counting).
     const monthlyKwhSaving = scenario.monthlyKwhSaved;
     const annualKwhSaving = rnd(monthlyKwhSaving * 12, 0);
-    const co2PctFraction = scenario.savings.co2Fraction;
-    const potentialFacilityCo2 = Math.max(0, annualKwh - annualKwhSaving) * effectiveCi * (1 - co2PctFraction);
-    // REVIEW (2026-09, not yet fixed) — renewable electricity can be applied TWICE here when the
-    // label's `renewablePct` and the selected "Use renewable electricity" intervention represent
-    // the same action: `effectiveCi` applies the former, then `co2PctFraction` applies the latter.
-    // computeInterventions has a separate double-discount bug in its own `projectedCo2` calculation,
-    // but that projected value is not consumed by this formula and is not a third application here.
-    // Fix: define whether the intervention is a target renewable share or an additional reduction
-    // of remaining emissions. If a target, resolve a separate scenario intensity (e.g. at least
-    // 80% renewable) without changing the current baseline, and do not apply that target twice.
-    // If genuinely additional, multiplying the remaining-emissions factors can be valid, but the
-    // UI must say so. Multiplication order is not the issue, and there is no triple application in
-    // this path. Other scope/pool-specific levers must remain separate from renewable intensity.
+    const scenarioReduction = Math.max(-1, Math.min(1, (scenario.savings.pctCo2 || 0) / 100));
+    const potentialFacilityCo2 = Math.max(0, facilityCo2 * (1 - scenarioReduction));
     const co2Saving = rnd(facilityCo2 - potentialFacilityCo2, 1);
     const potentialCo2PerStudy = annualStudies > 0
       ? rnd(Math.max(0, potentialFacilityCo2) / annualStudies, 3) : 0;
@@ -2240,7 +2196,7 @@ function App() {
   // Scope 1/2/3 stacked horizontal bar — shown as % of total so all scopes are visible
   const scopeTotal = dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2;
   const scopePct   = v => scopeTotal > 0 ? rnd(v / scopeTotal * 100, 1) : 0;
-  const scopeVals  = [dash.scopes.scope1Kg, dash.scopes.scope2Kg, dash.scopes.scope3EmbKg, dash.scopes.scope3TravelKg, dash.scopes.scope3ContrastKg, staffCommuteCo2, networkTransferCo2];
+  const scopeVals  = [dash.scopes.scope1Kg, dash.scopes.scope2Kg, dash.scopes.scope3EmbKg, dash.scopes.scope3TravelKg, dash.scopes.scope3ContrastKg, dash.scopes.scope3CloudAiKg, dash.scopes.scope3CloudStorageKg, staffCommuteCo2, networkTransferCo2];
   const chartScopes = {
     labels: ['% of total emissions' + dash.totals.label],
     datasets: [
@@ -2249,6 +2205,8 @@ function App() {
       {label:`Scope 3 — Embodied (${scopePct(dash.scopes.scope3EmbKg)}%)`,          data:[scopePct(dash.scopes.scope3EmbKg)],    backgroundColor:'#4DB6AC'},
       {label:`Scope 3 — Patient travel (${scopePct(dash.scopes.scope3TravelKg)}%)`, data:[scopePct(dash.scopes.scope3TravelKg)], backgroundColor:'#A5D6A7'},
       {label:`Scope 3 — Contrast supply chain (${scopePct(dash.scopes.scope3ContrastKg)}%)`, data:[scopePct(dash.scopes.scope3ContrastKg)], backgroundColor:'#66BB6A'},
+      {label:`Scope 3 — Cloud AI (${scopePct(dash.scopes.scope3CloudAiKg)}%)`, data:[scopePct(dash.scopes.scope3CloudAiKg)], backgroundColor:'#29B6F6'},
+      {label:`Scope 3 — Cloud archive (${scopePct(dash.scopes.scope3CloudStorageKg)}%)`, data:[scopePct(dash.scopes.scope3CloudStorageKg)], backgroundColor:'#26A69A'},
       {label:`Scope 3 — Staff commute (${scopePct(staffCommuteCo2)}%)`,             data:[scopePct(staffCommuteCo2)],            backgroundColor:'#FFB74D'},
       {label:`Scope 3 — Data transfer (${scopePct(networkTransferCo2)}%)`,          data:[scopePct(networkTransferCo2)],         backgroundColor:'#90A4AE'},
     ],
@@ -2501,6 +2459,7 @@ function App() {
         </div>
       </header>
 
+      {rejectedSharedFields.length>0&&<div style={{maxWidth:1200,margin:'8px auto',padding:'9px 12px',background:'#fff3e0',border:'1px solid #ffcc80',borderRadius:10,color:'#8d4b00',fontSize:12}}><strong>Some settings in this shared link were invalid and were ignored.</strong> Review the assessment before using its results. Ignored fields: {rejectedSharedFields.join(', ')}.</div>}
       {!['landing','about'].includes(page) && (
         <WorkflowRail
           page={page}
@@ -2906,10 +2865,11 @@ function App() {
               {deptModelChoice?<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:10}}><span style={{fontSize:12}}>For <strong>{aiModels[deptModelChoice]?.name||deptModelChoice}</strong></span><button type="button" onClick={()=>addDeptDeployment(deptModelChoice)}><Plus size={13}/> Add a local use</button></div>:<div className="note" style={{fontSize:11,marginBottom:10}}>Choose a model above before adding a local use.</div>}
               <div className="note" style={{fontSize:10,marginBottom:(deptLabel.aiTools||[]).length?10:0}}>{(deptLabel.aiTools||[]).length===0?'0 local AI uses configured — this is valid if the department currently uses no Clinical AI.':`${(deptLabel.aiTools||[]).length} local AI use${(deptLabel.aiTools||[]).length===1?'':'s'} configured.`}</div>
 
-              {Object.entries((deptLabel.aiTools||[]).reduce((groups,t)=>{(groups[t.modelId]||=[]).push(t);return groups;},{})).map(([modelId,uses])=>{const record=aiModels[modelId];const modelName=record?.name||modelId||'Legacy AI model';const modelCfg=record&&!record.legacyDeploymentOnly?modelScenFromRecord(record,SCEN_DEFAULTS):null;const modelResult=modelCfg?aiResultFor(modelCfg,settings.region,settings.customCi,settings.equipment,settings.equipmentOverrides):null;const accountingUse=uses.find(u=>u.trainingBoundary==='allocated-local')||uses[0];const allocationRaw=parseFloat(accountingUse?.trainingAllocationPct);const allocationPct=Number.isFinite(allocationRaw)?Math.min(100,Math.max(0,allocationRaw)):100;const allocationMonths=Math.max(1,parseInt(accountingUse?.deployMonths)||36);const trainingTotalKwh=(modelResult?.training?.kwhTotal??parseFloat(accountingUse?.trainKwhTotal)??0)||0;const trainingMonthlyKwh=rnd(trainingTotalKwh*allocationPct/100/allocationMonths,2);return <div key={modelId} style={{borderTop:'1px solid #dfe3d6',paddingTop:10,marginTop:8}}>
+              {Object.entries((deptLabel.aiTools||[]).reduce((groups,t)=>{(groups[t.modelId]||=[]).push(t);return groups;},{})).map(([modelId,uses])=>{const record=aiModels[modelId];const modelName=record?.name||modelId||'Legacy AI model';const modelCfg=record&&!record.legacyDeploymentOnly?modelScenFromRecord(record,SCEN_DEFAULTS):null;const modelResult=modelCfg?aiResultFor(modelCfg,settings.region,settings.customCi,settings.equipment,settings.equipmentOverrides):null;const accountingUse=uses.find(u=>u.trainingBoundary==='allocated-local')||uses[0];const allocationRaw=parseFloat(accountingUse?.trainingAllocationPct);const allocationPct=Number.isFinite(allocationRaw)?Math.min(100,Math.max(0,allocationRaw)):100;const allocationMonths=Math.max(1,parseInt(accountingUse?.deployMonths)||36);const trainingTotalKwh=(modelResult?.training?.kwhTotal??parseFloat(accountingUse?.trainKwhTotal)??0)||0;const trainingMonthlyKwh=rnd(trainingTotalKwh*allocationPct/100/allocationMonths,2);const embodiedUse=uses.find(u=>u.embodiedBoundary==='allocated-local')||uses[0];const embAllocationRaw=parseFloat(embodiedUse?.embodiedAllocationPct);const embAllocationPct=Number.isFinite(embAllocationRaw)?Math.min(100,Math.max(0,embAllocationRaw)):100;const embodiedTotalKg=(modelResult?.embCo2KgTotal??parseFloat(embodiedUse?.embCo2Kg)??0)||0;const embodiedMonths=Math.max(1,parseInt(embodiedUse?.deployMonths)||36);const embodiedMonthlyKg=rnd(embodiedTotalKg*embAllocationPct/100/embodiedMonths,2);return <div key={modelId} style={{borderTop:'1px solid #dfe3d6',paddingTop:10,marginTop:8}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><div style={{flex:1,minWidth:220}}><strong style={{color:'#1b5e20'}}>{modelName}</strong><div className="note" style={{fontSize:10,marginTop:2}}>Shared energy, hardware, performance, and compute-location details feed every local use nested below.</div></div>{record&&<button type="button" className="download" onClick={()=>openAiModelWorkspaceFromDepartment(modelId)} style={{padding:'5px 8px',fontSize:11}}>Edit model details</button>}<button type="button" className="download" onClick={()=>{setDeptModelChoice(modelId);addDeptDeployment(modelId);}} style={{padding:'5px 8px',fontSize:11}}>+ Add another local use</button></div>
                 <div style={{display:'grid',gridTemplateColumns:'minmax(220px,auto) minmax(160px,220px) 1fr',gap:8,alignItems:'start',background:'#f4faf4',borderRadius:10,padding:'8px 10px',marginBottom:8}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Where should this model's training be counted?<select value={accountingUse?.trainingBoundary||'upstream'} onChange={e=>updateDeptModelUses(modelId,'trainingBoundary',e.target.value)} style={{display:'block',width:'100%',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}><option value="upstream">Upstream / outside this department</option><option value="allocated-local">Allocate a share to this department</option></select></label>{accountingUse?.trainingBoundary==='allocated-local'&&<label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Department share of training (%)<input type="number" min="0" max="100" step="1" value={accountingUse?.trainingAllocationPct??'100'} onChange={e=>updateDeptModelUses(modelId,'trainingAllocationPct',e.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/></label>}<div className="note" style={{fontSize:10,margin:0,paddingTop:3}}>{accountingUse?.trainingBoundary==='allocated-local'?(trainingTotalKwh>0?<>CEDARS allocates <strong>{allocationPct}%</strong> of this model's training to the department, approximately <strong>{trainingMonthlyKwh} kWh/month</strong> over {allocationMonths} months. It is counted once for this model, not once per local use.</>:<>This model has no training-energy value yet. Enter one in AI Model &amp; Informatics before this allocation can affect the Department footprint.</>):<>No training electricity is added to this Department footprint. Training remains in the model's upstream lifecycle disclosure; inference is still counted for each local use.</>}</div></div>
-                {uses.map(t=><div key={t.id} style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'10px 12px',margin:'0 0 8px 18px',background:'#fff',boxShadow:'inset 3px 0 0 #c8e6c9'}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:7}}><strong style={{fontSize:11,color:'#607d66'}}>LOCAL USE</strong><input value={t.label??''} placeholder="e.g. ED PE triage" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{flex:1,minWidth:180,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,fontWeight:600}}/><button onClick={()=>removeDeptAiTool(t.id)} title="Remove local use" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button></div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8}}>{[['Share of studies (%)','studiesShare','1','100'],['Deployment period (months)','deployMonths','1','36'],['Local low-value scans avoided (%)','lowValueReductPct','1','0'],['Local scan-time reduction (%)','scanTimeReductPct','1','0'],['Local contrast reduction (%)','contrastReductPct','1','0']].map(([lab,key,step,ph])=><label key={key} style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>{lab}<input type="number" min="0" max={key==='deployMonths'?undefined:'100'} step={step} value={t[key]??''} placeholder={ph} onChange={e=>updateDeptAiTool(t.id,key,e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/></label>)}</div><div className="note" style={{fontSize:10,marginTop:6}}>Local clinical-effect fields start at 0. Enter a value only when supported by local observation, validation, or an explicitly labeled scenario; reference-library effects are not copied into the Department automatically.</div></div>)}</div>;})}
+                <div style={{display:'grid',gridTemplateColumns:'minmax(220px,auto) minmax(160px,220px) 1fr',gap:8,alignItems:'start',background:'#f8faf8',borderRadius:10,padding:'8px 10px',marginBottom:8}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Where should AI hardware manufacturing be counted?<select value={embodiedUse?.embodiedBoundary||'upstream'} onChange={e=>updateDeptModelUses(modelId,'embodiedBoundary',e.target.value)} style={{display:'block',width:'100%',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}><option value="upstream">Upstream / vendor or cloud service</option><option value="allocated-local">Allocate a share to this department</option></select></label>{embodiedUse?.embodiedBoundary==='allocated-local'&&<label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Department share of hardware (%)<input type="number" min="0" max="100" step="1" value={embodiedUse?.embodiedAllocationPct??'100'} onChange={e=>updateDeptModelUses(modelId,'embodiedAllocationPct',e.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/></label>}<div className="note" style={{fontSize:10,margin:0,paddingTop:3}}>{embodiedUse?.embodiedBoundary==='allocated-local'?(embodiedTotalKg>0?<>CEDARS allocates <strong>{embAllocationPct}%</strong> of this model's manufacturing footprint here, approximately <strong>{embodiedMonthlyKg} kgCO₂e/month</strong> over {embodiedMonths} months. It is counted once per model.</>:<>No model-hardware embodied value is available yet, so this allocation currently adds nothing.</>):<>Manufacturing remains upstream and is not added to the Department Scope 3 footprint.</>}</div></div>
+                {uses.map(t=><div key={t.id} style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'10px 12px',margin:'0 0 8px 18px',background:'#fff',boxShadow:'inset 3px 0 0 #c8e6c9'}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:7}}><strong style={{fontSize:11,color:'#607d66'}}>LOCAL USE</strong><input value={t.label??''} placeholder="e.g. ED PE triage" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{flex:1,minWidth:180,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,fontWeight:600}}/><button onClick={()=>removeDeptAiTool(t.id)} title="Remove local use" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button></div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8}}>{[['Share of studies (%)','studiesShare','1','100'],['Deployment period (months)','deployMonths','1','36'],['Local low-value scans avoided (%)','lowValueReductPct','1','0'],['Local scan-time reduction (%)','scanTimeReductPct','1','0'],['Local contrast reduction (%)','contrastReductPct','1','0']].map(([lab,key,step,ph])=><label key={key} style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>{lab}<input type="number" min="0" max={key==='deployMonths'?undefined:'100'} step={step} value={t[key]??''} placeholder={ph} onChange={e=>updateDeptAiTool(t.id,key,e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/></label>)}</div><label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11,marginTop:7}}>Basis for the local clinical-effect values<select value={t.effectBasis||'none'} onChange={e=>updateDeptAiTool(t.id,'effectBasis',e.target.value)}><option value="none">No clinical effect claimed</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence</option><option value="scenario">Assumed scenario</option></select></label><div className="note" style={{fontSize:10,marginTop:6}}>{['observed-local','validated-local'].includes(t.effectBasis)?<>These local-effect values are included in the <strong>current</strong> Department footprint.</>:<>These values are <strong>not</strong> credited to the current Department score. If you want to test them prospectively, model the corresponding change on Improve; CEDARS does not automatically transfer these percentages. This prevents an unvalidated benefit from making today's footprint look better.</>}</div></div>)}</div>;})}
             </div>
 
             {(deptLabel.aiTools||[]).length>0&&<div style={{background:'#f1f8f1',border:'1px solid #c8e6c9',borderRadius:12,padding:'10px 14px',marginBottom:10}}><strong style={{fontSize:12,color:'#1b5e20'}}>Estimated effect of the configured Clinical AI</strong><div style={{display:'flex',gap:14,flexWrap:'wrap',marginTop:5,fontSize:12}}><span>AI electricity <strong>+{fmtKwh(dash.clinicalMeta.aiKwh)}{dash.totals.label}</strong></span><span>Modeled active-scanner energy avoided <strong>−{fmtKwh(dash.clinicalMeta.scannerSavedKwh)}{dash.totals.label}</strong></span>{dash.clinicalMeta.aiEmbodiedKg>0&&<span>AI hardware Scope 3 <strong>+{fmtCo2(dash.clinicalMeta.aiEmbodiedKg)}{dash.totals.label}</strong></span>}</div><div className="note" style={{fontSize:10,marginTop:4}}>Updates automatically. Avoided studies are applied first; scan-time savings are then applied only to the remaining studies, so the same scanner energy is not credited twice.</div></div>}
@@ -3037,7 +2997,7 @@ function App() {
           {dashOpen['carbon'] && (
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>2. Carbon emissions — GHG Protocol scopes</h2>
-            <p className="note" style={{marginBottom:12}}>Scope 1: direct fuel (estimated). Scope 2: purchased electricity. Scope 3: embodied carbon + patient travel + staff commute + DICOM data transfer (all estimated). All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
+            <p className="note" style={{marginBottom:12}}>Scope 1 is reported only when you enter measured/estimated direct emissions; CEDARS no longer derives it as a percentage of electricity. Scope 2 is purchased local electricity. Scope 3 includes embodied carbon, patient travel, contrast, cloud archive carbon, staff commute, and DICOM transfer. All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14,background:'#f1f8f1',borderRadius:12,padding:'8px 16px',flexWrap:'wrap'}}>
               <span style={{fontSize:12,color:'#607d66'}}>
                 Staff commute — <strong style={{color:'#263238'}}>{derivedStaffCount} FTE estimated</strong> from {Object.values(settings.equipment).reduce((s,n)=>s+(n||0),0)} devices (illustrative estimate — see sources.md)
@@ -3049,14 +3009,16 @@ function App() {
                 km
               </label>
             </div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}><label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Direct emissions / Scope 1 (kgCO₂e/year) <input type="number" min="0" step="1" value={settings.scope1AnnualKg} onChange={e=>set('scope1AnnualKg',e.target.value)} placeholder="leave blank if not assessed" style={{width:150,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8}}/></label><span className="note" style={{fontSize:10}}>Optional. Enter fuel/generator/medical-gas emissions when known; blank is reported as not assessed.</span></div>
             <div className="cards">
-              <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={fmtCo2(dash.scopes.scope1Kg)}       sub="Backup generators, medical gas. Estimated 8% of Scope 2 (McKee 2024)."/>
-              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Deployed Clinical AI is already included when entered above.`}/>
+              <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={dash.scopes.scope1Assessed?fmtCo2(dash.scopes.scope1Kg):'Not assessed'}       sub={dash.scopes.scope1Assessed?'User-entered annual direct emissions, scaled to this reporting period.':'No automatic percentage proxy is applied.'}/>
+              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Local Clinical AI compute is included here; outsourced cloud AI is reported in Scope 3.`}/>
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={fmtCo2(dash.scopes.scope3TravelKg)} sub={`${dash.scopes.imagingScans.toLocaleString()} scans × ${PATIENT_KM_RT} km avg round trip.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
               <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={fmtCo2(staffCommuteCo2)}            sub={`~${derivedStaffCount} staff (estimated from device fleet) × ${settings.staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo. DEFRA 2023.`}/>
               <Card icon={<Wifi/>}       title="Scope 3 — Data transfer"   value={fmtCo2(networkTransferCo2)}         sub={`${dash.scopes.imagingScans.toLocaleString()} studies × ${AVG_STUDY_GB} GB avg × 0.001 kWh/GB. DICOM network energy (Aslan et al. 2018).`}/>
+              {dash.scopes.scope3CloudStorageKg>0&&<Card icon={<Database/>} title="Scope 3 — Cloud archive electricity" value={fmtCo2(dash.scopes.scope3CloudStorageKg)} sub={`Cloud archive carbon uses ${dash.storage.ci} kgCO₂e/kWh rather than the hospital grid.`}/>}
             </div>
             <section style={{marginTop:16}}>
               <h2>Scope 1 / 2 / 3 breakdown</h2>
@@ -3095,7 +3057,7 @@ function App() {
               <Card icon={<Cpu/>}          title="Top idle waster"    value={dash.topOpportunities[0]?.equipment ?? '—'}          sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
               <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="Radiography 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
               <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
-              <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + contrast supply chain + staff commute + DICOM data transfer. Often larger than Scope 2 in a full lifecycle view."/>
+              <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + contrast supply chain + outsourced cloud AI/archive electricity + staff commute + DICOM data transfer."/>
             </div>
 
             {/* Data storage & archiving — fleet-driven long-term PACS/archive footprint */}
@@ -3122,12 +3084,13 @@ function App() {
                   <input type="number" min="0" step="1" value={settings.storageIntensityCustom} onChange={e=>set('storageIntensityCustom',e.target.value)} placeholder={settings.storageCloud ? String(STORAGE_KWH_PER_TB_CLOUD) : String(STORAGE_KWH_PER_TB_ONPREM)} style={{width:80,padding:'6px 9px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontWeight:400}}/>
                 </label>
               </div>
+              {settings.storageCloud&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:8,margin:'-4px 0 12px',padding:'9px 10px',background:'#f7fbf8',border:'1px solid #dfe9df',borderRadius:10}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Cloud archive provider<select value={settings.storageProvider||'AWS'} onChange={e=>{const p=e.target.value;set('storageProvider',p);set('storageRegion','');set('storageCloudCi','');}}>{META.cloudProviders.filter(p=>p!=='Local compute').map(p=><option key={p} value={p}>{p}</option>)}</select></label><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Cloud archive region<select value={settings.storageRegion||''} onChange={e=>{const r=e.target.value;set('storageRegion',r);const ci=CLOUD_REGIONS[settings.storageProvider||'AWS']?.regions?.[r];set('storageCloudCi',ci==null?'':String(ci));}}><option value="">Provider average ({CLOUD[settings.storageProvider||'AWS']?.ci??0.20} kgCO₂e/kWh)</option>{Object.entries(CLOUD_REGIONS[settings.storageProvider||'AWS']?.regions||{}).map(([r,ci])=><option key={r} value={r}>{r} — {ci} kgCO₂e/kWh</option>)}</select></label><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Archive grid CI (kgCO₂e/kWh)<input type="number" min="0" step="0.001" value={settings.storageCloudCi} onChange={e=>set('storageCloudCi',e.target.value)} placeholder={String(CLOUD[settings.storageProvider||'AWS']?.ci??0.20)}/></label></div>}
               {settings.storageIntensityCustom && parseFloat(settings.storageIntensityCustom) > 0 && (
                 <p className="note" style={{marginTop:-8,marginBottom:12,fontSize:11}}>Custom intensity overrides the on-prem/cloud default above — enter your own server-density/PUE figure (e.g. matching a published site architecture). Clear to go back to the default.</p>
               )}
               <div className="cards">
                 <Card icon={<HardDrive/>}    title="Data generated / year" value={`${dash.storage.annualDataTB} TB`} sub="Σ studies/yr × per-modality file size (Doo 2024)."/>
-                <Card icon={<Database/>}     title="Archive held"          value={`${dash.storage.storedTB} TB`}   sub={`${dash.storage.retentionYears}-yr retention · ${dash.storage.cloud?'cloud':'on-premises'} (${dash.storage.intensity} kWh/TB/yr).`}/>
+                <Card icon={<Database/>}     title="Archive held"          value={`${dash.storage.storedTB} TB`}   sub={`${dash.storage.retentionYears}-yr retention · ${dash.storage.cloud?`cloud${dash.storage.provider?` (${dash.storage.provider}${dash.storage.region?` · ${dash.storage.region}`:''})`:''}`:'on-premises'} · ${dash.storage.intensity} kWh/TB/yr · ${dash.storage.ci} kgCO₂e/kWh.`}/>
                 <Card icon={<Zap/>}          title={`Storage energy ${dash.totals.label}`} value={fmtKwh(dash.storage.kwh)} sub={`Included in the department total. ${fmtCo2(dash.storage.co2)}.`}/>
                 <Card icon={<Droplets/>}     title={`Storage cost ${dash.totals.label}`}   value={fmtMoney(dash.storage.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub="Electricity cost at your tariff; cloud service fees billed separately."/>
               </div>
@@ -3309,6 +3272,16 @@ function App() {
                   </p>
                 </div>
                 <button type="button" onClick={addBenchModel} disabled={benchModels.length>=6}><Plus size={14}/> Add candidate</button>
+              </div>
+              <div style={{marginTop:14,padding:'11px 12px',border:'1px solid #c8e6c9',borderRadius:12,background:'#f7fbf8'}}>
+                <strong style={{fontSize:12,color:'#1b5e20'}}>Shared comparison definition</strong>
+                <p className="note" style={{fontSize:10,margin:'4px 0 8px'}}>Enter this once. Performance ranking and Pareto labels stay off until all candidates address the same task, endpoint, and validation cohort/context.</p>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:8}}>
+                  <label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Clinical task / intended use<input value={scen.compareClinicalTask||''} onChange={e=>setS('compareClinicalTask',e.target.value)} placeholder="e.g. PE triage on CTPA"/></label>
+                  <label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Clinical endpoint<input value={scen.compareEndpoint||''} onChange={e=>setS('compareEndpoint',e.target.value)} placeholder="e.g. case-level PE detection"/></label>
+                  <label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Validation cohort / dataset context<input value={scen.compareCohort||''} onChange={e=>setS('compareCohort',e.target.value)} placeholder="e.g. same local retrospective cohort"/></label>
+                </div>
+                {!benchResults.comparisonDefinitionComplete&&<div className="note" style={{fontSize:10,marginTop:7,color:'#8d6e63'}}>Ranking is intentionally suppressed until all three shared fields are completed.</div>}
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(310px,1fr))',gap:14,marginTop:14}}>
                 {benchModels.map((candidate, index) => (
@@ -3760,13 +3733,7 @@ function App() {
             <p className="note" style={{marginBottom:12}}>Operational carbon uses cloud provider CI ({ai.cloudCi} kgCO₂e/kWh). Clinical savings use local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh). Global avg: 0.473 · EU avg: 0.237 (Vosshenrich)</p>
             <div className="cards">
               <Card icon={<Leaf/>}        title="Gross CO₂e/month"          value={`${ai.grossKgCo2e} kgCO₂e`}                 sub="Inference + amortised training + embodied GPU (all monthly)."/>
-              <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${ai.embCo2KgTotal} kgCO₂e manufacturing, amortised 36 months. (ESR PP 2025)`}/>
-              {/* REVIEW (2026-09, not yet fixed) — "36 months" is hard-coded in this label while the
-                  value shown (ai.embGpuKgCo2e) is divided by the user-configurable DEPLOY_MO, so
-                  changing the deployment period in the form makes the caption contradict its own
-                  number. Fix: return DEPLOY_MO from computeAI (as e.g. ai.deployMonths) and
-                  interpolate it here — the same fix pattern as any other displayed assumption that
-                  is really an input. */}
+              <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${ai.embCo2KgTotal} kgCO₂e manufacturing, amortised ${ai.deployMonths} months. (ESR PP 2025)`}/>
               <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`}          sub="Scanner time reduction + avoided scans. Replace with measured before/after metering."/>
               <section className="card">
                 <div className="cardHead"><BarChart3/><span>Net AI impact / month</span></div>
@@ -4054,9 +4021,14 @@ function App() {
               Performance values are <strong>user-reported</strong>, not predicted by CEDARS. Compare only candidates for the same clinical task using the same performance metric. Carbon/study is {scen.trainDisclosed==='no'?'inference only because training is marked unavailable':'inference + an amortised share of training over the expected deployment'}. The CEDARS AI Score keeps embodied hardware carbon as a separate disclosure rather than folding it into this operational per-study grade.
             </p>
 
-            {!benchResults.comparablePerformance && benchResults.rows.length>1 && (
+            {!benchResults.comparisonDefinitionComplete && benchResults.rows.length>1 && (
               <div style={{background:'#fff8e1', border:'1px solid #ffe082', borderRadius:12, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#5d4037'}}>
-                <strong>Performance metrics are mixed ({benchResults.metrics.join(' · ')}).</strong> CEDARS will show the carbon columns, but it will not calculate a Pareto frontier or plot unlike performance metrics against one another.
+                <strong>Complete the shared clinical task, endpoint, and validation cohort/context above before interpreting relative performance.</strong> Carbon columns remain available, but CEDARS intentionally suppresses performance ranking and the Pareto plot until the comparison is like-for-like.
+              </div>
+            )}
+            {benchResults.comparisonDefinitionComplete && !benchResults.comparablePerformance && benchResults.rows.length>1 && (
+              <div style={{background:'#fff8e1', border:'1px solid #ffe082', borderRadius:12, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#5d4037'}}>
+                <strong>Performance metric/unit/direction or candidate validation basis differs ({benchResults.metrics.join(' · ')}).</strong> CEDARS will show carbon results, but it will not rank or plot unlike performance outcomes.
               </div>
             )}
 
@@ -4153,7 +4125,7 @@ function App() {
 
             <section style={{marginBottom:16}}>
               <h2 style={{marginBottom:4}}>Performance vs carbon</h2>
-              <p className="note" style={{marginBottom:12}}>{benchResults.rows[0]?.performanceDirection==='lower'?'Lower-left':'Upper-left'} is best for the selected metric direction. <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient — no other candidate beats them on both axes.</p>
+              <p className="note" style={{marginBottom:12}}>{benchResults.comparablePerformance?<>For the shared like-for-like definition, {benchResults.rows[0]?.performanceDirection==='lower'?'lower-left':'upper-left'} is preferred. <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient.</>:<>The performance-vs-carbon plot appears only after the shared task/endpoint/cohort is complete and all candidates use the same metric, unit, and direction.</>}</p>
               {benchResults.comparablePerformance ? <>
               {(()=>{
                 const data = {datasets:[{
@@ -4268,7 +4240,7 @@ function App() {
                     <input type="checkbox" checked={active} onChange={()=>toggleScenarioIntervention(name)} style={{width:16,height:16,accentColor:'#2E7D32',marginTop:2,flexShrink:0}}/>
                     <div>
                       <div style={{fontWeight:600,fontSize:14,marginBottom:2}}>{name}</div>
-                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.kwh>0?` · ~${(data.kwh*12).toLocaleString()} kWh/yr`:''}{data.co2Pct?` · −${data.co2Pct}% operational carbon`:''}{data.scope3EmbPct?` · −${data.scope3EmbPct}% embodied carbon`:''}</div>
+                      <div style={{fontSize:12,color:'#607d66'}}>{data.note}{data.guidanceOnly?' · guidance only':data.fraction?` · modeled scenario default ${Math.round(data.fraction*100)}% of the relevant energy pool`:''}{data.renewableTargetPct?` · target ≥${data.renewableTargetPct}% renewable`:''}{data.scope3EmbPct?` · −${data.scope3EmbPct}% embodied carbon`:''}</div>
                     </div>
                   </label>
                 );
@@ -4730,7 +4702,8 @@ function App() {
                 <div><span>Training carbon</span><strong>{ecoLabelData.trainCo2>0 ? `${ecoLabelData.trainCo2} kgCO₂e` : '—'}</strong></div>
                 <div><span>Inference energy</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : '—'}</strong></div>
                 <div><span>Inference carbon</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : '—'}</strong></div>
-                <div><span>Compute region</span><strong>{ecoLabelData.ciSource || '—'}</strong></div>
+                <div><span>Training compute</span><strong>{ecoLabelData.trainingProvider || '—'} · {ecoLabelData.trainingRegion || 'provider average'}</strong></div>
+                <div><span>Inference compute</span><strong>{ecoLabelData.inferenceProvider || '—'} · {ecoLabelData.inferenceRegion || 'provider average'}</strong></div>
                 <div><span>Water screening estimate</span><strong>{ecoLabelData.waterLitres>0 ? `${ecoLabelData.waterLitres.toLocaleString()} L training` : '—'}</strong></div>
               </div>
             </div>
@@ -4830,9 +4803,8 @@ function App() {
                 ['Total training energy',    ecoLabelData.trainDisclosed ? `${ecoLabelData.totalEnergyKwh} kWh over ${ecoLabelData.numRuns} run${ecoLabelData.numRuns===1?'':'s'}` : 'not disclosed by vendor'],
                 ...(ecoLabelData.vsReferenceRatio != null ? [['Training efficiency', `${ecoLabelData.vsReferenceRatio}× reference (${ecoLabelData.kwhReference.toLocaleString()} kWh typical for this architecture/size)`]] : []),
                 ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
-                ['Renewable energy',         `${ecoLabelData.renewablePct}%`],
-                ['Compute / PUE',            `${ecoLabelData.cloudProvider} · PUE ${ecoLabelData.pue}`],
-                ['Cloud grid CI',            `${ecoLabelData.ci} kgCO₂e/kWh (${ecoLabelData.ciSource})`],
+                ['Training compute',         `${ecoLabelData.trainingProvider} · ${ecoLabelData.trainingRegion || 'provider average'} · ${ecoLabelData.trainingEffectiveCi} kgCO₂e/kWh`],
+                ['Inference compute',        `${ecoLabelData.inferenceProvider} · ${ecoLabelData.inferenceRegion || 'provider average'} · ${ecoLabelData.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${ecoLabelData.pue}`],
                 ['Water footprint',          `${ecoLabelData.waterLitres.toLocaleString()} L`],
                 ...(ecoLabelData.hasInference ? [['Monthly inference', `${ecoLabelData.inferStudies.toLocaleString()} studies · ${ecoLabelData.inferMonthlyKwh} kWh · ${ecoLabelData.inferCo2Month} kgCO₂e`]] : []),
               ].map(([k, v], i) => (
@@ -4889,8 +4861,8 @@ function App() {
               const items = [
                 ['1', 'Compute hardware (type, count)', d.gpuHardware, d.gpuHardware !== '—', 'AI workload'],
                 ['2', 'Total energy (kWh) / GPU-hours', d.hasData ? `${d.totalEnergyKwh.toLocaleString()} kWh · ${d.totalGpuHours} GPU-h` : '—', d.hasData, 'AI workload'],
-                ['3', 'Grid carbon intensity, location, source', `${d.ci} kgCO₂e/kWh · ${d.ciSource} · ${d.renewablePct}% renewable`, !!d.ciSource, 'AI + cloud'],
-                ['4', 'Cloud provider & PUE', `${d.cloudProvider} · PUE ${d.pue}`, !!d.cloudProvider, 'Cloud'],
+                ['3', 'Training compute context', `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`, !!d.trainingProvider, 'Training'],
+                ['4', 'Inference compute context', `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`, !!d.inferenceProvider, 'Inference'],
                 ['5', 'Training vs inference split', `Training ${d.trainCo2} kgCO₂e · Inference ${d.hasInference ? `${d.inferCo2Month} kgCO₂e/mo` : 'not reported'}`, d.hasData, 'AI workload'],
                 ['6', 'Water footprint', d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L` : 'not reported', d.waterLitres > 0, 'Water use'],
                 ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'add inference volume to grade', d.graded, 'Score / Rating'],
@@ -4933,8 +4905,8 @@ function App() {
                  ? `(${ecoLabelData.energyPerRunKwh} kWh per run, ${ecoLabelData.trainProv === 'measured' ? 'directly measured' + (ecoLabelData.trainTool ? ' with ' + ecoLabelData.trainTool : '') : ecoLabelData.trainProv === 'estimated' ? 'estimated from GPU TDP × hours' : 'a literature-anchored estimate for this task family'}), ` +
                    `with an estimated carbon footprint of ${ecoLabelData.trainCo2} kgCO₂e `
                  : '') +
-               `(${ecoLabelData.cloudProvider}; cloud grid CI: ${ecoLabelData.ci} kgCO₂e/kWh, ${ecoLabelData.ciSource}; ` +
-               `renewable energy: ${ecoLabelData.renewablePct}%; PUE: ${ecoLabelData.pue}). ` +
+               `(training: ${ecoLabelData.trainingProvider}, ${ecoLabelData.trainingRegion || 'provider average'}, ${ecoLabelData.trainingEffectiveCi} kgCO₂e/kWh; ` +
+               `inference: ${ecoLabelData.inferenceProvider}, ${ecoLabelData.inferenceRegion || 'provider average'}, ${ecoLabelData.inferenceEffectiveCi} kgCO₂e/kWh, PUE ${ecoLabelData.pue}). ` +
                (ecoLabelData.waterProv === 'not-disclosed'
                  ? `Water use was not assessed. `
                  : ecoLabelData.waterProv === 'screening'

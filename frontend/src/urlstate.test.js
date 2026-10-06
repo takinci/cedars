@@ -129,3 +129,5 @@ describe('backward compatibility', () => {
 
 
 describe('phase 3 URL validation',()=>{it('drops invalid care-changing scalar values',()=>{const d=decodeConfig('#r=__proto__&t=__proto__&c=-5&sy=abc&rp=150&dp=0');expect(d.settings?.region).toBeUndefined();expect(d.settings?.timePeriod).toBeUndefined();expect(d.settings?.customCi).toBeUndefined();expect(d.settings?.storageRetentionYears).toBeUndefined();expect(d.scen?.renewablePct).toBeUndefined();expect(d.scen?.deployMonths).toBeUndefined();expect(d.rejectedFields).toEqual(expect.arrayContaining(['region','timePeriod','customCi','storageRetentionYears','renewablePct','deployMonths']));});it('caps equipment counts at 999',()=>{const d=decodeConfig('#eq=ct~1000000-mri_15t~2');expect(d.settings.equipment).toEqual({mri_15t:2});});});
+
+describe('final accounting URL fields',()=>{it('round-trips safe accounting scalars',()=>{const s={...SETTINGS_DEFAULTS,storageProvider:'AWS',storageCloudCi:'0.12',scope1AnnualKg:'900'};const d=decodeConfig('#'+encodeConfig({settings:s}));expect({...SETTINGS_DEFAULTS,...d.settings}).toEqual(s);});});

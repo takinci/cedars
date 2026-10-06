@@ -52,7 +52,7 @@ export default function SaveSharePanel({
 
         <div style={{border:'1px solid #e0e0e0',borderRadius:18,padding:16}}>
           <div style={{display:'flex',alignItems:'center',gap:8,fontWeight:800,color:'#263238',marginBottom:8}}><Download size={18} style={{color:'#2E7D32'}}/> Portable CEDARS file</div>
-          <p className="note" style={{fontSize:12,lineHeight:1.5,minHeight:54}}>Download a durable <code>.cedars.json</code> backup, then open it later on this or another device. Opening the file is processed locally; it is not uploaded.</p>
+          <p className="note" style={{fontSize:12,lineHeight:1.5,minHeight:54}}>Download the <strong>complete assessment</strong> — including the AI model inventory, Department local-use configurations, accounting choices, provenance, and reporting state. Open it later on this or another device; it is processed locally and not uploaded.</p>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             <button onClick={onDownload} style={buttonStyle}><Download size={15}/> Download CEDARS file</button>
             <button className="download" onClick={()=>inputRef.current?.click()} style={buttonStyle}><Upload size={15}/> Open CEDARS file</button>
@@ -62,7 +62,7 @@ export default function SaveSharePanel({
 
         <div style={{border:'1px solid #e0e0e0',borderRadius:18,padding:16}}>
           <div style={{display:'flex',alignItems:'center',gap:8,fontWeight:800,color:'#263238',marginBottom:8}}><Share2 size={18} style={{color:'#2E7D32'}}/> Create a reproducible link</div>
-          <p className="note" style={{fontSize:12,lineHeight:1.5,minHeight:54}}>Generate a link that reopens this CEDARS configuration. Nothing is published or sent anywhere until you choose to copy and share the link.</p>
+          <p className="note" style={{fontSize:12,lineHeight:1.5,minHeight:54}}>Generate a compact link for the current calculator/current AI model configuration. It is <strong>not</strong> a complete multi-model Department backup; use the CEDARS file for that. Nothing is published or sent until you copy and share the link.</p>
           <button onClick={()=>setShareConfirmOpen(true)} style={buttonStyle}><Share2 size={15}/>{linkCopied?'Link copied':'Create reproducible assessment link'}</button>
         </div>
 
@@ -84,7 +84,7 @@ export default function SaveSharePanel({
               <h3 id="share-link-title" style={{margin:0,color:'#1b5e20'}}>Create a shareable link?</h3>
             </div>
             <p style={{margin:'0 0 10px',fontSize:13,lineHeight:1.6,color:'#455a64'}}>
-              This will create a URL containing your current calculator configuration. CEDARS does not publish or send the link automatically. Anyone you choose to send the full link to can reopen the same configuration.
+              This will create a URL containing the current calculator and current AI-model configuration. It does not carry the complete multi-model Clinical AI inventory or every full-assessment field; use a portable CEDARS file when exact full-assessment transfer is required. CEDARS does not publish or send the link automatically.
             </p>
             <p style={{margin:'0 0 18px',fontSize:12,lineHeight:1.55,color:'#607d66'}}>
               Personal details, email addresses, and contribution-consent information are not included.

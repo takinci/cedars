@@ -4,7 +4,7 @@
 // hand (e.g. imaging scans = Σ(unit scans × count) × 12; travel = scans × 20 km × 0.17 kg/km).
 // Run: `npm test`.
 import { describe, it, expect } from 'vitest';
-import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, sanitizeRetentionYears } from './model.js';
+import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, sanitizeRetentionYears } from './model.js';
 
 // One reference department: 2 CT, 1 MRI 1.5T, 3 Radiography, 2 Ultrasound, 1 PACS, 5 workstations.
 const FLEET = { ct: 2, mri_15t: 1, xray: 3, ultrasound: 2, pacs: 1, workstations: 5 };
@@ -69,9 +69,9 @@ describe('computeInterventions — FLEET, delta from current config', () => {
       'Germany', 'Annual', FLEET, undefined, 'AWS', 'Standby', {});
     expect(iv.count).toBe(2);
     expect(iv.baseline.kwh).toBeCloseTo(301887.49, 2);
-    expect(iv.savings.kwh).toBe(25008);              // overnight 15408 + low-value 9600
-    expect(iv.projected.kwh).toBeCloseTo(276879.49, 2);
-    expect(iv.savings.pctEnergy).toBeCloseTo(8.3, 1);
+    expect(iv.savings.kwh).toBe(21840);              // overnight 15408 + fleet-scaled low-value 6432
+    expect(iv.projected.kwh).toBeCloseTo(280047.49, 2);
+    expect(iv.savings.pctEnergy).toBeCloseTo(7.2, 1);
   });
   it('storage axial-only lever saves the reformats delta vs current all-reformats config', () => {
     const iv = computeInterventions(
@@ -161,4 +161,14 @@ describe('phase 3 integrity guards',()=>{
   it('invalid retention falls back to 10 years',()=>{expect(sanitizeRetentionYears('abc')).toBe(10);const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {retentionYears:'abc',cloud:false,reformats:'all'}, {});expect(d.storage.retentionYears).toBe(10);expect(d.storage.kwh).toBeGreaterThan(0);});
   it('department clinical savings use the same helper',()=>{const base=computeDashboard('Germany','Monthly',FLEET);const expected=computeClinicalScannerSavings({imagingScans:base.clinicalBasis.imagingScans,scannerActiveKwh:base.clinicalBasis.scannerActiveKwh,avoidedFrac:0.2,scanTimeFrac:0.5});const d=computeDashboard('Germany','Monthly',FLEET,undefined,{avoidedFrac:0.2,scanTimeFrac:0.5});expect(d.clinicalMeta.scannerSavedKwh).toBeCloseTo(expected.savedKwh,1);});
   it('zero scan-volume does not produce Infinity',()=>{const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {ct:{scans:0}});expect(d.byEquipment.find(x=>x.modality==='CT').energyPerScan).toBeNull();});
+});
+
+describe('final accounting and intervention integrity',()=>{
+  it('drops negative/non-finite local equipment overrides in the model layer',()=>{const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {ct:{active_kw:-500,idle_kw:Infinity,scans:100}});const row=d.byEquipment.find(x=>x.modality==='CT');expect(row.kwh).toBeGreaterThan(0);expect(Number.isFinite(row.kwh)).toBe(true);});
+  it('uses a separate cloud-storage CI and classifies it outside Scope 2',()=>{const d=computeDashboard('Switzerland','Monthly',{ct:1},undefined,{}, {retentionYears:'10',cloud:true,reformats:'all',provider:'AWS',cloudCi:'0.5'}, {});expect(d.storage.ci).toBe(0.5);expect(d.scopes.scope3CloudStorageKg).toBeGreaterThan(0);expect(d.storage.co2).toBeCloseTo(d.storage.kwh*0.5,1);});
+  it('keeps remote Clinical AI compute out of hospital Scope 2 and uses its own carbon factor',()=>{const base=computeDashboard('Switzerland','Monthly',{ct:1});const d=computeDashboard('Switzerland','Monthly',{ct:1},undefined,{inferKwhPerStudy:0.01,aiLocalInferKwhPerStudy:0,aiCloudInferKwhPerStudy:0.01,aiCloudInferCo2PerStudy:0.005});expect(d.scopes.scope2Kg).toBeCloseTo(base.scopes.scope2Kg,1);expect(d.scopes.scope3CloudAiKg).toBeGreaterThan(0);expect(d.clinicalMeta.aiCloudKwh).toBeGreaterThan(0);});
+  it('leaves Scope 1 unassessed unless a value is entered',()=>{const a=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {});expect(a.scopes.scope1Assessed).toBe(false);expect(a.scopes.scope1Kg).toBe(0);const b=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {scope1AnnualKg:'1200'}, {});expect(b.scopes.scope1Assessed).toBe(true);expect(b.scopes.scope1Kg).toBeCloseTo(100,1);});
+  it('models utilization with fixed plus volume-dependent energy rather than dividing the whole footprint by utilization',()=>{const r=computeUtilizationAdjustedEnergy({annualKwh:1000,annualActiveKwh:400,capacityYr:1000,studiesYr:500});expect(r.modeledAnnualKwh).toBe(800);expect(r.energyPerStudy).toBe(1.6);expect(r.nonProductivePct).toBe(75);});
+  it('does not give an already-100%-renewable department another renewable credit',()=>{const x=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},100);expect(x.savings.co2).toBeCloseTo(0,1);});
+  it('fleet-scaled interventions do not erase a tiny department footprint via fixed kWh constants',()=>{const x=computeInterventions(['Reduce low-value imaging','Shorten protocols','Optimize scheduling'],'Germany','Monthly',{ultrasound:1},undefined,'AWS','Standby');expect(x.savings.pctEnergy).toBeLessThan(60);expect(x.projected.kwh).toBeGreaterThan(0);});
 });
