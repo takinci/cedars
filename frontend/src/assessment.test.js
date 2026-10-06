@@ -30,6 +30,14 @@ describe('CEDARS assessment persistence', () => {
     expect(parseAssessmentText(JSON.stringify(snapshot))).toEqual({ok:true, value:snapshot});
   });
 
+  it('persists supplied canonical model records and deployment references', () => {
+    const aiModels = {'model-a':{id:'model-a',name:'Model A',config:{modelId:'model-a',projectName:'Model A'}}};
+    const aiDeployments = [{id:'dep-1',modelId:'model-a',label:'ED use',studiesShare:'25',deployMonths:'24',trainingBoundary:'upstream',lowValueReductPct:'0',scanTimeReductPct:'0',contrastReductPct:'0'}];
+    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'},scen:{modelId:'model-a',projectName:'Model A'},deptLabel:{aiTools:aiDeployments},aiModels,aiDeployments});
+    expect(snapshot.assessment.aiModels['model-a'].config.projectName).toBe('Model A');
+    expect(snapshot.assessment.aiDeployments[0]).toMatchObject({modelId:'model-a',useSharePct:'25',deploymentMonths:'24'});
+  });
+
   it('migrates schema-v1 assessments without dropping legacy fields', () => {
     const old = {format:'CEDARS', schemaVersion:1, appVersion:'web', savedAt:'2026-09-20T00:00:00.000Z', assessment:{settings:{region:'Switzerland'}, scen:{modelKey:'cad'}, deptLabel:{aiTools:[]}, customLegacyField:'kept'}};
     const parsed = parseAssessmentText(JSON.stringify(old));

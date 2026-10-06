@@ -16,17 +16,11 @@ export const REFS = {
     venue: 'J Am Coll Radiol', year: 2024, cite: '2024;21:248–256',
     doi: '10.1016/j.jacr.2023.11.011', verified: '2026-10-04',
   },
-  'jia-eurradiol-2026': {
-    authors: 'Jia Y, Deng M, Burger R, Sheard S, Hanneman K, Drucker Iarovich M, Sala E, Avesani G, Illing RO, Rockall AG',
-    title: 'Greenhouse gas emissions due to long-term data storage of CT with reformats and strategies for mitigation',
-    venue: 'Eur Radiol', year: 2026, cite: '2026;36:2186–2197',
-    doi: '10.1007/s00330-025-12023-z', verified: '2026-10-04',
-  },
-  'doo-jacr-cloud-2024': {
-    authors: 'Doo FX, Kulkarni P, Siegel EL, Toland M, Yi PH, Carlos RC, Parekh VS',
-    title: 'Economic and environmental costs of cloud technologies for medical imaging and radiology artificial intelligence',
-    venue: 'J Am Coll Radiol', year: 2024, cite: '2024;21:248–256',
-    doi: '10.1016/j.jacr.2023.11.011', verified: '2026-10-04',
+  'doo-radiology-llm-2024': {
+    authors: 'Doo FX, Savani D, Kanhere A, Carlos RC, Joshi A, Yi PH, Parekh VS',
+    title: 'Optimal Large Language Model Characteristics to Balance Accuracy and Energy Use for Sustainable Medical Applications',
+    venue: 'Radiology', year: 2024, cite: '2024;312(2):e240320',
+    doi: '10.1148/radiol.240320', verified: '2026-10-06',
   },
   'jia-eurradiol-2026': {
     authors: 'Jia Y, Deng M, Burger R, Sheard S, Hanneman K, Drucker Iarovich M, Sala E, Avesani G, Illing RO, Rockall AG',

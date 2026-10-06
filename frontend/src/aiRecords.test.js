@@ -1,11 +1,12 @@
 import {describe, expect, it} from 'vitest';
-import {buildAiState, migrateLegacyAiState, performanceMetricFromScen} from './aiRecords.js';
+import {buildAiState, migrateLegacyAiState, performanceMetricFromScen, modelScenFromRecord, toolFromDeployment} from './aiRecords.js';
 
 describe('canonical AI records', () => {
   it('wraps the legacy single-model fields without losing them', () => {
     const state = buildAiState({modelId:'model-a', projectName:'Model A', accuracyMetric:'Dice', accuracyPct:'0.91', performanceUnit:'fraction', performanceDirection:'higher'}, []);
     expect(state.activeAiModelId).toBe('model-a');
     expect(state.aiModels['model-a'].performance[0]).toMatchObject({metric:'Dice', value:'0.91', unit:'fraction', direction:'higher'});
+    expect(state.aiModels['model-a'].config.modelId).toBe('model-a');
   });
 
   it('keeps training and inference contexts separate while inheriting legacy context by default', () => {
@@ -20,6 +21,14 @@ describe('canonical AI records', () => {
     const state = buildAiState({modelId:'model-a'}, [{id:'dep-1', modelId:'model-a', studiesShare:'50', trainingBoundary:'upstream'}]);
     expect(state.aiDeployments[0]).toMatchObject({id:'dep-1', modelId:'model-a', useSharePct:'50', trainingBoundary:'upstream'});
     expect(state.aiModels[state.aiDeployments[0].modelId]).toBeTruthy();
+  });
+
+  it('rehydrates a model calculator record and deployment without copying canonical energy fields', () => {
+    const state = buildAiState({modelId:'model-a', projectName:'Model A', inferKwh:'0.0042', trainKwhMeasured:'42'}, [{id:'dep-1',modelId:'model-a',studiesShare:'25',deployMonths:'24',lowValueReductPct:'5'}]);
+    const scen = modelScenFromRecord(state.aiModels['model-a'], {precision:'float32 (standard)'});
+    const tool = toolFromDeployment(state.aiDeployments[0]);
+    expect(scen).toMatchObject({modelId:'model-a', projectName:'Model A', inferKwh:'0.0042', trainKwhMeasured:'42'});
+    expect(tool).toMatchObject({modelId:'model-a', studiesShare:'25', deployMonths:'24', lowValueReductPct:'5'});
   });
 
   it('migrates legacy assessment payloads additively', () => {

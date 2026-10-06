@@ -75,12 +75,12 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
         <div style={{...card, order:2, borderColor: route==='compare' ? '#2E7D32' : '#c8e6c9'}}>
           <div style={{display:'flex', alignItems:'center', gap:10}}>
             <TrendingUp size={20} style={{color:'#2E7D32', flexShrink:0}}/>
-            <div><span style={kicker}>OPTIONAL COMPARISON</span><br/><strong style={{fontSize:16}}>Compare candidate models</strong></div>
+            <div><span style={kicker}>PROCURE · DEPLOY</span><br/><strong style={{fontSize:16}}>Use one model or compare candidates</strong></div>
           </div>
-          <p className="note" style={{margin:0}}>Use this only when comparison helps the decision. Compare at least two like-for-like candidates under one workload, then continue with the selected candidate as the active model record.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
+          <p className="note" style={{margin:0}}>If you already selected a model, go straight to its model record; comparison is optional. Compare candidates only when it helps the decision, and keep task, endpoint, metric and validation context like-for-like.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
           <div style={inset}>
             <div>
-              <p style={q}>How should the models be ranked?</p>
+              <p style={q}>If you are comparing, how should the models be ranked?</p>
               <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                 <button type="button" style={seg(basis!=='inference')} onClick={()=>onBasis('amortised')}>Carbon per study, including a share of training</button>
                 <button type="button" style={seg(basis==='inference')} onClick={()=>onBasis('inference')}>Carbon per study, inference only — training unknown</button>
@@ -92,6 +92,7 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
             For LLM/agentic candidates, recent inference studies show that energy varies substantially with prompt length, reasoning/test-time compute, hardware, batching and serving stack; CEDARS therefore treats published query-energy figures as sanity checks rather than one universal carbon-per-study default.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/>
           </p>
           <div style={{marginTop:'auto', display:'flex', gap:8, flexWrap:'wrap'}}>
+            <button type="button" onClick={()=>{onOwnMode('spec');onRoute('own');}}>I already have a model →</button>
             <button type="button" className={route==='compare'?'':'download'} onClick={()=>onRoute('compare')}>Compare candidates (optional) →</button>
             <button type="button" className="download" onClick={()=>onExample('maistro-agentic')}>See worked procurement example</button>
           </div>
@@ -143,8 +144,9 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
 
 // Compact strip shown once a route is chosen.
 export function AiRouteStrip({route, ownMode, onComparison, onChange}) {
-  const label = route === 'compare' ? 'Compare candidates (optional)'
-    : `Assess one model · ${ownMode === 'measured' ? 'measured numbers' : ownMode === 'measure' ? 'help me measure' : 'from specification'}`;
+  const label = route === 'compare' ? 'Procure · deploy — Compare candidates (optional)'
+    : ownMode === 'spec' ? 'Procure · deploy — One model selected'
+      : `Develop · assess — ${ownMode === 'measured' ? 'measured numbers' : 'help me measure'}`;
   return (
     <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', border:'1px solid #c8e6c9', borderRadius:12, padding:'8px 14px', background:'#fff'}}>
       <span style={{...kicker, background:'#e8f5e9', border:'none', marginBottom:0}}>AI PATHWAY</span>

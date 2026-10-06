@@ -17,10 +17,12 @@ export function buildAssessmentSnapshot({
   provenance = {},
   disclosure = {},
   scenarioInterventions = [],
+  aiModels = null,
+  aiDeployments = null,
   savedAt = new Date().toISOString(),
   appVersion = 'web',
 } = {}) {
-  const aiState = buildAiState(scen || {}, deptLabel?.aiTools || []);
+  const aiState = buildAiState(scen || {}, deptLabel?.aiTools || [], aiModels, aiDeployments);
   return {
     format: CEDARS_ASSESSMENT_FORMAT,
     schemaVersion: CEDARS_SCHEMA_VERSION,

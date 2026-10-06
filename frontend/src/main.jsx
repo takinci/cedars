@@ -21,6 +21,7 @@ import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
 import { buildAssessmentSnapshot, parseAssessmentText, saveAssessmentLocally, loadLocalAssessment, clearLocalAssessment, assessmentFilename } from './assessment.js';
+import { modelRecordFromScen, modelScenFromRecord, migrateLegacyAiState, toolFromDeployment } from './aiRecords.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
 
@@ -1426,6 +1427,17 @@ function App() {
   // AI scenario (model spec + cloud + scanner state). SCEN_DEFAULTS is the single source of truth
   // (shared with urlstate.js); restored from a shared link when present.
   const [scen, setScen] = useState(() => ({...SCEN_DEFAULTS, ...(initCfg.scen || {})}));
+  // Canonical model registry. `scen` is the currently open/editable model; the registry preserves
+  // other models referenced by Department deployments so those deployments link rather than copy.
+  const initialAiRecord = modelRecordFromScen({...SCEN_DEFAULTS, ...(initCfg.scen || {})});
+  const [aiModels, setAiModels] = useState(() => ({[initialAiRecord.id]: initialAiRecord}));
+  const [deptModelChoice, setDeptModelChoice] = useState(initialAiRecord.id);
+
+  useEffect(() => {
+    const record = modelRecordFromScen(scen);
+    setAiModels(models => ({...models, [record.id]: record}));
+    setDeptModelChoice(choice => choice || record.id);
+  }, [scen]);
 
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
   const setS = (key, val) => setScen(s => ({...s, [key]: val}));
@@ -1438,8 +1450,11 @@ function App() {
       annualKwh: '', annualStudies: '', renewablePct: '0',
       activeInterventions: [], aiTools: [],
     });
-    // Also wipe the AI Footprint page (model config, research label, cloud workloads).
+    // Also wipe the AI Footprint page (model config, canonical registry, research label, cloud workloads).
+    const defaultAiRecord = modelRecordFromScen(SCEN_DEFAULTS);
     setScen({...SCEN_DEFAULTS});
+    setAiModels({[defaultAiRecord.id]: defaultAiRecord});
+    setDeptModelChoice(defaultAiRecord.id);
     setProvenance({equipment:{}});
     setScenarioInterventions([]);
     setDeptSetupOpen(true);
@@ -1621,10 +1636,37 @@ function App() {
   const toggleScenarioIntervention = name => setScenarioInterventions(list =>
     list.includes(name) ? list.filter(x => x !== name) : [...list, name]
   );
-  // Deployed AI tools attached to the department — each contributes net annual CO₂.
+  // Department Clinical AI stores deployment/use configuration only. Canonical technical model
+  // fields live in aiModels and are resolved dynamically by modelId.
   const addDeptAiTool    = tool      => setDeptLabel(d => d.aiTools.length >= 5 ? d : ({...d, aiTools: [...d.aiTools, tool]}));
   const removeDeptAiTool = id        => setDeptLabel(d => ({...d, aiTools: d.aiTools.filter(t => t.id !== id)}));
   const updateDeptAiTool = (id,f,v)  => setDeptLabel(d => ({...d, aiTools: d.aiTools.map(t => t.id === id ? {...t, [f]: v} : t)}));
+  const registerLibraryModel = key => {
+    const m = AI_MODEL_BY_KEY[key];
+    if (!m) return;
+    const id = `library-${key}`;
+    const cfg = {...SCEN_DEFAULTS, ...benchCfgFromLib(key), modelId:id, projectName:m.label, aiRoute:'own', ownMode:'spec'};
+    const record = modelRecordFromScen(cfg);
+    setAiModels(models => models[id] ? models : ({...models, [id]:record}));
+    setDeptModelChoice(id);
+  };
+  const addDeptDeployment = modelId => {
+    const record = aiModels[modelId];
+    if (!record) return;
+    const cfg = modelScenFromRecord(record, SCEN_DEFAULTS);
+    addDeptAiTool({
+      id:Date.now(), modelId, label:'', studiesShare:'100', deployMonths:String(cfg.deployMonths || '36'), trainingBoundary:'upstream',
+      lowValueReductPct:'0', scanTimeReductPct:'0', contrastReductPct:'0',
+    });
+  };
+  const loadAiModelRecord = modelId => {
+    const record = aiModels[modelId];
+    if (!record) return;
+    setScen({...modelScenFromRecord(record, SCEN_DEFAULTS), aiRoute:'own', ownMode:'spec'});
+    setDeptModelChoice(modelId);
+    setPage('ai');
+    window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0);
+  };
 
   // Provider + region now live in `scen` (shared with AI lifecycle). This holds only the
   // extra Infrastructure-tab workloads layered on top of the auto-seeded AI training/inference.
@@ -1654,6 +1696,7 @@ function App() {
 
   const currentAssessmentSnapshot = () => buildAssessmentSnapshot({
     settings, scen, deptLabel, ecoLabel, ecoLabelTouched: false, cloudTracker, provenance, scenarioInterventions,
+    aiModels, activeAiModelId: scen.modelId, aiDeployments: deptLabel.aiTools,
     // Store the exact disclosure outputs currently shown in Report (& Share) so research
     // contributions do not require reconstructing derived values from raw inputs later.
     disclosure: {
@@ -1719,6 +1762,7 @@ function App() {
 
   const restoreAssessmentSnapshot = snapshot => {
     const a = snapshot.assessment || {};
+    const aiState = migrateLegacyAiState(a);
     const incomingSettings = a.settings || {};
     const {equipment = {}, equipmentOverrides = {}, ...otherSettings} = incomingSettings;
     setSettings({
@@ -1727,10 +1771,14 @@ function App() {
       equipment: {...DEFAULT_EQUIPMENT, ...equipment},
       equipmentOverrides,
     });
-    setScen(migrateLegacyLabel({...SCEN_DEFAULTS, ...(a.scen || {})}, a.ecoLabel, !!a.ecoLabelTouched));
+    const restoredScen = migrateLegacyLabel({...SCEN_DEFAULTS, ...(a.scen || {})}, a.ecoLabel, !!a.ecoLabelTouched);
+    setScen(restoredScen);
+    setAiModels(aiState.aiModels || {[restoredScen.modelId]:modelRecordFromScen(restoredScen)});
+    setDeptModelChoice(aiState.activeAiModelId || restoredScen.modelId || 'model-primary');
+    const restoredTools = Array.isArray(aiState.aiDeployments) ? aiState.aiDeployments.map(toolFromDeployment) : (a.deptLabel?.aiTools || []);
     setDeptLabel({
       deptName:'', hospitalName:'', region:'', annualKwh:'', annualStudies:'', renewablePct:'0', activeInterventions:[], aiTools:[],
-      ...(a.deptLabel || {}),
+      ...(a.deptLabel || {}), aiTools: restoredTools,
     });
     setCloudTracker(t => ({...t, ...(a.cloudTracker || {})}));
     setProvenance(a.provenance || {equipment:{}});
@@ -1840,14 +1888,22 @@ function App() {
     tools.forEach(t => {
       const shareRaw = parseFloat(t.studiesShare);
       const share = Number.isFinite(shareRaw) ? Math.min(1, Math.max(0, shareRaw / 100)) : 1;
-      inferKwhPerStudy += (parseFloat(t.inferKwhPerStudy) || 0) * share;
       const modelRef = t.modelId || `legacy-${String(t.id)}`;
+      const record = aiModels[modelRef];
+      const cfg = record && !record.legacyDeploymentOnly ? modelScenFromRecord(record, SCEN_DEFAULTS) : null;
+      const modelResult = cfg ? aiResultFor(cfg, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides) : null;
+      // New deployments inherit technical values from the canonical record. Legacy saves without
+      // a complete record retain their copied values as a compatibility fallback.
+      const modelInferKwh = modelResult?.inference?.kwhPerStudy ?? (parseFloat(t.inferKwhPerStudy) || 0);
+      const modelTrainKwh = modelResult?.training?.kwhTotal ?? (parseFloat(t.trainKwhTotal) || 0);
+      const modelEmbodiedKg = modelResult?.embCo2KgTotal ?? (parseFloat(t.embCo2Kg) || 0);
+      inferKwhPerStudy += modelInferKwh * share;
       const months = Math.max(1, parseInt(t.deployMonths) || 36);
       if (t.trainingBoundary === 'allocated-local') {
-        const monthly = (parseFloat(t.trainKwhTotal) || 0) / months;
+        const monthly = modelTrainKwh / months;
         trainingByModel.set(modelRef, Math.max(trainingByModel.get(modelRef) || 0, monthly));
       }
-      const embodiedMonthly = (parseFloat(t.embCo2Kg) || 0) / months;
+      const embodiedMonthly = modelEmbodiedKg / months;
       embodiedByModel.set(modelRef, Math.max(embodiedByModel.get(modelRef) || 0, embodiedMonthly));
       avoidKeep    *= (1 - Math.max(0, parseFloat(t.lowValueReductPct) || 0) / 100 * share);
       scanKeep     *= (1 - Math.max(0, parseFloat(t.scanTimeReductPct) || 0) / 100 * share);
@@ -1856,7 +1912,7 @@ function App() {
     const trainKwhMonthly = [...trainingByModel.values()].reduce((s,v)=>s+v,0);
     const aiEmbodiedKgMonthly = [...embodiedByModel.values()].reduce((s,v)=>s+v,0);
     return {inferKwhPerStudy, trainKwhMonthly, aiEmbodiedKgMonthly, avoidedFrac: 1 - avoidKeep, scanTimeFrac: 1 - scanKeep, contrastFrac: 1 - contrastKeep, count: tools.length};
-  }, [deptLabel.aiTools]);
+  }, [deptLabel.aiTools, aiModels, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
   // Training and embodied allocations are deduplicated by model ID. Math.max makes the result
   // deterministic if two deployment adapters for the same model carry inconsistent legacy
   // amortisation values; the record should still be reconciled before publication. Clinical-effect
@@ -2201,7 +2257,7 @@ function App() {
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023'];
-  const AI_IMPROVE_REFS = ['doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025'];
+  const AI_IMPROVE_REFS = ['doo-radiology-llm-2024', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025'];
   const DEPT_STORAGE_REFS = ['jia-eurradiol-2026', 'doo-jacr-cloud-2024'];
   const DEPT_WATER_REFS = ['heye-radiology-2020', 'li-thirsty-2023'];
 
@@ -2812,61 +2868,49 @@ function App() {
           <section id="dash-clinicalai" className="aiSection clinicalAiPrimaryBody">
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(deployed — adjusts the whole department)</span></h2>
             <p className="note" style={{marginBottom:12}}>
-              Each deployed tool adds inference compute and subtracts supported clinical savings — avoided scans, shorter protocols, and contrast reduction. Training is counted in department electricity only when you explicitly choose <strong>Allocate training locally</strong>; vendor/external pretraining stays an upstream model-lifecycle disclosure.
-              {dash.clinicalMeta.active && <> <strong style={{color:'#2E7D32'}}>Net now: +{fmtKwh(dash.clinicalMeta.aiKwh)} compute − {fmtKwh(dash.clinicalMeta.scannerSavedKwh)} scanner{dash.totals.label}{dash.clinicalMeta.avoidedPct>0?` · ${dash.clinicalMeta.avoidedPct}% scans avoided`:''}{dash.clinicalMeta.contrastPct>0?` · ${dash.clinicalMeta.contrastPct}% less contrast`:''}.</strong></>}
+              The <strong>model record</strong> stores what the AI is — hardware, energy, performance and compute context. This Department section stores only <strong>how it is used here</strong>. The same model can therefore support more than one local use configuration without duplicating its technical record.
+              {dash.clinicalMeta.active && <> <strong style={{color:'#2E7D32'}}> Net now: +{fmtKwh(dash.clinicalMeta.aiKwh)} compute − {fmtKwh(dash.clinicalMeta.scannerSavedKwh)} scanner{dash.totals.label}{dash.clinicalMeta.avoidedPct>0?` · ${dash.clinicalMeta.avoidedPct}% scans avoided`:''}{dash.clinicalMeta.contrastPct>0?` · ${dash.clinicalMeta.contrastPct}% less contrast`:''}.</strong></>}
             </p>
 
-            <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:14}}>
-              <select value="" disabled={(deptLabel.aiTools||[]).length>=5} onChange={e=>{
-                const m = AI_MODEL_BY_KEY[e.target.value];
-                if (!m) return;
-                addDeptAiTool({
-                  id: Date.now(), label: m.label,
-                  inferKwhPerStudy: String(m.unit==='tokens'
-                    ? rnd((m.callsPerTask||1)*(m.tokensPerCall||0)/1000*(m.whPer1kTokens||0)/1000*1.2, 4) // tokens/study × Wh/1k × PUE
-                    : rnd(m.gpuKw * m.inferSec / 3600 * 1.2, 4)), // gpuKw × s/study × PUE
-                  trainKwhTotal: String(Math.round(m.trainMwh * 1000)),
-                  embCo2Kg: String(m.embCo2Kg), deployMonths: '36', modelId:`library-${m.key}`, trainingBoundary:'upstream',
-                  scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
-                  contrastReductPct: '0', studiesShare: '100',
-                });
-              }} style={{padding:'8px 12px',border:'1px solid #c8e6c9',borderRadius:14,background:'white',fontSize:13,fontWeight:700,color:'#2E7D32',cursor:'pointer',opacity:(deptLabel.aiTools||[]).length>=5?0.5:1}}>
-                <option value="">+ Add from model library…</option>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:14,alignItems:'center'}}>
+              <select value={deptModelChoice || ''} onChange={e=>setDeptModelChoice(e.target.value)} style={{minWidth:240,padding:'8px 12px',border:'1px solid #c8e6c9',borderRadius:14,background:'white',fontSize:13,fontWeight:700,color:'#2E7D32'}}>
+                <option value="">Choose a model record…</option>
+                {Object.values(aiModels).map(m=><option key={m.id} value={m.id}>{m.name || m.id}</option>)}
+              </select>
+              <button disabled={!deptModelChoice || (deptLabel.aiTools||[]).length>=5} onClick={()=>addDeptDeployment(deptModelChoice)} style={{opacity:(!deptModelChoice || (deptLabel.aiTools||[]).length>=5)?0.5:1}}>
+                <ArrowRight size={13}/> Set how it's used
+              </button>
+              <select value="" onChange={e=>{if(e.target.value) registerLibraryModel(e.target.value);}} style={{padding:'8px 12px',border:'1px solid #c8e6c9',borderRadius:14,background:'white',fontSize:13,color:'#2E7D32'}}>
+                <option value="">+ Add reference model to records…</option>
                 {AI_MODEL_LIBRARY.filter(m=>m.key!=='custom').map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
               </select>
-              <button disabled={(deptLabel.aiTools||[]).length>=5} onClick={()=>addDeptAiTool({
-                id: Date.now(), label: scen.projectName || AI_MODEL_BY_KEY[scen.modelKey]?.label || 'AI model', modelId:scen.modelId || 'model-primary',
-                inferKwhPerStudy: String(ai.inference.kwhPerStudy), trainKwhTotal: String(ai.training.kwhTotal), trainingBoundary:scen.trainingBoundary || 'upstream',
-                embCo2Kg: String(ai.embCo2KgTotal), deployMonths: String(scen.deployMonths || '36'),
-                scanTimeReductPct: String(ai.scanTimeReductPct), lowValueReductPct: String(ai.lowValueReductPct), contrastReductPct: '0', studiesShare: '100',
-              })} style={{display:'inline-flex',alignItems:'center',gap:6,opacity:(deptLabel.aiTools||[]).length>=5?0.5:1}}>
-                <ArrowRight size={13}/> Import current AI model
-              </button>
-              <button disabled={(deptLabel.aiTools||[]).length>=5} onClick={()=>addDeptAiTool({
-                id: Date.now(), label: '', inferKwhPerStudy: '', trainKwhTotal: '', embCo2Kg: '0', trainingBoundary:'upstream',
-                deployMonths: '36', scanTimeReductPct: '0', lowValueReductPct: '0', contrastReductPct: '0', studiesShare: '100',
-              })} style={{background:'#e8f5e9',color:'#2E7D32',boxShadow:'none',border:'1px dashed #a5d6a7',opacity:(deptLabel.aiTools||[]).length>=5?0.5:1}}>
-                <Plus size={13}/> Add clinical AI tool
-              </button>
-              <span style={{fontSize:12,color:'#607d66',alignSelf:'center'}}>{(deptLabel.aiTools||[]).length} / 5</span>
+              <button type="button" className="download" onClick={()=>{setS('aiRoute','own');setPage('ai');}}>Create / edit model record →</button>
+              <span style={{fontSize:12,color:'#607d66'}}>{(deptLabel.aiTools||[]).length} / 5 local use configurations</span>
             </div>
 
-            {(deptLabel.aiTools||[]).map(t => (
+            {(deptLabel.aiTools||[]).map(t => {
+              const record = aiModels[t.modelId];
+              const modelName = record?.name || t.modelId || 'Legacy AI model';
+              return (
               <div key={t.id} style={{border:'1px solid #c8e6c9',borderRadius:12,padding:'12px 14px',marginBottom:10,background:'#fafffa'}}>
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                  <input value={t.label} placeholder="Clinical AI tool name" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{flex:1,padding:'6px 10px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:13,fontWeight:600}}/>
-                  <button onClick={()=>removeDeptAiTool(t.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8,flexWrap:'wrap'}}>
+                  <div style={{flex:1,minWidth:220}}>
+                    <strong style={{color:'#1b5e20'}}>{modelName}</strong>
+                    <div className="note" style={{fontSize:10,marginTop:2}}>Technical values are inherited from model record <code>{t.modelId}</code> and update here automatically.</div>
+                  </div>
+                  {record && <button type="button" className="download" onClick={()=>loadAiModelRecord(t.modelId)} style={{padding:'5px 8px',fontSize:11}}>Edit model record</button>}
+                  <button onClick={()=>removeDeptAiTool(t.id)} title="Remove deployment" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8}}>
+                  <label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>Use / workflow label
+                    <input value={t.label??''} placeholder="e.g. ED PE triage" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/>
+                  </label>
                   {[
-                    ['Inference kWh/study','inferKwhPerStudy','0.001','e.g. 0.02'],
-                    ['Training energy (kWh)','trainKwhTotal','1','e.g. 500'],
-                    ['Lifespan (months)','deployMonths','1','36'],
                     ['Share of studies (%)','studiesShare','1','100'],
+                    ['Deployment period (months)','deployMonths','1','36'],
                     ['Low-value scans avoided (%)','lowValueReductPct','1','0'],
                     ['Scan-time reduction (%)','scanTimeReductPct','1','0'],
                     ['Contrast reduction (%)','contrastReductPct','1','0'],
-                    ['Embodied GPU (kg)','embCo2Kg','1','0'],
                   ].map(([lab,key,step,ph])=>(
                     <label key={key} style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>
                       {lab}
@@ -2877,15 +2921,15 @@ function App() {
                 <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginTop:9}}>
                   <label style={{display:'flex',alignItems:'center',gap:7,fontSize:11,fontWeight:700,color:'#2E7D32'}}>Training accounting
                     <select value={t.trainingBoundary || 'upstream'} onChange={e=>updateDeptAiTool(t.id,'trainingBoundary',e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}>
-                      <option value="upstream">Upstream lifecycle only</option>
-                      <option value="allocated-local">Allocate training locally</option>
+                      <option value="upstream">Upstream / outside this department</option>
+                      <option value="allocated-local">Allocate a share here</option>
                     </select>
                   </label>
-                  <span className="note" style={{fontSize:10,margin:0}}>Inference is counted for this deployment. A reused model's training allocation is counted at most once per model ID.</span>
+                  <span className="note" style={{fontSize:10,margin:0}}>Inference follows this deployment's study share. If training is allocated locally, the one-time training footprint is counted once per model record, even when the model has multiple use configurations.</span>
                 </div>
               </div>
-            ))}
-            {(deptLabel.aiTools||[]).length === 0 && <p className="note" style={{fontSize:12}}>No clinical AI deployed — the department reflects equipment only. Import the current AI model or add one manually to see its net effect.</p>}
+            );})}
+            {(deptLabel.aiTools||[]).length === 0 && <p className="note" style={{fontSize:12}}>No Clinical AI deployment configured. Choose a model record above, then select <strong>Set how it's used</strong>.</p>}
           </section>
             )}
           </div>
@@ -2894,20 +2938,6 @@ function App() {
           <section className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
             <h2 style={{marginBottom:4}}>Overview</h2>
             <p className="note" style={{marginBottom:16}}>Your department at a glance. Every area is listed below — click any row to open its detail; it stays tucked away until you want it.</p>
-
-            {/* Grade hero */}
-            <div style={{display:'flex',alignItems:'center',gap:18,flexWrap:'wrap',background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:20,padding:'18px 22px',marginBottom:18}}>
-              <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:52,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
-                <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-              </div>
-              <div>
-                <LeafRating leaves={deptLabelData.leaves} size={24} color={deptLabelData.ratingColor}/>
-                <div style={{fontWeight:700,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
-                <div style={{fontSize:13,color:'#263238',marginTop:2}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study`:'Set up your department above to calculate.'}</div>
-              </div>
-              <button onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}} style={{marginLeft:'auto'}}>Full EcoLabel →</button>
-            </div>
 
             {/* Hero tiles */}
             <div className="cards" style={{marginBottom:18}}>
@@ -3200,6 +3230,7 @@ function App() {
             <div>
               <h1 style={{margin:0}}>AI Model &amp; Informatics</h1>
               <div className="contextLine"><Globe size={13}/> <strong>Shared local context:</strong> {settings.region} <button type="button" className="contextEditLink" onClick={()=>goToAssessmentContext('ai')}>Edit shared context →</button><span className="contextSep">·</span> <strong>Training:</strong> {scen.trainingRegion || scen.cloudRegion || `${scen.trainingProvider || scen.cloudProvider} average`}<span className="contextSep">·</span> <strong>Inference:</strong> {scen.inferenceRegion || scen.cloudRegion || `${scen.inferenceProvider || scen.cloudProvider} average`}</div>
+              {Object.keys(aiModels).length > 1 && <div className="contextLine" style={{marginTop:4}}><strong>Model record:</strong> <select value={scen.modelId || ''} onChange={e=>loadAiModelRecord(e.target.value)}>{Object.values(aiModels).map(m=><option key={m.id} value={m.id}>{m.name || m.id}</option>)}</select></div>}
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="download" onClick={()=>downloadAICSV(ai, scen, settings.region)} style={{padding:'8px 14px',fontSize:13}}><Download/>CSV</button>
@@ -4084,7 +4115,6 @@ function App() {
                     <th style={{padding:'8px 10px'}}>gCO₂e/study</th>
                     <th style={{padding:'8px 10px'}}>Net CO₂e/mo</th>
                     <th style={{padding:'8px 10px'}}>Lifetime CO₂e</th>
-                    <th style={{padding:'8px 10px'}}>Efficiency</th>
                     <th style={{padding:'8px 10px'}}/>
                   </tr>
                 </thead>
@@ -4105,7 +4135,6 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.carbonPerStudyG===best.carbonPerStudyG)}}>{r.carbonPerStudyG}</td>
                         <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
-                        <td style={{padding:'7px 10px',...hi(r.efficiency===best.efficiency)}}>{r.efficiency}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
                           <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this model</button>
                           {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
@@ -4183,8 +4212,7 @@ function App() {
         <main>
           <h1 style={{margin:'0 0 6px'}}>Improve</h1>
           <p className="note" style={{margin:'0 0 12px',fontSize:14}}>Model potential interventions and compare their projected environmental, operational, financial, and clinical effects before implementation.</p>
-          {ecoLabelMode === 'ai' && (
-            <section className="inputSummary" style={{marginBottom:16}}>
+          <section className="inputSummary" style={{marginBottom:16}}>
               <h2 style={{margin:'0 0 6px',color:'#1b5e20'}}>AI / informatics improvements</h2>
               <p className="note" style={{margin:'0 0 10px'}}>Use these as design and procurement checks for the active model record. They do not create automatic savings unless CEDARS has enough measured inputs to model the change.</p>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:8}}>
@@ -4200,10 +4228,9 @@ function App() {
                   ['Measure before estimating','Replace literature/vendor defaults with measured kWh, workload, PUE, and deployment values when available.'],
                 ].map(([title,body])=><div key={title} style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'9px 11px',background:'#fff'}}><strong style={{fontSize:12,color:'#1b5e20'}}>{title}</strong><div className="note" style={{fontSize:11,marginTop:3}}>{body}</div></div>)}
               </div>
-              <p className="note" style={{fontSize:10,margin:'10px 0 0'}}>Evidence anchors already used in CEDARS include Doo et al. on radiology AI sustainability and cloud costs, Jia et al. on long-term imaging storage, and recent LLM inference-energy studies.<Ref id="doo-jacr-cloud-2024" order={AI_IMPROVE_REFS}/><Ref id="jia-eurradiol-2026" order={AI_IMPROVE_REFS}/><Ref id="jegham-llm-2025" order={AI_IMPROVE_REFS}/></p>
+              <p className="note" style={{fontSize:10,margin:'10px 0 0'}}>Evidence anchors include Doo et al. on LLM right-sizing and radiology cloud costs, Jia et al. on long-term imaging storage, and recent LLM inference-energy work on serving, batching and test-time compute.<Ref id="doo-radiology-llm-2024" order={AI_IMPROVE_REFS}/><Ref id="doo-jacr-cloud-2024" order={AI_IMPROVE_REFS}/><Ref id="jia-eurradiol-2026" order={AI_IMPROVE_REFS}/><Ref id="jegham-llm-2025" order={AI_IMPROVE_REFS}/></p>
               <ReferenceList ids={AI_IMPROVE_REFS}/>
             </section>
-          )}
           <div id="future-scenario" className="workflowBridge workflowAnchor" aria-label="Current state and future scenario workflow">
             <div className="workflowBridgeNav">
               <button type="button" className="workflowBridgeChoice" onClick={()=>goToWorkflowSection('report','current-practices')}>
