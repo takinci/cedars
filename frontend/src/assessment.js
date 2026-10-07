@@ -19,6 +19,7 @@ export function buildAssessmentSnapshot({
   scenarioInterventions = [],
   aiModels = null,
   aiDeployments = null,
+  aiComparison = null,
   savedAt = new Date().toISOString(),
   appVersion = 'web',
 } = {}) {
@@ -38,6 +39,7 @@ export function buildAssessmentSnapshot({
       provenance: cloneJson(provenance || {}),
       disclosure: cloneJson(disclosure || {}),
       scenarioInterventions: cloneJson(scenarioInterventions || []),
+      aiComparison: cloneJson(aiComparison || {}),
       ...cloneJson(aiState),
     },
   };

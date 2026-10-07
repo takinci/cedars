@@ -104,6 +104,13 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
   });
 
+  it('procurement system type and comparison basis survive encode → decode independently of training disclosure', () => {
+    const scen = { ...SCEN_DEFAULTS, aiRoute:'compare', aiSystemType:'foundation', compareBasis:'inference', trainDisclosed:'yes' };
+    const decoded = decodeConfig('#' + encodeConfig({ scen }));
+    expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
+    expect(decoded.scen.trainDisclosed).toBeUndefined();
+  });
+
   it('typed performance and separate training/inference contexts survive encode → decode', () => {
     const scen = {...SCEN_DEFAULTS, modelId:'model-a', performanceUnit:'mm', performanceDirection:'lower', performanceValidationContext:'Local validation',
       trainingProvider:'Local compute', trainingRegion:'On-premise (Switzerland)', trainingPue:'1.0',
