@@ -24,35 +24,44 @@ export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVol
   const hasDeptVolume = dept.studiesPerMonth > 0;
   const custom = ctxSource === 'custom';
   return (
-    <div style={{...inset, gap:8}}>
+    <div style={{...inset, gap:10}}>
       <div>
         <p style={q}>Expected deployment workload</p>
         <p className="note" style={{margin:0}}>
-          Every candidate is compared at the same monthly study volume. Start with a published small/large-practice estimate, use the Radiology Department volume already in CEDARS, or enter your own.<Ref id={VOLUME_ESTIMATE_REF} order={AI_ENTRY_REFS}/>
+          Every candidate is compared at the same monthly study volume. Choose a published practice estimate, use the Radiology Department volume already in this assessment, or enter a custom workload.<Ref id={VOLUME_ESTIMATE_REF} order={AI_ENTRY_REFS}/>
         </p>
       </div>
-      <div style={{display:'flex', flexWrap:'wrap', gap:6, alignItems:'center'}}>
+      <div className="deploymentWorkloadGrid" role="group" aria-label="Expected deployment workload">
         {VOLUME_ESTIMATES.map(v => (
-          <button key={v.key} type="button" style={seg(ctxSource===v.key)} onClick={()=>onCtxSource(v.key)}>
-            {v.label} · {v.studiesPerMonth.toLocaleString()}/mo{v.key==='small' ? ' · default' : ''}
+          <button key={v.key} type="button" className={`deploymentWorkloadCard ${ctxSource===v.key?'active':''}`} onClick={()=>onCtxSource(v.key)}>
+            <strong>{v.label}</strong>
+            <small>{v.studiesPerMonth.toLocaleString()} studies/month{v.key==='small' ? ' · default' : ''}</small>
           </button>
         ))}
-        {hasDeptVolume && (
-          <button type="button" style={seg(ctxSource==='department')} onClick={()=>onCtxSource('department')}>
-            My Radiology Department · {dept.studiesPerMonth.toLocaleString()}/mo
+        {hasDeptVolume ? (
+          <button type="button" className={`deploymentWorkloadCard ${ctxSource==='department'?'active':''}`} onClick={()=>onCtxSource('department')}>
+            <strong>My Radiology Department</strong>
+            <small>{dept.studiesPerMonth.toLocaleString()} studies/month · from Department assessment</small>
           </button>
+        ) : (
+          <div className="deploymentWorkloadCard disabled" aria-disabled="true">
+            <strong>My Radiology Department</strong>
+            <small>Department workload not available yet</small>
+          </div>
         )}
-        <button type="button" style={seg(custom)} onClick={()=>onCtxSource('custom')}>Enter my own</button>
+        <div className={`deploymentWorkloadCard custom ${custom?'active':''}`}>
+          <button type="button" onClick={()=>onCtxSource('custom')}>
+            <strong>Custom workload</strong>
+            <small>{custom && Number(volume)>0 ? `${Number(volume).toLocaleString()} studies/month` : 'Enter studies/month'}</small>
+          </button>
+          {custom && (
+            <label>
+              <span>Studies / month</span>
+              <input type="number" min="0" value={volume} placeholder="e.g. 8,000" onChange={e=>onVolume(e.target.value)}/>
+            </label>
+          )}
+        </div>
       </div>
-      {custom && (
-        <label style={{display:'flex', alignItems:'center', gap:8, fontSize:12, fontWeight:700, color:'#1b3a22', maxWidth:300}}>
-          Studies / month
-          <input type="number" min="0" value={volume} placeholder="e.g. 8,000" onChange={e=>onVolume(e.target.value)} style={{width:120, minHeight:34, padding:'0 8px', border:'1px solid #c8e6c9', borderRadius:8, fontSize:12}}/>
-        </label>
-      )}
-      {!hasDeptVolume && (
-        <p className="note" style={{margin:0}}>No Radiology Department volume is available yet, so that option is hidden rather than silently substituting a practice estimate.</p>
-      )}
       <p className="note" style={{margin:0}}>
         These are workload assumptions, not compute-location assumptions. Provider and compute region are set separately and applied consistently to every candidate.
       </p>

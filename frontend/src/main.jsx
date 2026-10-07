@@ -3630,7 +3630,7 @@ function App() {
                 </div>
                 <button type="button" onClick={addBenchModel} disabled={benchModels.length>=6}><Plus size={14}/> Add candidate</button>
               </div>
-              <div style={{marginTop:14,padding:'11px 12px',border:'1px solid #c8e6c9',borderRadius:12,background:'#f7fbf8'}}>
+              <div id="ai-shared-comparison-definition" style={{marginTop:14,padding:'11px 12px',border:'1px solid #c8e6c9',borderRadius:12,background:'#f7fbf8',scrollMarginTop:100}}>
                 <strong style={{fontSize:12,color:'#1b5e20'}}>Shared comparison definition</strong>
                 <p className="note" style={{fontSize:10,margin:'4px 0 8px'}}>Enter this once. Performance ranking and Pareto labels stay off until all candidates address the same task, endpoint, and validation cohort/context.</p>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:8}}>
@@ -4343,6 +4343,12 @@ function App() {
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4}}>Candidate comparison — performance vs carbon</h2>
+            <div className="comparisonProgress" aria-label="Candidate comparison workflow">
+              <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Define clinical comparison</span>
+              <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Set workload &amp; compute</span>
+              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>3</b> Compare candidates</span>
+              <span className={benchResults.rows.length>=2?'active':''}><b>4</b> Carry one forward</span>
+            </div>
             <p className="note" style={{marginBottom:8}}>
               Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
             </p>
@@ -4442,7 +4448,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
-                          <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Assess this model →</button>
+                          <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this candidate →</button>
                           {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
                         </td>
                       </tr>
@@ -4452,36 +4458,46 @@ function App() {
               </table>
             </div>
 
-            <section style={{marginBottom:16}}>
-              <h2 style={{marginBottom:4}}>Performance vs carbon</h2>
-              <p className="note" style={{marginBottom:12}}>{benchResults.comparablePerformance?<>For the shared like-for-like definition, {benchResults.rows[0]?.performanceDirection==='lower'?'lower-left':'upper-left'} is preferred. <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient.</>:<>The performance-vs-carbon plot appears only after the shared task/endpoint/cohort is complete and all candidates use the same metric, unit, and direction.</>}</p>
-              {benchResults.comparablePerformance ? <>
-              {(()=>{
-                const data = {datasets:[{
-                  label:'Candidates',
-                  data: benchResults.rows.map(r=>({x:r.carbonPerStudyG, y:r.performanceValue, _label:r.label, _unit:r.performanceUnit})),
-                  pointBackgroundColor: benchResults.rows.map(r=>r.pareto?'#2E7D32':'#b0bec5'),
-                  pointBorderColor: benchResults.rows.map(r=>r.pareto?'#1b5e20':'#90a4ae'),
-                  pointRadius: benchResults.rows.map(r=>r.pareto?8:6),
-                  pointHoverRadius: 10,
-                }]};
-                const opts = {
-                  responsive:true, maintainAspectRatio:false,
-                  plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y} ${ctx.raw._unit} · ${ctx.parsed.x} gCO₂e/study`}}},
-                  scales:{
-                    x:{title:{display:true,text:'Carbon per study (gCO₂e)'}, beginAtZero:true},
-                    y:{title:{display:true,text:`${benchResults.rows[0]?.performanceMetric || 'Reported performance'} (${benchResults.rows[0]?.performanceUnit || 'value'})`}},
-                  },
-                };
-                return <div style={{height:320}}><Suspense fallback={<div style={{height:320}}/>}><Scatter data={data} options={opts}/></Suspense></div>;
-              })()}
-              </> : <p className="note">Chart suppressed because the candidates use different reported performance metrics. Choose like-for-like candidates before interpreting an accuracy-versus-carbon frontier.</p>}
-            </section>
-            <p className="note">Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
-            <div className="inputSummary" style={{marginTop:14}}>
-              <strong style={{color:'#1b5e20'}}>Choose the model you want to carry forward.</strong>
-              <p className="note" style={{margin:'5px 0 0'}}>Score &amp; EcoLabel describes one canonical model record. Select <strong>Assess this model</strong> in the table above first; CEDARS will carry that candidate into the one-model assessment, where the Score &amp; EcoLabel action remains available.</p>
+            <div className="comparisonCarryForward">
+              <span>NEXT STEP</span>
+              <strong>Choose a candidate to assess</strong>
+              <p>Select <strong>Use this candidate →</strong> in the table above. CEDARS will carry that candidate into the single-model assessment used for Score &amp; EcoLabel.</p>
             </div>
+
+            <details className="comparisonOptionalDetail">
+              <summary><span>Performance vs carbon</span><small>{benchResults.comparablePerformance?'Plot available':'Needs like-for-like performance inputs'}</small></summary>
+              <div className="comparisonOptionalBody">
+                <p className="note" style={{marginTop:0,marginBottom:12}}>{benchResults.comparablePerformance?<>For the shared like-for-like definition, {benchResults.rows[0]?.performanceDirection==='lower'?'lower-left':'upper-left'} is preferred. <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient.</>:<>The plot is intentionally withheld until the shared task/endpoint/cohort is complete and all candidates use the same performance metric, unit, and direction.</>}</p>
+                {benchResults.comparablePerformance ? <>
+                {(()=>{
+                  const data = {datasets:[{
+                    label:'Candidates',
+                    data: benchResults.rows.map(r=>({x:r.carbonPerStudyG, y:r.performanceValue, _label:r.label, _unit:r.performanceUnit})),
+                    pointBackgroundColor: benchResults.rows.map(r=>r.pareto?'#2E7D32':'#b0bec5'),
+                    pointBorderColor: benchResults.rows.map(r=>r.pareto?'#1b5e20':'#90a4ae'),
+                    pointRadius: benchResults.rows.map(r=>r.pareto?8:6),
+                    pointHoverRadius: 10,
+                  }]};
+                  const opts = {
+                    responsive:true, maintainAspectRatio:false,
+                    plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.raw._label}: ${ctx.parsed.y} ${ctx.raw._unit} · ${ctx.parsed.x} gCO₂e/study`}}},
+                    scales:{
+                      x:{title:{display:true,text:'Carbon per study (gCO₂e)'}, beginAtZero:true},
+                      y:{title:{display:true,text:`${benchResults.rows[0]?.performanceMetric || 'Reported performance'} (${benchResults.rows[0]?.performanceUnit || 'value'})`}},
+                    },
+                  };
+                  return <div style={{height:320}}><Suspense fallback={<div style={{height:320}}/>}><Scatter data={data} options={opts}/></Suspense></div>;
+                })()}
+                </> : <div className="comparisonUnavailable"><strong>Performance-vs-carbon plot unavailable</strong><span>Candidates are not yet comparable on one shared clinical definition and performance measure.</span><button type="button" className="inlineTextButton" onClick={()=>document.getElementById('ai-shared-comparison-definition')?.scrollIntoView({behavior:'smooth',block:'center'})}>Review comparison definition ↑</button></div>}
+              </div>
+            </details>
+            <details className="comparisonOptionalDetail comparisonEvidence">
+              <summary><span>Evidence &amp; assumptions</span><small>Workload, serving &amp; agentic assumptions</small></summary>
+              <div className="comparisonOptionalBody">
+                <p className="note">Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
+                <p className="note" style={{marginBottom:0}}>The worked agentic/token-multiplier example above is illustrative; update calls/task, tokens/call, hardware, and serving assumptions for the system being evaluated.</p>
+              </div>
+            </details>
             </>)}
           </section>
 
@@ -5096,9 +5112,27 @@ function App() {
                 <div><span>Inference compute</span><strong>{ecoLabelData.inferenceProvider || '—'} · {ecoLabelData.inferenceRegion || 'provider average'}</strong></div>
                 <div className="scoreWaterCell"><span>Estimated water use {ecoLabelData.waterProv==='screening'&&<em>SCREENING</em>}</span><strong>{ecoLabelData.waterLitres>0 ? `Training: ${ecoLabelData.waterLitres.toLocaleString()} L` : '—'}</strong>{ecoLabelData.waterPerStudyMl>0&&<small>Inference: {ecoLabelData.waterPerStudyMl} mL/study</small>}{ecoLabelData.waterProv==='screening'&&<small>Default water-intensity factor; not a measured water footprint.</small>}</div>
               </div>
-              <div className="aiScoreBasisBar"><div><span>CURRENT SCORE BASIS</span><strong>{ecoLabelData.inferStudies>0?`${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Deployment workload not entered'} · {ecoLabelData.deployMonths}-month deployment</strong><small>{ecoLabelData.gradeBasis==='amortised'?'Training is spread across expected use, then inference is added per study.':!ecoLabelData.trainDisclosed?'Training is not disclosed, so the per-study score uses inference only.':'Deployment workload is not entered, so the per-study score uses inference only; add workload to include an amortised share of training.'}</small></div><button type="button" className="download" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide workload explorer':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
-              {showAiWorkloadExplore&&<div className="aiWorkloadExplorer"><div className="aiWorkloadExplorerHead"><div><span>EXPLORE WORKLOAD &amp; TOTAL IMPACT</span><h3>Intensity and total emissions answer different questions</h3></div><label>Studies / month<input type="number" min="0" value={aiWorkloadPreview} onChange={e=>setAiWorkloadPreview(e.target.value)}/></label></div><div className="aiWorkloadMetrics"><div><span>Modeled carbon intensity</span><strong>{aiWorkloadScenario.intensityG!=null?`${aiWorkloadScenario.intensityG} gCO₂e/study`:'—'}</strong></div><div><span>Inference / month</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.inferenceMonthKg} kgCO₂e`:'—'}</strong></div><div><span>Training share</span><strong>{aiWorkloadScenario.trainingShareG!=null?`${aiWorkloadScenario.trainingShareG} gCO₂e/study`:'—'}</strong></div><div><span>Training + inference over deployment</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.deploymentKg} kgCO₂e`:'—'}</strong><small>Operational model only; embodied hardware remains a separate disclosure.</small></div></div><p>Higher use can spread one-time training emissions across more studies, lowering <strong>carbon intensity per study</strong>, while increasing <strong>total inference emissions</strong>. Use this explorer to test scale before changing the saved assessment.</p><div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>{setPage('ai');setAiOpen(o=>({...o,inference:true}));window.setTimeout(()=>document.getElementById('ai-inference')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div></div>}
-              <SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>document.getElementById('ai-system-effects')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}/>
+              <div className="aiScoreBasisBar"><div><span>CURRENT SCORE BASIS</span><strong>{ecoLabelData.inferStudies>0?`${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Deployment workload not entered'} · {ecoLabelData.deployMonths}-month deployment</strong><small>{ecoLabelData.gradeBasis==='amortised'?'Training is spread across expected use, then inference is added per study.':!ecoLabelData.trainDisclosed?'Training is not disclosed, so the per-study score uses inference only.':'Deployment workload is not entered, so the per-study score uses inference only; add workload to include an amortised share of training.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
+              {showAiWorkloadExplore&&<div className="aiWorkloadExplorer">
+                <div className="aiWorkloadExplorerHead">
+                  <div>
+                    <span>EXPLORE WORKLOAD &amp; TOTAL IMPACT</span>
+                    <h3>Intensity and total emissions answer different questions</h3>
+                    <p>Try a deployment workload here without changing the saved assessment.</p>
+                  </div>
+                </div>
+                <div className="aiWorkloadPreviewControl">
+                  <label>
+                    <span>Preview workload</span>
+                    <div><input type="number" min="0" value={aiWorkloadPreview} placeholder="e.g. 5,100" onChange={e=>setAiWorkloadPreview(e.target.value)}/><strong>studies / month</strong></div>
+                    <small>{ecoLabelData.inferStudies>0?`Current saved workload: ${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Current saved workload: not entered'}</small>
+                  </label>
+                </div>
+                <div className="aiWorkloadMetrics"><div><span>Modeled carbon intensity</span><strong>{aiWorkloadScenario.intensityG!=null?`${aiWorkloadScenario.intensityG} gCO₂e/study`:'—'}</strong></div><div><span>Inference / month</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.inferenceMonthKg} kgCO₂e`:'—'}</strong></div><div><span>Training share</span><strong>{aiWorkloadScenario.trainingShareG!=null?`${aiWorkloadScenario.trainingShareG} gCO₂e/study`:'—'}</strong></div><div><span>Training + inference over deployment</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.deploymentKg} kgCO₂e`:'—'}</strong><small>Operational model only; embodied hardware remains a separate disclosure.</small></div></div>
+                <p>Higher use can spread one-time training emissions across more studies, lowering <strong>carbon intensity per study</strong>, while increasing <strong>total inference emissions</strong>. Use this explorer to test scale before changing the saved assessment.</p>
+                <div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>{setPage('ai');setAiOpen(o=>({...o,inference:true}));window.setTimeout(()=>document.getElementById('ai-inference')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div>
+              </div>}
+                            <SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>document.getElementById('ai-system-effects')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}/>
             </div>
             <div className="ecoIntroBlock">
               <p><strong>Create a standardized environmental disclosure for an AI model.</strong> The label summarizes training, validation, deployment, inference, and reported performance context for manuscripts, model cards, and technical reporting.</p>
