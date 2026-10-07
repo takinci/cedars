@@ -50,7 +50,7 @@ export default function SaveUtility({
           </button>
           <div className="saveUtilityMenuTitle separated">Share / contribute</div>
           <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
-            <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Create reproducible assessment link'}</strong><small>Nothing is published until you choose to share it.</small></span>
+            <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Copy shareable CEDARS assessment link'}</strong><small>Reopens core calculator settings and supported CEDARS reference candidates. Custom candidate details and free-text comparison notes require a downloaded CEDARS file.</small></span>
           </button>
           <button type="button" onClick={()=>{onContribute?.(); setOpen(false);}} role="menuitem" disabled={!contributionConfigured}>
             <Database size={15}/><span><strong>Contribute this assessment</strong><small>{contributionConfigured ? 'Optional research contribution after explicit consent.' : 'Research submission is not configured on this deployment.'}</small></span>
@@ -70,13 +70,13 @@ export default function SaveUtility({
           <div className="shareConfirmDialog" role="dialog" aria-modal="true" aria-labelledby="global-share-link-title">
             <div className="shareConfirmTitle">
               <Share2 size={20}/>
-              <h3 id="global-share-link-title">Create a shareable link?</h3>
+              <h3 id="global-share-link-title">Copy a shareable CEDARS assessment link?</h3>
             </div>
-            <p>This will create a URL containing your current calculator configuration. CEDARS does not publish or send the link automatically. Anyone you choose to send the full link to can reopen the same configuration.</p>
+            <p>This creates a URL for the current calculator configuration and supported CEDARS reference candidates. Custom candidate edits, free-text comparison notes, and the complete multi-model assessment are preserved in a downloaded CEDARS file instead. CEDARS does not publish or send the link automatically.</p>
             <p className="shareConfirmFine">Personal details, email addresses, and contribution-consent information are not included.</p>
             <div className="shareConfirmActions">
               <button className="download" onClick={()=>setShareConfirmOpen(false)}>Cancel</button>
-              <button onClick={handleCopyLink}><Share2 size={15}/> Create link</button>
+              <button onClick={handleCopyLink}><Share2 size={15}/> Copy assessment link</button>
             </div>
           </div>
         </div>

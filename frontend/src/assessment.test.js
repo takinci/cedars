@@ -38,6 +38,15 @@ describe('CEDARS assessment persistence', () => {
     expect(snapshot.assessment.aiDeployments[0]).toMatchObject({modelId:'model-a',useSharePct:'25',deploymentMonths:'24'});
   });
 
+  it('preserves a named custom AI model in the resumable CEDARS assessment', () => {
+    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'},scen:{modelId:'model-custom',modelKey:'custom',projectName:'Local CXR triage model',taskType:'Classification'}});
+    expect(snapshot.assessment.scen.projectName).toBe('Local CXR triage model');
+    expect(snapshot.assessment.aiModels['model-custom'].name).toBe('Local CXR triage model');
+    const storage = memoryStorage();
+    expect(saveAssessmentLocally(snapshot, storage).ok).toBe(true);
+    expect(loadLocalAssessment(storage).value.assessment.scen.projectName).toBe('Local CXR triage model');
+  });
+
   it('persists the procurement candidate shortlist in the portable assessment', () => {
     const candidates = [{id:'candidate-a',label:'Candidate A',modelKey:'cad',accuracyPct:'84'},{id:'candidate-b',label:'Candidate B',modelKey:'seg2d',accuracyPct:'91'}];
     const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'},scen:{modelId:'model-a',aiRoute:'compare'},aiComparison:{candidates}});

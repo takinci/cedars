@@ -69,15 +69,8 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
   });
   return (
     <div style={{border:'2px solid #2E7D32', borderRadius:16, padding:'20px 22px', background:'#fff', display:'flex', flexDirection:'column', gap:14}}>
-      <div id="ai-examples" className="quickStartNotice" style={{marginBottom:2}}>
-        <AlertTriangle size={17}/><div>
-          <strong>Quick start or begin with an empty model</strong>
-          <p>{examples.length} completed examples show the model record, footprint calculation, EcoLabel, and reporting workflow. Published values are used where available; assumptions are marked as estimates.</p>
-          <div className="quickStartChoices"><button type="button" onClick={onReset}>Start empty</button>{examples.map(ex => <button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>{ex.title}</button>)}</div>
-        </div>
-      </div>
       <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap'}}><span style={{...kicker,background:'#e8f5e9',border:'none',marginBottom:0}}>START HERE</span><h2 style={{margin:0,fontSize:19}}>What do you want to do?</h2></div>
-      <p className="note" style={{margin:0}}>Use <strong>Development</strong> for a model your team is training or developing. Use <strong>Procure / deploy</strong> for clinical evaluation and selection. Within Procure / deploy, either assess one model or compare candidates; comparison is optional.<Ref id="doo-jacr-2024" order={AI_ENTRY_REFS}/><Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
+      <p className="note" style={{margin:0}}>Choose the lifecycle stage that matches your role. Use <strong>Develop / train</strong> when your team is building or materially retraining a model. Use <strong>Procure / deploy</strong> when evaluating, selecting, purchasing, receiving, or preparing a model for clinical use.<Ref id="doo-jacr-2024" order={AI_ENTRY_REFS}/><Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1.25fr',gap:16}} className="aiEntryGrid">
         <div style={{...card,order:2,borderColor:(route==='compare'||(route==='own'&&ownMode==='spec'))?'#2E7D32':'#c8e6c9'}}>
           <div style={{display:'flex',alignItems:'center',gap:10}}><TrendingUp size={20} style={{color:'#2E7D32',flexShrink:0}}/><div><span style={kicker}>PROCURE · DEPLOY</span><br/><strong style={{fontSize:16}}>Assess or compare clinical AI</strong></div></div>
@@ -94,10 +87,17 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           {systemType&&deployMode==='compare'&&<div style={{...inset,borderColor:'#c8e6c9'}}><p style={{...q,fontSize:13}}>Compare candidates</p><p className="note" style={{margin:0}}>Continue to enter the shared clinical definition, workload, compute context, and comparison basis once for all candidates.</p><div><button type="button" onClick={()=>onRoute('compare')}>Start candidate comparison →</button></div></div>}
         </div>
         <div style={{...card,order:1,borderColor:(route==='own'&&ownMode!=='spec')?'#2E7D32':'#c8e6c9'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10}}><Cpu size={20} style={{color:'#2E7D32',flexShrink:0}}/><div><span style={kicker}>DEVELOPMENT</span><br/><strong style={{fontSize:16}}>Characterize a model you are developing</strong></div></div>
-          <p className="note" style={{margin:0}}>For a model your team is training or developing. Record its measured or estimated training and inference footprint as the model evolves, with provenance for the values you report.</p>
+          <div style={{display:'flex',alignItems:'center',gap:10}}><Cpu size={20} style={{color:'#2E7D32',flexShrink:0}}/><div><span style={kicker}>DEVELOP · TRAIN</span><br/><strong style={{fontSize:16}}>Develop / train a model</strong></div></div>
+          <p className="note" style={{margin:0}}>For a model your team is building or materially retraining. Characterize measured or estimated training and inference footprint as the model evolves, with provenance for the values you report.</p>
           <div style={inset}><p style={q}>How do you want to characterize it?</p>{[['measured','I have measured energy numbers','Enter kWh per training run and Wh (or tokens) per study. These fields carry a Measured badge on your label.'],['measure','Help me measure','Three questions about your setup lead to the right open-source tool, with what each one fills in.']].map(([key,title,desc])=><label key={key} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'10px 12px',border:`1px solid ${ownMode===key?'#2E7D32':'#c8e6c9'}`,borderRadius:12,background:ownMode===key?'#f1f8f2':'#fff',cursor:'pointer',boxShadow:ownMode===key?'inset 0 0 0 1px #2E7D32':'none',flexDirection:'row',fontWeight:400}}><input type="radio" name="ai-own-mode" checked={ownMode===key} onChange={()=>onOwnMode(key)} style={{marginTop:3,accentColor:'#2E7D32'}}/><span><strong style={{display:'block',fontSize:14,color:'#1b3a22'}}>{title}</strong><span className="note" style={{display:'block',fontSize:12,marginTop:2}}>{desc}</span></span></label>)}</div>
           <div><button type="button" className={(route==='own'&&ownMode!=='spec')?'':'download'} onClick={()=>{if(ownMode==='spec')onOwnMode('measured');onRoute('own');}}>Characterize this model →</button></div>
+        </div>
+      </div>
+      <div id="ai-examples" className="quickStartNotice" style={{marginTop:2,marginBottom:0}}>
+        <AlertTriangle size={17}/><div>
+          <strong>Examples &amp; quick start</strong>
+          <p>Optional: start empty or load a completed example after choosing which AI lifecycle stage fits your work.</p>
+          <div className="quickStartChoices"><button type="button" onClick={onReset}>Start empty</button>{examples.map(ex => <button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>{ex.title}</button>)}</div>
         </div>
       </div>
     </div>
@@ -105,19 +105,18 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
 }
 
 // Compact strip shown once a route is chosen.
-export function AiRouteStrip({route, ownMode, onComparison, onBackToComparison, onChange}) {
-  const clinical = route === 'compare' || (route === 'own' && ownMode === 'spec');
+export function AiRouteStrip({route, ownMode, onComparison, onBackToComparison, onStartComparison}) {
   const label = route === 'compare' ? 'Procure · deploy — Compare candidates'
     : ownMode === 'spec' ? 'Procure · deploy — Assess one model'
-      : `Development — ${ownMode === 'measured' ? 'measured numbers' : 'help me measure'}`;
+      : `Develop · train — ${ownMode === 'measured' ? 'measured numbers' : 'help me measure'}`;
   return (
     <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', border:'1px solid #c8e6c9', borderRadius:12, padding:'8px 14px', background:'#fff'}}>
       <span style={{...kicker, background:'#e8f5e9', border:'none', marginBottom:0}}>AI PATHWAY</span>
       <strong style={{fontSize:13}}>{label}</strong>
       <span style={{marginLeft:'auto', display:'flex', gap:14, alignItems:'center'}}>
         {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>View candidate comparison ↓</button>}
-        {route === 'own' && ownMode === 'spec' && onBackToComparison && <button type="button" className="inlineTextButton" onClick={onBackToComparison}>← Back to comparison</button>}
-        <button type="button" className="inlineTextButton" onClick={onChange}>{clinical ? '← Assess or compare' : 'Change pathway'}</button>
+        {route === 'own' && ownMode === 'spec' && onBackToComparison && <button type="button" className="inlineTextButton" onClick={onBackToComparison}>← Back to candidate comparison</button>}
+        {route === 'own' && ownMode === 'spec' && !onBackToComparison && onStartComparison && <button type="button" className="inlineTextButton" onClick={onStartComparison}>Compare this model with candidates →</button>}
       </span>
     </div>
   );

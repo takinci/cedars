@@ -1,5 +1,6 @@
-// Worked examples for the AI Model & Informatics page. Each is a patch applied over SCEN_DEFAULTS
-// (so it is reproducible by link) plus, for the Compare route, benchmark candidates.
+// Worked examples for the AI Model & Informatics page. Each is a patch applied over SCEN_DEFAULTS.
+// Single-model fields are URL-encoded directly. Built-in comparison examples are restored from a
+// versioned preset key; custom candidate edits and free-text comparison notes stay in CEDARS files.
 //
 // Published values are used where a publication reports them; everything else is an illustrative
 // estimate and is badged as such on the label. No example claims a measured energy figure for a

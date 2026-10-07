@@ -9,7 +9,7 @@ export default function SaveSharePanel({
 }) {
   const inputRef = useRef(null);
   const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
-  const createReproducibleLink = () => { setShareConfirmOpen(false); onCopyLink(); };
+  const copyShareableAssessmentLink = () => { setShareConfirmOpen(false); onCopyLink(); };
 
   return (
     <section id="save-share" className="reportShareSection">
@@ -38,11 +38,11 @@ export default function SaveSharePanel({
       </div>
 
       <div className="reportShareGroup">
-        <div className="reportShareGroupHeading"><span>SHARE WITH OTHERS</span><h3>Create a reproducible link</h3></div>
+        <div className="reportShareGroupHeading"><span>SHARE WITH OTHERS</span><h3>Copy a shareable CEDARS assessment link</h3></div>
         <div className="reportShareCard reportShareLinkCard">
-          <div className="reportShareCardTitle"><Share2 size={18}/> Reproducible assessment link</div>
-          <p>Creates a compact link for the current calculator/current AI model configuration. It is <strong>not</strong> a complete multi-model Department backup; use the CEDARS file for exact full-assessment transfer. Nothing is published or sent automatically.</p>
-          <button onClick={()=>setShareConfirmOpen(true)} style={buttonStyle}><Share2 size={15}/>{linkCopied?'Link copied':'Create reproducible link'}</button>
+          <div className="reportShareCardTitle"><Share2 size={18}/> Shareable CEDARS assessment link</div>
+          <p>Reopens the core calculator/current AI-model configuration and supported CEDARS reference candidates. Custom candidate edits, free-text comparison notes, and the complete multi-model Department assessment require a downloaded CEDARS file. Nothing is published or sent automatically.</p>
+          <button onClick={()=>setShareConfirmOpen(true)} style={buttonStyle}><Share2 size={15}/>{linkCopied?'Link copied':'Copy shareable CEDARS assessment link'}</button>
         </div>
       </div>
 
@@ -55,10 +55,10 @@ export default function SaveSharePanel({
       {shareConfirmOpen && (
         <div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget) setShareConfirmOpen(false);}} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(20,35,25,.42)',display:'grid',placeItems:'center',padding:18}}>
           <div role="dialog" aria-modal="true" aria-labelledby="share-link-title" style={{width:'min(560px,100%)',background:'white',borderRadius:20,padding:22,boxShadow:'0 24px 80px rgba(0,0,0,.22)',border:'1px solid #dce9dc'}}>
-            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:10}}><Share2 size={20} style={{color:'#2E7D32'}}/><h3 id="share-link-title" style={{margin:0,color:'#1b5e20'}}>Create a shareable link?</h3></div>
-            <p style={{margin:'0 0 10px',fontSize:13,lineHeight:1.6,color:'#455a64'}}>This URL carries the current calculator and current AI-model configuration. It does not carry the complete multi-model Clinical AI inventory or every full-assessment field; use a complete CEDARS file when exact full-assessment transfer is required. CEDARS does not publish or send the link automatically.</p>
+            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:10}}><Share2 size={20} style={{color:'#2E7D32'}}/><h3 id="share-link-title" style={{margin:0,color:'#1b5e20'}}>Copy a shareable CEDARS assessment link?</h3></div>
+            <p style={{margin:'0 0 10px',fontSize:13,lineHeight:1.6,color:'#455a64'}}>This URL carries the core calculator/current AI-model configuration and supported CEDARS reference candidates. Custom candidate edits, free-text comparison notes, the complete Clinical AI inventory, and other full-assessment fields remain in the complete CEDARS file. CEDARS does not publish or send the link automatically.</p>
             <p style={{margin:'0 0 18px',fontSize:12,lineHeight:1.55,color:'#607d66'}}>Personal details, email addresses, and contribution-consent information are not included.</p>
-            <div style={{display:'flex',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}><button className="download" onClick={()=>setShareConfirmOpen(false)} style={{minHeight:40}}>Cancel</button><button onClick={createReproducibleLink} style={{minHeight:40}}><Share2 size={15}/> Create link</button></div>
+            <div style={{display:'flex',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}><button className="download" onClick={()=>setShareConfirmOpen(false)} style={{minHeight:40}}>Cancel</button><button onClick={copyShareableAssessmentLink} style={{minHeight:40}}><Share2 size={15}/> Copy assessment link</button></div>
           </div>
         </div>
       )}
