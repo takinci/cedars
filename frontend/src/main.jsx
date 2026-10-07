@@ -22,6 +22,7 @@ import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
 import { buildAssessmentSnapshot, parseAssessmentText, saveAssessmentLocally, loadLocalAssessment, clearLocalAssessment, assessmentFilename } from './assessment.js';
 import { modelRecordFromScen, modelScenFromRecord, migrateLegacyAiState, toolFromDeployment } from './aiRecords.js';
+import { getDepartmentScoreReadiness, getAiScoreReadiness } from './scoreReadiness.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
 
@@ -1552,6 +1553,9 @@ function App() {
   const [aiEntryOriginModelId, setAiEntryOriginModelId] = useState('');
   const [aiExampleLoaded, setAiExampleLoaded] = useState('');
   const [clearClinicalAiConfirmOpen, setClearClinicalAiConfirmOpen] = useState(false);
+  // When Score finds a missing prerequisite, remember the exact source field so the return
+  // action can open, scroll to, and visibly highlight it instead of dropping the user at a page top.
+  const [scoreAttention, setScoreAttention] = useState('');
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
   // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
@@ -1669,12 +1673,14 @@ function App() {
     setPage(targetPage);
     window.setTimeout(() => document.getElementById(sectionId)?.scrollIntoView({behavior:'smooth', block:'start'}), 60);
   };
-  // Score/EcoLabel product cards are real navigation controls: switch the product and
-  // bring its live score summary into view, even when the same product was already selected.
+  // Score/EcoLabel product cards are real navigation controls. If that product is incomplete,
+  // land on the actionable readiness explanation rather than scrolling past it to an empty score.
   const selectEcoScore = mode => {
     setEcoLabelMode(mode);
     window.setTimeout(() => {
-      document.getElementById(mode === 'ai' ? 'ai-score-panel' : 'department-score-panel')?.scrollIntoView({behavior:'smooth', block:'start'});
+      const readiness = mode === 'ai' ? aiScoreReadiness : departmentScoreReadiness;
+      const target = readiness.ready ? (mode === 'ai' ? 'ai-score-panel' : 'department-score-panel') : `score-readiness-${mode}`;
+      document.getElementById(target)?.scrollIntoView({behavior:'smooth', block:'start'});
     }, 60);
   };
   const [aiOpen, setAiOpen] = useState({model:true});
@@ -2377,6 +2383,7 @@ function App() {
     // fields are optional OVERRIDES (headline numbers + region) when non-empty.
     const mult = TIME_MULT[settings.timePeriod] ?? 1;
     const region = deptLabel.region || settings.region;
+    const hasGridFactor = region !== 'Editable custom' || String(settings.customCi ?? '').trim() !== '';
     const ci = getCI(region, settings.customCi);
     const renewablePct = Math.min(100, Math.max(0, parseFloat(deptLabel.renewablePct) || 0));
     const effectiveCi = rnd(ci * (1 - renewablePct / 100), 4);
@@ -2396,7 +2403,10 @@ function App() {
     // the explanatory diagnostic for the "large fleet, low volume" case.
     const fleetCapacityYr = efficiency.capacityYr;
     const utilPct = (fleetCapacityYr > 0 && annualStudies > 0) ? rnd(annualStudies / fleetCapacityYr * 100, 0) : null;
-    const hasData = annualStudies > 0;
+    // A per-study Department score needs both a denominator (studies) and a real energy baseline.
+    // Requiring annual kWh also prevents a manually entered study volume with zero equipment from
+    // appearing as a perfect zero-carbon score. Custom-grid mode additionally needs an entered factor.
+    const hasData = annualStudies > 0 && annualKwh > 0 && hasGridFactor;
     // Clinical AI now flow through the live department energy (dash), so their net
     // effect (compute − clinical savings) is already in facilityCo2 — no separate fold here
     // (that would double-count).
@@ -2419,7 +2429,7 @@ function App() {
     return {
       deptName: deptLabel.deptName || 'Unnamed Department',
       hospitalName: deptLabel.hospitalName || '',
-      region, isLive,
+      region, isLive, hasGridFactor,
       ci, effectiveCi, renewablePct,
       annualKwh, annualStudies, totalAnnualCo2, co2PerStudy, kwhPerStudy,
       fleetCapacityYr, utilPct,
@@ -2434,6 +2444,53 @@ function App() {
       date: new Date().toISOString().slice(0, 7),
     };
   }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash.totals.kwh, efficiency.capacityYr, efficiency.studiesYr, clinicalAdj.count, scenario.monthlyKwhSaved, scenario.savings.co2Fraction]);
+
+  const departmentScoreReadiness = useMemo(() => getDepartmentScoreReadiness({
+    annualKwh: deptLabelData.annualKwh,
+    annualStudies: deptLabelData.annualStudies,
+    gridReady: deptLabelData.hasGridFactor,
+    clinicalAiCount: deptLabelData.clinicalToolCount,
+  }), [deptLabelData.annualKwh, deptLabelData.annualStudies, deptLabelData.hasGridFactor, deptLabelData.clinicalToolCount]);
+  const aiScoreReadiness = useMemo(() => getAiScoreReadiness({
+    hasData: ecoLabelData.hasData,
+    hasPathway: !!scen.aiRoute,
+  }), [ecoLabelData.hasData, scen.aiRoute]);
+
+  const scoreIssueAction = (mode, key) => {
+    if (mode === 'ai') return key === 'pathway' ? 'Choose AI pathway →' : 'Open AI energy inputs →';
+    if (key === 'context') return 'Complete grid context →';
+    if (key === 'volume') return 'Add imaging workload →';
+    return 'Add Department equipment →';
+  };
+  const focusMissingScoreInput = (mode, key) => {
+    setScoreAttention(key);
+    if (mode === 'ai') {
+      setEcoLabelMode('ai');
+      setPage('ai');
+      if (key === 'energy') setAiOpen(o => ({...o, model:true, training:true, inference:true}));
+      window.setTimeout(() => {
+        if (key === 'pathway') window.scrollTo({top:0, behavior:'smooth'});
+        else document.getElementById('ai-training')?.scrollIntoView({behavior:'smooth', block:'start'});
+      }, 100);
+      return;
+    }
+    setEcoLabelMode('department');
+    setDeptSetupOpen(true);
+    if (key === 'volume') setDashOpen(o => ({...o, efficiency:true}));
+    setPage('dashboard');
+    const target = key === 'context' ? 'department-context-input' : key === 'volume' ? 'dash-efficiency' : 'department-equipment';
+    window.setTimeout(() => document.getElementById(target)?.scrollIntoView({behavior:'smooth', block:'center'}), 120);
+  };
+  const goToScore = mode => {
+    setScoreAttention('');
+    setEcoLabelMode(mode);
+    setPage('ecolabel');
+    window.setTimeout(() => {
+      const readiness = mode === 'ai' ? aiScoreReadiness : departmentScoreReadiness;
+      const target = readiness.ready ? (mode === 'ai' ? 'ai-score-panel' : 'department-score-panel') : `score-readiness-${mode}`;
+      document.getElementById(target)?.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 80);
+  };
 
   // Auto-seed the AI model's training (amortised) + inference as locked compute lines,
   // then layer the user's own Infrastructure-tab workloads on top. Provider/region come
@@ -2745,7 +2802,7 @@ function App() {
           />
           {/* Ambient EcoLabel follows the active product, including Score, Improve, and Report. */}
           {(() => { const aiProduct=page==='ai'||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai'); const b=aiProduct?ecoLabelData:deptLabelData; const bHas=aiProduct?b.graded:b.hasData; return (
-          <button onClick={()=>{setEcoLabelMode(aiProduct?'ai':'department');setPage('ecolabel');}} title={aiProduct ? 'Current AI model score — open Score & EcoLabel' : 'Current Department EcoLabel score — open Score & EcoLabel'}
+          <button onClick={()=>goToScore(aiProduct?'ai':'department')} title={aiProduct ? 'Current AI model score — open Score & EcoLabel' : 'Current Department EcoLabel score — open Score & EcoLabel'}
             style={{display:'inline-flex',alignItems:'center',gap:7,background:b.ratingBg,border:`1.5px solid ${b.ratingColor}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:'pointer',boxShadow:'none',flexShrink:0}}>
             <Leaf size={17}  fill={b.ratingColor}/>
             <span style={{fontSize:18,fontWeight:900,color:b.ratingColor,lineHeight:1}}>{bHas ? b.score : '—'}</span>
@@ -2765,7 +2822,7 @@ function App() {
           onInput={()=>goToAssessmentContext(page==='ai'?'ai':page==='dashboard'?'dashboard':ecoLabelMode==='ai'?'ai':'dashboard',true)}
           onDepartment={()=>setPage('dashboard')}
           onAi={()=>setPage('ai')}
-          onScore={()=>{if(page==='ai') setEcoLabelMode('ai'); setPage('ecolabel');}}
+          onScore={()=>goToScore(page==='ai'?'ai':page==='dashboard'?'department':ecoLabelMode)}
           onImprove={()=>{if(page==='ai'){setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}else if(page==='dashboard')setEcoLabelMode('department');setPage('scenario');}}
           onReport={()=>setPage('report')}
         />
@@ -2811,7 +2868,7 @@ function App() {
               <div className="workflowCard">
                 <div className="workflowCardKicker"><span className="workflowNumber">2</span><span>SCORE &amp; ECOLABEL</span></div>
                 <div className="workflowCardBody">See the current CEDARS score, rating, and EcoLabel for the assessment you entered.</div>
-                <button className="download workflowCardAction" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>View score &amp; EcoLabel →</button>
+                <button className="download workflowCardAction" onClick={()=>goToScore('department')}>View score &amp; EcoLabel →</button>
               </div>
 
               <div className="workflowCard">
@@ -2911,12 +2968,13 @@ function App() {
               <span style={{display:'flex',flexDirection:'column',gap:3,flex:1}}>
                 <strong>Department setup</strong>
                 <span className="departmentSetupMeta">{Object.values(settings.equipment).reduce((sum,n)=>sum+(Number(n)||0),0)} devices · {settings.region} · {settings.timePeriod}</span>
+                <span className={`departmentSetupScoreState ${departmentScoreReadiness.ready?'ready':'needs'}`}>{departmentScoreReadiness.ready?'Ready for Score':`Score needs ${departmentScoreReadiness.issues.length} input${departmentScoreReadiness.issues.length===1?'':'s'}`}</span>
               </span>
               <span style={{fontSize:12,color:'#607d66',fontWeight:700}}>{deptSetupOpen ? 'Hide setup ▴' : 'Edit setup ▾'}</span>
             </button>
             {deptSetupOpen && (
               <div className="departmentSetupBody">
-                <section className="departmentContextBlock" aria-labelledby="department-context-title">
+                <section id="department-context-input" className={`departmentContextBlock ${scoreAttention==='context'?'scoreInputAttention':''}`} aria-labelledby="department-context-title">
                   <div className="departmentContextHeader">
                     <div>
                       <span>FIRST STEP</span>
@@ -2946,8 +3004,9 @@ function App() {
                 </section>
                 <p className="note" style={{fontSize:12,margin:'14px 0 12px'}}>Configure your shared assessment context, equipment, and clinical AI here. These inputs drive the department footprint, Score & EcoLabel, and the scenarios modeled in Improve.</p>
             {/* Equipment card grid */}
-            <div id="department-equipment" style={{marginBottom:16,scrollMarginTop:90}}>
+            <div id="department-equipment" className={scoreAttention==='equipment'?'scoreInputAttention':''} style={{marginBottom:16,scrollMarginTop:90}}>
               <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment</div>
+              {departmentScoreReadiness.issues.some(i=>i.key==='equipment')&&<div className="scoreRequiredInputHint"><AlertTriangle size={15}/><div><strong>Department score needs a fleet / energy baseline.</strong><span>Choose an illustrative quick-start fleet below or enter your own device counts. Clinical AI examples are additive; they do not replace the underlying Department equipment and energy inputs.</span></div></div>}
 
               {/* Quick-start templates are illustrative defaults, not measured local data. */}
               <div className="quickStartNotice">
@@ -3181,7 +3240,7 @@ function App() {
             <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',border:'1.5px solid #c8e6c9',borderRadius:12,padding:'11px 14px',marginTop:12,background:'#fff'}}>
               <div style={{flex:'1 1 300px'}}><strong style={{fontSize:12,color:'#1b5e20'}}>Continue when you're ready</strong><div className="note" style={{fontSize:10,marginTop:3}}>{(deptLabel.aiTools||[]).length>0?<>{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size} model{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size===1?'':'s'} · {(deptLabel.aiTools||[]).length} local use{(deptLabel.aiTools||[]).length===1?'':'s'} configured. You can return here and add more later.</>:<>Clinical AI is optional. If this department currently uses none, continue with zero local AI uses.</>}</div></div>
               {(deptLabel.aiTools||[]).length>0&&<button type="button" className="download" onClick={()=>document.getElementById('clinical-ai-model-picker')?.scrollIntoView({behavior:'smooth',block:'center'})}>+ Add another model or use</button>}
-              <button type="button" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Continue to Score &amp; EcoLabel →</button>
+              <button type="button" onClick={()=>goToScore('department')}>Continue to Score &amp; EcoLabel →</button>
             </div>
           </section>
             )}
@@ -3238,7 +3297,7 @@ function App() {
             <span className="accVal">{deptLabelData.co2PerStudy} kgCO₂e/study</span>
           </button>
           {dashOpen['efficiency'] && (
-          <section id="dash-efficiency" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
+          <section id="dash-efficiency" className={`aiSection ${scoreAttention==='volume'?'scoreInputAttention':''}`} style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:4}}>Efficiency — energy into healthcare</h2>
             <p className="note" style={{marginBottom:16}}>
               How efficiently your fleet's energy is converted into delivered patient care (imaging studies). Fixed energy — idle, standby, MRI cooling — is there whether you scan few patients or many, so an under-used fleet carries a high footprint <em>per study</em>. This reflects care <strong>delivered</strong>, not health outcomes.
@@ -4446,7 +4505,7 @@ function App() {
                   )}
                   <div className="note" style={{margin:0}}>The full checklist, with each item explained, is on <button type="button" className="inlineTextButton" onClick={()=>{setEcoLabelMode('ai');setPage('report');}}>Report (&amp; Share)</button>, where the exports are generated.</div>
                 </div>
-                <button onClick={()=>{setEcoLabelMode('ai');setPage('ecolabel');}}>Continue to Score &amp; EcoLabel →</button>
+                <button onClick={()=>goToScore('ai')}>Continue to Score &amp; EcoLabel →</button>
               </div>
             </div>
           )}
@@ -4662,14 +4721,30 @@ function App() {
                 {ecoLabelMode==='ai' && <span className="ecoProductSelected">AI SELECTED</span>}
               </button>
             </div>
-            {((ecoLabelMode==='department' && !deptLabelData.hasData) || (ecoLabelMode==='ai' && !ecoLabelData.hasData)) && (
-              <div className="scoreEmptyState">
-                <AlertTriangle size={18}/>
-                <div>
-                  <strong>No assessment data yet for this pathway.</strong>
-                  <p>Go back to <strong>Input</strong> and choose Radiology Department or AI Model &amp; Informatics to enter the data needed for a score.</p>
+            {ecoLabelMode==='department' && !departmentScoreReadiness.ready && (
+              <div id="score-readiness-department" className="scoreReadinessGate" role="status" aria-live="polite">
+                <AlertTriangle size={20}/>
+                <div className="scoreReadinessBody">
+                  <span>DEPARTMENT SCORE · INPUT NEEDED</span>
+                  <strong>{departmentScoreReadiness.issues.length===1?'One Department input is still needed.':`${departmentScoreReadiness.issues.length} Department inputs are still needed.`}</strong>
+                  <p>CEDARS keeps the Department baseline separate from Clinical AI. {deptLabelData.clinicalToolCount>0?'Your Clinical AI setup is saved, but the base Department footprint still needs the item below.':'Complete the item below; you do not have to use a quick-start example if you prefer to enter your own data.'}</p>
+                  <div className="scoreReadinessIssues">
+                    {departmentScoreReadiness.issues.map(issue=><button type="button" key={issue.key} onClick={()=>focusMissingScoreInput('department',issue.key)}><span><strong>{issue.title}</strong><small>{issue.detail}</small></span><b>{scoreIssueAction('department',issue.key)}</b></button>)}
+                  </div>
                 </div>
-                <button type="button" onClick={()=>setPage('input')}>Go to Input →</button>
+              </div>
+            )}
+            {ecoLabelMode==='ai' && !aiScoreReadiness.ready && (
+              <div id="score-readiness-ai" className="scoreReadinessGate" role="status" aria-live="polite">
+                <AlertTriangle size={20}/>
+                <div className="scoreReadinessBody">
+                  <span>AI RESEARCH ECOLABEL · INPUT NEEDED</span>
+                  <strong>{aiScoreReadiness.issues[0]?.title || 'Complete the AI model inputs.'}</strong>
+                  <p>{aiScoreReadiness.issues[0]?.detail}</p>
+                  <div className="scoreReadinessIssues">
+                    {aiScoreReadiness.issues.map(issue=><button type="button" key={issue.key} onClick={()=>focusMissingScoreInput('ai',issue.key)}><span><strong>{issue.title}</strong><small>{issue.detail}</small></span><b>{scoreIssueAction('ai',issue.key)}</b></button>)}
+                  </div>
+                </div>
               </div>
             )}
           </> : <>
