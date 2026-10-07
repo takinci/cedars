@@ -38,6 +38,13 @@ describe('CEDARS assessment persistence', () => {
     expect(snapshot.assessment.aiDeployments[0]).toMatchObject({modelId:'model-a',useSharePct:'25',deploymentMonths:'24'});
   });
 
+  it('persists the procurement candidate shortlist in the portable assessment', () => {
+    const candidates = [{id:'candidate-a',label:'Candidate A',modelKey:'cad',accuracyPct:'84'},{id:'candidate-b',label:'Candidate B',modelKey:'seg2d',accuracyPct:'91'}];
+    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'},scen:{modelId:'model-a',aiRoute:'compare'},aiComparison:{candidates}});
+    expect(snapshot.assessment.aiComparison.candidates).toEqual(candidates);
+    expect(parseAssessmentText(JSON.stringify(snapshot))).toEqual({ok:true,value:snapshot});
+  });
+
   it('migrates schema-v1 assessments without dropping legacy fields', () => {
     const old = {format:'CEDARS', schemaVersion:1, appVersion:'web', savedAt:'2026-09-20T00:00:00.000Z', assessment:{settings:{region:'Switzerland'}, scen:{modelKey:'cad'}, deptLabel:{aiTools:[]}, customLegacyField:'kept'}};
     const parsed = parseAssessmentText(JSON.stringify(old));

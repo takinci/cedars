@@ -1509,12 +1509,11 @@ function App() {
   // other models referenced by Department deployments so those deployments link rather than copy.
   const initialAiRecord = modelRecordFromScen({...SCEN_DEFAULTS, ...(initCfg.scen || {})});
   const [aiModels, setAiModels] = useState(() => ({[initialAiRecord.id]: initialAiRecord}));
-  const [deptModelChoice, setDeptModelChoice] = useState(initialAiRecord.id);
+  const [deptModelChoice, setDeptModelChoice] = useState('');
 
   useEffect(() => {
     const record = modelRecordFromScen(scen);
     setAiModels(models => ({...models, [record.id]: record}));
-    setDeptModelChoice(choice => choice || record.id);
   }, [scen]);
 
   const set  = (key, val) => setSettings(s => ({...s, [key]: val}));
@@ -1532,7 +1531,7 @@ function App() {
     const defaultAiRecord = modelRecordFromScen(SCEN_DEFAULTS);
     setScen({...SCEN_DEFAULTS});
     setAiModels({[defaultAiRecord.id]: defaultAiRecord});
-    setDeptModelChoice(defaultAiRecord.id);
+    setDeptModelChoice('');
     setProvenance({equipment:{}});
     setScenarioInterventions([]);
     setDeptSetupOpen(true);
@@ -1588,7 +1587,7 @@ function App() {
   // Radiology Department volume, or a user-entered value.
   const compareCtx = scen.compareVolumeSource || 'small';
   const applyCompareCtx = source => {
-    const deptVolume = Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1));
+    const deptVolume = departmentStudiesPerMonth;
     const preset = VOLUME_ESTIMATES.find(v => v.key === source);
     const nextVolume = source === 'department' && deptVolume > 0 ? deptVolume
       : preset ? preset.studiesPerMonth : null;
@@ -1650,11 +1649,11 @@ function App() {
 
   // Scenario tab mode + AI procurement shortlist. Procure / Deploy starts with two editable,
   // like-for-like candidate slots rather than asking the user to build one model and overwrite it.
-  const makeDefaultBenchModels = () => [
-    {...benchCfgFromLib(scen.modelKey || 'cad'), id:'candidate-a', label:'Candidate A', scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'},
-    {...benchCfgFromLib(scen.modelKey || 'cad'), id:'candidate-b', label:'Candidate B', scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'},
+  const makeDefaultBenchModels = (modelKey = scen.modelKey || 'cad') => [
+    {...benchCfgFromLib(modelKey), id:'candidate-a', label:'Candidate A', scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'},
+    {...benchCfgFromLib(modelKey), id:'candidate-b', label:'Candidate B', scanTimeReductPct:'0', lowValueReductPct:'0', validationBasis:'Not specified', intendedUse:'', vendor:'', regulatoryStatus:'Not specified', integrationPath:'Not specified'},
   ];
-  const [benchModels, setBenchModels] = useState(() => scen.aiRoute === 'compare' ? makeDefaultBenchModels() : []);
+  const [benchModels, setBenchModels] = useState(() => scen.aiRoute === 'compare' ? makeDefaultBenchModels(scen.modelKey) : []);
   const ensureBenchModels = () => setBenchModels(list => list.length ? list : makeDefaultBenchModels());
   const addBenchModel = () => setBenchModels(list => {
     if (list.length >= 6) return list;
@@ -1676,12 +1675,14 @@ function App() {
       ...s, ...pickAiCfg(chosen),
       // Comparison context is shared; choosing a candidate must not silently replace it with the
       // template's default provider/region.
-      cloudProvider:s.cloudProvider, cloudRegion:s.cloudRegion, customPue:s.customPue, renewablePct:s.renewablePct,
-      trainingProvider:s.trainingProvider, trainingRegion:s.trainingRegion, trainingPue:s.trainingPue, trainingRenewablePct:s.trainingRenewablePct,
-      inferenceProvider:s.inferenceProvider, inferenceRegion:s.inferenceRegion, inferencePue:s.inferencePue, inferenceRenewablePct:s.inferenceRenewablePct,
-      inferStudiesMonth:s.inferStudiesMonth, deployMonths:s.deployMonths, trainDisclosed:s.trainDisclosed,
+      cloudProvider:s.cloudProvider, cloudRegion:s.cloudRegion, customPue:'', renewablePct:'0',
+      trainingProvider:'', trainingRegion:'', trainingPue:'', trainingRenewablePct:'',
+      inferenceProvider:'', inferenceRegion:'', inferencePue:'', inferenceRenewablePct:'',
+      inferStudiesMonth:s.inferStudiesMonth, deployMonths:s.deployMonths,
+      // Do not leak single-model values from whatever record happened to be open before Compare.
+      datasetSize:'', epochs:'', numRuns:'1', trainKwhMeasured:'', trainTool:'', wueOnsite:'', wueOffsite:'', waterMode:'screening',
       modelId:`model-${String(chosen.id).replace(/[^a-z0-9-]/gi,'-').toLowerCase()}`, projectName:chosen.label || s.projectName,
-      taskType:s.compareClinicalTask || s.taskType,
+      taskType:LIB_TASK[chosen.modelKey] || s.taskType, trainDisclosed:'yes',
       performanceValidationContext:[s.compareEndpoint,s.compareCohort].filter(Boolean).join(' · ') || chosen.performanceValidationContext || chosen.validationBasis || s.performanceValidationContext,
       aiRoute:'own', ownMode:'spec',
     }));
@@ -1777,15 +1778,15 @@ function App() {
     window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0);
   };
 
-  const createBlankAiRecord = () => {
+  const createBlankAiRecord = (selectForDepartment = false) => {
     const id = `model-${Date.now()}`;
     setAiExampleLoaded('');
     setScen({...SCEN_DEFAULTS, modelId:id, modelKey:'custom', projectName:'', taskType:'', paramsM:'', accuracyPct:'', accuracyMetric:'', trainGpu:'', trainHours:'', trainKwhMeasured:'', inferKwh:'', inferStudiesMonth:'', aiRoute:'', ownMode:'measured'});
-    setDeptModelChoice(id); setBenchModels([]); setAiOpen(o=>({...o,benchmark:false,model:true})); return id;
+    if (selectForDepartment) setDeptModelChoice(id); setBenchModels([]); setAiOpen(o=>({...o,benchmark:false,model:true})); return id;
   };
   const openAiModelWorkspaceFromDepartment = (modelId = '', createNew = false) => {
     setAiEntryOrigin('department'); setAiEntryOriginModelId(modelId || deptModelChoice || '');
-    if (createNew) { createBlankAiRecord(); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0); }
+    if (createNew) { createBlankAiRecord(true); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0); }
     else if (modelId && aiModels[modelId]) loadAiModelRecord(modelId);
     else { setS('aiRoute',''); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0); }
   };
@@ -1797,7 +1798,7 @@ function App() {
   const startBlankAiRecord = () => { createBlankAiRecord(); };
   const useLoadedExampleAsStartingPoint = () => {
     const oldId = scen.modelId, id = `model-${Date.now()}`;
-    setAiExampleLoaded(''); setScen(s=>({...s,modelId:id,projectName:s.projectName || AI_EXAMPLES.find(e=>e.key===aiExampleLoaded)?.title || 'AI model'})); setDeptModelChoice(id);
+    setAiExampleLoaded(''); setScen(s=>({...s,modelId:id,projectName:s.projectName || AI_EXAMPLES.find(e=>e.key===aiExampleLoaded)?.title || 'AI model'})); if (aiEntryOrigin==='department') setDeptModelChoice(id);
     if (oldId?.startsWith('example-')) setAiModels(models=>{const next={...models};if(!(deptLabel.aiTools||[]).some(t=>t.modelId===oldId))delete next[oldId];return next;});
   };
 
@@ -1830,6 +1831,7 @@ function App() {
   const currentAssessmentSnapshot = () => buildAssessmentSnapshot({
     settings, scen, deptLabel, ecoLabel, ecoLabelTouched: false, cloudTracker, provenance, scenarioInterventions,
     aiModels, activeAiModelId: scen.modelId, aiDeployments: deptLabel.aiTools,
+    aiComparison: {candidates: benchModels},
     // Store the exact disclosure outputs currently shown in Report (& Share) so research
     // contributions do not require reconstructing derived values from raw inputs later.
     disclosure: {
@@ -1909,7 +1911,9 @@ function App() {
     const restoredScen = migrateLegacyLabel({...SCEN_DEFAULTS, ...(a.scen || {})}, a.ecoLabel, !!a.ecoLabelTouched);
     setScen(restoredScen);
     setAiModels(aiState.aiModels || {[restoredScen.modelId]:modelRecordFromScen(restoredScen)});
-    setDeptModelChoice(aiState.activeAiModelId || restoredScen.modelId || 'model-primary');
+    const restoredCandidates = Array.isArray(a.aiComparison?.candidates) ? a.aiComparison.candidates : [];
+    setBenchModels(restoredCandidates.length ? restoredCandidates : (restoredScen.aiRoute === 'compare' ? makeDefaultBenchModels(restoredScen.modelKey) : []));
+    setDeptModelChoice(aiState.aiDeployments?.[0]?.modelId || '');
     const restoredTools = Array.isArray(aiState.aiDeployments) ? aiState.aiDeployments.map(toolFromDeployment) : (a.deptLabel?.aiTools || []);
     setDeptLabel({
       deptName:'', hospitalName:'', region:'', annualKwh:'', annualStudies:'', renewablePct:'0', activeInterventions:[], aiTools:[],
@@ -2076,6 +2080,8 @@ function App() {
   // fractions remain an expected-population approximation when deployed tools overlap on studies.
   const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom, provider:settings.storageProvider, region:settings.storageRegion, cloudCi:settings.storageCloudCi, scope1AnnualKg:settings.scope1AnnualKg};
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides]);
+  // Deployment workload uses the department's pre-AI imaging volume and is always normalized to studies/month.
+  const departmentStudiesPerMonth = Math.round((((dash.clinicalBasis?.imagingScans ?? dash.scopes.imagingScans) || 0)) / (TIME_MULT[settings.timePeriod] ?? 1));
   const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
@@ -2091,8 +2097,9 @@ function App() {
         ...cfg,
         cloudProvider: scen.cloudProvider,
         cloudRegion: scen.cloudRegion,
-        trainingProvider: scen.trainingProvider, trainingRegion: scen.trainingRegion, trainingPue: scen.trainingPue, trainingRenewablePct: scen.trainingRenewablePct,
-        inferenceProvider: scen.inferenceProvider, inferenceRegion: scen.inferenceRegion, inferencePue: scen.inferencePue, inferenceRenewablePct: scen.inferenceRenewablePct,
+        customPue:'', renewablePct:'0',
+        trainingProvider:'', trainingRegion:'', trainingPue:'', trainingRenewablePct:'',
+        inferenceProvider:'', inferenceRegion:'', inferencePue:'', inferenceRenewablePct:'',
         inferStudiesMonth: scen.inferStudiesMonth,
         deployMonths: scen.deployMonths,
       };
@@ -2100,7 +2107,7 @@ function App() {
       const lifetimeStudies = Math.max(0, (r.inference.studies || 0) * (parseFloat(scen.deployMonths) || 0));
       const inferenceCo2G = rnd((r.inference.kwhPerStudy || 0) * r.cloudCi * 1000, 3);
       const trainPerStudyG = lifetimeStudies > 0 ? rnd((r.training.kgCo2e || 0) * 1000 / lifetimeStudies, 3) : 0;
-      const carbonPerStudyG = rnd(inferenceCo2G + (scen.trainDisclosed === 'no' ? 0 : trainPerStudyG), 3);
+      const carbonPerStudyG = rnd(inferenceCo2G + (scen.compareBasis === 'inference' ? 0 : trainPerStudyG), 3);
       return {
         id: cfg.id, label: cfg.label, sizeLabel: r.modelSize, paramsM: r.paramsM,
         performanceValue: parseFloat(cfg.accuracyPct) || 0, performanceMetric: cfg.accuracyMetric || r.accuracyMetric,
@@ -2127,7 +2134,7 @@ function App() {
     const bestPerformance = !comparablePerformance || !rows.length ? null : rows[0].performanceDirection === 'lower' ? minBy('performanceValue') : maxBy('performanceValue');
     return {rows, metrics, comparisonDefinitionComplete, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
       performanceValue: bestPerformance, efficiency: rows[0]?.performanceDirection === 'lower' ? minBy('efficiency') : maxBy('efficiency')}};
-  }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.trainingProvider, scen.trainingRegion, scen.trainingPue, scen.trainingRenewablePct, scen.inferenceProvider, scen.inferenceRegion, scen.inferencePue, scen.inferenceRenewablePct, scen.inferStudiesMonth, scen.deployMonths, scen.trainDisclosed, scen.compareClinicalTask, scen.compareEndpoint, scen.compareCohort, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
+  }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.inferStudiesMonth, scen.deployMonths, scen.compareBasis, scen.compareClinicalTask, scen.compareEndpoint, scen.compareCohort, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
   // agent, all on the SAME department volume — surfaces the token multiplier concretely.
@@ -3022,7 +3029,7 @@ function App() {
               <p className="note" style={{fontSize:11,margin:'5px 0 8px'}}>Use one menu to select a model already in this assessment, add a pre-filled reference model, or enter a model that is not listed. Choosing a reference model adds it to this assessment immediately. <strong>AI Model &amp; Informatics</strong> is where its shared technical details are edited.</p>
               <select id="clinical-ai-model-picker" value={deptModelChoice?`model:${deptModelChoice}`:''} onChange={e=>{const v=e.target.value;if(!v)return;if(v.startsWith('model:'))setDeptModelChoice(v.slice(6));else if(v.startsWith('library:'))registerLibraryModel(v.slice(8));else if(v==='__new__')openAiModelWorkspaceFromDepartment('',true);}} style={{width:'100%',padding:'9px 10px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontSize:12,fontWeight:700,color:'#2E7D32'}}>
                 <option value="">Choose or add a model…</option>
-                <optgroup label="Models in this assessment">{Object.values(aiModels).filter(m=>!String(m.id).startsWith('example-')).map(m=><option key={m.id} value={`model:${m.id}`}>{m.name||m.id}</option>)}</optgroup>
+                <optgroup label="Models in this assessment">{Object.values(aiModels).filter(m=>!String(m.id).startsWith('example-') && !(m.id==='model-primary' && m.name==='Untitled model' && !m.config?.aiRoute)).map(m=><option key={m.id} value={`model:${m.id}`}>{m.name||m.id}</option>)}</optgroup>
                 <optgroup label="Reference library">{AI_MODEL_LIBRARY.filter(m=>m.key!=='custom').map(m=><option key={m.key} value={`library:${m.key}`}>Add reference: {m.label}</option>)}</optgroup>
                 <optgroup label="Other"><option value="__new__">Enter a model not listed…</option></optgroup>
               </select>
@@ -3382,11 +3389,8 @@ function App() {
           {!scen.aiRoute ? (
             <AiEntryStep
               route={scen.aiRoute} ownMode={scen.ownMode}
-              basis={scen.trainDisclosed === 'no' ? 'inference' : 'amortised'}
-              ctxSource={compareCtx}
-              dept={{region: settings.region, ci: getCI(settings.region, settings.customCi), studiesPerMonth: Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1))}}
-              volume={scen.inferStudiesMonth}
-              onVolume={v => setScen(s => ({...s, compareVolumeSource:'custom', inferStudiesMonth:v}))}
+              systemType={scen.aiSystemType || ''}
+              onSystemType={v => setS('aiSystemType', v)}
               onRoute={r => {
                 setS('aiRoute', r);
                 if (r === 'compare') {
@@ -3396,13 +3400,12 @@ function App() {
                 }
               }}
               onOwnMode={m => setS('ownMode', m)}
-              onBasis={b => setS('trainDisclosed', b === 'inference' ? 'no' : 'yes')}
-              onCtxSource={applyCompareCtx}
               examples={AI_EXAMPLES} onExample={loadAiExample} onReset={startBlankAiRecord}
             />
           ) : (
             <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode}
               onComparison={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
+              onBackToComparison={benchModels.length ? ()=>{setS('aiRoute','compare');setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);} : null}
               onChange={() => setS('aiRoute', '')}/>
           )}
 
@@ -3421,12 +3424,12 @@ function App() {
                   </label>
                   <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>
                     Comparison basis
-                    <select value={scen.trainDisclosed === 'no' ? 'inference' : 'lifecycle'} onChange={e=>setS('trainDisclosed',e.target.value === 'inference' ? 'no' : 'yes')}>
+                    <select value={scen.compareBasis || 'lifecycle'} onChange={e=>setS('compareBasis',e.target.value)}>
                       <option value="lifecycle">Carbon/study incl. amortised training</option>
                       <option value="inference">Inference carbon/study only</option>
                     </select>
                   </label>
-                  {scen.trainDisclosed !== 'no' && <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>Expected deployment (months)<input type="number" min="1" value={scen.deployMonths} onChange={e=>setS('deployMonths',e.target.value)}/></label>}
+                  {scen.compareBasis !== 'inference' && <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>Expected deployment (months)<input type="number" min="1" value={scen.deployMonths} onChange={e=>setS('deployMonths',e.target.value)}/></label>}
                 </div>
                 <p className="note" style={{margin:'8px 0 0',fontSize:11}}>Workload, provider, compute region and amortisation basis are held constant so candidate differences reflect the model assumptions rather than a changed deployment scenario.</p>
               </div>
@@ -3534,7 +3537,7 @@ function App() {
             </div>
           )}
 
-          {/* The detailed single-model editor belongs to Develop / Assess. */}
+          {/* The detailed single-model editor is reused by Development and one-model clinical assessment. */}
           {scen.aiRoute === 'own' && (<>
           {/* ── Sticky controls: selectors + summary bar + tabs ── */}
           <div className="stickyControls" style={{padding:'12px 16px'}}>
@@ -3545,8 +3548,8 @@ function App() {
                 <select value={scen.modelKey} onChange={e=>setModel(e.target.value)}>{AI_MODEL_LIBRARY.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}</select>
               </label>
               <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>
-                Clinical task / intended role <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— what this model is meant to do</span>
-                <input value={scen.taskType||''} onChange={e=>setS('taskType',e.target.value)} placeholder={AI_MODEL_BY_KEY[scen.modelKey]?.label || 'e.g. lesion detection'} style={{minHeight:36,padding:'0 9px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/>
+                Task type <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— same category used by the model record and AI label</span>
+                <select value={scen.taskType || LIB_TASK[scen.modelKey] || 'Other'} onChange={e=>setS('taskType',e.target.value)}>{META.taskTypes.map(v=><option key={v} value={v}>{v}</option>)}</select>
               </label>
               <div style={{display:'flex',flexDirection:'column',gap:5,fontWeight:700,color:'#2E7D32'}}>
                 <span>Where inference runs <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— separate from the hospital location above</span></span>
@@ -4178,7 +4181,7 @@ function App() {
               Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
             </p>
             <p className="note" style={{marginBottom:16,fontSize:12}}>
-              Performance values are <strong>user-reported</strong>, not predicted by CEDARS. Compare only candidates for the same clinical task using the same performance metric. Carbon/study is {scen.trainDisclosed==='no'?'inference only because training is marked unavailable':'inference + an amortised share of training over the expected deployment'}. The CEDARS AI Score keeps embodied hardware carbon as a separate disclosure rather than folding it into this operational per-study grade.
+              Performance values are <strong>user-reported</strong>, not predicted by CEDARS. Compare only candidates for the same clinical task using the same performance metric. Carbon/study is {scen.compareBasis==='inference'?'inference only for this comparison':'inference + an amortised share of training over the expected deployment'}. This comparison setting does not change whether a candidate's training was actually disclosed. The CEDARS AI Score keeps embodied hardware carbon as a separate disclosure rather than folding it into this operational per-study grade.
             </p>
 
             {!benchResults.comparisonDefinitionComplete && benchResults.rows.length>1 && (
@@ -4273,7 +4276,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
-                          <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this model</button>
+                          <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Assess this model →</button>
                           {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
                         </td>
                       </tr>
@@ -4309,7 +4312,10 @@ function App() {
               </> : <p className="note">Chart suppressed because the candidates use different reported performance metrics. Choose like-for-like candidates before interpreting an accuracy-versus-carbon frontier.</p>}
             </section>
             <p className="note">Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
-            <div style={{display:'flex', justifyContent:'flex-end', marginTop:14}}><button onClick={()=>{setEcoLabelMode('ai');setPage('ecolabel');}}>Continue to Score &amp; EcoLabel →</button></div>
+            <div className="inputSummary" style={{marginTop:14}}>
+              <strong style={{color:'#1b5e20'}}>Choose the model you want to carry forward.</strong>
+              <p className="note" style={{margin:'5px 0 0'}}>Score &amp; EcoLabel describes one canonical model record. Select <strong>Assess this model</strong> in the table above first; CEDARS will carry that candidate into the one-model assessment, where the Score &amp; EcoLabel action remains available.</p>
+            </div>
             </>)}
           </section>
 
@@ -4959,7 +4965,7 @@ function App() {
             </div>
             {aiChecklistDone < aiChecklist.length && <div className="reportMissing"><strong>Still open:</strong> {aiChecklist.filter(([,ok])=>!ok).map(([name])=>name).join(' · ')}</div>}
             <div className="reportSummaryActions">
-              {!ecoLabelData.hasInference && dash.scopes.imagingScans>0 && <button type="button" className="download" onClick={()=>setS('inferStudiesMonth', String(Math.round(dash.scopes.imagingScans || 0)))}>Use Department study volume</button>}
+              {!ecoLabelData.hasInference && departmentStudiesPerMonth>0 && <button type="button" className="download" onClick={()=>setS('inferStudiesMonth', String(departmentStudiesPerMonth))}>Use Department study volume</button>}
               <button type="button" onClick={()=>setPage('ai')}>Edit full model details →</button>
             </div>
           </div>

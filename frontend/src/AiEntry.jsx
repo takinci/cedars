@@ -4,10 +4,10 @@ import {Ref} from './Refs.jsx';
 import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 
 // The first thing on the AI Model & Informatics page: which route the visitor is on.
-//   compare → choose/deploy clinically: candidate benchmark under one deployment context
-//   own + spec → choose/deploy clinically: one already-selected model
+//   compare → procure/deploy clinically: compare candidates under one deployment context
+//   own + spec → procure/deploy clinically: assess one model (comparison is optional)
 //   own + measured/measure → development: characterize a model being trained or developed
-// Both routes grade the same record shape; the choice only decides what the page shows first.
+// Development stays separate from the clinical procure/deploy choice.
 export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025', 'kpodzro-haip-2026'];
 
 const seg = (on) => ({
@@ -60,8 +60,7 @@ export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVol
   );
 }
 
-export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onRoute, onOwnMode, onBasis, onCtxSource, onVolume, examples, onExample, onReset}) {
-  const [systemType, setSystemType] = useState('');
+export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, onOwnMode, examples, onExample, onReset}) {
   const [deployMode, setDeployMode] = useState('');
   const systemCard = key => ({
     ...inset, cursor:'pointer', textAlign:'left', width:'100%', boxShadow:'none',
@@ -78,21 +77,21 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
         </div>
       </div>
       <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap'}}><span style={{...kicker,background:'#e8f5e9',border:'none',marginBottom:0}}>START HERE</span><h2 style={{margin:0,fontSize:19}}>What do you want to do?</h2></div>
-      <p className="note" style={{margin:0}}>Use <strong>Development</strong> for a model you are training or developing. Use <strong>Choose / deploy clinically</strong> for a model you are receiving, evaluating, purchasing, or preparing for clinical use. Candidate comparison is optional.<Ref id="doo-jacr-2024" order={AI_ENTRY_REFS}/><Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
+      <p className="note" style={{margin:0}}>Use <strong>Development</strong> for a model your team is training or developing. Use <strong>Procure / deploy</strong> for clinical evaluation and selection. Within Procure / deploy, either assess one model or compare candidates; comparison is optional.<Ref id="doo-jacr-2024" order={AI_ENTRY_REFS}/><Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1.25fr',gap:16}} className="aiEntryGrid">
         <div style={{...card,order:2,borderColor:(route==='compare'||(route==='own'&&ownMode==='spec'))?'#2E7D32':'#c8e6c9'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10}}><TrendingUp size={20} style={{color:'#2E7D32',flexShrink:0}}/><div><span style={kicker}>CHOOSE · DEPLOY</span><br/><strong style={{fontSize:16}}>Choose or deploy a model clinically</strong></div></div>
-          <p className="note" style={{margin:0}}>For AI you are receiving, evaluating, purchasing, or preparing for clinical use. First identify the system type; then continue with one selected model or open a like-for-like candidate comparison.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
+          <div style={{display:'flex',alignItems:'center',gap:10}}><TrendingUp size={20} style={{color:'#2E7D32',flexShrink:0}}/><div><span style={kicker}>PROCURE · DEPLOY</span><br/><strong style={{fontSize:16}}>Assess or compare clinical AI</strong></div></div>
+          <p className="note" style={{margin:0}}>For AI you are evaluating, purchasing, receiving, or preparing for clinical use. First identify the system type; then assess one model or compare like-for-like candidates.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/></p>
           <div><p style={q}>1 · What kind of AI system are you evaluating?</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:8}}>
-            <button type="button" style={systemCard('imaging')} onClick={()=>setSystemType('imaging')}><strong style={{fontSize:12,color:'#1b5e20'}}>Single-task imaging AI</strong><span className="note" style={{fontSize:11,marginTop:4}}>Classification, detection, segmentation, reconstruction, or another relatively constrained imaging task. Compare the same clinical task, endpoint, metric, validation cohort, and workload.</span></button>
-            <button type="button" style={systemCard('foundation')} onClick={()=>setSystemType('foundation')}><strong style={{fontSize:12,color:'#1b5e20'}}>LLM / foundation / agentic systems</strong><span className="note" style={{fontSize:11,marginTop:4}}>Language, vision-language, multimodal foundation, or multi-call agentic systems. Keep the clinical task and endpoint comparable, and also align token volume, calls, reasoning, batching, caching, and serving assumptions.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></span></button>
+            <button type="button" style={systemCard('imaging')} onClick={()=>onSystemType('imaging')}><strong style={{fontSize:12,color:'#1b5e20'}}>Single-task imaging AI</strong><span className="note" style={{fontSize:11,marginTop:4}}>Classification, detection, segmentation, reconstruction, or another relatively constrained imaging task. Compare the same clinical task, endpoint, metric, validation cohort, and workload.</span></button>
+            <button type="button" style={systemCard('foundation')} onClick={()=>onSystemType('foundation')}><strong style={{fontSize:12,color:'#1b5e20'}}>LLM / foundation / agentic systems</strong><span className="note" style={{fontSize:11,marginTop:4}}>Language, vision-language, multimodal foundation, or multi-call agentic systems. Keep the clinical task and endpoint comparable, and also align token volume, calls, reasoning, batching, caching, and serving assumptions.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></span></button>
           </div></div>
           <div style={{...inset,opacity:systemType?1:0.65}}><p style={q}>2 · What are you doing?</p><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <button type="button" disabled={!systemType} style={seg(deployMode==='one')} onClick={()=>setDeployMode('one')}>Use one selected model</button>
+            <button type="button" disabled={!systemType} style={seg(deployMode==='one')} onClick={()=>setDeployMode('one')}>Assess one model</button>
             <button type="button" disabled={!systemType} style={seg(deployMode==='compare')} onClick={()=>setDeployMode('compare')}>Compare candidates</button>
           </div>{!systemType&&<p className="note" style={{margin:0,fontSize:11}}>Choose the system type above first so CEDARS can show the relevant assumptions.</p>}</div>
-          {systemType&&deployMode==='one'&&<div style={{...inset,borderColor:'#c8e6c9'}}><p style={q}>One model already selected</p><p className="note" style={{margin:0}}>Go directly to the shared model record. Deployment workload and local use are entered where they are actually used, rather than as comparison assumptions.</p><div><button type="button" onClick={()=>{onOwnMode('spec');onRoute('own');}}>Continue to model details →</button></div></div>}
-          {systemType&&deployMode==='compare'&&<div style={{...inset,borderColor:'#c8e6c9'}}><p style={{...q,fontSize:13}}>Comparison settings</p><div><p style={q}>Carbon basis</p><div style={{display:'flex',flexWrap:'wrap',gap:6}}><button type="button" style={seg(basis!=='inference')} onClick={()=>onBasis('amortised')}>Include an amortized share of training</button><button type="button" style={seg(basis==='inference')} onClick={()=>onBasis('inference')}>Inference only — training unavailable</button></div></div><AiDeploymentContext ctxSource={ctxSource} dept={dept} volume={volume} onCtxSource={onCtxSource} onVolume={onVolume}/><div><button type="button" onClick={()=>onRoute('compare')}>Start candidate comparison →</button></div></div>}
+          {systemType&&deployMode==='one'&&<div style={{...inset,borderColor:'#c8e6c9'}}><p style={q}>Assess one model</p><p className="note" style={{margin:0}}>Use this if you already have a model in mind or want to enter one now. A comparison is not required. Continue to the shared model record, then Score &amp; EcoLabel when ready.</p><div><button type="button" onClick={()=>{onOwnMode('spec');onRoute('own');}}>Continue to one-model assessment →</button></div></div>}
+          {systemType&&deployMode==='compare'&&<div style={{...inset,borderColor:'#c8e6c9'}}><p style={{...q,fontSize:13}}>Compare candidates</p><p className="note" style={{margin:0}}>Continue to enter the shared clinical definition, workload, compute context, and comparison basis once for all candidates.</p><div><button type="button" onClick={()=>onRoute('compare')}>Start candidate comparison →</button></div></div>}
         </div>
         <div style={{...card,order:1,borderColor:(route==='own'&&ownMode!=='spec')?'#2E7D32':'#c8e6c9'}}>
           <div style={{display:'flex',alignItems:'center',gap:10}}><Cpu size={20} style={{color:'#2E7D32',flexShrink:0}}/><div><span style={kicker}>DEVELOPMENT</span><br/><strong style={{fontSize:16}}>Characterize a model you are developing</strong></div></div>
@@ -106,9 +105,10 @@ export function AiEntryStep({route, ownMode, basis, ctxSource, dept, volume, onR
 }
 
 // Compact strip shown once a route is chosen.
-export function AiRouteStrip({route, ownMode, onComparison, onChange}) {
-  const label = route === 'compare' ? 'Choose · deploy — Compare candidates'
-    : ownMode === 'spec' ? 'Choose · deploy — One selected model'
+export function AiRouteStrip({route, ownMode, onComparison, onBackToComparison, onChange}) {
+  const clinical = route === 'compare' || (route === 'own' && ownMode === 'spec');
+  const label = route === 'compare' ? 'Procure · deploy — Compare candidates'
+    : ownMode === 'spec' ? 'Procure · deploy — Assess one model'
       : `Development — ${ownMode === 'measured' ? 'measured numbers' : 'help me measure'}`;
   return (
     <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', border:'1px solid #c8e6c9', borderRadius:12, padding:'8px 14px', background:'#fff'}}>
@@ -116,7 +116,8 @@ export function AiRouteStrip({route, ownMode, onComparison, onChange}) {
       <strong style={{fontSize:13}}>{label}</strong>
       <span style={{marginLeft:'auto', display:'flex', gap:14, alignItems:'center'}}>
         {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>View candidate comparison ↓</button>}
-        <button type="button" className="inlineTextButton" onClick={onChange}>Change pathway</button>
+        {route === 'own' && ownMode === 'spec' && onBackToComparison && <button type="button" className="inlineTextButton" onClick={onBackToComparison}>← Back to comparison</button>}
+        <button type="button" className="inlineTextButton" onClick={onChange}>{clinical ? '← Assess or compare' : 'Change pathway'}</button>
       </span>
     </div>
   );
