@@ -160,7 +160,7 @@ export function computeAiLabel(scen, ai, opts) {
   const {score = null, rating = null} = graded ? scoreFn(gradeValueG) : {};
 
   return {
-    projectName: scen.projectName || 'Untitled project',
+    projectName: scen.projectName || 'New AI model',
     taskType: scen.taskType || opts.libTaskType || '—',
     architecture: scen.architecture || '—',
     paramsMillion: scen.paramsM ? `${num(scen.paramsM).toLocaleString()}M params` : '—',

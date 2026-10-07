@@ -104,8 +104,8 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
   });
 
-  it('procurement system type and comparison basis survive encode → decode independently of training disclosure', () => {
-    const scen = { ...SCEN_DEFAULTS, aiRoute:'compare', aiSystemType:'foundation', compareBasis:'inference', trainDisclosed:'yes' };
+  it('procurement system type, comparison basis, and URL-safe reference candidates survive encode → decode independently of training disclosure', () => {
+    const scen = { ...SCEN_DEFAULTS, aiRoute:'compare', aiSystemType:'foundation', compareBasis:'inference', compareCandidateKeys:'v1:cad,recon', comparePreset:'maistro-agentic-v1', trainDisclosed:'yes' };
     const decoded = decodeConfig('#' + encodeConfig({ scen }));
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
     expect(decoded.scen.trainDisclosed).toBeUndefined();
