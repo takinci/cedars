@@ -17,6 +17,7 @@ import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AI_ENTRY_REFS } from '.
 import { MeasureChooser } from './MeasureChooser.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
+import { GuidedDemo, GuidedDemoLauncher } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
@@ -1550,6 +1551,9 @@ function App() {
     const requested = new URLSearchParams(window.location.search).get('page');
     return ['landing','input','dashboard','ai','ecolabel','scenario','report','about'].includes(requested) ? requested : 'landing';
   });
+  const [guidedDemo, setGuidedDemo] = useState(null);
+  const [guidedDemoSaved, setGuidedDemoSaved] = useState(null);
+  const [guidedDemoReturnView, setGuidedDemoReturnView] = useState(null);
   // Assessment Context is the shared first step when a visitor starts from Home. Keep the
   // intended pathway in session state so the page can offer a clear Continue / Return action
   // without changing reproducible direct links such as ?page=ai or ?page=dashboard.
@@ -2050,6 +2054,131 @@ function App() {
     setScenarioInterventions(a.scenarioInterventions || a.deptLabel?.activeInterventions || []);
     setDeptSetupOpen(false);
     setPage('landing');
+  };
+
+  const applyLeaderDemoFleet = () => {
+    const preset = DEPARTMENT_PRESETS.find(p => p.key === 'regional');
+    if (!preset) return;
+    setSettings(s => ({
+      ...s,
+      equipment: Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k => [k, preset.equipment[k] || 0])),
+    }));
+  };
+
+  const prepareGuidedDemoStep = (kind, stepIndex) => {
+    if (kind === 'leader') {
+      if (stepIndex === 0) {
+        setPage('landing');
+      } else if (stepIndex === 1) {
+        setInputTarget('dashboard');
+        setInputReturnMode(false);
+        setPage('input');
+      } else if (stepIndex === 2) {
+        setPage('dashboard');
+        setDeptSetupOpen(true);
+      } else if (stepIndex === 3) {
+        applyLeaderDemoFleet();
+        setPage('dashboard');
+        setDeptSetupOpen(false);
+      } else if (stepIndex === 4) {
+        applyLeaderDemoFleet();
+        setPage('dashboard');
+        setDeptSetupOpen(false);
+        setDashOpen(o => ({...o, clinicalai:true}));
+      } else if (stepIndex === 5) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setEcoLabelMode('department');
+        setPage('ecolabel');
+      } else if (stepIndex === 6) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setEcoLabelMode('department');
+        setPage('scenario');
+      } else if (stepIndex === 7) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setEcoLabelMode('department');
+        setPage('report');
+      }
+      return;
+    }
+
+    if (kind === 'developer') {
+      if (stepIndex === 0) {
+        setPage('landing');
+      } else if (stepIndex === 1) {
+        setAiExampleLoaded('');
+        setScen({...SCEN_DEFAULTS, ownMode:'measure'});
+        setPage('ai');
+      } else if (stepIndex === 2 || stepIndex === 3) {
+        setAiExampleLoaded('');
+        setScen(s => ({...s, aiRoute:'own', ownMode:'measure'}));
+        setPage('ai');
+      } else if (stepIndex === 4 || stepIndex === 5) {
+        setPage('ai');
+        loadAiExample('cxr-measured');
+      } else if (stepIndex === 6) {
+        loadAiExample('cxr-measured');
+        setEcoLabelMode('ai');
+        setPage('ecolabel');
+      } else if (stepIndex === 7) {
+        loadAiExample('cxr-measured');
+        setEcoLabelMode('ai');
+        setPage('report');
+      }
+    }
+  };
+
+  const startGuidedDemo = kind => {
+    setGuidedDemoSaved(currentAssessmentSnapshot());
+    setGuidedDemoReturnView({
+      page, ecoLabelMode, deptSetupOpen, dashOpen, inputTarget, inputReturnMode,
+      aiEntryOrigin, aiEntryOriginModelId, aiExampleLoaded,
+    });
+    resetToHome();
+    setGuidedDemo({kind, step:0});
+    prepareGuidedDemoStep(kind, 0);
+  };
+
+  const moveGuidedDemo = step => {
+    if (!guidedDemo) return;
+    setGuidedDemo({...guidedDemo, step});
+    prepareGuidedDemoStep(guidedDemo.kind, step);
+  };
+
+  const restartGuidedDemo = () => {
+    if (!guidedDemo) return;
+    resetToHome();
+    setGuidedDemo({...guidedDemo, step:0});
+    prepareGuidedDemoStep(guidedDemo.kind, 0);
+  };
+
+  const exitGuidedDemo = () => {
+    const snapshot = guidedDemoSaved;
+    const view = guidedDemoReturnView;
+    setGuidedDemo(null);
+    setGuidedDemoSaved(null);
+    setGuidedDemoReturnView(null);
+    if (!snapshot) return;
+    restoreAssessmentSnapshot(snapshot);
+    if (view) {
+      setEcoLabelMode(view.ecoLabelMode);
+      setDeptSetupOpen(view.deptSetupOpen);
+      setDashOpen(view.dashOpen);
+      setInputTarget(view.inputTarget);
+      setInputReturnMode(view.inputReturnMode);
+      setAiEntryOrigin(view.aiEntryOrigin);
+      setAiEntryOriginModelId(view.aiEntryOriginModelId);
+      setAiExampleLoaded(view.aiExampleLoaded);
+      setPage(view.page);
+    }
+  };
+
+  const keepGuidedDemoExample = () => {
+    setGuidedDemo(null);
+    setGuidedDemoSaved(null);
+    setGuidedDemoReturnView(null);
   };
 
   const saveOnThisDevice = () => {
@@ -2603,7 +2732,7 @@ function App() {
   const renderAiRecordForm = () => (
     <>
           {/* ── Form ── */}
-          <div className="inputSummary" style={{marginBottom:24}}>
+          <div className="inputSummary" data-demo-target="ai-model-record" style={{marginBottom:24}}>
             <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Model &amp; task</h2>
             <div className="grid grid3">
               <label>
@@ -2864,10 +2993,10 @@ function App() {
                 </div>
                 <div className="workflowCardPrompt">What would you like to assess?</div>
                 <div className="startChoiceGrid">
-                  <button type="button" className="startChoice department" onClick={()=>goToAssessmentContext('dashboard')}>
+                  <button type="button" data-demo-target="home-department" className="startChoice department" onClick={()=>goToAssessmentContext('dashboard')}>
                     <Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span>
                   </button>
-                  <button type="button" className="startChoice ai" onClick={()=>goToAssessmentContext('ai')}>
+                  <button type="button" data-demo-target="home-ai" className="startChoice ai" onClick={()=>goToAssessmentContext('ai')}>
                     <Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Training, inference, compute &amp; deployment</small></span><span aria-hidden="true">→</span>
                   </button>
                 </div>
@@ -2893,6 +3022,8 @@ function App() {
             </div>
           </section>
 
+          <GuidedDemoLauncher onStart={startGuidedDemo}/>
+
 
 
         </main>
@@ -2904,7 +3035,7 @@ function App() {
         <main className="inputGatewayPage">
           {/* Shared assessment context — set once before choosing either input pathway.
               AI compute/deployment keeps its own region. */}
-          <section className="assessmentContext" aria-labelledby="assessment-context-title">
+          <section className="assessmentContext" data-demo-target="assessment-context" aria-labelledby="assessment-context-title">
             <div className="assessmentContextIntro">
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <Globe size={18} style={{color:'#2E7D32',flexShrink:0}}/>
@@ -3024,7 +3155,7 @@ function App() {
                   <p>These templates are illustrative starting points, not measured local data. Choose one and then verify or edit every device count below — or skip them and enter your own counts directly.</p>
                   <div className="quickStartChoices">
                     {DEPARTMENT_PRESETS.map(p=>(
-                      <button key={p.key} title={p.desc}
+                      <button key={p.key} title={p.desc} data-demo-target={p.key==='regional'?'leader-regional-preset':undefined}
                         onClick={()=>set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])))}>
                         {p.label}
                       </button>
@@ -3202,7 +3333,7 @@ function App() {
             <h2 style={{marginBottom:4,display:'flex',alignItems:'center',gap:8}}><Brain style={{color:'#2E7D32'}}/> Clinical AI</h2>
             <p className="note" style={{marginBottom:12}}>Add the AI models used by this department, then describe each local use. A model's technical details — energy, hardware, performance, and compute location — live in one shared model entry; this section records where and how your department uses it.</p>
 
-            <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Quick start or enter your own Clinical AI</strong><p>The example is illustrative, not measured local data. Verify every study share and clinical-effect assumption before using the result.</p><div className="quickStartChoices"><button type="button" onClick={requestClearClinicalAi}>{(deptLabel.aiTools||[]).length>0?'Clear Clinical AI setup':'Start with no Clinical AI'}</button><button type="button" onClick={loadClinicalAiExample}>Load example Clinical AI</button></div></div></div>
+            <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Quick start or enter your own Clinical AI</strong><p>The example is illustrative, not measured local data. Verify every study share and clinical-effect assumption before using the result.</p><div className="quickStartChoices"><button type="button" onClick={requestClearClinicalAi}>{(deptLabel.aiTools||[]).length>0?'Clear Clinical AI setup':'Start with no Clinical AI'}</button><button type="button" data-demo-target="leader-clinical-ai-example" onClick={loadClinicalAiExample}>Load example Clinical AI</button></div></div></div>
 
             {clearClinicalAiConfirmOpen && (
               <div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setClearClinicalAiConfirmOpen(false);}} style={{position:'fixed',inset:0,zIndex:1100,background:'rgba(20,35,25,.42)',display:'grid',placeItems:'center',padding:18}}>
@@ -4521,7 +4652,7 @@ function App() {
                 {renderAiRecordForm()}
               </div>
               <div style={{position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12}}>
-                <div style={{background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'16px 18px', display:'flex', flexDirection:'column', gap:8}}>
+                <div data-demo-target="ai-disclosure" style={{background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'16px 18px', display:'flex', flexDirection:'column', gap:8}}>
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline'}}><strong style={{fontSize:13}}>Disclosure completeness</strong><strong style={{fontSize:13, color:'#2E7D32'}}>{aiChecklistDone} of {aiChecklist.length}</strong></div>
                   <div style={{height:8, background:'#e0efe2', borderRadius:4, overflow:'hidden'}}><div style={{width:`${Math.round(aiChecklistDone/aiChecklist.length*100)}%`, height:8, background:'#2E7D32'}}/></div>
                   {aiChecklistDone < aiChecklist.length && (
@@ -4580,7 +4711,7 @@ function App() {
                 <div><span>PROJECTED ASSESSMENT</span><strong>{scenario.count>0?'Calculated below':'Add a change to compare'}</strong></div>
               </div>
 
-              <section className="inputSummary improveWorkspace" style={{marginBottom:20}}>
+              <section className="inputSummary improveWorkspace" data-demo-target="department-improve-workspace" style={{marginBottom:20}}>
                 <div className="improveWorkspaceHeading">
                   <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Start with the largest modeled opportunities for this assessment, then follow the radiology workflow below to browse where other changes act.</p></div>
                   <div className="improveWorkspaceCount">{scenario.count} selected</div>
@@ -4976,7 +5107,7 @@ function App() {
             </div>
             </section>
 
-            <section className="reportStageCard reportMaterialsStage">
+            <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
               <div className="reportStageHeading compact">
                 <div className="reportStageNumber">2</div>
                 <div>
@@ -5206,7 +5337,7 @@ function App() {
           </div>
             </section>
 
-          <section className="reportStageCard reportMaterialsStage">
+          <section className="reportStageCard reportMaterialsStage" data-demo-target="ai-report-materials">
             <div className="reportStageHeading compact">
               <div className="reportStageNumber">2</div>
               <div>
@@ -5414,6 +5545,15 @@ function App() {
       )}
 
       {page==='about' && <AboutPage/>}
+
+      {guidedDemo && <GuidedDemo
+        kind={guidedDemo.kind}
+        stepIndex={guidedDemo.step}
+        onStepChange={moveGuidedDemo}
+        onRestart={restartGuidedDemo}
+        onExit={exitGuidedDemo}
+        onKeepExample={keepGuidedDemoExample}
+      />}
 
       <ContributionModal
         open={contributeOpen}
