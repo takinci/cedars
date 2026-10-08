@@ -124,7 +124,7 @@ export function MeasureChooser({scen, onUse, onDone}) {
   const runLabel = {local: 'a local GPU', hpc: 'an HPC cluster', cloud: 'a cloud VM', api: 'a vendor API'}[a.run];
 
   return (
-    <div style={{display:'flex', flexDirection:'column', gap:14, marginTop:16}}>
+    <div data-demo-target="measure-chooser" style={{display:'flex', flexDirection:'column', gap:14, marginTop:16}}>
       <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
         <span style={tag()}>1 · WHERE IT RUNS</span><span style={{color:'#90a4ae'}}>→</span>
         <span style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>2 · PICK A TOOL</span><span style={{color:'#90a4ae'}}>→</span>
@@ -189,7 +189,7 @@ export function MeasureChooser({scen, onUse, onDone}) {
               </dl>
               {t.snippet && <pre style={{margin:0, background:'#f4f7f5', border:'1px solid #e0efe2', borderRadius:8, padding:'10px 12px', fontSize:12, lineHeight:1.5, overflowX:'auto'}}>{t.snippet}</pre>}
               <div style={{display:'flex', gap:14, alignItems:'center', flexWrap:'wrap'}}>
-                <button type="button" onClick={()=>{ onUse({trainTool: t.name.split(' (')[0]}); onDone(); }}>I ran it — enter results →</button>
+                <button type="button" data-demo-target={i===0?'measure-primary-action':undefined} onClick={()=>{ onUse({trainTool: t.name.split(' (')[0]}); onDone(); }}>I ran it — enter results →</button>
                 {t.ref && REFS[t.ref] && <ExternalLink href={refUrl(REFS[t.ref])}>Documentation and source</ExternalLink>}
               </div>
             </div>
