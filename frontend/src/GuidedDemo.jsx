@@ -1,4 +1,4 @@
-import React, {useEffect, useLayoutEffect, useMemo, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {Activity, Brain, RotateCcw, X} from 'lucide-react';
 import './guided-demo.css';
 
@@ -14,8 +14,7 @@ export const GUIDED_DEMOS = {
         kicker: '1 of 8 · INPUT',
         title: 'Start with the care setting',
         body: 'CEDARS can assess a radiology department or an individual AI model. Here, we will start with the department and see how clinical AI fits into the larger footprint.',
-        advanceOnTargetClick: true,
-        actionHint: 'Click Radiology Department to continue.',
+        actionHint: 'No typing is required. Next opens the Department pathway with illustrative values.',
       },
       {
         target: '[data-demo-target="assessment-context"]',
@@ -28,8 +27,7 @@ export const GUIDED_DEMOS = {
         kicker: '3 of 8 · DEPARTMENT',
         title: 'Build the operational baseline',
         body: 'Equipment and imaging workload determine the energy used to deliver care. This demo uses the illustrative Regional hospital quick start; a real assessment should verify or replace every value.',
-        advanceOnTargetClick: true,
-        actionHint: 'Click Regional hospital to load the example fleet.',
+        actionHint: 'The Regional hospital values load automatically when you continue.',
       },
       {
         target: '#department-overview',
@@ -42,8 +40,7 @@ export const GUIDED_DEMOS = {
         kicker: '5 of 8 · CLINICAL AI',
         title: 'Add AI to the care system',
         body: 'Clinical AI is represented as part of the department rather than as a sustainability silo. The local use record can include inference, allocated lifecycle boundaries, study share, and supported workflow effects.',
-        advanceOnTargetClick: true,
-        actionHint: 'Click Load example Clinical AI to add two illustrative uses.',
+        actionHint: 'The two illustrative Clinical AI uses load automatically when you continue.',
       },
       {
         target: '#department-score-panel',
@@ -69,59 +66,69 @@ export const GUIDED_DEMOS = {
     title: 'AI developer / researcher',
     shortTitle: 'Developer demo',
     icon: Brain,
-    description: 'Measure training and inference, track what is measured versus estimated, and generate an AI Research EcoLabel.',
+    description: 'Measure training and inference, track what is measured versus estimated, improve the model, and generate an AI Research EcoLabel.',
     steps: [
       {
         target: '[data-demo-target="home-ai"]',
-        kicker: '1 of 8 · INPUT',
+        kicker: '1 of 10 · INPUT',
         title: 'Start with the model',
         body: 'CEDARS supports both clinical deployment decisions and models being developed or materially retrained. This walkthrough follows a research model from development through reporting.',
-        advanceOnTargetClick: true,
-        actionHint: 'Click AI Model & Informatics to continue.',
+        actionHint: 'No typing is required. Next opens AI Model & Informatics with the demo pathway prepared.',
       },
       {
-        target: '[data-demo-target="ai-develop-action"]',
-        kicker: '2 of 8 · DEVELOP / TRAIN',
+        target: '[data-demo-target="ai-develop-card"]',
+        kicker: '2 of 10 · DEVELOP / TRAIN',
         title: 'Choose the lifecycle stage that matches your work',
-        body: 'Use Develop / train when your team is building or materially retraining the model. This example starts with Help me measure so CEDARS can point to an appropriate measurement method before values are reported.',
-        advanceOnTargetClick: true,
-        actionHint: 'Click Characterize this model to open the measurement pathway.',
+        body: 'Use Develop / train when your team is building or materially retraining a model. CEDARS can start from measured energy values or help you choose a way to measure them. This walkthrough starts with Help me measure.',
+        actionHint: 'Next opens the measurement pathway automatically; you do not need to change any fields.',
       },
       {
         target: '[data-demo-target="measure-chooser"]',
-        kicker: '3 of 8 · MEASURE',
+        kicker: '3 of 10 · MEASURE',
         title: 'Measure rather than guess when you can',
         body: 'Tell CEDARS where the model runs, whether you need training or inference numbers, and whether you can instrument the code. The recommendations narrow to tools that fit the setup.',
+        actionHint: 'The demo is already set to a local GPU, training + inference, with Python available.',
       },
       {
         target: '[data-demo-target="measure-primary-action"]',
-        kicker: '4 of 8 · PROVENANCE',
+        kicker: '4 of 10 · PROVENANCE',
         title: 'Keep provenance attached to the number',
         body: 'Sensor-based tools can support a Measured provenance badge; usage models and specification-based calculations remain Estimated. CEDARS carries that distinction into the Research EcoLabel instead of presenting every number as equally certain.',
-        advanceOnTargetClick: true,
-        actionHint: 'Click I ran it — enter results to continue with a completed measured example.',
+        actionHint: 'Next loads a completed illustrative CodeCarbon record automatically; no measurement needs to be entered during the demo.',
       },
       {
-        target: '[data-demo-target="ai-model-record"]',
-        kicker: '5 of 8 · MODEL RECORD',
-        title: 'Keep one reproducible model record',
-        body: 'The model, task, dataset, hardware, experiments, training energy, inference energy, and compute context live in one shared record. This demo now uses the illustrative measured chest-radiograph classifier already included in CEDARS.',
+        target: '[data-demo-target="ai-training-section"]',
+        kicker: '5 of 10 · TRAINING',
+        title: 'Record what training actually required',
+        body: 'CEDARS keeps model scale and training workload alongside the compute that performed the work. This imaging example records dataset size, epochs, input size, precision, hardware, runtime, experiments, measured energy, and compute context together. When measured energy is available, it takes precedence over training workload-based estimates.',
+      },
+      {
+        target: '[data-demo-target="ai-inference-section"]',
+        kicker: '6 of 10 · INFERENCE & DEPLOYMENT',
+        title: 'Describe how the model will actually be used',
+        body: 'Training is generally a one-time development footprint; inference recurs with each use. CEDARS records deployment volume, energy per study or token-based workload, expected lifetime, and the compute context where inference runs.',
       },
       {
         target: '[data-demo-target="ai-disclosure"]',
-        kicker: '6 of 8 · COMPLETENESS',
+        kicker: '7 of 10 · COMPLETENESS',
         title: 'Know what you actually know',
-        body: 'Disclosure completeness shows what is still missing, while measured, estimated, literature-derived, and not-disclosed provenance remain visible. The goal is transparent reporting, not false precision.',
+        body: 'A complete disclosure does not mean every quantity was measured. It means each required element is transparently identified as measured, estimated, literature-derived, not disclosed, or not assessed. This example marks water as not assessed rather than inventing a value.',
       },
       {
         target: '#ai-score-panel',
-        kicker: '7 of 8 · SCORE & ECOLABEL',
+        kicker: '8 of 10 · SCORE & ECOLABEL',
         title: 'Separate training from recurring inference',
         body: 'CEDARS reports training and inference separately. When deployment workload is available, the one-time training footprint can be amortized across expected use; without it, an inference-only score is explicitly provisional.',
       },
       {
+        target: '[data-demo-target="ai-improve-workspace"]',
+        kicker: '9 of 10 · IMPROVE',
+        title: 'Improve without confusing recommendations with results',
+        body: 'CEDARS connects the current model record to practical opportunities across development, validation, deployment, and monitoring. A recommendation does not change the score by itself; after implementation, update the values it actually changes, such as training energy, inference energy, hardware, workload, or compute region.',
+      },
+      {
         target: '[data-demo-target="ai-report-materials"]',
-        kicker: '8 of 8 · RESEARCH ECOLABEL',
+        kicker: '10 of 10 · RESEARCH ECOLABEL',
         title: 'Generate reproducible research outputs',
         body: 'Download the AI Research EcoLabel, copy Methods-ready environmental-impact text, or export structured fields for a manuscript, model card, repository, poster, or technical appendix. This remains a research assessment, not external certification.',
       },
@@ -144,15 +151,15 @@ export function GuidedDemoLauncher({onStart}) {
         <div>
           <span>GUIDED WALKTHROUGH</span>
           <h2 id="guided-demo-title">Try CEDARS with example data</h2>
-          <p>Choose a role-based walkthrough. Demo data are illustrative and your current assessment is restored when you exit.</p>
+          <p>Choose an illustrative role-based walkthrough. Values are loaded automatically, no typing is required, and your current assessment is restored when you exit.</p>
         </div>
       </div>
       <div className="guidedDemoLauncherGrid">
         {Object.entries(GUIDED_DEMOS).map(([key, demo]) => {
           const Icon = demo.icon;
-          return <article key={key} className="guidedDemoChoice">
+          return <article key={key} className="guidedDemoChoice" style={{border:'1.5px dashed #a8c8aa',background:'#f6faf3'}}>
             <div className="guidedDemoChoiceIcon"><Icon size={22}/></div>
-            <div className="guidedDemoChoiceCopy"><strong>{demo.title}</strong><p>{demo.description}</p></div>
+            <div className="guidedDemoChoiceCopy"><span style={{display:'inline-flex',marginBottom:5,padding:'2px 6px',border:'1px solid #b7d3b9',borderRadius:999,background:'#fff',color:'#2E7D32',fontSize:7.5,fontWeight:900,letterSpacing:'.08em'}}>ILLUSTRATIVE EXAMPLE</span><strong style={{display:'block'}}>{demo.title}</strong><p>{demo.description}</p></div>
             <button type="button" onClick={()=>onStart(key)}>Start {key==='leader'?'leadership':'developer'} demo →</button>
           </article>;
         })}
@@ -166,6 +173,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
   const step = demo?.steps?.[stepIndex];
   const [rect, setRect] = useState(null);
   const [targetMissing, setTargetMissing] = useState(false);
+  const dialogRef = useRef(null);
   const selector = step?.target;
 
   const updateRect = () => {
@@ -207,13 +215,36 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
   }, [selector]);
 
   useEffect(() => {
-    if (!step?.advanceOnTargetClick || !selector) return undefined;
-    const el = document.querySelector(selector);
-    if (!el) return undefined;
-    const advance = () => window.setTimeout(() => onStepChange(Math.min(stepIndex + 1, demo.steps.length - 1)), 40);
-    el.addEventListener('click', advance, {once:true});
-    return () => el.removeEventListener('click', advance);
-  }, [selector, step?.advanceOnTargetClick, stepIndex, demo, onStepChange]);
+    const focusDialog = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    const onKeyDown = e => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onExit();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const root = dialogRef.current?.closest('.guidedDemoRoot');
+      const focusables = root ? [...root.querySelectorAll('button:not([disabled])')] : [];
+      if (!focusables.length) return;
+      const active = document.activeElement;
+      const index = focusables.indexOf(active);
+      if (index === -1) {
+        e.preventDefault();
+        focusables[0].focus();
+      } else if (e.shiftKey && index === 0) {
+        e.preventDefault();
+        focusables[focusables.length - 1].focus();
+      } else if (!e.shiftKey && index === focusables.length - 1) {
+        e.preventDefault();
+        focusables[0].focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(focusDialog);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [stepIndex, onExit]);
 
   const blockers = useMemo(() => {
     if (!rect) return [];
@@ -234,13 +265,13 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
   return (
     <div className="guidedDemoRoot" aria-live="polite">
       <div className="guidedDemoBanner">
-        <strong>DEMO MODE · {demo.shortTitle}</strong><span>Illustrative example data</span>
+        <strong>DEMO MODE · {demo.shortTitle}</strong><span>Read-only walkthrough · illustrative data</span>
         <button type="button" onClick={onRestart}><RotateCcw size={13}/> Restart</button>
         <button type="button" onClick={onExit}><X size={13}/> Exit demo</button>
       </div>
       {rect ? blockers.map(b=><div key={b.key} className="guidedDemoBlocker" style={b.style}/>) : <div className="guidedDemoBlocker guidedDemoFullBlocker"/>}
-      {rect && <div className="guidedDemoSpotlight" style={{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}/>}
-      <section className="guidedDemoPopover" role="dialog" aria-label={`${demo.title} guided walkthrough`} style={popoverStyle}>
+      {rect && <div className="guidedDemoSpotlight" aria-hidden="true" style={{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}/>}
+      <section ref={dialogRef} tabIndex={-1} className="guidedDemoPopover" role="dialog" aria-modal="true" aria-label={`${demo.title} guided walkthrough`} style={popoverStyle}>
         <div className="guidedDemoProgress"><span>{step.kicker}</span><span>{stepIndex+1}/{demo.steps.length}</span></div>
         <h3>{step.title}</h3>
         <p>{step.body}</p>

@@ -158,13 +158,20 @@ export function computeAiLabel(scen, ai, opts) {
   const gradeValueG = gradeBasis === 'none' ? null : effectivePerStudyG;
   const graded = gradeValueG != null;
   const {score = null, rating = null} = graded ? scoreFn(gradeValueG) : {};
+  const tokenWorkload = scen.architecture === 'LLM / Agent (transformer)' || ['Report generation','Agentic workflow'].includes(scen.taskType);
 
   return {
     projectName: scen.projectName || 'New AI model',
     taskType: scen.taskType || opts.libTaskType || '—',
     architecture: scen.architecture || '—',
     paramsMillion: scen.paramsM ? `${num(scen.paramsM).toLocaleString()}M params` : '—',
-    datasetSize: scen.datasetSize ? `${num(scen.datasetSize).toLocaleString()} studies` : '—',
+    datasetSize: scen.datasetSize ? `${num(scen.datasetSize).toLocaleString()} ${tokenWorkload ? 'examples' : 'studies'}` : '—',
+    epochs: scen.epochs ? num(scen.epochs) : null,
+    precision: scen.precision || '—',
+    inputResolution: !tokenWorkload && scen.resolution ? num(scen.resolution) : null,
+    dim: !tokenWorkload ? (scen.dim || '—') : null,
+    slices: !tokenWorkload && scen.slices ? num(scen.slices) : null,
+    tokenWorkload,
     gpuHardware: gpuCount > 1 ? `${gpuCount}× ${gpuLabel}` : gpuLabel,
     totalGpuHours, numRuns, energyPerRunKwh, totalEnergyKwh, trainCo2,
     trainProv, trainTool: scen.trainTool || '', trainDisclosed: trainProv !== 'not-disclosed',

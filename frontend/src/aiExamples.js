@@ -20,6 +20,7 @@ export const AI_EXAMPLES = [
       trainKwhMeasured: '41.6', trainTool: 'CodeCarbon', datasetSize: '112000', epochs: '30',
       inferKwh: '0.00042', inferStudiesMonth: '2500', deployMonths: '36',
       cloudProvider: 'Local compute', cloudRegion: 'On-premise (US average)', customPue: '1.0',
+      waterMode: 'notassessed',
       accuracyPct: '91', accuracyMetric: 'AUC',
     },
   },
