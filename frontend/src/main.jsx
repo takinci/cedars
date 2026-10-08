@@ -1222,7 +1222,11 @@ function generateAiMethodsText(d) {
   const water = d.waterProv==='not-disclosed'
     ? ' Water use was not assessed.'
     : d.waterLitres>0 ? ` Operational water use was estimated at ${d.waterLitres.toLocaleString()} L for training${d.waterProv==='screening'?' using a screening factor':''}.` : '';
-  const score = d.graded ? ` The resulting CEDARS Score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}).` : '';
+  const score = d.graded
+    ? d.gradeBasis === 'amortised'
+      ? ` The resulting CEDARS modeled operational-intensity score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}), based on amortised training plus inference.`
+      : ` The provisional CEDARS Inference Score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}) and reflects inference only; ${d.trainDisclosed ? 'deployment workload was not available to amortise the one-time training footprint into the per-study score' : 'training was not disclosed and is not included in the per-study score'}.`
+    : '';
   return `Environmental impact. ${training}${inference}${amortised}${water}${score} Sustainability metrics were assessed using CEDARS (${d.date}); detailed assumptions and provenance should be reported with the study where relevant.`;
 }
 
@@ -1375,8 +1379,8 @@ function generateEcoMarkdown(d) {
       ['Effective CO₂e / study',      `${d.effectivePerStudyG} gCO₂e (training amortised + inference)`],
       ...(d.breakEvenStudies != null ? [['Break-even (training = inference)', `~${d.breakEvenStudies.toLocaleString()} studies`]] : []),
     ] : []),
-    ['**CEDARS Score**',         d.graded ? `**${d.score} / 100** (${d.gradeBasis === 'amortised' ? 'amortised gCO₂e/study' : 'inference gCO₂e/study'})` : '— (add inference volume to grade)'],
-    ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**` : '—'],
+    ['**CEDARS Score**',         d.graded ? (d.gradeBasis === 'amortised' ? `**${d.score} / 100** (modeled operational intensity · training + inference)` : `**${d.score}* / 100** (provisional inference-only score)`) : '— (add inference data to grade)'],
+    ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**${d.gradeBasis === 'inference' ? ' · inference only' : ''}` : '—'],
     ['Estimated with',           `CEDARS · ${d.date}`],
   ];
   return [
@@ -1384,6 +1388,7 @@ function generateEcoMarkdown(d) {
     '|:---|:---|',
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
     '',
+    ...(d.gradeBasis === 'inference' ? ['> * Provisional inference-only score. Training is not included per study. It is not directly comparable with a training + inference score; enter deployment workload when training is disclosed to include an amortised training share.', ''] : []),
     '> AI research EcoLabel generated with [CEDARS](https://cedarsleaf.com).',
     '> Reporting framework: Doo FX et al. *J Am Coll Radiol* 2024 · DOI 10.1016/j.jacr.2023.11.019; Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030. Full sources: cedarsleaf.com → sources.md.',
   ].join('\n');
@@ -1413,14 +1418,17 @@ function downloadEcoPNG(d) {
     title: 'CEDARS AI Research EcoLabel',
     name: d.projectName,
     contextLine: `AI model footprint disclosure \xb7 ${d.date}`,
-    scoreDisplay: d.graded ? String(d.score) : '—',
-    leaves: d.leaves, ratingColor: d.ratingColor, ratingBg: d.ratingBg, ratingLabel: d.ratingLabel,
+    scoreDisplay: d.graded ? `${d.score}${d.gradeBasis === 'inference' ? '*' : ''}` : '—',
+    leaves: d.leaves, ratingColor: d.ratingColor, ratingBg: d.ratingBg,
+    ratingLabel: d.gradeBasis === 'inference' ? `${d.ratingLabel} · inference only` : d.ratingLabel,
     subtext:
-      d.gradeBasis === 'amortised' ? `${d.effectivePerStudyG} gCO₂e/study (amortised)`
-        : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study`
+      d.gradeBasis === 'amortised' ? `${d.effectivePerStudyG} gCO₂e/study · training + inference`
+        : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study · provisional inference only`
         : d.hasData ? 'Add inference to grade' : 'Enter training data above',
     rows,
-    footerText: `CEDARS Score & Rating \xb7 ${d.date} \xb7 CC BY 4.0`,
+    footerText: d.gradeBasis === 'inference'
+      ? `* Provisional inference-only score \xb7 training excluded per study \xb7 ${d.date}`
+      : `CEDARS modeled operational-intensity score \xb7 ${d.date} \xb7 CC BY 4.0`,
   });
   downloadCanvasPNG(canvas, `cedars_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
 }
@@ -5094,13 +5102,13 @@ function App() {
             <div id="ai-score-panel" className="scoreResultPanel workflowAnchor" style={{background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`}}>
               <div className="scoreResultHero">
               <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
-                <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE · {ecoLabelData.gradeBasis==='amortised'?'MODELED TRAINING + INFERENCE':'INFERENCE ONLY'}</div>{ecoLabelData.gradeBasis!=='amortised'&&<div className="aiScoreQualifier">PROVISIONAL · {ecoLabelData.trainDisclosed?'add deployment workload to include training':'training not disclosed'}</div>}
+                <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}{ecoLabelData.gradeBasis==='inference'&&<sup className="aiScoreAsterisk">*</sup>}</div>
+                <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>{ecoLabelData.gradeBasis==='amortised'?'CEDARS SCORE · MODELED OPERATIONAL INTENSITY':ecoLabelData.gradeBasis==='inference'?'CEDARS INFERENCE SCORE':'CEDARS SCORE'}</div>{ecoLabelData.gradeBasis==='inference'&&<div className="aiScoreQualifier">PROVISIONAL · {ecoLabelData.trainDisclosed?'training is not yet included per study':'training not disclosed'}</div>}
               </div>
               <div style={{flex:'1 1 260px'}}>
-                <LeafRating leaves={ecoLabelData.leaves} size={22} color={ecoLabelData.ratingColor}/>
+                <div className={ecoLabelData.gradeBasis==='inference'?'aiProvisionalLeaves':''}><LeafRating leaves={ecoLabelData.leaves} size={22} color={ecoLabelData.ratingColor}/>{ecoLabelData.gradeBasis==='inference'&&<small>Inference-only rating</small>}</div>
                 <div style={{fontWeight:800,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint',ecoLabelData.gradeBasis==='amortised'?'modeled carbon intensity':'modeled inference intensity'):ecoLabelData.ratingLabel}</div>
-                <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.gradeBasis==='amortised'?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · training + inference`:ecoLabelData.gradeBasis==='inference'?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference`:'AI model disclosure; add deployment volume for an in-use grade.'}</div>
+                <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.gradeBasis==='amortised'?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · amortised training + inference`:ecoLabelData.gradeBasis==='inference'?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference only`:'AI model disclosure; add inference data to calculate a score.'}</div>
               </div>
               </div>
               <div className="scoreDataGrid" aria-label="AI score inputs and outputs">
@@ -5112,6 +5120,16 @@ function App() {
                 <div><span>Inference compute</span><strong>{ecoLabelData.inferenceProvider || '—'} · {ecoLabelData.inferenceRegion || 'provider average'}</strong></div>
                 <div className="scoreWaterCell"><span>Estimated water use {ecoLabelData.waterProv==='screening'&&<em>SCREENING</em>}</span><strong>{ecoLabelData.waterLitres>0 ? `Training: ${ecoLabelData.waterLitres.toLocaleString()} L` : '—'}</strong>{ecoLabelData.waterPerStudyMl>0&&<small>Inference: {ecoLabelData.waterPerStudyMl} mL/study</small>}{ecoLabelData.waterProv==='screening'&&<small>Default water-intensity factor; not a measured water footprint.</small>}</div>
               </div>
+              {ecoLabelData.gradeBasis==='inference'&&<div className="aiInferenceScoreNotice">
+                <div>
+                  <span>INFERENCE-ONLY SCORE</span>
+                  {ecoLabelData.trainDisclosed
+                    ? <><strong>Training is {PROVENANCE[ecoLabelData.trainProv]?.label.toLowerCase() || 'reported'}: {ecoLabelData.totalEnergyKwh} kWh · {ecoLabelData.trainCo2} kgCO₂e</strong><p>CEDARS cannot combine this one-time training footprint with inference until an expected deployment workload is entered.</p></>
+                    : <><strong>Training is not disclosed</strong><p>This provisional score reflects inference only because training cannot currently be included.</p></>}
+                  <small>* Provisional inference-only score. Not directly comparable with a training + inference score.</small>
+                </div>
+                {ecoLabelData.trainDisclosed&&<button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Add deployment workload →</button>}
+              </div>}
               <div className="aiScoreBasisBar"><div><span>CURRENT SCORE BASIS</span><strong>{ecoLabelData.inferStudies>0?`${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Deployment workload not entered'} · {ecoLabelData.deployMonths}-month deployment</strong><small>{ecoLabelData.gradeBasis==='amortised'?'Training is spread across expected use, then inference is added per study.':!ecoLabelData.trainDisclosed?'Training is not disclosed, so the per-study score uses inference only.':'Deployment workload is not entered, so the per-study score uses inference only; add workload to include an amortised share of training.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
               {showAiWorkloadExplore&&<div className="aiWorkloadExplorer">
                 <div className="aiWorkloadExplorerHead">
@@ -5209,16 +5227,17 @@ function App() {
               </div>
               <div style={{background:ecoLabelData.ratingBg, padding:'16px 18px', display:'flex', alignItems:'center', gap:18}}>
                 <div style={{textAlign:'center', flexShrink:0}}>
-                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.graded ? ecoLabelData.score : '—'}</div>
-                  <div style={{fontSize:10, fontWeight:700, color:ecoLabelData.ratingColor, letterSpacing:'0.04em'}}>CEDARS SCORE · {ecoLabelData.gradeBasis==='amortised'?'TRAINING + INFERENCE':'INFERENCE ONLY'}</div>
+                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.graded ? ecoLabelData.score : '—'}{ecoLabelData.gradeBasis==='inference'&&<sup className="aiScoreAsterisk">*</sup>}</div>
+                  <div style={{fontSize:10, fontWeight:700, color:ecoLabelData.ratingColor, letterSpacing:'0.04em'}}>{ecoLabelData.gradeBasis==='amortised'?'CEDARS SCORE · MODELED OPERATIONAL INTENSITY':ecoLabelData.gradeBasis==='inference'?'CEDARS INFERENCE SCORE':'CEDARS SCORE'}</div>
+                  {ecoLabelData.gradeBasis==='inference'&&<div className="aiExportQualifier">PROVISIONAL · inference only</div>}
                 </div>
                 <div>
-                  <LeafRating leaves={ecoLabelData.leaves} size={20} color={ecoLabelData.ratingColor}/>
+                  <div className={ecoLabelData.gradeBasis==='inference'?'aiProvisionalLeaves':''}><LeafRating leaves={ecoLabelData.leaves} size={20} color={ecoLabelData.ratingColor}/>{ecoLabelData.gradeBasis==='inference'&&<small>Inference-only rating</small>}</div>
                   <div style={{fontWeight:700, fontSize:14, color:ecoLabelData.ratingColor, marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint',ecoLabelData.gradeBasis==='amortised'?'modeled carbon intensity':'modeled inference intensity'):ecoLabelData.ratingLabel}</div>
                   <div style={{fontSize:11, color:'#263238', marginTop:2}}>
-                    {ecoLabelData.gradeBasis==='amortised' ? `${ecoLabelData.effectivePerStudyG} gCO₂e / study (in use, amortised)`
-                      : ecoLabelData.gradeBasis==='inference' ? `${ecoLabelData.perInferCo2g} gCO₂e / study (inference)`
-                      : ecoLabelData.hasData ? 'Add inference volume below to grade in-use efficiency' : 'Enter training data above to calculate'}
+                    {ecoLabelData.gradeBasis==='amortised' ? `${ecoLabelData.effectivePerStudyG} gCO₂e / study · training + inference`
+                      : ecoLabelData.gradeBasis==='inference' ? `${ecoLabelData.perInferCo2g} gCO₂e / study · inference only*`
+                      : ecoLabelData.hasData ? 'Add inference data to calculate a score' : 'Enter training or inference data above'}
                   </div>
                 </div>
               </div>
