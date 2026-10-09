@@ -89,7 +89,7 @@ export const GUIDED_DEMOS = {
         body: 'CEDARS keeps the intended use, endpoint, validation context, workload, and compute assumptions aligned so differences between candidates are easier to interpret.',
       },
       {
-        target: '#ai-benchmark',
+        target: '[data-demo-target="ai-candidate-results"]',
         kicker: '4 of 4 · COMPARE',
         title: 'Compare candidates on the same basis',
         body: 'Review performance and environmental results side by side, then carry a selected candidate into the shared AI model record. The values in this walkthrough are illustrative rather than vendor claims.',

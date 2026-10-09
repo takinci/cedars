@@ -4563,42 +4563,10 @@ function App() {
               </div>
             )}
 
-            {/* Worked agentic example — the token multiplier */}
-            <div style={{background:'#f1f8f1',border:'1.5px solid #c8e6c9',borderRadius:16,padding:'14px 18px',marginBottom:20}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,fontWeight:800,color:'#1b5e20',marginBottom:2}}><Bot size={16}/> Why agentic AI costs more — the token multiplier</div>
-              <p className="note" style={{fontSize:12,marginTop:2,marginBottom:10}}>
-                Same department ({settings.region}, {agenticExample.studies.toLocaleString()} studies/mo). A single-pass model runs once per study; an <strong>agent fans out into many LLM calls</strong> (planning · retrieval · tool use · self-critique · retries), so its energy is token-driven and multiplies.
-              </p>
-              <div style={{overflowX:'auto'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:520}}>
-                  <thead>
-                    <tr style={{borderBottom:'2px solid #c8e6c9',color:'#607d66',textAlign:'left'}}>
-                      <th style={{padding:'6px 10px'}}>Workflow</th>
-                      <th style={{padding:'6px 10px'}}>Tokens/study</th>
-                      <th style={{padding:'6px 10px'}}>Energy/study</th>
-                      <th style={{padding:'6px 10px'}}>If run on all studies/mo</th>
-                      <th style={{padding:'6px 10px'}}>vs 1-pass</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {agenticExample.rows.map((r,i) => {
-                      const isAgent = i === agenticExample.rows.length - 1;
-                      return (
-                        <tr key={i} style={{borderBottom:'1px solid #eef7ee',background:isAgent?'#fffef2':'white'}}>
-                          <td style={{padding:'6px 10px',fontWeight:isAgent?800:600,color:isAgent?'#1b5e20':'#263238'}}>{r.label}<span style={{display:'block',fontWeight:400,fontSize:11,color:'#90a4ae'}}>{r.note}</span></td>
-                          <td style={{padding:'6px 10px',color:'#607d66'}}>{r.tokens ? r.tokens.toLocaleString() : '—'}</td>
-                          <td style={{padding:'6px 10px',fontWeight:isAgent?800:600}}>{r.whStudy} Wh</td>
-                          <td style={{padding:'6px 10px'}}>{fmtKwh(r.kwhMo)}</td>
-                          <td style={{padding:'6px 10px',fontWeight:800,color:isAgent?'#c62828':'#607d66'}}>{r.fold}×</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <p className="note" style={{fontSize:11,marginTop:8,marginBottom:0}}>
-                Illustrative defaults (agent = {agenticExample.rows[2].note}, 4,000 tokens/call, 0.4 Wh/1k). Tune <strong>calls/task</strong> and <strong>tokens/call</strong> under <em>Advanced model parameters</em> after selecting the <strong>Agentic workflow</strong> template. Basis in sources.md.
-              </p>
+            <div style={{margin:'2px 0 12px'}}>
+              <div style={{fontSize:11,fontWeight:800,color:'#2E7D32',letterSpacing:'0.06em'}}>CANDIDATE RESULTS</div>
+              <h3 style={{margin:'3px 0 4px',fontSize:18}}>Compare candidates</h3>
+              <p className="note" style={{margin:0,fontSize:12}}>Review reported performance and estimated environmental results side by side, then choose the candidate you want to carry forward.</p>
             </div>
 
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
@@ -4611,7 +4579,7 @@ function App() {
             {benchResults.rows.length === 0 ? (
               <p className="note">No candidates yet. Add at least two candidate models above, or load the worked same-task example.</p>
             ) : (<>
-            <div style={{overflowX:'auto',marginBottom:24}}>
+            <div data-demo-target="ai-candidate-results" style={{overflowX:'auto',marginBottom:24}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:760}}>
                 <thead>
                   <tr style={{borderBottom:'2px solid #c8e6c9',color:'#607d66',textAlign:'left'}}>
@@ -4687,11 +4655,50 @@ function App() {
                 </> : <div className="comparisonUnavailable"><strong>Performance-vs-carbon plot unavailable</strong><span>Candidates are not yet comparable on one shared clinical definition and performance measure.</span><button type="button" className="inlineTextButton" onClick={()=>document.getElementById('ai-shared-comparison-definition')?.scrollIntoView({behavior:'smooth',block:'center'})}>Review comparison definition ↑</button></div>}
               </div>
             </details>
+
+            <details className="comparisonOptionalDetail">
+              <summary><span>Why agentic workflows can use more energy</span><small>Optional token-multiplier explainer</small></summary>
+              <div className="comparisonOptionalBody">
+                <p className="note" style={{fontSize:12,marginTop:0,marginBottom:10}}>
+                  Same department ({settings.region}, {agenticExample.studies.toLocaleString()} studies/mo). A single-pass model runs once per study; an <strong>agent fans out into many LLM calls</strong> (planning · retrieval · tool use · self-critique · retries), so its energy is token-driven and multiplies.
+                </p>
+                <div style={{overflowX:'auto'}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:520}}>
+                    <thead>
+                      <tr style={{borderBottom:'2px solid #c8e6c9',color:'#607d66',textAlign:'left'}}>
+                        <th style={{padding:'6px 10px'}}>Workflow</th>
+                        <th style={{padding:'6px 10px'}}>Tokens/study</th>
+                        <th style={{padding:'6px 10px'}}>Energy/study</th>
+                        <th style={{padding:'6px 10px'}}>If run on all studies/mo</th>
+                        <th style={{padding:'6px 10px'}}>vs 1-pass</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {agenticExample.rows.map((r,i) => {
+                        const isAgent = i === agenticExample.rows.length - 1;
+                        return (
+                          <tr key={i} style={{borderBottom:'1px solid #eef7ee',background:isAgent?'#fffef2':'white'}}>
+                            <td style={{padding:'6px 10px',fontWeight:isAgent?800:600,color:isAgent?'#1b5e20':'#263238'}}>{r.label}<span style={{display:'block',fontWeight:400,fontSize:11,color:'#90a4ae'}}>{r.note}</span></td>
+                            <td style={{padding:'6px 10px',color:'#607d66'}}>{r.tokens ? r.tokens.toLocaleString() : '—'}</td>
+                            <td style={{padding:'6px 10px',fontWeight:isAgent?800:600}}>{r.whStudy} Wh</td>
+                            <td style={{padding:'6px 10px'}}>{fmtKwh(r.kwhMo)}</td>
+                            <td style={{padding:'6px 10px',fontWeight:800,color:isAgent?'#c62828':'#607d66'}}>{r.fold}×</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="note" style={{fontSize:11,marginTop:8,marginBottom:0}}>
+                  Illustrative defaults (agent = {agenticExample.rows[2].note}, 4,000 tokens/call, 0.4 Wh/1k). Tune <strong>calls/task</strong> and <strong>tokens/call</strong> under <em>Advanced model parameters</em> after selecting the <strong>Agentic workflow</strong> template. Basis in sources.md.
+                </p>
+              </div>
+            </details>
             <details className="comparisonOptionalDetail comparisonEvidence">
               <summary><span>Evidence &amp; assumptions</span><small>Workload, serving &amp; agentic assumptions</small></summary>
               <div className="comparisonOptionalBody">
                 <p className="note">Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
-                <p className="note" style={{marginBottom:0}}>The worked agentic/token-multiplier example above is illustrative; update calls/task, tokens/call, hardware, and serving assumptions for the system being evaluated.</p>
+                <p className="note" style={{marginBottom:0}}>The agentic/token-multiplier explainer is illustrative; update calls/task, tokens/call, hardware, and serving assumptions for the system being evaluated.</p>
               </div>
             </details>
             </>)}
