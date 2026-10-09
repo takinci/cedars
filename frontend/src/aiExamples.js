@@ -2,10 +2,9 @@
 // Single-model fields are URL-encoded directly. Built-in comparison examples are restored from a
 // versioned preset key; custom candidate edits and free-text comparison notes stay in CEDARS files.
 //
-// Published values are used where a publication reports them; everything else is an illustrative
-// estimate and is badged as such on the label. No example claims a measured energy figure for a
-// published model — the "measured" example is a fictional in-house classifier whose numbers show
-// what a measured record looks like.
+// Published values are used where a publication reports them; everything else is explicitly
+// illustrative. A published inference measurement is kept separate from unmeasured pretraining so
+// missing lifecycle information is never treated as zero.
 export const AI_EXAMPLES = [
   {
     key: 'cxr-measured',
@@ -20,21 +19,37 @@ export const AI_EXAMPLES = [
       trainKwhMeasured: '41.6', trainTool: 'CodeCarbon', datasetSize: '112000', epochs: '30',
       inferKwh: '0.00042', inferStudiesMonth: '2500', deployMonths: '36',
       cloudProvider: 'Local compute', cloudRegion: 'On-premise (US average)', customPue: '1.0',
+      waterMode: 'notassessed',
       accuracyPct: '91', accuracyMetric: 'AUC',
     },
   },
   {
+    key: 'published-llm-vicuna7b',
+    title: 'Published open-source LLM benchmark',
+    subtitle: 'Measured inference · pretraining not assessed',
+    ref: 'doo-radiology-llm-2024',
+    note: 'Published local-compute benchmark of Vicuna 1.5 7B on chest-radiograph report labeling. GPU inference energy was measured with CodeCarbon across 3,665 reports; the per-study value below is derived from that measured total. Model pretraining was not assessed in the study, and the deployment volume shown here is illustrative.',
+    scen: {
+      aiRoute: 'own', ownMode: 'measured', projectName: 'Vicuna 1.5 7B report-labeling benchmark (published example)',
+      modelKey: 'report', architecture: 'LLM / Agent (transformer)', taskType: 'Classification', paramsM: '7000',
+      trainDisclosed: 'no', trainMissingReason: 'notassessed',
+      inferKwh: '0.00003547', inferStudiesMonth: '2500', deployMonths: '36',
+      cloudProvider: 'Local compute', cloudRegion: 'On-premise (US average)', customPue: '1.0', waterMode: 'notassessed',
+      accuracyPct: '93.83', accuracyMetric: 'Accuracy', performanceUnit: 'percent', performanceSource: 'Published study',
+    },
+  },
+  {
     key: 'report-llm-api',
-    title: 'Report-generation LLM via vendor API',
-    subtitle: 'Estimated per call · Assess my own model',
+    title: 'Vendor-hosted report-generation LLM',
+    subtitle: 'Estimated inference · training not disclosed',
     ref: null,
-    note: 'A hosted LLM drafting reports. Training is not disclosed by the vendor, so the label grades inference only; per-call energy is an estimate of the kind EcoLogits produces.',
+    note: 'A hosted LLM drafting reports. Inference is estimated from token use; training is explicitly marked not disclosed by the vendor. CEDARS reports the inference footprint but does not assign an overall lifecycle score while training is unavailable.',
     scen: {
       aiRoute: 'own', ownMode: 'spec', projectName: 'Report-generation LLM, vendor API (example)',
       modelKey: 'report', architecture: 'LLM / Agent (transformer)', taskType: 'Report generation',
-      trainDisclosed: 'no', callsPerTask: '1', tokensPerCall: '2500', whPer1kTokens: '0.4',
+      trainDisclosed: 'no', trainMissingReason: 'vendor', callsPerTask: '1', tokensPerCall: '2500', whPer1kTokens: '0.4',
       inferStudiesMonth: '2500', deployMonths: '36',
-      cloudProvider: 'AWS', cloudRegion: 'us-east-1 (N. Virginia, US)',
+      cloudProvider: 'AWS', cloudRegion: 'us-east-1 (N. Virginia, US)', waterMode: 'notassessed',
       accuracyPct: '70', accuracyMetric: 'RadGraph F1',
     },
   },

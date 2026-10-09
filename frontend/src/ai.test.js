@@ -25,11 +25,12 @@ const aiAgent = {
 };
 
 describe('provenance', () => {
-  it('training: literature by default, estimated with GPU×hours, measured with kWh, not-disclosed when flagged', () => {
+  it('training: literature by default, estimated with GPU×hours, measured with kWh, and explicit missing-data states', () => {
     expect(trainingProvenance(SCEN_DEFAULTS)).toBe('literature');
     expect(trainingProvenance({...SCEN_DEFAULTS, trainGpu: 'NVIDIA A100 (80GB SXM4)', trainHours: '18'})).toBe('estimated');
     expect(trainingProvenance({...SCEN_DEFAULTS, trainGpu: 'NVIDIA A100 (80GB SXM4)', trainHours: '18', trainKwhMeasured: '41.6'})).toBe('measured');
-    expect(trainingProvenance({...SCEN_DEFAULTS, trainKwhMeasured: '41.6', trainDisclosed: 'no'})).toBe('not-disclosed');
+    expect(trainingProvenance({...SCEN_DEFAULTS, trainKwhMeasured: '41.6', trainDisclosed: 'no', trainMissingReason:'vendor'})).toBe('not-disclosed');
+    expect(trainingProvenance({...SCEN_DEFAULTS, trainDisclosed: 'no', trainMissingReason:'notassessed'})).toBe('not-assessed');
   });
   it('inference: measured kWh wins; token models are estimated once tokens are typed', () => {
     expect(inferenceProvenance(SCEN_DEFAULTS, aiVision)).toBe('literature');
@@ -61,11 +62,12 @@ describe('labelFromScen — the label is a view of the record', () => {
 });
 
 describe('computeAiLabel — pinned grades', () => {
-  it('inference-only basis when no deployment volume: grade = per-study inference carbon (same as the AI tab hero)', () => {
+  it('reports inference without assigning an overall score until deployment workload is present', () => {
     const d = computeAiLabel(SCEN_DEFAULTS, aiVision, opts);
-    expect(d.gradeBasis).toBe('inference');
+    expect(d.gradeBasis).toBe('none');
+    expect(d.scoreStatus).toBe('deployment-workload-missing');
     expect(d.perInferCo2g).toBe(0.042);                 // 0.00042 kWh × 0.10 kg/kWh × 1000
-    expect(d.score).toBe(score(0.042).score);
+    expect(d.score).toBeNull();
     expect(d.totalEnergyKwh).toBe(41.6);
     expect(d.trainCo2).toBe(4.16);
     expect(d.trainProv).toBe('literature');
@@ -96,31 +98,42 @@ describe('computeAiLabel — pinned grades', () => {
     expect(d.trainingEffectiveCi).toBe(0.02);
     expect(d.inferenceEffectiveCi).toBe(0.30);
   });
-  it('training not disclosed by vendor: no training line, inference-only grade, stated as such', () => {
-    const d = computeAiLabel({...SCEN_DEFAULTS, trainDisclosed: 'no', inferStudiesMonth: '2500'}, aiVision, opts);
+  it('training not disclosed by vendor: inference is reported but no overall score is assigned', () => {
+    const d = computeAiLabel({...SCEN_DEFAULTS, trainDisclosed: 'no', trainMissingReason:'vendor', inferStudiesMonth: '2500'}, aiVision, opts);
     expect(d.trainDisclosed).toBe(false);
+    expect(d.trainingAvailable).toBe(false);
     expect(d.trainProv).toBe('not-disclosed');
     expect(d.totalEnergyKwh).toBe(0);
-    expect(d.gradeBasis).toBe('inference');
+    expect(d.gradeBasis).toBe('none');
+    expect(d.scoreStatus).toBe('training-unavailable');
+    expect(d.score).toBeNull();
     expect(d.breakEvenStudies).toBeNull();
   });
-  it('token-driven model: tokens/study and per-study carbon come from the engine', () => {
+  it('training outside the assessment boundary is distinct from vendor non-disclosure', () => {
+    const d = computeAiLabel({...SCEN_DEFAULTS, trainDisclosed:'no', trainMissingReason:'notassessed', inferStudiesMonth:'2500'}, aiVision, opts);
+    expect(d.trainProv).toBe('not-assessed');
+    expect(d.trainingStatusLabel).toBe('Not assessed');
+    expect(d.scoreStatus).toBe('training-unavailable');
+    expect(d.score).toBeNull();
+  });
+  it('token-driven model with no positive training footprint does not receive an overall score', () => {
     const d = computeAiLabel({...SCEN_DEFAULTS, inferStudiesMonth: '1000'}, aiAgent, opts);
     expect(d.tokenMode).toBe(true);
     expect(d.tokensPerStudy).toBe(40000);
     expect(d.perInferCo2g).toBe(6.974);                 // 0.0184 × 0.379 × 1000
     expect(d.inferMonthlyKwh).toBe(18.4);
-    expect(d.gradeBasis).toBe('amortised');             // volume given; training kWh is 0 so it adds nothing
-    expect(d.trainPerStudyG).toBe(0);
-    expect(d.effectivePerStudyG).toBe(6.974);
+    expect(d.trainingAvailable).toBe(false);
+    expect(d.gradeBasis).toBe('none');
+    expect(d.scoreStatus).toBe('training-unavailable');
+    expect(d.effectivePerStudyG).toBeNull();
   });
-  it('water: explicit site + grid intensity replaces the screening factor; "not assessed" reports nothing', () => {
+  it('water: explicit site + grid intensity replaces the screening factor; "not assessed" is explicit and never zero-by-implication', () => {
     const d1 = computeAiLabel({...SCEN_DEFAULTS, wueOnsite: '0.45', wueOffsite: '1.2'}, aiVision, opts);
     expect(d1.waterProv).toBe('estimated');
     expect(d1.waterPerKwh).toBe(1.65);
     expect(d1.waterLitres).toBe(69);                     // 41.6 × 1.65 = 68.64
     const d2 = computeAiLabel({...SCEN_DEFAULTS, waterMode: 'notassessed'}, aiVision, opts);
-    expect(d2.waterProv).toBe('not-disclosed');
+    expect(d2.waterProv).toBe('not-assessed');
     expect(d2.waterLitres).toBe(0);
   });
 });
@@ -148,7 +161,7 @@ describe('legacy save files', () => {
 
 describe('URL round-trip of the merged record fields', () => {
   it('encodes only non-default record fields and restores them exactly', () => {
-    const scen = {...SCEN_DEFAULTS, numRuns: '4', inferStudiesMonth: '2500', trainKwhMeasured: '41.6', trainDisclosed: 'no',
+    const scen = {...SCEN_DEFAULTS, numRuns: '4', inferStudiesMonth: '2500', trainKwhMeasured: '41.6', trainDisclosed: 'no', trainMissingReason:'vendor',
       trainTool: 'CodeCarbon', taskType: 'Triage', wueOnsite: '0.45', wueOffsite: '1.2', waterMode: 'notassessed',
       aiRoute: 'own', ownMode: 'measure'};
     const q = encodeConfig({scen});

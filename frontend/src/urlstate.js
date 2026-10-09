@@ -40,7 +40,7 @@ export const SCEN_DEFAULTS = {
   lowValueReductPct: '12', trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500',
   deployMonths: '36', datasetSize: '', epochs: '', customPue: '', trainCustomTdpW: '',
   // Record fields that used to live only on the AI Research Label (merged into the one record):
-  numRuns: '1', inferStudiesMonth: '', renewablePct: '0', trainKwhMeasured: '', trainDisclosed: 'yes',
+  numRuns: '1', inferStudiesMonth: '', renewablePct: '0', trainKwhMeasured: '', trainDisclosed: 'yes', trainMissingReason: '',
   trainTool: '', taskType: '',
   // Water (optional): site water-use effectiveness and grid water intensity, L/kWh; 'screening' |
   // 'notassessed' when neither is given.
@@ -82,7 +82,7 @@ const SCEN_KEYS = {
   am: 'accuracyMetric', st: 'scanTimeReductPct', lv: 'lowValueReductPct', tg: 'trainGpu',
   tn: 'trainNumGpus', th: 'trainHours', ts: 'testStudies', dp: 'deployMonths',
   ds: 'datasetSize', ne: 'epochs', pu: 'customPue', tw: 'trainCustomTdpW',
-  nr: 'numRuns', im: 'inferStudiesMonth', rp: 'renewablePct', tk: 'trainKwhMeasured', td: 'trainDisclosed',
+  nr: 'numRuns', im: 'inferStudiesMonth', rp: 'renewablePct', tk: 'trainKwhMeasured', td: 'trainDisclosed', tmr: 'trainMissingReason',
   tt: 'trainTool', ty: 'taskType', wo: 'wueOnsite', wf: 'wueOffsite', wm: 'waterMode', ro: 'aiRoute', om: 'ownMode',
   asys: 'aiSystemType', vs: 'compareVolumeSource', cb: 'compareBasis', cands: 'compareCandidateKeys', cpre: 'comparePreset',
   mid: 'modelId', punit: 'performanceUnit', pd: 'performanceDirection', pv: 'performanceValidationContext', ps: 'performanceSource',

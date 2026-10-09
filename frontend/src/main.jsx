@@ -50,7 +50,7 @@ const FEEDBACK_URL = 'https://github.com/takinci/cedars/issues/new?labels=feedba
 
 // Accordion section ids (for expand/collapse-all) on the Radiology Department and AI pages.
 const DASH_SECTIONS = ['efficiency','energy','carbon','charts','infrastructure','resources'];
-const AI_SECTIONS   = ['model','training','testing','inference','carbon','clinical','infra','benchmark'];
+const AI_SECTIONS   = ['training','testing','inference','carbon','clinical','infra','benchmark'];
 
 // Improve-page presentation metadata. These labels explain the existing intervention engine;
 // they do not introduce a second calculation path.
@@ -1211,24 +1211,30 @@ function generateDeptText(d) {
 }
 function generateAiMethodsText(d) {
   if (!d) return '';
-  const training = d.trainDisclosed
+  const training = d.trainingAvailable
     ? `${d.projectName} used ${d.gpuHardware}${d.totalGpuHours>0?` for ${d.totalGpuHours} GPU-hours`:''} across ${d.numRuns} training run${d.numRuns===1?'':'s'}, consuming ${d.totalEnergyKwh} kWh and producing an estimated ${d.trainCo2} kgCO₂e (${d.trainingProvider}, ${d.trainingRegion || 'provider average'}, ${d.trainingEffectiveCi} kgCO₂e/kWh).`
-    : `Training energy for ${d.projectName} was not disclosed by the developer or vendor.`;
+    : d.trainProv === 'not-assessed'
+      ? `Training or pretraining energy for ${d.projectName} was not assessed within the study boundary.`
+      : d.trainProv === 'not-disclosed'
+        ? `Training energy for ${d.projectName} was not disclosed by the developer or vendor.`
+        : `Training energy for ${d.projectName} was not available.`;
   const inference = d.perInferCo2g>0
     ? ` Inference was estimated at ${d.perInferCo2g} gCO₂e per study (${d.inferenceProvider}, ${d.inferenceRegion || 'provider average'}, ${d.inferenceEffectiveCi} kgCO₂e/kWh; PUE ${d.pue}).`
     : '';
-  const amortised = d.hasInference
+  const amortised = d.graded
     ? ` Across ${d.lifetimeInferences.toLocaleString()} studies over ${d.deployMonths} months, the amortised training-plus-inference footprint was ${d.effectivePerStudyG} gCO₂e per study.`
     : '';
-  const water = d.waterProv==='not-disclosed'
-    ? ' Water use was not assessed.'
+  const water = d.waterProv==='not-assessed'
+    ? ' Water use was not assessed and was reported separately from the carbon-and-energy score.'
     : d.waterLitres>0 ? ` Operational water use was estimated at ${d.waterLitres.toLocaleString()} L for training${d.waterProv==='screening'?' using a screening factor':''}.` : '';
   const score = d.graded
-    ? d.gradeBasis === 'amortised'
-      ? ` The resulting CEDARS modeled operational-intensity score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}), based on amortised training plus inference.`
-      : ` The provisional CEDARS Inference Score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}) and reflects inference only; ${d.trainDisclosed ? 'deployment workload was not available to amortise the one-time training footprint into the per-study score' : 'training was not disclosed and is not included in the per-study score'}.`
-    : '';
-  return `Environmental impact. ${training}${inference}${amortised}${water}${score} Sustainability metrics were assessed using CEDARS (${d.date}); detailed assumptions and provenance should be reported with the study where relevant.`;
+    ? ` The resulting CEDARS modeled operational-intensity score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}), based on amortised training plus inference.`
+    : d.scoreStatus === 'training-unavailable'
+      ? ` An overall CEDARS Score was not assigned because the training or pretraining footprint was unavailable; the inference result is reported separately.`
+      : d.scoreStatus === 'deployment-workload-missing'
+        ? ` An overall CEDARS Score was not assigned because deployment workload was not available to combine the one-time training footprint with recurring inference.`
+        : '';
+  return `Environmental impact. ${training}${inference}${amortised}${water}${score} Sustainability metrics were assessed with CEDARS (${d.date}) based on the documented model, compute, workload, and deployment assumptions; measured and estimated values were distinguished where applicable.`;
 }
 
 // Shared label-card row height: both PNG label cards (Department EcoLabel, AI Research EcoLabel)
@@ -1357,39 +1363,48 @@ function downloadDeptPNG(d) {
   downloadCanvasPNG(canvas, `cedars_dept_label_${(d.deptName||'department').replace(/\W+/g,'_')}.png`);
 }
 
-function generateEcoMarkdown(d) {
-  const rows = [
+function ecoReportRows(d) {
+  return [
     ['Project / model',          d.projectName],
     ['Task type',                d.taskType],
     ['Architecture',             d.architecture],
     ['Parameters',               d.paramsMillion],
-    ['Training dataset',         d.datasetSize],
-    ['GPU hardware',             d.gpuHardware],
-    ['Training runs',            `${d.numRuns} experiment${d.numRuns > 1 ? 's' : ''}`],
-    ['Total GPU-hours',          `${d.totalGpuHours} h`],
-    ['Energy per run',           d.trainDisclosed ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.label.toLowerCase()}${d.trainTool ? ', ' + d.trainTool : ''})` : 'not disclosed by vendor'],
-    ['Total training energy',    d.trainDisclosed ? `${d.totalEnergyKwh} kWh over ${d.numRuns} run${d.numRuns===1?'':'s'}` : 'not disclosed by vendor'],
-    ['Training CO₂e (one-time)', `${d.trainCo2} kgCO₂e`],
-    ['Training compute',         `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`],
+    [d.tokenWorkload ? 'Training / fine-tuning data' : 'Training dataset', d.datasetSize],
+    ...(d.epochs != null ? [[d.tokenWorkload ? 'Fine-tuning epochs' : 'Training epochs', String(d.epochs)]] : []),
+    ['Precision',                d.precision],
+    ...(!d.tokenWorkload && d.inputResolution ? [['Input workload', `${d.inputResolution}px · ${d.dim}${d.slices ? ` · ${d.slices} slice${d.slices===1?'':'s'} / passes` : ''}`]] : []),
+    ['Lifecycle coverage',       d.lifecycleCoverage],
+    ['GPU hardware',             d.trainingAvailable ? d.gpuHardware : d.trainingStatusLabel],
+    ['Training runs',            d.trainingAvailable ? `${d.numRuns} experiment${d.numRuns > 1 ? 's' : ''}` : d.trainingStatusLabel],
+    ['Total GPU-hours',          d.trainingAvailable ? `${d.totalGpuHours} h` : d.trainingStatusLabel],
+    ['Energy per run',           d.trainingAvailable ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.label.toLowerCase()}${d.trainTool ? ', ' + d.trainTool : ''})` : d.trainingStatusLabel],
+    ['Total training energy',    d.trainingAvailable ? `${d.totalEnergyKwh} kWh over ${d.numRuns} run${d.numRuns===1?'':'s'}` : d.trainingStatusLabel],
+    ['Training CO₂e (one-time)', d.trainingAvailable ? `${d.trainCo2} kgCO₂e` : 'Not available'],
+    ['Training compute',         d.trainingAvailable ? `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh` : d.trainingStatusLabel],
     ['Inference compute',        `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`],
-    ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
+    ['Water footprint',          d.waterProv === 'not-assessed' ? 'Not assessed · reported separately; not scored' : `${d.waterLitres.toLocaleString()} L${d.waterProv === 'screening' ? ' (screening estimate)' : ''}`],
     ...(d.tokenMode && d.tokensPerStudy > 0 ? [['Inference tokens / study', `${d.tokensPerStudy.toLocaleString()} tokens · ${d.inferKwhPerStudy} kWh`]] : []),
     ...(d.perInferCo2g > 0 ? [['Inference CO₂e / study (marginal)', `${d.perInferCo2g} gCO₂e`]] : []),
     ...(d.hasInference ? [
       ['Deployment',                  `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo (${d.lifetimeInferences.toLocaleString()} studies)`],
-      ['Effective CO₂e / study',      `${d.effectivePerStudyG} gCO₂e (training amortised + inference)`],
+      ...(d.graded ? [['Effective CO₂e / study', `${d.effectivePerStudyG} gCO₂e (training amortised + inference)`]] : []),
       ...(d.breakEvenStudies != null ? [['Break-even (training = inference)', `~${d.breakEvenStudies.toLocaleString()} studies`]] : []),
     ] : []),
-    ['**CEDARS Score**',         d.graded ? (d.gradeBasis === 'amortised' ? `**${d.score} / 100** (modeled operational intensity · training + inference)` : `**${d.score}* / 100** (provisional inference-only score)`) : '— (add inference data to grade)'],
-    ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**${d.gradeBasis === 'inference' ? ' · inference only' : ''}` : '—'],
+    ['**CEDARS Score**',         d.graded ? `**${d.score} / 100** (modeled operational intensity · training + inference)` : d.scoreStatus === 'training-unavailable' ? '**Not assigned** — training/pretraining footprint unavailable' : d.scoreStatus === 'deployment-workload-missing' ? '**Not assigned** — add deployment workload' : '—'],
+    ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**` : 'Not assigned'],
     ['Estimated with',           `CEDARS · ${d.date}`],
   ];
+}
+
+function generateEcoMarkdown(d) {
+  const rows = ecoReportRows(d);
   return [
     '| Metric | Value |',
     '|:---|:---|',
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
     '',
-    ...(d.gradeBasis === 'inference' ? ['> * Provisional inference-only score. Training is not included per study. It is not directly comparable with a training + inference score; enter deployment workload when training is disclosed to include an amortised training share.', ''] : []),
+    ...(d.scoreStatus === 'training-unavailable' ? ['> Overall CEDARS Score not assigned: the training/pretraining footprint is unavailable. The inference result is reported separately; unknown is not treated as zero.', ''] : []),
+    ...(d.scoreStatus === 'deployment-workload-missing' ? ['> Overall CEDARS Score not assigned: add deployment workload to combine one-time training with recurring inference.', ''] : []),
     '> AI research EcoLabel generated with [CEDARS](https://cedarsleaf.com).',
     '> Reporting framework: Doo FX et al. *J Am Coll Radiol* 2024 · DOI 10.1016/j.jacr.2023.11.019; Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030. Full sources: cedarsleaf.com → sources.md.',
   ].join('\n');
@@ -1400,36 +1415,40 @@ function downloadEcoPNG(d) {
     ['Task type',                d.taskType],
     ['Architecture',             d.architecture],
     ['Parameters',               d.paramsMillion],
-    ['Training dataset',         d.datasetSize],
-    ['GPU hardware',             d.gpuHardware],
-    ['Training runs',            `${d.numRuns} exp · ${d.totalGpuHours} GPU-h total`],
-    ['Energy / run',             d.trainDisclosed ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.short.toLowerCase()})` : 'not disclosed'],
-    ['Total training energy',    d.trainDisclosed ? `${d.totalEnergyKwh} kWh` : 'not disclosed'],
-    [`Training CO₂e`,       `${d.trainCo2} kgCO₂e`],
-    ['Training compute',         `${d.trainingProvider} · ${d.trainingRegion || 'avg'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`],
+    [d.tokenWorkload ? 'Training / fine-tuning data' : 'Training dataset', d.datasetSize],
+    ...(d.epochs != null ? [[d.tokenWorkload ? 'Fine-tuning epochs' : 'Training epochs', String(d.epochs)]] : []),
+    [d.tokenWorkload ? 'Precision' : 'Input workload', d.tokenWorkload ? d.precision : `${d.inputResolution || '—'}px · ${d.dim || '—'} · ${d.precision}`],
+    ['Lifecycle coverage',       d.lifecycleCoverage],
+    ['GPU hardware',             d.trainingAvailable ? d.gpuHardware : d.trainingStatusLabel],
+    ['Training runs',            d.trainingAvailable ? `${d.numRuns} exp · ${d.totalGpuHours} GPU-h total` : d.trainingStatusLabel],
+    ['Energy / run',             d.trainingAvailable ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.short.toLowerCase()})` : d.trainingStatusLabel],
+    ['Total training energy',    d.trainingAvailable ? `${d.totalEnergyKwh} kWh` : d.trainingStatusLabel],
+    ['Training CO₂e',            d.trainingAvailable ? `${d.trainCo2} kgCO₂e` : 'Not available'],
+    ['Training compute',         d.trainingAvailable ? `${d.trainingProvider} · ${d.trainingRegion || 'avg'} · ${d.trainingEffectiveCi} kgCO₂e/kWh` : d.trainingStatusLabel],
     ['Inference compute',        `${d.inferenceProvider} · ${d.inferenceRegion || 'avg'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh`],
-    ['Water footprint (cooling)', `${d.waterLitres.toLocaleString()} L`],
+    ['Water footprint',          d.waterProv === 'not-assessed' ? 'Not assessed · not scored' : `${d.waterLitres.toLocaleString()} L${d.waterProv === 'screening' ? ' (screening)' : ''}`],
     ...(d.perInferCo2g > 0 ? [['Inference / study', `${d.perInferCo2g} gCO₂e`]] : []),
     ...(d.hasInference ? [
       ['Deployment',        `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo`],
-      ['Effective / study', `${d.effectivePerStudyG} gCO₂e (amortised)`],
+      ...(d.graded ? [['Effective / study', `${d.effectivePerStudyG} gCO₂e (amortised)`]] : []),
     ] : []),
   ];
   const canvas = drawLabelCard({
     title: 'CEDARS AI Research EcoLabel',
     name: d.projectName,
     contextLine: `AI model footprint disclosure \xb7 ${d.date}`,
-    scoreDisplay: d.graded ? `${d.score}${d.gradeBasis === 'inference' ? '*' : ''}` : '—',
-    leaves: d.leaves, ratingColor: d.ratingColor, ratingBg: d.ratingBg,
-    ratingLabel: d.gradeBasis === 'inference' ? `${d.ratingLabel} · inference only` : d.ratingLabel,
+    scoreDisplay: d.graded ? `${d.score}` : '—',
+    leaves: d.graded ? d.leaves : 0, ratingColor: d.ratingColor, ratingBg: d.ratingBg,
+    ratingLabel: d.graded ? d.ratingLabel : 'Overall score not assigned',
     subtext:
-      d.gradeBasis === 'amortised' ? `${d.effectivePerStudyG} gCO₂e/study · training + inference`
-        : d.gradeBasis === 'inference' ? `${d.perInferCo2g} gCO₂e/study · provisional inference only`
-        : d.hasData ? 'Add inference to grade' : 'Enter training data above',
+      d.graded ? `${d.effectivePerStudyG} gCO₂e/study · training + inference`
+        : d.scoreStatus === 'training-unavailable' ? `${d.perInferCo2g} gCO₂e/study inference · training unavailable`
+        : d.scoreStatus === 'deployment-workload-missing' ? `${d.perInferCo2g} gCO₂e/study inference · add deployment workload`
+        : d.hasData ? 'Complete lifecycle inputs to grade' : 'Enter training or inference data',
     rows,
-    footerText: d.gradeBasis === 'inference'
-      ? `* Provisional inference-only score \xb7 training excluded per study \xb7 ${d.date}`
-      : `CEDARS modeled operational-intensity score \xb7 ${d.date} \xb7 CC BY 4.0`,
+    footerText: d.graded
+      ? `CEDARS modeled operational-intensity score · ${d.date} · CC BY 4.0`
+      : `Partial lifecycle coverage · overall score not assigned · ${d.date} · CC BY 4.0`,
   });
   downloadCanvasPNG(canvas, `cedars_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
 }
@@ -1713,7 +1732,7 @@ function App() {
   };
   // Worked examples replace the AI model record (never the Department). Built-in comparison
   // examples carry a versioned preset key so their standard candidate list can reopen by URL.
-  const loadAiExample = key => {
+  const loadAiExample = (key, {scrollToTop = true} = {}) => {
     const ex = AI_EXAMPLES.find(e => e.key === key); if (!ex) return;
     const region = ex.scen.cloudRegion || Object.keys(CLOUD_REGIONS[ex.scen.cloudProvider]?.regions ?? {})[0] || '';
     setAiExampleLoaded(key);
@@ -1722,7 +1741,7 @@ function App() {
       setBenchModels(ex.bench.map((b, i) => ({...benchCfgFromLib(b.modelKey), ...b, id: `ex-${key}-${i}`})));
       setAiOpen(o => ({...o, benchmark: true}));
     }
-    window.setTimeout(() => window.scrollTo({top: 0, behavior: 'smooth'}), 0);
+    if (scrollToTop) window.setTimeout(() => window.scrollTo({top: 0, behavior: 'smooth'}), 0);
   };
   const toggleAi = id => setAiOpen(o => ({...o, [id]: !o[id]}));
   const [trainExpanded, setTrainExpanded] = useState(false);
@@ -2065,6 +2084,23 @@ function App() {
     }));
   };
 
+  const applyProcurementDemo = () => {
+    const candidateA = {...benchCfgFromLib('cad'), id:'demo-candidate-a', label:'Vendor candidate A (illustrative)', inferKwh:'0.00042', accuracyPct:'91', accuracyMetric:'AUC', validationBasis:'Illustrative shared local cohort', intendedUse:'Chest radiograph nodule detection', vendor:'Illustrative vendor A'};
+    const candidateB = {...benchCfgFromLib('cad'), id:'demo-candidate-b', label:'Vendor candidate B (illustrative)', inferKwh:'0.00030', accuracyPct:'90', accuracyMetric:'AUC', validationBasis:'Illustrative shared local cohort', intendedUse:'Chest radiograph nodule detection', vendor:'Illustrative vendor B'};
+    const candidates = [candidateA, candidateB];
+    setAiExampleLoaded('');
+    setBenchModels(candidates);
+    setScen({...SCEN_DEFAULTS,
+      aiRoute:'compare', ownMode:'spec', aiSystemType:'imaging',
+      projectName:'Illustrative chest radiograph AI comparison', modelKey:'cad', architecture:'CNN / ResNet', taskType:'Classification',
+      compareClinicalTask:'Chest radiograph nodule detection', compareEndpoint:'Case-level nodule detection', compareCohort:'Illustrative shared local validation cohort',
+      compareVolumeSource:'custom', inferStudiesMonth:'2500', deployMonths:'36', compareBasis:'lifecycle',
+      cloudProvider:'Local compute', cloudRegion:'On-premise (US average)', customPue:'1.0',
+      comparePreset:'', compareCandidateKeys:'',
+    });
+    setAiOpen(o => ({...o, benchmark:true}));
+  };
+
   const prepareGuidedDemoStep = (kind, stepIndex) => {
     if (kind === 'leader') {
       if (stepIndex === 0) {
@@ -2104,6 +2140,21 @@ function App() {
       return;
     }
 
+    if (kind === 'procure') {
+      if (stepIndex === 0) {
+        setPage('landing');
+      } else if (stepIndex === 1) {
+        setAiExampleLoaded('');
+        setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:'imaging'});
+        setPage('ai');
+      } else {
+        applyProcurementDemo();
+        setEcoLabelMode('ai');
+        setPage('ai');
+      }
+      return;
+    }
+
     if (kind === 'developer') {
       if (stepIndex === 0) {
         setPage('landing');
@@ -2115,15 +2166,61 @@ function App() {
         setAiExampleLoaded('');
         setScen(s => ({...s, aiRoute:'own', ownMode:'measure'}));
         setPage('ai');
-      } else if (stepIndex === 4 || stepIndex === 5) {
+      } else if (stepIndex >= 4 && stepIndex <= 8) {
         setPage('ai');
-        loadAiExample('cxr-measured');
+        loadAiExample('cxr-measured', {scrollToTop:false});
+      } else if (stepIndex === 9) {
+        loadAiExample('cxr-measured', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setPage('ecolabel');
+      } else if (stepIndex === 10) {
+        loadAiExample('cxr-measured', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setImproveAiStage('develop');
+        setImproveAiLifecycleStep('build');
+        setPage('scenario');
+      } else if (stepIndex === 11) {
+        loadAiExample('cxr-measured', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setPage('report');
+      }
+      return;
+    }
+
+    if (kind === 'publishedLlm') {
+      if (stepIndex === 0) {
+        setPage('landing');
+      } else if (stepIndex >= 1 && stepIndex <= 4) {
+        setPage('ai');
+        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
+      } else if (stepIndex === 5) {
+        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setPage('ecolabel');
       } else if (stepIndex === 6) {
-        loadAiExample('cxr-measured');
+        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setPage('report');
+      }
+      return;
+    }
+
+    if (kind === 'llm') {
+      if (stepIndex === 0) {
+        setPage('landing');
+      } else if (stepIndex === 1) {
+        setAiExampleLoaded('');
+        setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:'foundation'});
+        setPage('ai');
+      } else if (stepIndex >= 2 && stepIndex <= 5) {
+        setPage('ai');
+        loadAiExample('report-llm-api', {scrollToTop:false});
+      } else if (stepIndex === 6) {
+        loadAiExample('report-llm-api', {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('ecolabel');
       } else if (stepIndex === 7) {
-        loadAiExample('cxr-measured');
+        loadAiExample('report-llm-api', {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('report');
       }
@@ -2703,172 +2800,199 @@ function App() {
     responsive:true,
   };
 
-  // Disclosure completeness for the AI record (the full checklist, with descriptions, lives on
-  // Report (& Share); this is the compact meter shown beside the form).
+  // Reporting completeness and lifecycle coverage are related but different. Explicitly saying
+  // "not disclosed" or "not assessed" completes the reporting field without pretending the
+  // environmental boundary is complete or treating an unknown footprint as zero.
   const aiChecklist = [
-    ['Model name', !!String(scen.projectName || '').trim(), 'model'],
-    ['Training hardware (GPU / accelerator and count)', !!scen.trainGpu || ecoLabelData.trainProv === 'not-disclosed', 'training'],
-    ['Training energy and how it was measured / estimated', ecoLabelData.trainProv === 'measured' ? !!ecoLabelData.trainTool : ecoLabelData.trainProv !== 'literature', 'training'],
+    ['Model & clinical context', !!String(scen.projectName || '').trim() && !!String(scen.taskType || '').trim(), 'model'],
+    ['Training status / provenance', ecoLabelData.trainingAvailable || ['not-disclosed','not-assessed'].includes(ecoLabelData.trainProv), 'training'],
+    ['Training energy and how it was measured / estimated', !ecoLabelData.trainingAvailable || (ecoLabelData.trainProv === 'measured' ? !!ecoLabelData.trainTool : ecoLabelData.trainProv !== 'literature'), 'training'],
     ['Inference compute location / grid source', !!(scen.inferenceRegion || scen.cloudRegion), 'inference'],
     ['PUE / compute-region assumptions', parseFloat(scen.inferencePue || scen.customPue) > 0 || !!(scen.inferenceRegion || scen.cloudRegion), 'inference'],
-    ['Deployment workload (to combine training + inference)', ecoLabelData.gradeBasis === 'amortised' || ecoLabelData.trainProv === 'not-disclosed', 'inference'],
-    ['Water inputs or mark water not assessed', ecoLabelData.waterProv !== 'screening', 'carbon'],
-    ['CEDARS Score and Rating', ecoLabelData.graded, 'score'],
+    ['Deployment workload / inference result', ecoLabelData.hasInference || ecoLabelData.perInferCo2g > 0, 'inference'],
+    ['Water inputs or explicitly mark water not assessed', ecoLabelData.waterProv !== 'screening', 'carbon'],
+    ['Assessment result and lifecycle coverage', ecoLabelData.graded || (ecoLabelData.perInferCo2g > 0 && ecoLabelData.scoreStatus === 'training-unavailable'), 'score'],
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const openAiChecklistItem = section => {
     if (section === 'score') { setEcoLabelMode('ai'); setPage('ecolabel'); return; }
-    const key = section || 'model';
     setPage('ai');
+    if (section === 'model') {
+      window.setTimeout(()=>document.querySelector('[data-demo-target="ai-model-record"]')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+      return;
+    }
+    const key = section || 'training';
     setAiOpen(o => ({...o, [key]:true}));
     window.setTimeout(()=>document.getElementById(`ai-${key}`)?.scrollIntoView({behavior:'smooth',block:'start'}),60);
   };
-  const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023'];
+  const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023', 'doo-radiology-llm-2024'];
   const AI_IMPROVE_REFS = ['doo-jacr-2024','doo-radiology-llm-2024','doo-jacr-cloud-2024','jia-eurradiol-2026','jegham-llm-2025','fernandez-llm-energy-2025','oviedo-inference-2025','kpodzro-haip-2026','strubell-nlp-2019','schwartz-green-ai-2020','henderson-reporting-2020','patterson-4ms-2022','hanafy-war-efficiencies-2023','wright-efficiency-not-enough-2023','dietrich-training-policy-2026','nghiem-doo-sustainable-ai-2026','owid-ci','codecarbon'];
   const DEPT_STORAGE_REFS = ['jia-eurradiol-2026', 'doo-jacr-cloud-2024'];
   const DEPT_WATER_REFS = ['heye-radiology-2020', 'li-thirsty-2023'];
   const DEPT_SUPPORT_REFS = ['heye-radiology-2020', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'li-thirsty-2023'];
+  const aiUsesTokenWorkload = ecoLabel.architecture === 'LLM / Agent (transformer)' || ['Report generation','Agentic workflow'].includes(ecoLabel.taskType);
 
   const renderAiRecordForm = () => (
     <>
           {/* ── Form ── */}
           <div className="inputSummary" data-demo-target="ai-model-record" style={{marginBottom:24}}>
-            <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Model &amp; task</h2>
+            <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Model &amp; clinical context</h2>
+            <p className="note" style={{margin:'0 0 14px',fontSize:11,lineHeight:1.5}}>Define what the model does and the reported clinical evidence used to interpret its environmental footprint. Performance values are reported inputs, not predictions made by CEDARS.</p>
             <div className="grid grid3">
               <label>
                 Project / model name
                 <input type="text" value={ecoLabel.projectName} onChange={e=>setEco('projectName',e.target.value)} placeholder="e.g. CXR-Net lung nodule detector"/>
               </label>
+              <label>
+                Model starting point
+                <select value={scen.modelKey} onChange={e=>setModel(e.target.value)}>{AI_MODEL_LIBRARY.map(m=><option key={m.key} value={m.key}>{m.label}</option>)}</select>
+                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>Optional reference template; all fields remain editable.</span>
+              </label>
               <Sel label="Task type" value={ecoLabel.taskType} options={META.taskTypes} onChange={v=>setEco('taskType',v)}/>
               <Sel label="Architecture" value={ecoLabel.architecture} options={META.architectures} onChange={v=>setEco('architecture',v)}/>
-              <label>
-                Parameters (millions)
-                <input type="number" min="0" value={ecoLabel.paramsMillion} onChange={e=>setEco('paramsMillion',e.target.value)} placeholder="e.g. 19"/>
-              </label>
-              <label>
-                Training dataset (studies / images)
-                <input type="number" min="0" value={ecoLabel.datasetSize} onChange={e=>setEco('datasetSize',e.target.value)} placeholder="e.g. 45000"/>
-              </label>
             </div>
-          </div>
-
-          <div className="inputSummary" style={{marginBottom:24}}>
-            <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Training compute</h2>
-            <div className="grid grid3">
-              <Sel label="GPU model" value={ecoLabel.gpuModel} options={META.gpuModels} onChange={v=>setEco('gpuModel',v)}/>
-              {ecoLabel.gpuModel === 'Custom (enter TDP below)' && (
-                <label>
-                  GPU TDP (Watts)
-                  <input type="number" min="1" value={ecoLabel.customTdpW} onChange={e=>setEco('customTdpW',e.target.value)} placeholder="e.g. 350"/>
-                </label>
-              )}
-              <label>
-                Number of GPUs
-                <input type="number" min="1" value={ecoLabel.gpuCount} onChange={e=>setEco('gpuCount',e.target.value)} placeholder="e.g. 4"/>
-              </label>
-              <label>
-                Training hours per run
-                <input type="number" min="0" step="0.1" value={ecoLabel.trainingHoursPerRun} onChange={e=>setEco('trainingHoursPerRun',e.target.value)} placeholder="e.g. 18"/>
-              </label>
-              <label>
-                Number of training runs / experiments
-                <input type="number" min="1" value={ecoLabel.numRuns} onChange={e=>setEco('numRuns',e.target.value)} placeholder="e.g. 12"/>
-              </label>
-            </div>
-            <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:8}}>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-                <span style={{fontSize:12,fontWeight:700,color:'#2E7D32'}}>Training energy:</span>
-                <button type="button" onClick={()=>setEco('trainDisclosed','yes')} className={ecoLabel.trainDisclosed!=='no'?'on':''} style={{padding:'5px 12px',fontSize:12}}>Known</button>
-                <button type="button" onClick={()=>setEco('trainDisclosed','no')} className={ecoLabel.trainDisclosed==='no'?'on':''} style={{padding:'5px 12px',fontSize:12}}>Not disclosed by vendor</button>
-                <span className="note" style={{fontSize:11,margin:0}}>
-                  {ecoLabel.trainDisclosed==='no'
-                    ? 'The label will grade inference only and state that training was not disclosed.'
-                    : <>Currently <strong>{PROVENANCE[ecoLabelData.trainProv]?.label}</strong>{ecoLabelData.trainProv==='literature' ? ' — the library default for this task family, scaled to your model size' : ecoLabelData.trainProv==='estimated' ? ' — GPU TDP × count × hours × PUE' : ''}.</>}
-                </span>
+            <div style={{marginTop:18,paddingTop:16,borderTop:'1px solid #e0eee2'}}>
+              <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>Reported performance &amp; clinical benefit</h3>
+              <p className="note" style={{margin:'0 0 12px',fontSize:10.5}}>Replace example or reference values with your own validation results when available. Environmental efficiency should be interpreted alongside clinical performance and intended benefit.</p>
+              <div className="grid grid3">
+                <label>Performance value<input type="number" step="0.001" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)}/></label>
+                <label>Metric<select value={scen.accuracyMetric} onChange={e=>setS('accuracyMetric',e.target.value)}>{['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','MAE','Other'].map(m=><option key={m} value={m}>{m}</option>)}</select></label>
+                <label>Unit<select value={scen.performanceUnit} onChange={e=>setS('performanceUnit',e.target.value)}>{['percent','fraction','mm','seconds','ordinal','custom'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label>Better direction<select value={scen.performanceDirection} onChange={e=>setS('performanceDirection',e.target.value)}><option value="higher">Higher is better</option><option value="lower">Lower is better</option></select></label>
+                <label>Validation context<input value={scen.performanceValidationContext} onChange={e=>setS('performanceValidationContext',e.target.value)} placeholder="e.g. external validation"/></label>
+                <label>Source / provenance<input value={scen.performanceSource} onChange={e=>setS('performanceSource',e.target.value)} placeholder="publication, local study, vendor"/></label>
+                <label>Scan-time reduction (%)<input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)}/></label>
+                <label>Low-value imaging avoided (%)<input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)}/></label>
               </div>
-              {ecoLabel.trainDisclosed!=='no' && (
-                <div className="grid grid3">
+              <p className="note" style={{marginTop:8,fontSize:10.5}}>Set workflow-benefit fields to 0 when they do not apply. They are reported separately from model-performance metrics.</p>
+            </div>
+          </div>
+
+          <div className="inputSummary" data-demo-target="ai-training-section" style={{marginBottom:24}}>
+            <h2 style={{marginTop:0, marginBottom:14, color:'#1b5e20'}}>Training</h2>
+            <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>{aiUsesTokenWorkload ? 'Model scale & fine-tuning workload' : 'Training workload'}</h3>
+            <p className="note" style={{margin:'0 0 14px',fontSize:11,lineHeight:1.5}}>These fields describe computational workload; they do <strong>not</strong> replace measured energy. When measured energy is available, it takes precedence over <strong>training</strong> workload-based estimates.</p>
+            <div className="grid grid3">
+              {aiUsesTokenWorkload && <label>
+                Parameters (millions) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>important model-scale choice · 7B = 7,000M</span>
+                <input type="number" min="0" value={ecoLabel.paramsMillion} onChange={e=>setEco('paramsMillion',e.target.value)} placeholder="e.g. 7000"/>
+              </label>}
+              <label>
+                {aiUsesTokenWorkload ? 'Training / fine-tuning examples' : 'Training dataset (studies / images)'}
+                <input type="number" min="0" value={ecoLabel.datasetSize} onChange={e=>setEco('datasetSize',e.target.value)} placeholder={aiUsesTokenWorkload ? 'optional' : 'e.g. 45000'}/>
+              </label>
+              <label>
+                {aiUsesTokenWorkload ? 'Fine-tuning epochs' : 'Epochs'} <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
+                <input type="number" min="0" value={scen.epochs} onChange={e=>setS('epochs',e.target.value)} placeholder={aiUsesTokenWorkload ? 'if fine-tuned locally' : 'e.g. 30'}/>
+              </label>
+              {!aiUsesTokenWorkload && <>
+                <label>Input size (pixels per side)<input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} placeholder="e.g. 512"/></label>
+                <label>Dimensionality<select value={scen.dim} onChange={e=>setS('dim',e.target.value)}><option value="2D">2D</option><option value="3D">3D</option></select></label>
+                <label>Slices / passes per study <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>1 for a single 2D image</span><input type="number" min="1" value={scen.slices} onChange={e=>setS('slices',e.target.value)} placeholder="1"/></label>
+              </>}
+              <label>Precision<select value={scen.precision} onChange={e=>setS('precision',e.target.value)}>{META.precisions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+            </div>
+            <p className="note" style={{margin:'10px 0 0',fontSize:10.5,lineHeight:1.5}}>{aiUsesTokenWorkload ? <>For LLM / agentic systems, model size is a meaningful selection variable: smaller task-appropriate models can use substantially less energy, but performance must be checked for the intended clinical task.<Ref id="doo-radiology-llm-2024" order={AI_PAGE_REFS}/> Parameter count can inform model-scale estimates, but it is not itself an energy measurement.</> : <>For imaging models, dataset size × epochs, input size, dimensionality / passes, and precision characterize the primary training workload.</>}</p>
+            {!aiUsesTokenWorkload && <details style={{marginTop:10,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
+              <summary style={{cursor:'pointer',fontWeight:700,color:'#607d66',fontSize:11}}>Advanced model-scale estimate</summary>
+              <p className="note" style={{fontSize:10.5}}>Parameter count is optional for imaging models and is used only for model-scale reference or fallback estimates. It does not replace directly measured training energy.</p>
+              <label style={{maxWidth:260}}>Parameters (millions)<input type="number" min="0" value={ecoLabel.paramsMillion} onChange={e=>setEco('paramsMillion',e.target.value)} placeholder="e.g. 25"/></label>
+            </details>}
+
+            <div style={{marginTop:18,paddingTop:16,borderTop:'1px solid #e0eee2'}}>
+              <h3 style={{margin:'0 0 8px',fontSize:14,color:'#1b5e20'}}>Compute &amp; energy</h3>
+              {ecoLabel.trainDisclosed!=='no' && ecoLabelData.energyPerRunKwh>0 && <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'9px 11px',marginBottom:14,border:'1px solid #c8e6c9',borderRadius:11,background:'#f7fbf8'}}><span style={{fontSize:9,fontWeight:900,letterSpacing:'.08em',color:'#2E7D32'}}>CURRENT TRAINING-ENERGY BASIS</span><strong style={{fontSize:15,color:'#1b5e20'}}>{ecoLabelData.energyPerRunKwh} kWh / run</strong><span style={{fontSize:10,fontWeight:800,color:'#607d66'}}>{PROVENANCE[ecoLabelData.trainProv]?.short || ecoLabelData.trainProv}{ecoLabel.trainTool ? ` · ${ecoLabel.trainTool}` : ''}</span></div>}
+              <div className="grid grid3">
+                <Sel label="GPU model" value={ecoLabel.gpuModel} options={META.gpuModels} onChange={v=>setEco('gpuModel',v)}/>
+                {ecoLabel.gpuModel === 'Custom (enter TDP below)' && (
                   <label>
-                    Measured energy per run (kWh) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional — overrides the estimate</span>
-                    <input type="number" min="0" step="0.01" value={ecoLabel.energyKwhPerRun} onChange={e=>setEco('energyKwhPerRun',e.target.value)} placeholder="e.g. 24.0"/>
+                    GPU TDP (Watts)
+                    <input type="number" min="1" value={ecoLabel.customTdpW} onChange={e=>setEco('customTdpW',e.target.value)} placeholder="e.g. 350"/>
                   </label>
-                  <label>
-                    Measured with
-                    <select value={ecoLabel.trainTool} onChange={e=>setEco('trainTool',e.target.value)}>
-                      <option value="">—</option>
-                      {['CodeCarbon','Zeus','Carbontracker','EcoLogits','Green Algorithms','nvidia-smi','Power meter','Cloud provider dashboard','Other'].map(t=><option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </label>
+                )}
+                <label>
+                  Number of GPUs
+                  <input type="number" min="1" value={ecoLabel.gpuCount} onChange={e=>setEco('gpuCount',e.target.value)} placeholder="e.g. 4"/>
+                </label>
+                <label>
+                  Training hours per run
+                  <input type="number" min="0" step="0.1" value={ecoLabel.trainingHoursPerRun} onChange={e=>setEco('trainingHoursPerRun',e.target.value)} placeholder="e.g. 18"/>
+                </label>
+                <label>
+                  Number of training runs / experiments
+                  <input type="number" min="1" value={ecoLabel.numRuns} onChange={e=>setEco('numRuns',e.target.value)} placeholder="e.g. 12"/>
+                </label>
+              </div>
+              <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:8}}>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                  <span style={{fontSize:12,fontWeight:700,color:'#2E7D32'}}>Training footprint:</span>
+                  <button type="button" onClick={()=>{setEco('trainDisclosed','yes');setS('trainMissingReason','');}} className={ecoLabel.trainDisclosed!=='no'?'on':''} style={{padding:'5px 12px',fontSize:12}}>Available</button>
+                  <button type="button" onClick={()=>{setEco('trainDisclosed','no');if(!scen.trainMissingReason)setS('trainMissingReason','vendor');}} className={ecoLabel.trainDisclosed==='no'?'on':''} style={{padding:'5px 12px',fontSize:12}}>Unavailable</button>
+                  <span className="note" style={{fontSize:11,margin:0}}>
+                    {ecoLabel.trainDisclosed==='no'
+                      ? <>Inference can still be reported, but CEDARS does <strong>not</strong> assign an overall Score or leaf Rating when the training/pretraining footprint is unavailable.</>
+                      : <>Currently <strong>{PROVENANCE[ecoLabelData.trainProv]?.label}</strong>{ecoLabelData.trainProv==='literature' ? ' — the library default for this task family, scaled to your model size' : ecoLabelData.trainProv==='estimated' ? ' — GPU TDP × count × hours × PUE' : ''}.</>}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="inputSummary" style={{marginBottom:24}}>
-            <h2 style={{marginTop:0, marginBottom:16, color:'#1b5e20'}}>Deployment context</h2>
-            <div className="grid grid3">
-              <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={setCloudProvider}/>
-              <label>
-                Deployment region <span style={{fontWeight:400, fontSize:11, color:'#607d66'}}>— sets grid CI</span>
-                <select value={ecoLabel.cloudRegion} onChange={e=>setEco('cloudRegion',e.target.value)}>
-                  {Object.entries(CLOUD_REGIONS[ecoLabel.cloudProvider]?.regions ?? {}).map(([name, rci]) => (
-                    <option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>
-                  ))}
-                </select>
-                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>The compute region sets the grid carbon intensity for training and inference; it is independent of the Radiology Department's region (the department's own location).</span>
-              </label>
-              <label>
-                Custom PUE <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>optional — overrides {ecoLabel.cloudProvider} default ({CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5})</span>
-                <input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5} default`}/>
-                <span style={{fontWeight:400,fontSize:10,color:'#90a4ae',marginTop:3,lineHeight:1.3}}>Set to <strong>1.0</strong> to reproduce a single lab GPU measurement (e.g. CodeCarbon) with no data-centre overhead.</span>
-              </label>
-              <label>
-                Renewable energy (%)
-                <input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/>
-              </label>
-            </div>
-            <p className="note" style={{marginTop:8}}>Renewable energy % reduces the effective carbon intensity. Set to 100 for green tariff or matched renewable certificates (RECs).</p>
-            <details style={{marginTop:12,borderTop:'1px solid #e0eee2',paddingTop:10}}>
-              <summary style={{cursor:'pointer',fontWeight:700,color:'#2E7D32'}}>Set training and inference compute separately</summary>
-              <p className="note" style={{fontSize:11}}>Leave these blank to inherit the shared deployment context above. Use them when training occurred elsewhere from inference (for example, vendor pretraining in one region and local/cloud deployment in another).</p>
-              {['training','inference'].map(kind => {
-                const providerKey = `${kind}Provider`, regionKey = `${kind}Region`, pueKey = `${kind}Pue`, renewableKey = `${kind}RenewablePct`;
-                const provider = scen[providerKey] || scen.cloudProvider;
-                return <div key={kind} style={{marginTop:10}}>
-                  <strong style={{fontSize:12,color:'#1b5e20',textTransform:'capitalize'}}>{kind} context</strong>
-                  <div className="grid grid3" style={{marginTop:6}}>
-                    <label>Provider<select value={scen[providerKey]} onChange={e=>setS(providerKey,e.target.value)}><option value="">Inherit {scen.cloudProvider}</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                    <label>Region<select value={scen[regionKey]} onChange={e=>setS(regionKey,e.target.value)}><option value="">Inherit {scen.cloudRegion || 'provider average'}</option>{Object.keys(CLOUD_REGIONS[provider]?.regions || {}).map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                    <label>Custom PUE<input type="number" min="1" step="0.05" value={scen[pueKey]} onChange={e=>setS(pueKey,e.target.value)} placeholder="inherit"/></label>
-                    <label>Renewable energy (%)<input type="number" min="0" max="100" value={scen[renewableKey]} onChange={e=>setS(renewableKey,e.target.value)} placeholder={`inherit ${scen.renewablePct || 0}%`}/></label>
+                {ecoLabel.trainDisclosed==='no' && <label style={{maxWidth:380,fontSize:11}}>
+                  Why is training unavailable?
+                  <select value={scen.trainMissingReason || 'vendor'} onChange={e=>setS('trainMissingReason',e.target.value)}>
+                    <option value="vendor">Not disclosed by developer / vendor</option>
+                    <option value="notassessed">Not assessed in this study / evaluation</option>
+                  </select>
+                </label>}
+                {ecoLabel.trainDisclosed!=='no' && (
+                  <div className="grid grid3">
+                    <label>
+                      Measured energy per run (kWh) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional — overrides the estimate</span>
+                      <input type="number" min="0" step="0.01" value={ecoLabel.energyKwhPerRun} onChange={e=>setEco('energyKwhPerRun',e.target.value)} placeholder="e.g. 24.0"/>
+                    </label>
+                    <label>
+                      Measured with
+                      <select value={ecoLabel.trainTool} onChange={e=>setEco('trainTool',e.target.value)}>
+                        <option value="">—</option>
+                        {['CodeCarbon','Zeus','Carbontracker','EcoLogits','Green Algorithms','nvidia-smi','Power meter','Cloud provider dashboard','Other'].map(t=><option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </label>
                   </div>
-                </div>;
-              })}
-            </details>
-            <h3 style={{margin:'16px 0 8px', fontSize:14, color:'#1b5e20'}}>Water <span style={{fontWeight:400, fontSize:12, color:'#607d66'}}>optional · screening estimate unless you enter values<Ref id="li-thirsty-2023" order={AI_PAGE_REFS}/></span></h3>
-            <div className="grid grid3">
-              <label>
-                Cooling water at the compute site (L/kWh) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>provider's water-use effectiveness, if published</span>
-                <input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/>
-              </label>
-              <label>
-                Water from electricity generation (L/kWh) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>off-site; depends on the grid</span>
-                <input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/>
-              </label>
-              <label>
-                If unknown
-                <select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}>
-                  <option value="screening">Use the {WATER_PER_KWH} L/kWh screening factor (Estimated)</option>
-                  <option value="notassessed">Report water as not assessed</option>
-                </select>
-              </label>
+                )}
+              </div>
             </div>
-            <p className="note" style={{marginTop:8}}>Either choice is stated on the label. The screening factor is a data-centre proxy; site cooling and electricity-generation water differ by location.</p>
+
+            <div style={{marginTop:18,paddingTop:16,borderTop:'1px solid #e0eee2'}}>
+              <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>Compute context</h3>
+              <p className="note" style={{margin:'0 0 12px',fontSize:10.5}}>This default context is used for training and inherited by inference unless a phase-specific override is entered.</p>
+              <div className="grid grid3">
+                <Sel label="Compute provider" value={ecoLabel.cloudProvider} options={META.cloudProviders} onChange={setCloudProvider}/>
+                <label>
+                  Region <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— sets grid CI</span>
+                  <select value={ecoLabel.cloudRegion} onChange={e=>setEco('cloudRegion',e.target.value)}>
+                    {Object.entries(CLOUD_REGIONS[ecoLabel.cloudProvider]?.regions ?? {}).map(([name, rci]) => <option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}
+                  </select>
+                </label>
+                <label>
+                  Custom PUE <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
+                  <input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5} default`}/>
+                </label>
+                <label>Renewable energy (%)<input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/></label>
+              </div>
+              <p className="note" style={{marginTop:8}}>Compute location sets grid carbon intensity. PUE represents facility overhead; set PUE to 1.0 when reproducing a direct single-lab-GPU energy measurement with no added data-centre overhead.</p>
+              <details style={{marginTop:10}}>
+                <summary style={{cursor:'pointer',fontWeight:700,color:'#2E7D32'}}>Advanced: training used a different compute context</summary>
+                <p className="note" style={{fontSize:10.5}}>Leave blank to use the default context above. Use this only when training occurred elsewhere.</p>
+                <div className="grid grid3" style={{marginTop:6}}>
+                  <label>Provider<select value={scen.trainingProvider} onChange={e=>setS('trainingProvider',e.target.value)}><option value="">Use default {scen.cloudProvider}</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                  <label>Region<select value={scen.trainingRegion} onChange={e=>setS('trainingRegion',e.target.value)}><option value="">Use default {scen.cloudRegion || 'provider average'}</option>{Object.keys(CLOUD_REGIONS[scen.trainingProvider || scen.cloudProvider]?.regions || {}).map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                  <label>Custom PUE<input type="number" min="1" step="0.05" value={scen.trainingPue} onChange={e=>setS('trainingPue',e.target.value)} placeholder="use default"/></label>
+                  <label>Renewable energy (%)<input type="number" min="0" max="100" value={scen.trainingRenewablePct} onChange={e=>setS('trainingRenewablePct',e.target.value)} placeholder={`use default ${scen.renewablePct || 0}%`}/></label>
+                </div>
+              </details>
+            </div>
           </div>
 
-          <div className="inputSummary" style={{marginBottom:32}}>
-            <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Inference / deployment <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(drives the in-use grade)</span></h2>
-            <p className="note" style={{marginBottom:12}}>Training is a one-time cost; inference is paid on every study. Enter your deployment to grade the <strong>amortised</strong> footprint per study (training spread over the studies served + inference). Leave blank to keep a training-only disclosure.</p>
+          <div className="inputSummary" data-demo-target="ai-inference-section" style={{marginBottom:24}}>
+            <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Inference &amp; deployment <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(drives the in-use grade)</span></h2>
+            <p className="note" style={{marginBottom:12}}>Training is generally a one-time development footprint; inference recurs with each use. Enter the expected deployment workload to combine training and inference over the model's period of use. Leave deployment workload blank if you are reporting training only.</p>
             {/* Inference energy unit — flat kWh (vision) vs token-driven (LLM / agentic) */}
             <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
               <span style={{fontSize:12,color:'#607d66',fontWeight:600,alignSelf:'center'}}>Inference energy:</span>
@@ -2882,29 +3006,14 @@ function App() {
               </label>
               {ecoLabel.inferMode==='tokens' ? (
                 <>
-                  <label>
-                    Energy (Wh / 1k tokens)
-                    <input type="number" min="0" step="0.05" value={ecoLabel.whPer1kTokens} onChange={e=>setEco('whPer1kTokens',e.target.value)} placeholder="0.4"/>
-                  </label>
-                  <label>
-                    Model calls / study
-                    <input type="number" min="1" step="1" value={ecoLabel.callsPerTask} onChange={e=>setEco('callsPerTask',e.target.value)} placeholder="1 (single-pass) · 10 (agent)"/>
-                  </label>
-                  <label>
-                    Tokens / call
-                    <input type="number" min="0" step="100" value={ecoLabel.tokensPerCall} onChange={e=>setEco('tokensPerCall',e.target.value)} placeholder="e.g. 2500"/>
-                  </label>
+                  <label>Energy (Wh / 1k tokens)<input type="number" min="0" step="0.05" value={ecoLabel.whPer1kTokens} onChange={e=>setEco('whPer1kTokens',e.target.value)} placeholder="0.4"/></label>
+                  <label>Model calls / study<input type="number" min="1" step="1" value={ecoLabel.callsPerTask} onChange={e=>setEco('callsPerTask',e.target.value)} placeholder="1 (single-pass) · 10 (agent)"/></label>
+                  <label>Tokens / call<input type="number" min="0" step="100" value={ecoLabel.tokensPerCall} onChange={e=>setEco('tokensPerCall',e.target.value)} placeholder="e.g. 2500"/></label>
                 </>
               ) : (
-                <label>
-                  Inference energy per study (kWh)
-                  <input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/>
-                </label>
+                <label>Inference energy per study (kWh)<input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/></label>
               )}
-              <label>
-                Deployment lifetime (months)
-                <input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/>
-              </label>
+              <label>Deployment lifetime (months)<input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/></label>
             </div>
             {ecoLabel.inferMode==='tokens' && (
               <p className="note" style={{fontSize:11,marginTop:8,marginBottom:0}}>
@@ -2913,6 +3022,31 @@ function App() {
                   : <>Enter tokens/call to derive kWh/study. tokens/study = calls × tokens/call; single-pass LLM = 1 call.</>}
               </p>
             )}
+            <div style={{marginTop:18,paddingTop:16,borderTop:'1px solid #e0eee2'}}>
+              <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>Inference compute context</h3>
+              <p className="note" style={{margin:'0 0 10px',fontSize:10.5}}>{scen.inferenceProvider || scen.inferenceRegion || scen.inferencePue || scen.inferenceRenewablePct ? <>Using an inference-specific override. Leave the fields below blank to inherit the default compute context recorded with Training.</> : <>Using the default compute context recorded with Training: <strong>{scen.cloudProvider}</strong>{scen.cloudRegion ? ` · ${scen.cloudRegion}` : ''}.</>}</p>
+              <details style={{marginTop:8}}>
+                <summary style={{cursor:'pointer',fontWeight:700,color:'#2E7D32'}}>Set a different inference compute context</summary>
+                <div className="grid grid3" style={{marginTop:8}}>
+                  <label>Provider<select value={scen.inferenceProvider} onChange={e=>setS('inferenceProvider',e.target.value)}><option value="">Use default {scen.cloudProvider}</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                  <label>Region<select value={scen.inferenceRegion} onChange={e=>setS('inferenceRegion',e.target.value)}><option value="">Use default {scen.cloudRegion || 'provider average'}</option>{Object.keys(CLOUD_REGIONS[scen.inferenceProvider || scen.cloudProvider]?.regions || {}).map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                  <label>Custom PUE<input type="number" min="1" step="0.05" value={scen.inferencePue} onChange={e=>setS('inferencePue',e.target.value)} placeholder="use default"/></label>
+                  <label>Renewable energy (%)<input type="number" min="0" max="100" value={scen.inferenceRenewablePct} onChange={e=>setS('inferenceRenewablePct',e.target.value)} placeholder={`use default ${scen.renewablePct || 0}%`}/></label>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <div className="inputSummary" data-demo-target="ai-water-section" style={{marginBottom:32}}>
+            <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Water accounting <span style={{fontWeight:400,fontSize:12,color:'#607d66'}}>optional but reported explicitly<Ref id="li-thirsty-2023" order={AI_PAGE_REFS}/></span></h2>
+            <p className="note" style={{margin:'0 0 12px',fontSize:10.5}}>Water applies across compute rather than belonging only to training or inference. Enter site/grid values when known, use the screening estimate, or explicitly report water as not assessed. <strong>Not assessed does not mean zero.</strong> Water is currently reported separately and does not affect the carbon-and-energy CEDARS Score.</p>
+            <div className="grid grid3">
+              <label>Cooling water at the compute site (L/kWh) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>provider's water-use effectiveness, if published</span><input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label>
+              <label>Water from electricity generation (L/kWh) <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>off-site; depends on the grid</span><input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label>
+              <label>If unknown<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use the {WATER_PER_KWH} L/kWh screening factor (Estimated)</option><option value="notassessed">Report water as not assessed</option></select></label>
+            </div>
+            <p className="note" style={{marginTop:8}}>AI water accounting remains an evolving methodology area because compute-site cooling, electricity-generation water, and provider disclosure vary by location and infrastructure. The screening factor is a data-centre proxy, not a measured footprint.</p>
+            <button type="button" className="download" onClick={()=>setContributeOpen(true)} style={{marginTop:8}}>Contribute water data or methodology →</button>
           </div>
 
     </>
@@ -3855,32 +3989,17 @@ function App() {
 
           {/* The detailed single-model editor is reused by Development and one-model clinical assessment. */}
           {scen.aiRoute === 'own' && (<>
-          {/* ── Sticky controls: selectors + summary bar + tabs ── */}
-          <div className="stickyControls" style={{padding:'12px 16px'}}>
-            {/* Primary model and deployment controls — keep common concepts visible; technical knobs live below. */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:8}}>
-              <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>AI model name <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— how this model will appear in Improve and Report</span><input value={scen.projectName||''} onChange={e=>setS('projectName',e.target.value)} placeholder="e.g. Local CXR triage model"/><small className="aiModelNameHelp">Saved in device/CEDARS-file backups. Free-text names are intentionally omitted from shareable URL links.</small></label>
-              <label style={{display:'flex',flexDirection:'column',fontWeight:700,color:'#2E7D32',gap:8}}>Model / task type <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— starting point; detailed task metadata remains editable below</span><select value={scen.modelKey} onChange={e=>setModel(e.target.value)}>{AI_MODEL_LIBRARY.map(m=><option key={m.key} value={m.key}>{m.label}</option>)}</select></label>
-              <div style={{display:'flex',flexDirection:'column',gap:5,fontWeight:700,color:'#2E7D32'}}><span>Where inference runs <span style={{fontWeight:400,fontSize:11,color:'#607d66'}}>— separate from the assessment context above</span></span><label className="aiInlineSelectLabel"><small>Environment / provider</small><select value={scen.cloudProvider} onChange={e=>setCloudProvider(e.target.value)}>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label><label className="aiInlineSelectLabel"><small>Compute region</small><select value={scen.cloudRegion} onChange={e=>setS('cloudRegion',e.target.value)}>{Object.entries(CLOUD_REGIONS[scen.cloudProvider]?.regions ?? {}).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label><span className={`aiContextMatch ${String(scen.cloudRegion||'').includes(settings.region)?'same':'different'}`}>{String(scen.cloudRegion||'').includes(settings.region)?'Same as local assessment context':'Different from local assessment context'}</span></div>
-              <div style={{border:'1px solid #e0eee2',borderRadius:10,padding:'8px 10px',background:'#f7fbf8'}}>
-                <div style={{fontWeight:700,color:'#2E7D32',fontSize:12}}>How are the energy numbers known?</div>
-                <div style={{fontSize:11,color:'#455a64',marginTop:5}}>Inference: <strong>{ai.inferKwhMeasured?'measured':'estimated from model / hardware inputs'}</strong></div>
-                <div style={{fontSize:11,color:'#455a64',marginTop:2}}>Training: <strong>{ai.trainMeasured?'measured':'estimated / model default'}</strong></div>
-                <div className="note" style={{fontSize:10,marginTop:5}}>Open the technical settings below to replace estimates with measured energy, hardware, precision, PUE, or token/call inputs.</div>
-              </div>
-            </div>
-            <p className="note" style={{fontSize:10,marginTop:4,marginBottom:0}}>
-              {AI_MODEL_BY_KEY[scen.modelKey]?.reference ? <>Reference: <strong>{AI_MODEL_BY_KEY[scen.modelKey].reference}</strong> · {AI_MODEL_BY_KEY[scen.modelKey].refCite} · </> : null}
-              {scen.architecture} · {sizeLabel(scen.paramsM)} · {scen.dim}
-            </p>
+          {/* Advanced calculation inputs remain available without duplicating the primary Model & clinical context record below. */}
+          <div className="stickyControls" style={{padding:'10px 14px'}}>
+            <div style={{fontSize:10,color:'#607d66',marginBottom:7}}><strong style={{color:'#1b5e20'}}>Advanced details</strong> · optional calculation inputs and technical assumptions</div>
 
-            {/* Collapsible advanced model parameters */}
+            {/* Collapsible advanced calculation inputs */}
             <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee'}}>
               <button onClick={()=>setModelExpanded(v=>!v)} style={{background:'none',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:6,width:'100%'}}>
-                <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Technical model &amp; compute settings</span>
+                <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced calculation inputs</span>
                 <span style={{fontSize:10,color:'#90a4ae'}}>{ai.unit==='tokens'
                   ? `${ai.callsPerTask} call${ai.callsPerTask===1?'':'s'} × ${ai.tokensPerCall.toLocaleString()} tok · ${ai.tokensPerStudy.toLocaleString()} tok/study · ${rnd(ai.inference.kwhPerStudy*1000,2)} Wh`
-                  : `${scen.paramsM}M params · ${scen.slices>1?`${scen.resolution}×${scen.resolution}×${scen.slices} px`:`${scen.resolution}px`} · ${ai.inferKwhMeasured ? `${rnd(ai.inference.kwhPerStudy*1000,3)} Wh/study (measured)` : `${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}`}</span>
+                  : `${scen.slices>1?`${scen.resolution}×${scen.resolution}×${scen.slices} px`:`${scen.resolution}px`} · ${ai.inferKwhMeasured ? `${rnd(ai.inference.kwhPerStudy*1000,3)} Wh/study (measured)` : `${ai.inferSec}s/study${ai.inferSecAuto?' (auto)':' (manual)'}`}`}</span>
                 <span style={{fontSize:11,color:'#90a4ae',marginLeft:'auto'}}>{modelExpanded ? '▴ collapse' : '▾ expand'}</span>
               </button>
               {modelExpanded && (
@@ -4067,78 +4186,16 @@ function App() {
             </div>
           </div>
 
-          {/* ── Accordion: lifecycle sections (click to open) ── */}
+          {/* ── Accordion: advanced lifecycle details (click to open) ── */}
           <div className="detailToolbar">
             <div>
-              <h3 className="detailToolbarTitle">Supporting details <span>optional</span></h3>
-              <div className="detailToolbarHint">Lifecycle assumptions, calculations, and benchmarks stay available without competing with primary inputs.</div>
+              <h3 className="detailToolbarTitle">Advanced details <span>optional</span></h3>
+              <div className="detailToolbarHint">Detailed lifecycle calculations and benchmarks stay available here. Model identity, performance, and clinical context are edited once in the primary record above.</div>
             </div>
             <button className="detailToolbarAction" onClick={()=>{const all=AI_SECTIONS.every(id=>aiOpen[id]); setAiOpen(all?{}:Object.fromEntries(AI_SECTIONS.map(id=>[id,true])));}}>
               {AI_SECTIONS.every(id=>aiOpen[id]) ? 'Collapse all' : 'Expand all'}
             </button>
           </div>
-
-          {/* ── Model details ── */}
-          <button type="button" className="accHead" onClick={()=>toggleAi('model')} aria-expanded={!!aiOpen['model']}>
-            <span className="accCaret">{aiOpen['model']?'▾':'▸'}</span>
-            <span className="accTitle">Reported AI performance &amp; model details</span>
-            <span className="accVal">{ai.modelSize}</span>
-          </button>
-          {aiOpen['model'] && (
-          <section id="ai-model" className="aiSection" style={{background:'none',boxShadow:'none',padding:0}}>
-            <div className="modelSummaryGrid">
-              <div className="modelSummaryItem">
-                <div className="modelSummaryLabel"><Brain size={14}/> Architecture</div>
-                <div className="modelSummaryValue">{scen.architecture}</div>
-                <div className="modelSummarySub">{ai.archDesc}</div>
-              </div>
-              <div className="modelSummaryItem">
-                <div className="modelSummaryLabel"><Cpu size={14}/> Model size</div>
-                <div className="modelSummaryValue">{ai.modelSize}</div>
-                <div className="modelSummarySub">{ai.paramsM.toLocaleString()}M params · {ai.dim}</div>
-              </div>
-              <div className="modelSummaryItem">
-                <div className="modelSummaryLabel"><Target size={14}/> Reported {ai.accuracyMetric}</div>
-                <div className="modelSummaryValue">{ai.performanceValue} {ai.performanceUnit}</div>
-                <div className="modelSummarySub">Reported value; edit below.</div>
-              </div>
-            </div>
-
-            {/* Editable reported performance — decoupled from model size */}
-            <div className="inputSummary" style={{marginTop:16}}>
-              <h3 style={{marginTop:0,marginBottom:4,color:'#1b5e20',fontSize:15}}>Reported performance &amp; clinical benefit</h3>
-              <p className="note" style={{marginBottom:12,fontSize:12}}>
-                These are <strong>your reported numbers</strong>, not predictions — defaults come from {AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? 'the reference'} ({AI_MODEL_BY_KEY[scen.modelKey]?.refCite ?? '—'}). Replace with your own validation results.
-              </p>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                  Performance value
-                  <input type="number" step="0.001" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
-                </label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                  Metric
-                  <select value={scen.accuracyMetric} onChange={e=>setS('accuracyMetric',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}>
-                    {['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','MAE','Other'].map(m=><option key={m} value={m}>{m}</option>)}
-                  </select>
-                </label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Unit<select value={scen.performanceUnit} onChange={e=>setS('performanceUnit',e.target.value)}>{['percent','fraction','mm','seconds','ordinal','custom'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Better direction<select value={scen.performanceDirection} onChange={e=>setS('performanceDirection',e.target.value)}><option value="higher">Higher is better</option><option value="lower">Lower is better</option></select></label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Validation context<input value={scen.performanceValidationContext} onChange={e=>setS('performanceValidationContext',e.target.value)} placeholder="e.g. external validation"/></label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>Source / provenance<input value={scen.performanceSource} onChange={e=>setS('performanceSource',e.target.value)} placeholder="publication, local study, vendor"/></label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                  Scan-time reduction (%)
-                  <input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
-                </label>
-                <label style={{display:'flex',flexDirection:'column',gap:4,fontWeight:700,color:'#2E7D32',fontSize:12}}>
-                  Low-value imaging avoided (%)
-                  <input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)} style={{padding:'7px 10px',border:'1px solid #c8e6c9',borderRadius:10,fontSize:13,background:'white'}}/>
-                </label>
-              </div>
-              <p className="note" style={{marginTop:8,fontSize:11}}>Scan-time reduction and low-value-imaging avoidance drive the clinical CO₂ savings on the Clinical and Carbon tabs. Set to 0 if not applicable to this task.</p>
-            </div>
-          </section>
-
-          )}
 
           {/* ── Phase 1: Training ── */}
           <button type="button" className="accHead" onClick={()=>toggleAi('training')} aria-expanded={!!aiOpen['training']}>
@@ -4645,10 +4702,8 @@ function App() {
           </>)}
 
           {scen.aiRoute === 'own' && (
-            <div style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid">
+            <div data-demo-target="ai-record-row" style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid">
               <div>
-                <h2 style={{margin:'0 0 4px'}}>Your AI model</h2>
-                <p className="note" style={{marginTop:0}}>These details feed the AI Research EcoLabel and reporting outputs; provenance follows each value across Score &amp; EcoLabel, Improve, and Report (&amp; Share).</p>
                 {renderAiRecordForm()}
               </div>
               <div style={{position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12}}>
@@ -4831,7 +4886,7 @@ function App() {
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
           })()}
-          {ecoLabelMode==='ai' && <section className="aiImproveWorkspace">
+          {ecoLabelMode==='ai' && <section className="aiImproveWorkspace" data-demo-target="ai-improve-workspace">
             <div className="aiImproveHeader"><div><span>AI MODEL &amp; INFORMATICS</span><h2>Improve AI · {improveAiStage==='develop'?'Develop / fine-tune':'Procure / deploy'}</h2><p>Use the lifecycle map to move from definition through monitoring. Development and procurement use different actions, but both point back to the same canonical AI model record.</p></div><div className="aiImproveModelPicker">{visibleAiModels.length>0?<><label>AI model<select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:visibleAiModels[0].id} onChange={e=>{const record=aiModels[e.target.value];if(record)setScen({...modelScenFromRecord(record,SCEN_DEFAULTS)});}}>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></label><small>Shows AI models already added to this CEDARS assessment.</small><button type="button" className="inlineTextButton" onClick={openAiModelsFromImprove}>Add or manage AI models →</button></>:<><strong>No AI models added yet</strong><small>Add a model before reviewing model-specific improvement opportunities.</small><button type="button" onClick={openAiModelsFromImprove}>Add an AI model →</button></>}</div></div>
             <div className="aiImproveStageLabel">LIFECYCLE STAGE</div><div className="aiImproveStageGrid"><button type="button" aria-selected={improveAiStage==='develop'} className={improveAiStage==='develop'?'active':''} onClick={()=>{setImproveAiStage('develop');setImproveAiLifecycleStep('build');}}><span>DEVELOP · FINE-TUNE</span><strong>Internally developed, fine-tuned, or retrained AI</strong><small>Training, experimentation, precision, model design, data and compute.</small>{improveAiStage==='develop'&&<b>SELECTED</b>}</button><button type="button" aria-selected={improveAiStage==='procure'} className={improveAiStage==='procure'?'active':''} onClick={()=>{setImproveAiStage('procure');setImproveAiLifecycleStep('compare');}}><span>PROCURE · DEPLOY</span><strong>Vendor / externally developed AI</strong><small>Candidate comparison, vendor questions, deployment assumptions and monitoring.</small>{improveAiStage==='procure'&&<b>SELECTED</b>}</button></div><div className="aiLifecycleMap">{AI_IMPROVE_LIFECYCLE[improveAiStage].map((stage,i)=><React.Fragment key={stage.key}><button type="button" className={improveAiLifecycleStep===stage.key?'active':''} aria-selected={improveAiLifecycleStep===stage.key} onClick={()=>setImproveAiLifecycleStep(stage.key)}><span>{stage.step}</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></button>{i<4&&<ArrowRight size={17}/>}</React.Fragment>)}</div>
             {(()=>{const stage=AI_IMPROVE_LIFECYCLE[improveAiStage].find(s=>s.key===improveAiLifecycleStep) || AI_IMPROVE_LIFECYCLE[improveAiStage][0];const items=(improveAiStage==='develop'?AI_IMPROVE_DEVELOP:AI_IMPROVE_PROCURE).filter(item=>aiImproveLifecycleStage(item.title,improveAiStage)===stage.key);return <><div className="aiImproveStageIntro"><strong>{stage.step} · {stage.title}</strong><p>{improveAiStage==='develop'?(stage.key==='build'?'Measure development compute and use explicit stopping/checkpoint policies before specialized optimization.':stage.key==='define'?'Set the clinical objective and compute budget before expanding model size or experimentation.':stage.key==='validate'?'Confirm that efficient settings preserve the required clinical performance.':stage.key==='deploy'?'Translate model efficiency into the actual serving hardware, utilization, and compute region.':'Track retraining, storage/hardware overhead, and demand growth after deployment.'):(stage.key==='compare'?'Compare clinical fit first, then request the environmental information needed for a like-for-like decision.':stage.key==='define'?'Define intended use, acceptable performance, and local workflow requirements before optimizing for efficiency.':stage.key==='validate'?'Validate both clinical performance and the deployment assumptions used in the environmental comparison.':stage.key==='deploy'?'Ask which validated serving/hosting options can reduce compute without changing clinical behavior.':'Keep vendor updates, hosting changes, and demand growth from turning today’s assumptions into stale ones.')}</p></div><div className="aiImproveRecommendationList">{items.map((item,i)=><article className="aiImproveRecommendation" key={item.title}><div className="aiImproveRank">{i+1}</div><div className="aiImproveRecommendationBody"><div className="aiImproveRecommendationTitle"><strong>{item.title}</strong><span className={`aiImprovePriority ${item.priority.toLowerCase()}`}>{item.priority}</span><span className="aiImproveMode">{item.mode}</span></div><p>{item.body}</p>{item.inputs&&<div className="aiImproveInputs"><strong>{item.mode==='CEDARS input'?'Updates':'May change'}:</strong> {item.inputs}</div>}<div className="aiImproveMeta"><span>{item.applies}</span><div className="improveEvidenceChips"><span>Evidence</span>{item.refs.map(id=>{const r=REFS[id];const author=(r?.authors||id).split(',')[0].split(' ')[0];return <ExternalLink key={id} href={refUrl(r)} className="improveEvidenceChip">{author} · {r?.venue||'Source'} {r?.year||''}</ExternalLink>;})}</div></div></div></article>)}</div>{improveAiStage==='procure'&&stage.key==='compare'&&<div className="aiImproveVendorPrompt integrated"><div><span>VENDOR DISCLOSURE CHECKLIST</span><strong>What should I ask for?</strong></div><p>Ask for product/model version, intended use, validation basis, training hardware/energy when available, inference energy or throughput on the proposed hardware, hosting region/PUE, expected calls or token use for LLM/agentic systems, integration path, and how software/model updates change these assumptions.</p><div className="aiImproveVendorActions"><button type="button" onClick={()=>{setPage('ai');setS('aiRoute','compare');ensureBenchModels();setAiOpen(o=>({...o,benchmark:true}));}}>Open candidate comparison →</button><button type="button" className="download" onClick={openAiModelsFromImprove}>Review AI model records →</button></div></div>}</>;})()}
@@ -5233,35 +5288,29 @@ function App() {
             <div id="ai-score-panel" className="scoreResultPanel workflowAnchor" style={{background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`}}>
               <div className="scoreResultHero">
               <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}{ecoLabelData.gradeBasis==='inference'&&<sup className="aiScoreAsterisk">*</sup>}</div>
-                <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>{ecoLabelData.gradeBasis==='amortised'?'CEDARS SCORE · MODELED OPERATIONAL INTENSITY':ecoLabelData.gradeBasis==='inference'?'CEDARS INFERENCE SCORE':'CEDARS SCORE'}</div>{ecoLabelData.gradeBasis==='inference'&&<div className="aiScoreQualifier">PROVISIONAL · {ecoLabelData.trainDisclosed?'training is not yet included per study':'training not disclosed'}</div>}
+                <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
+                <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>OVERALL CEDARS SCORE</div>
+                {!ecoLabelData.graded&&<div className="aiScoreQualifier">NOT ASSIGNED · {ecoLabelData.scoreStatus==='training-unavailable'?'training/pretraining unavailable':ecoLabelData.scoreStatus==='deployment-workload-missing'?'deployment workload needed':'assessment incomplete'}</div>}
               </div>
               <div style={{flex:'1 1 260px'}}>
-                <div className={ecoLabelData.gradeBasis==='inference'?'aiProvisionalLeaves':''}><LeafRating leaves={ecoLabelData.leaves} size={22} color={ecoLabelData.ratingColor}/>{ecoLabelData.gradeBasis==='inference'&&<small>Inference-only rating</small>}</div>
-                <div style={{fontWeight:800,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint',ecoLabelData.gradeBasis==='amortised'?'modeled carbon intensity':'modeled inference intensity'):ecoLabelData.ratingLabel}</div>
-                <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.gradeBasis==='amortised'?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · amortised training + inference`:ecoLabelData.gradeBasis==='inference'?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference only`:'AI model disclosure; add inference data to calculate a score.'}</div>
+                {ecoLabelData.graded ? <LeafRating leaves={ecoLabelData.leaves} size={22} color={ecoLabelData.ratingColor}/> : <div style={{fontSize:11,fontWeight:800,color:'#607d66'}}>No overall leaf Rating</div>}
+                <div style={{fontWeight:800,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint','modeled carbon intensity'):'Partial lifecycle coverage'}</div>
+                <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.graded?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · amortised training + inference`:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference reported separately`:'Complete the lifecycle inputs to calculate a score.'}</div>
               </div>
               </div>
               <div className="scoreDataGrid" aria-label="AI score inputs and outputs">
-                <div><span>Training energy</span><strong>{ecoLabelData.totalEnergyKwh>0 ? `${ecoLabelData.totalEnergyKwh} kWh` : '—'}</strong></div>
-                <div><span>Training carbon</span><strong>{ecoLabelData.trainCo2>0 ? `${ecoLabelData.trainCo2} kgCO₂e` : '—'}</strong></div>
+                <div><span>Lifecycle coverage</span><strong>{ecoLabelData.lifecycleCoverage}</strong></div>
+                <div><span>Training energy</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong></div>
+                <div><span>Training carbon</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO₂e` : 'Not available'}</strong></div>
                 <div><span>Inference energy</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : '—'}</strong></div>
                 <div><span>Inference carbon</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : '—'}</strong></div>
-                <div><span>Training compute</span><strong>{ecoLabelData.trainingProvider || '—'} · {ecoLabelData.trainingRegion || 'provider average'}</strong></div>
+                <div><span>Training compute</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainingProvider || '—'} · ${ecoLabelData.trainingRegion || 'provider average'}` : ecoLabelData.trainingStatusLabel}</strong></div>
                 <div><span>Inference compute</span><strong>{ecoLabelData.inferenceProvider || '—'} · {ecoLabelData.inferenceRegion || 'provider average'}</strong></div>
-                <div className="scoreWaterCell"><span>Estimated water use {ecoLabelData.waterProv==='screening'&&<em>SCREENING</em>}</span><strong>{ecoLabelData.waterLitres>0 ? `Training: ${ecoLabelData.waterLitres.toLocaleString()} L` : '—'}</strong>{ecoLabelData.waterPerStudyMl>0&&<small>Inference: {ecoLabelData.waterPerStudyMl} mL/study</small>}{ecoLabelData.waterProv==='screening'&&<small>Default water-intensity factor; not a measured water footprint.</small>}</div>
+                <div className="scoreWaterCell"><span>Water use {ecoLabelData.waterProv==='screening'&&<em>SCREENING</em>}</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `Training: ${ecoLabelData.waterLitres.toLocaleString()} L` : '—'}</strong>{ecoLabelData.waterProv!=='not-assessed'&&ecoLabelData.waterPerStudyMl>0&&<small>Inference: {ecoLabelData.waterPerStudyMl} mL/study</small>}{ecoLabelData.waterProv==='screening'&&<small>Default water-intensity factor; not a measured water footprint.</small>}<small>Reported separately; water does not currently affect the carbon-and-energy Score.</small></div>
               </div>
-              {ecoLabelData.gradeBasis==='inference'&&<div className="aiInferenceScoreNotice">
-                <div>
-                  <span>INFERENCE-ONLY SCORE</span>
-                  {ecoLabelData.trainDisclosed
-                    ? <><strong>Training is {PROVENANCE[ecoLabelData.trainProv]?.label.toLowerCase() || 'reported'}: {ecoLabelData.totalEnergyKwh} kWh · {ecoLabelData.trainCo2} kgCO₂e</strong><p>CEDARS cannot combine this one-time training footprint with inference until an expected deployment workload is entered.</p></>
-                    : <><strong>Training is not disclosed</strong><p>This provisional score reflects inference only because training cannot currently be included.</p></>}
-                  <small>* Provisional inference-only score. Not directly comparable with a training + inference score.</small>
-                </div>
-                {ecoLabelData.trainDisclosed&&<button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Add deployment workload →</button>}
-              </div>}
-              <div className="aiScoreBasisBar"><div><span>CURRENT SCORE BASIS</span><strong>{ecoLabelData.inferStudies>0?`${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Deployment workload not entered'} · {ecoLabelData.deployMonths}-month deployment</strong><small>{ecoLabelData.gradeBasis==='amortised'?'Training is spread across expected use, then inference is added per study.':!ecoLabelData.trainDisclosed?'Training is not disclosed, so the per-study score uses inference only.':'Deployment workload is not entered, so the per-study score uses inference only; add workload to include an amortised share of training.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
+              {ecoLabelData.scoreStatus==='training-unavailable'&&<div className="aiInferenceScoreNotice"><div><span>PARTIAL LIFECYCLE COVERAGE</span><strong>{ecoLabelData.trainingStatusLabel}</strong><p>CEDARS reports the inference result but does not assign an overall Score or leaf Rating. An unknown training footprint is not treated as zero.</p></div></div>}
+              {ecoLabelData.scoreStatus==='deployment-workload-missing'&&<div className="aiInferenceScoreNotice"><div><span>DEPLOYMENT WORKLOAD NEEDED</span><strong>Training and inference are available, but they cannot yet be combined per study.</strong><p>Add expected deployment workload to amortise the one-time training footprint across use.</p></div><button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Add deployment workload →</button></div>}
+              <div className="aiScoreBasisBar"><div><span>ASSESSMENT COVERAGE</span><strong>{ecoLabelData.lifecycleCoverage}</strong><small>{ecoLabelData.graded?'Training is spread across expected use, then recurring inference is added per study.':ecoLabelData.scoreStatus==='training-unavailable'?'Inference is reported separately; the unavailable training/pretraining footprint prevents an overall score.':'Add the missing lifecycle inputs before interpreting an overall score.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
               {showAiWorkloadExplore&&<div className="aiWorkloadExplorer">
                 <div className="aiWorkloadExplorerHead">
                   <div>
@@ -5325,9 +5374,10 @@ function App() {
             </div>
             <div className="reportAiSummaryGrid">
               <div><span>Model</span><strong>{ecoLabelData.projectName || 'New AI model'}</strong><small>{ecoLabelData.taskType || 'Task not specified'}</small></div>
-              <div><span>Training</span><strong>{ecoLabelData.trainDisclosed ? `${ecoLabelData.totalEnergyKwh} kWh` : 'Not disclosed'}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Provenance not set'}</small></div>
+              <div><span>Lifecycle coverage</span><strong>{ecoLabelData.lifecycleCoverage}</strong><small>{ecoLabelData.graded ? 'Overall Score available' : 'Partial assessment; no overall Score assigned'}</small></div>
+              <div><span>Training</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Provenance not set'}</small></div>
               <div><span>Inference</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
-              <div><span>Deployment volume</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Not entered'}</strong><small>{ecoLabelData.hasInference ? `${ecoLabelData.deployMonths} month deployment` : 'Optional for an inference-only score; needed to include training in the per-study estimate'}</small></div>
+              <div><span>Deployment volume</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Not entered'}</strong><small>{ecoLabelData.hasInference ? `${ecoLabelData.deployMonths} month deployment` : 'Needed to combine one-time training with recurring inference'}</small></div>
             </div>
             {aiChecklistDone < aiChecklist.length && <div className="reportReviewItems"><div className="reportReviewItemsHead"><strong>Complete these items</strong><small>Each item opens the source field rather than creating a second copy here.</small></div>{aiChecklist.filter(([,ok])=>!ok).map(([name,,section])=><button type="button" key={name} onClick={()=>openAiChecklistItem(section)}><span>{name}</span><strong>Edit →</strong></button>)}</div>}
             <div className="reportSummaryActions">
@@ -5358,26 +5408,26 @@ function App() {
               </div>
               <div style={{background:ecoLabelData.ratingBg, padding:'16px 18px', display:'flex', alignItems:'center', gap:18}}>
                 <div style={{textAlign:'center', flexShrink:0}}>
-                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.graded ? ecoLabelData.score : '—'}{ecoLabelData.gradeBasis==='inference'&&<sup className="aiScoreAsterisk">*</sup>}</div>
-                  <div style={{fontSize:10, fontWeight:700, color:ecoLabelData.ratingColor, letterSpacing:'0.04em'}}>{ecoLabelData.gradeBasis==='amortised'?'CEDARS SCORE · MODELED OPERATIONAL INTENSITY':ecoLabelData.gradeBasis==='inference'?'CEDARS INFERENCE SCORE':'CEDARS SCORE'}</div>
-                  {ecoLabelData.gradeBasis==='inference'&&<div className="aiExportQualifier">PROVISIONAL · inference only</div>}
+                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.graded ? ecoLabelData.score : '\u2014'}</div>
+                  <div style={{fontSize:10, fontWeight:700, color:ecoLabelData.ratingColor, letterSpacing:'0.04em'}}>OVERALL CEDARS SCORE</div>
+                  {!ecoLabelData.graded&&<div className="aiExportQualifier">NOT ASSIGNED &middot; partial lifecycle coverage</div>}
                 </div>
                 <div>
-                  <div className={ecoLabelData.gradeBasis==='inference'?'aiProvisionalLeaves':''}><LeafRating leaves={ecoLabelData.leaves} size={20} color={ecoLabelData.ratingColor}/>{ecoLabelData.gradeBasis==='inference'&&<small>Inference-only rating</small>}</div>
-                  <div style={{fontWeight:700, fontSize:14, color:ecoLabelData.ratingColor, marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint',ecoLabelData.gradeBasis==='amortised'?'modeled carbon intensity':'modeled inference intensity'):ecoLabelData.ratingLabel}</div>
+                  {ecoLabelData.graded ? <LeafRating leaves={ecoLabelData.leaves} size={20} color={ecoLabelData.ratingColor}/> : <div style={{fontSize:11,fontWeight:800,color:'#607d66'}}>No overall leaf rating</div>}
+                  <div style={{fontWeight:700, fontSize:14, color:ecoLabelData.ratingColor, marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint','modeled carbon intensity'):'Partial lifecycle coverage'}</div>
                   <div style={{fontSize:11, color:'#263238', marginTop:2}}>
-                    {ecoLabelData.gradeBasis==='amortised' ? `${ecoLabelData.effectivePerStudyG} gCO₂e / study · training + inference`
-                      : ecoLabelData.gradeBasis==='inference' ? `${ecoLabelData.perInferCo2g} gCO₂e / study · inference only*`
-                      : ecoLabelData.hasData ? 'Add inference data to calculate a score' : 'Enter training or inference data above'}
+                    {ecoLabelData.graded ? `${ecoLabelData.effectivePerStudyG} gCO\u2082e / study \u00b7 training + inference`
+                      : ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO\u2082e / study \u00b7 inference reported separately`
+                      : 'Complete lifecycle inputs to calculate an overall score'}
                   </div>
                 </div>
               </div>
               {/* Two-phase headline: one-time training vs marginal per-study inference */}
               <div style={{display:'flex', borderBottom:'1px solid #eef7ee'}}>
                 <div style={{flex:1, padding:'12px 18px', borderRight:'1px solid #eef7ee'}}>
-                  <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Training · one-time</div>
-                  <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.hasData ? `${ecoLabelData.trainCo2} kgCO₂e` : '—'}</div>
-                  <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.totalGpuHours} GPU-h{ecoLabelData.hasData && ecoLabelData.trainFlights>0 ? ` · ≈ ${ecoLabelData.trainFlights} short-haul flights` : ''}</div>
+                  <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Training &middot; one-time</div>
+                  <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO\u2082e` : ecoLabelData.trainingStatusLabel}</div>
+                  <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalGpuHours} GPU-h${ecoLabelData.trainFlights>0 ? ` \u00b7 \u2248 ${ecoLabelData.trainFlights} short-haul flights` : ''}` : 'Training footprint unavailable.'}</div>
                 </div>
                 <div style={{flex:1, padding:'12px 18px'}}>
                   <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Inference · per study</div>
@@ -5385,7 +5435,7 @@ function App() {
                   <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.tokenMode && ecoLabelData.tokensPerStudy>0 ? `${ecoLabelData.tokensPerStudy.toLocaleString()} tokens/study` : 'marginal · recurring'}</div>
                 </div>
               </div>
-              {ecoLabelData.hasInference && (
+              {ecoLabelData.graded && (
                 <div style={{padding:'10px 18px', background:'#f1f8f1', fontSize:12, color:'#37474f'}}>
                   Over {ecoLabelData.lifetimeInferences.toLocaleString()} studies ({ecoLabelData.deployMonths} mo): training adds {ecoLabelData.trainPerStudyG} g/study → <strong>{ecoLabelData.effectivePerStudyG} gCO₂e/study effective</strong>
                   {ecoLabelData.breakEvenStudies!=null && <> · training = lifetime inference at ~{ecoLabelData.breakEvenStudies.toLocaleString()} studies</>}
@@ -5395,17 +5445,21 @@ function App() {
                 ['Task type',                ecoLabelData.taskType],
                 ['Architecture',             ecoLabelData.architecture],
                 ['Parameters',               ecoLabelData.paramsMillion],
-                ['Training dataset',         ecoLabelData.datasetSize],
-                ['GPU hardware',             ecoLabelData.gpuHardware],
-                ['Training runs',            `${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns > 1 ? 's' : ''}`],
-                ['Total GPU-hours',          `${ecoLabelData.totalGpuHours} h`],
-                ['Energy per run',           ecoLabelData.trainDisclosed ? `${ecoLabelData.energyPerRunKwh} kWh (${PROVENANCE[ecoLabelData.trainProv]?.label.toLowerCase()}${ecoLabelData.trainTool ? ', ' + ecoLabelData.trainTool : ''})` : 'not disclosed by vendor'],
-                ['Total training energy',    ecoLabelData.trainDisclosed ? `${ecoLabelData.totalEnergyKwh} kWh over ${ecoLabelData.numRuns} run${ecoLabelData.numRuns===1?'':'s'}` : 'not disclosed by vendor'],
+                [ecoLabelData.tokenWorkload ? 'Training / fine-tuning data' : 'Training dataset', ecoLabelData.datasetSize],
+                ...(ecoLabelData.epochs != null ? [[ecoLabelData.tokenWorkload ? 'Fine-tuning epochs' : 'Training epochs', String(ecoLabelData.epochs)]] : []),
+                ['Precision',                ecoLabelData.precision],
+                ...(!ecoLabelData.tokenWorkload && ecoLabelData.inputResolution ? [['Input workload', `${ecoLabelData.inputResolution}px · ${ecoLabelData.dim}${ecoLabelData.slices ? ` · ${ecoLabelData.slices} slice${ecoLabelData.slices===1?'':'s'} / passes` : ''}`]] : []),
+                ['Lifecycle coverage',       ecoLabelData.lifecycleCoverage],
+                ['GPU hardware',             ecoLabelData.trainingAvailable ? ecoLabelData.gpuHardware : ecoLabelData.trainingStatusLabel],
+                ['Training runs',            ecoLabelData.trainingAvailable ? `${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns > 1 ? 's' : ''}` : ecoLabelData.trainingStatusLabel],
+                ['Total GPU-hours',          ecoLabelData.trainingAvailable ? `${ecoLabelData.totalGpuHours} h` : ecoLabelData.trainingStatusLabel],
+                ['Energy per run',           ecoLabelData.trainingAvailable ? `${ecoLabelData.energyPerRunKwh} kWh (${PROVENANCE[ecoLabelData.trainProv]?.label.toLowerCase()}${ecoLabelData.trainTool ? ', ' + ecoLabelData.trainTool : ''})` : ecoLabelData.trainingStatusLabel],
+                ['Total training energy',    ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh over ${ecoLabelData.numRuns} run${ecoLabelData.numRuns===1?'':'s'}` : ecoLabelData.trainingStatusLabel],
                 ...(ecoLabelData.vsReferenceRatio != null ? [['Training efficiency', `${ecoLabelData.vsReferenceRatio}× reference (${ecoLabelData.kwhReference.toLocaleString()} kWh typical for this architecture/size)`]] : []),
-                ['Training CO₂e',       `${ecoLabelData.trainCo2} kgCO₂e`],
-                ['Training compute',         `${ecoLabelData.trainingProvider} · ${ecoLabelData.trainingRegion || 'provider average'} · ${ecoLabelData.trainingEffectiveCi} kgCO₂e/kWh`],
+                ['Training CO₂e',            ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO₂e` : 'Not available'],
+                ['Training compute',         ecoLabelData.trainingAvailable ? `${ecoLabelData.trainingProvider} · ${ecoLabelData.trainingRegion || 'provider average'} · ${ecoLabelData.trainingEffectiveCi} kgCO₂e/kWh` : ecoLabelData.trainingStatusLabel],
                 ['Inference compute',        `${ecoLabelData.inferenceProvider} · ${ecoLabelData.inferenceRegion || 'provider average'} · ${ecoLabelData.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${ecoLabelData.pue}`],
-                ['Water footprint',          `${ecoLabelData.waterLitres.toLocaleString()} L`],
+                ['Water footprint',          ecoLabelData.waterProv==='not-assessed' ? 'Not assessed · reported separately; not scored' : `${ecoLabelData.waterLitres.toLocaleString()} L${ecoLabelData.waterProv==='screening' ? ' · screening estimate' : ''}`],
                 ...(ecoLabelData.hasInference ? [['Monthly inference', `${ecoLabelData.inferStudies.toLocaleString()} studies · ${ecoLabelData.inferMonthlyKwh} kWh · ${ecoLabelData.inferCo2Month} kgCO₂e`]] : []),
               ].map(([k, v], i) => (
                 <div key={k} style={{display:'flex', justifyContent:'space-between', padding:'7px 18px', background: i%2===0 ? '#f1f8f1' : 'white', fontSize:13, gap:12}}>
@@ -5465,13 +5519,13 @@ function App() {
                 {(()=>{
                   const d = ecoLabelData;
                   const items = [
-                    ['1', 'Compute hardware (type, count)', d.gpuHardware, d.gpuHardware !== '—', 'AI workload'],
-                    ['2', 'Total energy (kWh) / GPU-hours', d.hasData ? `${d.totalEnergyKwh.toLocaleString()} kWh · ${d.totalGpuHours} GPU-h` : '—', d.hasData, 'AI workload'],
-                    ['3', 'Training compute context', `${d.trainingProvider} · ${d.trainingRegion || 'provider average'} · ${d.trainingEffectiveCi} kgCO₂e/kWh`, !!d.trainingProvider, 'Training'],
-                    ['4', 'Inference compute context', `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`, !!d.inferenceProvider, 'Inference'],
-                    ['5', 'Training vs inference split', `Training ${d.trainCo2} kgCO₂e · Inference ${d.hasInference ? `${d.inferCo2Month} kgCO₂e/mo` : 'not reported'}`, d.hasData, 'AI workload'],
-                    ['6', 'Water footprint', d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L` : 'not reported', d.waterLitres > 0, 'Water use'],
-                    ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'add inference volume to grade', d.graded, 'Score / Rating'],
+                    ['1', 'Model & clinical context', `${d.taskType} · ${d.architecture}`, !!d.taskType && !!d.architecture, 'Model context'],
+                    ['2', 'Training status / provenance', d.trainingAvailable ? `${d.totalEnergyKwh} kWh · ${PROVENANCE[d.trainProv]?.label || d.trainProv}` : d.trainingStatusLabel, true, 'Training'],
+                    ['3', 'Inference compute context', `${d.inferenceProvider} · ${d.inferenceRegion || 'provider average'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${d.pue}`, !!d.inferenceProvider, 'Inference'],
+                    ['4', 'Inference result', d.perInferCo2g>0 ? `${d.perInferCo2g} gCO₂e/study` : 'not reported', d.perInferCo2g>0, 'Inference'],
+                    ['5', 'Lifecycle coverage', d.lifecycleCoverage, true, 'Coverage'],
+                    ['6', 'Water footprint', d.waterProv==='not-assessed' ? 'not assessed · reported separately; not scored' : d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L${d.waterProv==='screening' ? ' · screening estimate' : ''}` : 'not reported', d.waterProv !== 'screening', 'Water use'],
+                    ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'not assigned · partial lifecycle coverage', d.graded || d.scoreStatus==='training-unavailable', 'Score / Rating'],
                   ];
                   return <div className="reportChecklist">
                     {items.map(([num,item,val,ok,mod],i)=><div key={num} className={i%2===0?'alt':''}>
@@ -5482,23 +5536,30 @@ function App() {
               </div>
             </details>
 
-            <details className="reportDisclosureDetails">
-              <summary>Structured methods table · Markdown export available</summary>
+            <div data-demo-target="ai-report-reproducibility">
+            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===6) || (guidedDemo?.kind==='llm' && guidedDemo.step===7)) || undefined}>
+              <summary>Assumptions &amp; provenance table · Markdown export available</summary>
               <div className="reportDisclosureDetailsBody">
-                <p className="note" style={{marginTop:0}}>This is an optional structured version of the same reporting fields. Use it for model cards, repositories, technical appendices, computational-science venues, or other settings where a field-by-field record is useful. It does not need to be a separate manuscript table.</p>
+                <p className="note" style={{marginTop:0}}>This is an optional structured record of the same assumptions, provenance, and reporting fields. Use it for model cards, repositories, technical appendices, computational-science venues, or other settings where a field-by-field record is useful. It does not need to be a separate manuscript table.</p>
                 <button className="download" onClick={()=>{navigator.clipboard.writeText(generateEcoMarkdown(ecoLabelData));setEcoCopied(true);setTimeout(()=>setEcoCopied(false),2000);}} style={ecoCopied?{background:'#26A69A'}:undefined}><FileText/> {ecoCopied?'Copied!':'Copy table as Markdown'}</button>
-                <pre className="reportTextPreview">{generateEcoMarkdown(ecoLabelData)}</pre>
+                <div style={{overflowX:'auto',marginTop:12,border:'1px solid #e0eee2',borderRadius:12}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,background:'#fff'}}>
+                    <thead><tr style={{background:'#f1f8f1'}}><th style={{padding:'9px 11px',textAlign:'left',color:'#1b5e20',borderBottom:'1px solid #dce8dc'}}>Metric</th><th style={{padding:'9px 11px',textAlign:'left',color:'#1b5e20',borderBottom:'1px solid #dce8dc'}}>Value</th></tr></thead>
+                    <tbody>{ecoReportRows(ecoLabelData).map(([metric,value],i)=><tr key={`${metric}-${i}`}><th scope="row" style={{padding:'8px 11px',textAlign:'left',verticalAlign:'top',fontWeight:700,color:'#455a64',borderBottom:'1px solid #eef3ee'}}>{String(metric).replace(/\*\*/g,'')}</th><td style={{padding:'8px 11px',verticalAlign:'top',color:'#263238',borderBottom:'1px solid #eef3ee'}}>{String(value ?? '—').replace(/\*\*/g,'')}</td></tr>)}</tbody>
+                  </table>
+                </div>
               </div>
             </details>
 
-            <details className="reportDisclosureDetails">
+            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===6) || (guidedDemo?.kind==='llm' && guidedDemo.step===7)) || undefined}>
               <summary>Methods-ready environmental impact text</summary>
               <div className="reportDisclosureDetailsBody">
-                <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section.</p>
+                <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section. For transparent reporting, retain the accompanying CEDARS assumptions and provenance table when feasible.</p>
                 <button className="download" onClick={()=>{navigator.clipboard.writeText(generateAiMethodsText(ecoLabelData));setAiParagraphCopied(true);setTimeout(()=>setAiParagraphCopied(false),2000);}} style={aiParagraphCopied?{background:'#26A69A'}:undefined}><FileText/> {aiParagraphCopied?'Copied!':'Copy methods / impact paragraph'}</button>
-                <pre className="reportTextPreview">{generateAiMethodsText(ecoLabelData)}</pre>
+                <div className="reportTextPreview" style={{whiteSpace:'normal',fontFamily:'inherit',lineHeight:1.65}}>{generateAiMethodsText(ecoLabelData)}</div>
               </div>
             </details>
+            </div>
           </section>
           </section>
             </>}
@@ -5554,6 +5615,10 @@ function App() {
         onExit={exitGuidedDemo}
         onKeepExample={keepGuidedDemoExample}
       />}
+
+      {page!=='landing' && !guidedDemo && (
+        <button type="button" className="backToTopButton" aria-label="Back to top of page" title="Back to top" onClick={()=>window.scrollTo({top:0, behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}><span aria-hidden="true">↑</span> Top</button>
+      )}
 
       <ContributionModal
         open={contributeOpen}
