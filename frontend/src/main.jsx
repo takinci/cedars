@@ -1820,7 +1820,7 @@ function App() {
     return {...benchCfgFromLib(modelKey), id:m.id, label:m.label, scanTimeReductPct:m.scanTimeReductPct || '0', lowValueReductPct:m.lowValueReductPct || '0', validationBasis:m.validationBasis || 'Not specified', intendedUse:m.intendedUse || '', vendor:m.vendor || '', regulatoryStatus:m.regulatoryStatus || 'Not specified', integrationPath:m.integrationPath || 'Not specified'};
   })); };
   const updateBenchLabel = (id, label) => updateBenchModel(id, 'label', label);
-  const useBenchModel = (id, sourceModels=benchModels) => {
+  const useBenchModel = (id, sourceModels=benchModels, {scrollToTop=true}={}) => {
     const chosen = sourceModels.find(m => m.id === id);
     if (!chosen) return;
     setComparisonSelection({id:chosen.id, label:chosen.label || 'Selected candidate'});
@@ -1841,7 +1841,7 @@ function App() {
       aiRoute:'own', ownMode:'spec', comparePreset:'', compareCandidateKeys:'',
     }));
     setAiOpen(o => ({...o, benchmark:false, model:true}));
-    window.setTimeout(() => window.scrollTo({top:0, behavior:'smooth'}), 0);
+    if (scrollToTop) window.setTimeout(() => window.scrollTo({top:0, behavior:'smooth'}), 0);
   };
   const returnToComparison = () => {
     setComparisonSelection(null);
@@ -2175,17 +2175,17 @@ function App() {
         setPage('ai');
       } else if (stepIndex === 6) {
         const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates);
+        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('ai');
       } else if (stepIndex === 7) {
         const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates);
+        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('ecolabel');
       } else if (stepIndex === 8) {
         const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates);
+        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('report');
       }
@@ -2237,6 +2237,12 @@ function App() {
       } else if (stepIndex === 6) {
         loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
         setEcoLabelMode('ai');
+        setImproveAiStage('procure');
+        setImproveAiLifecycleStep('deploy');
+        setPage('scenario');
+      } else if (stepIndex === 7) {
+        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
+        setEcoLabelMode('ai');
         setPage('report');
       }
       return;
@@ -2257,6 +2263,12 @@ function App() {
         setEcoLabelMode('ai');
         setPage('ecolabel');
       } else if (stepIndex === 7) {
+        loadAiExample('report-llm-api', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setImproveAiStage('procure');
+        setImproveAiLifecycleStep('deploy');
+        setPage('scenario');
+      } else if (stepIndex === 8) {
         loadAiExample('report-llm-api', {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('report');
