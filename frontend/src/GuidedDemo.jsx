@@ -2,6 +2,17 @@ import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'reac
 import {Activity, Brain, RotateCcw, X} from 'lucide-react';
 import './guided-demo.css';
 
+const SAVE_SHARE_STEP = {
+  target: '[data-demo-target="global-save-button"]',
+  extraTargets: ['[data-demo-target="global-save-menu"]'],
+  kicker: 'SAVE & SHARE',
+  title: 'Choose how this assessment should travel',
+  body: 'Use Save on this device for a browser-local working copy, Download CEDARS file for a portable full assessment, Open CEDARS file to resume one, or Copy shareable CEDARS assessment link for supported calculator settings. Research contribution is separate and may be disabled when the submission service is not configured.',
+  actionHint: 'The top-right Save menu is opened automatically for this final step. Demo mode does not save, download, import, share, or submit anything.',
+  openSaveMenu: true,
+  skipScroll: true,
+};
+
 export const GUIDED_DEMOS = {
   leader: {
     title: 'AI already in clinical use',
@@ -60,6 +71,7 @@ export const GUIDED_DEMOS = {
         title: 'Turn the assessment into something usable',
         body: 'Review the disclosure, generate the Department EcoLabel and reporting text, and preserve or share the reproducible assessment. The label is a research reporting output, not external certification.',
       },
+      {...SAVE_SHARE_STEP},
     ],
   },
   procure: {
@@ -126,6 +138,7 @@ export const GUIDED_DEMOS = {
         title: 'Prepare the environmental disclosure',
         body: 'Finish by reviewing the selected model record, generating the EcoLabel and reporting text, and preserving or sharing the reproducible assessment.',
       },
+      {...SAVE_SHARE_STEP},
     ],
   },
   developer: {
@@ -221,6 +234,7 @@ export const GUIDED_DEMOS = {
         actionHint: 'The assumptions table and Methods-ready text are opened automatically in this walkthrough.',
         scrollBlock: 'start',
       },
+      {...SAVE_SHARE_STEP},
     ],
   },
   publishedLlm: {
@@ -287,6 +301,7 @@ export const GUIDED_DEMOS = {
         actionHint: 'The reporting sections are opened automatically in this walkthrough.',
         scrollBlock: 'start',
       },
+      {...SAVE_SHARE_STEP},
     ],
   },
   llm: {
@@ -360,6 +375,7 @@ export const GUIDED_DEMOS = {
         actionHint: 'The reporting sections are opened automatically in this walkthrough.',
         scrollBlock: 'start',
       },
+      {...SAVE_SHARE_STEP},
     ],
   },
 };
@@ -431,10 +447,17 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
 
   const updateRect = () => {
     if (!selector) return;
-    const el = document.querySelector(selector);
-    if (!el) { setRect(null); setTargetMissing(true); return; }
+    const selectors = [selector, ...(step?.extraTargets || [])];
+    const elements = selectors.map(s => document.querySelector(s));
+    if (elements.some(el => !el)) { setRect(null); setTargetMissing(true); return; }
     setTargetMissing(false);
-    const next = clampRect(el.getBoundingClientRect());
+    const bounds = elements.map(el => el.getBoundingClientRect());
+    const next = clampRect({
+      left: Math.min(...bounds.map(r => r.left)),
+      top: Math.min(...bounds.map(r => r.top)),
+      right: Math.max(...bounds.map(r => r.right)),
+      bottom: Math.max(...bounds.map(r => r.bottom)),
+    });
     setRect(next);
   };
 
@@ -445,16 +468,19 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
     const locate = () => {
       const el = document.querySelector(selector);
       const scrollEl = document.querySelector(scrollSelector);
-      if (el && scrollEl) {
+      const extrasReady = (step?.extraTargets || []).every(extra => document.querySelector(extra));
+      if (el && scrollEl && extrasReady) {
         const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-        const behavior = reducedMotion ? 'auto' : 'smooth';
-        if (step?.scrollBlock === 'start') {
-          const top = Math.max(0, window.scrollY + scrollEl.getBoundingClientRect().top - 92);
-          window.scrollTo({top, behavior});
-        } else {
-          scrollEl.scrollIntoView({behavior, block:'center', inline:'nearest'});
+        if (!step?.skipScroll) {
+          const behavior = reducedMotion ? 'auto' : 'smooth';
+          if (step?.scrollBlock === 'start') {
+            const top = Math.max(0, window.scrollY + scrollEl.getBoundingClientRect().top - 92);
+            window.scrollTo({top, behavior});
+          } else {
+            scrollEl.scrollIntoView({behavior, block:'center', inline:'nearest'});
+          }
         }
-        window.setTimeout(updateRect, reducedMotion ? 40 : 360);
+        window.setTimeout(updateRect, step?.skipScroll || reducedMotion ? 40 : 360);
         return;
       }
       tries += 1;
@@ -463,7 +489,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
     };
     locate();
     return () => window.clearTimeout(timer);
-  }, [selector, scrollSelector, step?.scrollBlock, stepIndex]);
+  }, [selector, scrollSelector, step?.scrollBlock, step?.skipScroll, stepIndex]);
 
   useEffect(() => {
     const onMove = () => updateRect();
@@ -519,6 +545,9 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
 
   if (!demo || !step) return null;
   const last = stepIndex === demo.steps.length - 1;
+  const kickerLabel = step.kicker?.includes('·')
+    ? step.kicker.split('·').slice(1).join('·').trim()
+    : step.kicker;
   const popoverStyle = rect
     ? {left:'auto',right:16,bottom:16,top:'auto',transform:'none'}
     : {left:'50%', top:'50%', transform:'translate(-50%,-50%)'};
@@ -533,7 +562,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
       {rect ? blockers.map(b=><div key={b.key} className="guidedDemoBlocker" style={b.style}/>) : <div className="guidedDemoBlocker guidedDemoFullBlocker"/>}
       {rect && <div className="guidedDemoSpotlight" aria-hidden="true" style={{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}/>}
       <section ref={dialogRef} tabIndex={-1} className="guidedDemoPopover" role="dialog" aria-modal="true" aria-label={`${demo.title} guided walkthrough`} style={popoverStyle}>
-        <div className="guidedDemoProgress"><span>{step.kicker}</span><span>{stepIndex+1}/{demo.steps.length}</span></div>
+        <div className="guidedDemoProgress"><span>{stepIndex+1} of {demo.steps.length}{kickerLabel ? ` · ${kickerLabel}` : ''}</span><span>{stepIndex+1}/{demo.steps.length}</span></div>
         <h3>{step.title}</h3>
         <p>{step.body}</p>
         {step.actionHint && <div className="guidedDemoActionHint">{step.actionHint}</div>}

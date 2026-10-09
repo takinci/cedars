@@ -17,7 +17,7 @@ import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AI_ENTRY_REFS } from '.
 import { MeasureChooser } from './MeasureChooser.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
-import { GuidedDemo, GuidedDemoLauncher } from './GuidedDemo.jsx';
+import { GuidedDemo, GuidedDemoLauncher, GUIDED_DEMOS } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
@@ -3119,6 +3119,7 @@ function App() {
             linkCopied={shareLinkCopied}
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
+            demoOpen={!!GUIDED_DEMOS[guidedDemo?.kind]?.steps?.[guidedDemo?.step]?.openSaveMenu}
           />
           {/* Ambient EcoLabel follows the active product, including Score, Improve, and Report. */}
           {(() => { const aiProduct=page==='ai'||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai'); const b=aiProduct?ecoLabelData:deptLabelData; const bHas=aiProduct?b.graded:b.hasData; return (
@@ -5605,7 +5606,7 @@ function App() {
             </details>
 
             <div data-demo-target="ai-report-reproducibility">
-            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===6) || (guidedDemo?.kind==='llm' && guidedDemo.step===7)) || undefined}>
+            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===7) || (guidedDemo?.kind==='llm' && guidedDemo.step===8)) || undefined}>
               <summary>Assumptions &amp; provenance table · Markdown export available</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>This is an optional structured record of the same assumptions, provenance, and reporting fields. Use it for model cards, repositories, technical appendices, computational-science venues, or other settings where a field-by-field record is useful. It does not need to be a separate manuscript table.</p>
@@ -5619,7 +5620,7 @@ function App() {
               </div>
             </details>
 
-            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===6) || (guidedDemo?.kind==='llm' && guidedDemo.step===7)) || undefined}>
+            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===7) || (guidedDemo?.kind==='llm' && guidedDemo.step===8)) || undefined}>
               <summary>Methods-ready environmental impact text</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section. For transparent reporting, retain the accompanying CEDARS assumptions and provenance table when feasible.</p>

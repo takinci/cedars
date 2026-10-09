@@ -10,10 +10,12 @@ export default function SaveUtility({
   linkCopied,
   onContribute,
   contributionConfigured,
+  demoOpen = false,
 }) {
   const [open, setOpen] = useState(false);
   const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
   const inputRef = useRef(null);
+  const menuOpen = demoOpen || open;
 
   const handleCopyLink = async () => {
     await onCopyLink?.();
@@ -26,8 +28,9 @@ export default function SaveUtility({
       <button
         type="button"
         className="saveUtilityButton"
+        data-demo-target="global-save-button"
         onClick={()=>setOpen(v=>!v)}
-        aria-expanded={open}
+        aria-expanded={menuOpen}
         aria-haspopup="menu"
         title="Save, reopen, or share your CEDARS assessment"
       >
@@ -36,8 +39,8 @@ export default function SaveUtility({
         <span className="saveUtilityCaret">▾</span>
       </button>
 
-      {open && (
-        <div className="saveUtilityMenu" role="menu">
+      {menuOpen && (
+        <div className="saveUtilityMenu" role="menu" data-demo-target="global-save-menu">
           <div className="saveUtilityMenuTitle">Save your work</div>
           <button type="button" onClick={()=>{onSaveLocal?.(); setOpen(false);}} role="menuitem">
             <Save size={15}/><span><strong>Save on this device only</strong><small>Browser-local; may be lost if browser data are cleared.</small></span>
