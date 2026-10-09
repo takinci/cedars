@@ -1206,7 +1206,7 @@ function generateDeptText(d) {
     (d.clinicalToolCount > 0 ? ` This figure reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''}, whose net compute and clinical savings are included in the department energy above.` : '') +
     ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
     (d.interventionCount > 0 ? ` The department reports ${d.interventionCount} sustainability practice${d.interventionCount > 1 ? 's' : ''} as currently implemented.` : '') +
-    ` Sustainability metrics were estimated using CEDARS (${d.date}), benchmarked against published radiology carbon-intensity data (e.g. McKee BJ et al., Radiology 2024, DOI: 10.1148/radiol.240219); full methodology and sources: https://github.com/takinci/cedars/blob/main/sources.md.`
+    ` Sustainability metrics were estimated using CEDARS (${d.date}); assumptions, methodology, and literature sources are documented at https://github.com/takinci/cedars/blob/main/sources.md.`
   );
 }
 function generateAiMethodsText(d) {
@@ -1665,6 +1665,8 @@ function App() {
     setDeptModelChoice('');
     setProvenance({equipment:{}});
     setScenarioInterventions([]);
+    setComparisonSelection(null);
+    setComparisonDetailsOpen(true);
     setDeptSetupOpen(true);
     setEcoLabelMode('department');
     setCloudTracker({
@@ -1793,12 +1795,17 @@ function App() {
     const preset=benchFromComparisonPreset(scen.comparePreset), linked=benchFromReferenceCandidateSpec(scen.compareCandidateKeys);
     return preset.length?preset:linked.length?linked:(scen.aiRoute==='compare'?makeDefaultBenchModels(scen.modelKey):[]);
   });
+  const [comparisonDetailsOpen, setComparisonDetailsOpen] = useState(true);
+  const [comparisonSelection, setComparisonSelection] = useState(null);
   useEffect(()=>{ if(scen.aiRoute!=='compare')return; const next=referenceCandidateSpec(benchModels); if(next!==scen.compareCandidateKeys)setScen(s=>({...s,compareCandidateKeys:next})); },[benchModels,scen.aiRoute,scen.compareCandidateKeys]);
   const ensureBenchModels = () => setBenchModels(list => list.length ? list : makeDefaultBenchModels());
   const startComparisonFromCurrent = () => {
     const first={...pickAiCfg(scen),id:'candidate-a',label:scen.projectName||AI_MODEL_BY_KEY[scen.modelKey]?.label||'Current model',validationBasis:'Not specified',intendedUse:'',vendor:'',regulatoryStatus:'Not specified',integrationPath:'Not specified'};
     const second={...benchCfgFromLib(scen.modelKey||'cad'),id:'candidate-b',label:'Candidate B',validationBasis:'Not specified',intendedUse:'',vendor:'',regulatoryStatus:'Not specified',integrationPath:'Not specified'};
-    setBenchModels([first,second]); setScen(s=>({...s,aiRoute:'compare',ownMode:'spec',comparePreset:'',compareCandidateKeys:referenceCandidateSpec([first,second])})); setAiOpen(o=>({...o,benchmark:true}));
+    setBenchModels([first,second]);
+    setComparisonSelection(null);
+    setComparisonDetailsOpen(true);
+    setScen(s=>({...s,aiRoute:'compare',ownMode:'spec',comparePreset:'',compareCandidateKeys:referenceCandidateSpec([first,second])})); setAiOpen(o=>({...o,benchmark:true}));
   };
   const addBenchModel = () => { setS('comparePreset',''); setBenchModels(list => {
     if (list.length >= 6) return list;
@@ -1813,9 +1820,11 @@ function App() {
     return {...benchCfgFromLib(modelKey), id:m.id, label:m.label, scanTimeReductPct:m.scanTimeReductPct || '0', lowValueReductPct:m.lowValueReductPct || '0', validationBasis:m.validationBasis || 'Not specified', intendedUse:m.intendedUse || '', vendor:m.vendor || '', regulatoryStatus:m.regulatoryStatus || 'Not specified', integrationPath:m.integrationPath || 'Not specified'};
   })); };
   const updateBenchLabel = (id, label) => updateBenchModel(id, 'label', label);
-  const useBenchModel = id => {
-    const chosen = benchModels.find(m => m.id === id);
+  const useBenchModel = (id, sourceModels=benchModels) => {
+    const chosen = sourceModels.find(m => m.id === id);
     if (!chosen) return;
+    setComparisonSelection({id:chosen.id, label:chosen.label || 'Selected candidate'});
+    setComparisonDetailsOpen(false);
     setScen(s => ({
       ...s, ...pickAiCfg(chosen),
       // Comparison context is shared; choosing a candidate must not silently replace it with the
@@ -1833,6 +1842,13 @@ function App() {
     }));
     setAiOpen(o => ({...o, benchmark:false, model:true}));
     window.setTimeout(() => window.scrollTo({top:0, behavior:'smooth'}), 0);
+  };
+  const returnToComparison = () => {
+    setComparisonSelection(null);
+    setComparisonDetailsOpen(false);
+    setScen(s => ({...s, aiRoute:'compare', ownMode:'spec', comparePreset:'', compareCandidateKeys:''}));
+    setAiOpen(o => ({...o, benchmark:true}));
+    window.setTimeout(() => document.querySelector('[data-demo-target="ai-candidate-results"]')?.scrollIntoView({behavior:'smooth',block:'center'}), 60);
   };
   const [dashOpen, setDashOpen] = useState({clinicalai:true});
   const toggleDash = id => setDashOpen(o => ({...o, [id]: !o[id]}));
@@ -2090,6 +2106,8 @@ function App() {
     const candidates = [candidateA, candidateB];
     setAiExampleLoaded('');
     setBenchModels(candidates);
+    setComparisonSelection(null);
+    setComparisonDetailsOpen(true);
     setScen({...SCEN_DEFAULTS,
       aiRoute:'compare', ownMode:'spec', aiSystemType:'imaging',
       projectName:'Illustrative chest radiograph AI comparison', modelKey:'cad', architecture:'CNN / ResNet', taskType:'Classification',
@@ -2099,6 +2117,7 @@ function App() {
       comparePreset:'', compareCandidateKeys:'',
     });
     setAiOpen(o => ({...o, benchmark:true}));
+    return candidates;
   };
 
   const prepareGuidedDemoStep = (kind, stepIndex) => {
@@ -2145,12 +2164,30 @@ function App() {
         setPage('landing');
       } else if (stepIndex === 1) {
         setAiExampleLoaded('');
+        setComparisonSelection(null);
+        setComparisonDetailsOpen(true);
         setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:'imaging'});
         setPage('ai');
-      } else {
+      } else if (stepIndex >= 2 && stepIndex <= 5) {
         applyProcurementDemo();
+        setComparisonDetailsOpen(stepIndex <= 3);
         setEcoLabelMode('ai');
         setPage('ai');
+      } else if (stepIndex === 6) {
+        const candidates = applyProcurementDemo();
+        useBenchModel('demo-candidate-a', candidates);
+        setEcoLabelMode('ai');
+        setPage('ai');
+      } else if (stepIndex === 7) {
+        const candidates = applyProcurementDemo();
+        useBenchModel('demo-candidate-a', candidates);
+        setEcoLabelMode('ai');
+        setPage('ecolabel');
+      } else if (stepIndex === 8) {
+        const candidates = applyProcurementDemo();
+        useBenchModel('demo-candidate-a', candidates);
+        setEcoLabelMode('ai');
+        setPage('report');
       }
       return;
     }
@@ -3896,9 +3933,9 @@ function App() {
             <div className="inputSummary" style={{margin:'14px 0 10px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12,flexWrap:'wrap'}}>
                 <div>
-                  <h2 style={{margin:'0 0 4px', color:'#1b5e20'}}>Candidate models</h2>
+                  <h2 style={{margin:'0 0 4px', color:'#1b5e20'}}>Set up the comparison</h2>
                   <p className="note" style={{margin:0,maxWidth:900}}>
-                    Compare at least two candidates side by side under the same workload and compute context. Keep the clinical task and performance metric like-for-like. Optional procurement fields reflect the HAIP AI Vendor Disclosure Framework: intended use, validation, regulatory status and integration context.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/>
+                    Define one clinical question, then enter or review the available details for each candidate. The actual side-by-side decision results appear in <strong>Comparison results</strong> below. Optional procurement fields reflect the HAIP AI Vendor Disclosure Framework: intended use, validation, regulatory status and integration context.<Ref id="kpodzro-haip-2026" order={AI_ENTRY_REFS}/>
                   </p>
                 </div>
                 <button type="button" onClick={addBenchModel} disabled={benchModels.length>=6}><Plus size={14}/> Add candidate</button>
@@ -3913,6 +3950,12 @@ function App() {
                 </div>
                 {!benchResults.comparisonDefinitionComplete&&<div className="note" style={{fontSize:10,marginTop:7,color:'#8d6e63'}}>Ranking is intentionally suppressed until all three shared fields are completed.</div>}
               </div>
+              <details data-demo-target="ai-candidate-details" open={comparisonDetailsOpen} onToggle={e=>setComparisonDetailsOpen(e.currentTarget.open)} style={{marginTop:14,border:'1px solid #c8e6c9',borderRadius:12,background:'#fff',overflow:'hidden'}}>
+                <summary style={{cursor:'pointer',padding:'11px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
+                  <span><strong style={{color:'#1b5e20'}}>Candidate details</strong><small style={{display:'block',fontWeight:400,color:'#607d66',marginTop:2}}>{benchModels.length} candidates · {benchModels.map(m=>m.label).join(' · ')}</small></span>
+                  <small style={{color:'#607d66',whiteSpace:'nowrap'}}>{comparisonDetailsOpen?'Hide details':'Review / edit details'}</small>
+                </summary>
+                <div style={{padding:'0 12px 12px'}}>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(310px,1fr))',gap:14,marginTop:14}}>
                 {benchModels.map((candidate, index) => (
                   <section key={candidate.id} style={{background:'#fff',border:'1px solid #c8e6c9',borderRadius:14,padding:'14px 16px',boxShadow:'none'}}>
@@ -3984,6 +4027,8 @@ function App() {
                 ))}
               </div>
               <p className="note" style={{margin:'10px 0 0',fontSize:11}}>Architecture and parameter count are optional procurement details; use measured inference energy when available. CEDARS applies the shared workload, provider and compute region to every candidate so the environmental comparison remains like-for-like.</p>
+                </div>
+              </details>
             </div>
           )}
 
@@ -4533,17 +4578,18 @@ function App() {
           {scen.aiRoute === 'compare' && (<>
           <button type="button" className="accHead" onClick={()=>toggleAi('benchmark')} aria-expanded={!!aiOpen['benchmark']}>
             <span className="accCaret">{aiOpen['benchmark']?'▾':'▸'}</span>
-            <span className="accTitle">Candidate comparison — performance vs carbon</span>
+            <span className="accTitle">Comparison results — performance vs carbon</span>
             <span className="accVal">Pareto</span>
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:4}}>Candidate comparison — performance vs carbon</h2>
+            <h2 style={{marginBottom:4}}>Comparison results</h2>
             <div className="comparisonProgress" aria-label="Candidate comparison workflow">
               <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Define clinical comparison</span>
-              <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Set workload &amp; compute</span>
-              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>3</b> Compare candidates</span>
-              <span className={benchResults.rows.length>=2?'active':''}><b>4</b> Carry one forward</span>
+              <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Add candidate details</span>
+              <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchModels.length>=2?'active':''}><b>3</b> Set workload &amp; compute</span>
+              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>4</b> Compare results</span>
+              <span className={benchResults.rows.length>=2?'active':''}><b>5</b> Select &amp; assess</span>
             </div>
             <p className="note" style={{marginBottom:8}}>
               Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
@@ -4566,7 +4612,7 @@ function App() {
             <div style={{margin:'2px 0 12px'}}>
               <div style={{fontSize:11,fontWeight:800,color:'#2E7D32',letterSpacing:'0.06em'}}>CANDIDATE RESULTS</div>
               <h3 style={{margin:'3px 0 4px',fontSize:18}}>Compare candidates</h3>
-              <p className="note" style={{margin:0,fontSize:12}}>Review reported performance and estimated environmental results side by side, then choose the candidate you want to carry forward.</p>
+              <p className="note" style={{margin:0,fontSize:12}}><strong>Select a candidate to continue.</strong> Review reported performance and estimated environmental results side by side, then use <strong>Use this candidate →</strong> to carry its data into the standard AI assessment.</p>
             </div>
 
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
@@ -4612,7 +4658,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
-                          <button type="button" onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this candidate →</button>
+                          <button type="button" data-demo-target={r.id==='demo-candidate-a'?'ai-select-candidate':undefined} onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this candidate →</button>
                           {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
                         </td>
                       </tr>
@@ -4622,14 +4668,9 @@ function App() {
               </table>
             </div>
 
-            <div className="comparisonCarryForward">
-              <span>NEXT STEP</span>
-              <strong>Choose a candidate to assess</strong>
-              <p>Select <strong>Use this candidate →</strong> in the table above. CEDARS will carry that candidate into the single-model assessment used for Score &amp; EcoLabel.</p>
-            </div>
 
             <details className="comparisonOptionalDetail">
-              <summary><span>Performance vs carbon</span><small>{benchResults.comparablePerformance?'Plot available':'Needs like-for-like performance inputs'}</small></summary>
+              <summary><span>Performance vs carbon</span><small>Optional analysis · {benchResults.comparablePerformance?'plot available':'needs like-for-like performance inputs'}</small></summary>
               <div className="comparisonOptionalBody">
                 <p className="note" style={{marginTop:0,marginBottom:12}}>{benchResults.comparablePerformance?<>For the shared like-for-like definition, {benchResults.rows[0]?.performanceDirection==='lower'?'lower-left':'upper-left'} is preferred. <strong style={{color:'#2E7D32'}}>★ green points</strong> are Pareto-efficient.</>:<>The plot is intentionally withheld until the shared task/endpoint/cohort is complete and all candidates use the same performance metric, unit, and direction.</>}</p>
                 {benchResults.comparablePerformance ? <>
@@ -4656,12 +4697,15 @@ function App() {
               </div>
             </details>
 
-            <details className="comparisonOptionalDetail">
-              <summary><span>Why agentic workflows can use more energy</span><small>Optional token-multiplier explainer</small></summary>
+            <details className="comparisonOptionalDetail comparisonEvidence">
+              <summary><span>Methods &amp; assumptions</span><small>Calculation basis, evidence &amp; advanced workload notes</small></summary>
               <div className="comparisonOptionalBody">
-                <p className="note" style={{fontSize:12,marginTop:0,marginBottom:10}}>
-                  Same department ({settings.region}, {agenticExample.studies.toLocaleString()} studies/mo). A single-pass model runs once per study; an <strong>agent fans out into many LLM calls</strong> (planning · retrieval · tool use · self-critique · retries), so its energy is token-driven and multiplies.
-                </p>
+                <p className="note" style={{marginTop:0}}>Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
+                <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid #eef7ee'}}>
+                  <div style={{fontSize:12,fontWeight:800,color:'#1b5e20',marginBottom:4}}>Advanced workload note · Why agentic workflows may use more energy</div>
+                  <p className="note" style={{fontSize:12,marginTop:0,marginBottom:10}}>
+                    Same department ({settings.region}, {agenticExample.studies.toLocaleString()} studies/mo). A single-pass model runs once per study; an <strong>agent fans out into many LLM calls</strong> (planning · retrieval · tool use · self-critique · retries), so its energy is token-driven and multiplies.
+                  </p>
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:13,minWidth:520}}>
                     <thead>
@@ -4692,13 +4736,7 @@ function App() {
                 <p className="note" style={{fontSize:11,marginTop:8,marginBottom:0}}>
                   Illustrative defaults (agent = {agenticExample.rows[2].note}, 4,000 tokens/call, 0.4 Wh/1k). Tune <strong>calls/task</strong> and <strong>tokens/call</strong> under <em>Advanced model parameters</em> after selecting the <strong>Agentic workflow</strong> template. Basis in sources.md.
                 </p>
-              </div>
-            </details>
-            <details className="comparisonOptionalDetail comparisonEvidence">
-              <summary><span>Evidence &amp; assumptions</span><small>Workload, serving &amp; agentic assumptions</small></summary>
-              <div className="comparisonOptionalBody">
-                <p className="note">Recent LLM inference studies reinforce why CEDARS keeps workload and serving assumptions visible: query energy changes materially with prompt length, test-time reasoning, batching, hardware, software stack and data-centre overhead. Published per-query values are useful benchmarks, not a universal radiology per-study conversion.<Ref id="jegham-llm-2025" order={AI_ENTRY_REFS}/><Ref id="fernandez-llm-energy-2025" order={AI_ENTRY_REFS}/><Ref id="oviedo-inference-2025" order={AI_ENTRY_REFS}/></p>
-                <p className="note" style={{marginBottom:0}}>The agentic/token-multiplier explainer is illustrative; update calls/task, tokens/call, hardware, and serving assumptions for the system being evaluated.</p>
+                </div>
               </div>
             </details>
             </>)}
@@ -4707,6 +4745,17 @@ function App() {
           )}
 
           </>)}
+
+          {scen.aiRoute === 'own' && comparisonSelection && (
+            <div data-demo-target="ai-selected-candidate" style={{margin:'14px 0',padding:'12px 14px',border:'1px solid #a5d6a7',borderRadius:12,background:'#f1f8f1',display:'flex',justifyContent:'space-between',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+              <div>
+                <span style={{fontSize:10,fontWeight:800,color:'#2E7D32',letterSpacing:'0.05em'}}>SELECTED FROM CANDIDATE COMPARISON</span>
+                <strong style={{display:'block',fontSize:15,color:'#1b5e20',marginTop:2}}>{comparisonSelection.label}</strong>
+                <p className="note" style={{margin:'3px 0 0',fontSize:11}}>This candidate is now in the standard AI model assessment. Review the carried-forward information, complete any missing lifecycle fields, then continue to Score &amp; EcoLabel.</p>
+              </div>
+              <button type="button" className="download" onClick={returnToComparison}>Return to comparison</button>
+            </div>
+          )}
 
           {scen.aiRoute === 'own' && (
             <div data-demo-target="ai-record-row" style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid">
