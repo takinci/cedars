@@ -16,6 +16,7 @@ export const PROVENANCE = {
   estimated:       {label: 'Estimated',     short: 'ESTIMATED', desc: 'derived from hardware specification, hours or token counts'},
   literature:      {label: 'Literature',    short: 'LIT.',      desc: 'library default anchored to a published reference'},
   'not-disclosed': {label: 'Not disclosed', short: 'N/D',       desc: 'the developer or vendor has not disclosed this value'},
+  'not-assessed':  {label: 'Not assessed',  short: 'N/A',       desc: 'this part of the footprint was outside the assessment boundary'},
 };
 
 // Fields of the record that the label form exposes under its historical names.
@@ -34,7 +35,7 @@ export const LABEL_TO_SCEN = {
 export const SCEN_TO_LABEL = Object.fromEntries(Object.entries(LABEL_TO_SCEN).map(([l, s]) => [s, l]));
 
 export function trainingProvenance(scen) {
-  if (scen.trainDisclosed === 'no') return 'not-disclosed';
+  if (scen.trainDisclosed === 'no') return scen.trainMissingReason === 'notassessed' ? 'not-assessed' : 'not-disclosed';
   if (num(scen.trainKwhMeasured) > 0) return 'measured';
   if (scen.trainGpu && num(scen.trainHours) > 0) return 'estimated';
   return 'literature';
@@ -119,10 +120,13 @@ export function computeAiLabel(scen, ai, opts) {
   const effectiveCi = inferenceEffectiveCi;
   const pue = ai.inferPue ?? ai.pue;
 
-  // Training: the engine already applied the measured-kWh / GPU-hours / literature precedence.
-  const energyPerRunKwh = trainProv === 'not-disclosed' ? 0 : rnd(ai.training.kwhTotal, 2);
+  // Unknown training is never treated as zero for grading. A zero-valued literature/default
+  // training estimate is also not enough to claim lifecycle coverage.
+  const missingTraining = trainProv === 'not-disclosed' || trainProv === 'not-assessed';
+  const trainingAvailable = !missingTraining && num(ai.training?.kwhTotal) > 0;
+  const energyPerRunKwh = trainingAvailable ? rnd(ai.training.kwhTotal, 2) : 0;
   const totalEnergyKwh = rnd(energyPerRunKwh * numRuns, 2);
-  const totalGpuHours = rnd(gpuCount * hoursPerRun * numRuns, 1);
+  const totalGpuHours = trainingAvailable ? rnd(gpuCount * hoursPerRun * numRuns, 1) : 0;
   const trainCo2 = rnd(totalEnergyKwh * trainingEffectiveCi, 2);
 
   // Inference: the SAME figure the AI tab's hero uses.
@@ -138,26 +142,37 @@ export function computeAiLabel(scen, ai, opts) {
   const waterMode = scen.waterMode || 'screening';
   const wueOn = num(scen.wueOnsite), wueOff = num(scen.wueOffsite);
   const waterPerKwh = (wueOn > 0 || wueOff > 0) ? wueOn + wueOff : (waterMode === 'notassessed' ? 0 : waterPerKwhDefault);
-  const waterProv = (wueOn > 0 || wueOff > 0) ? 'estimated' : (waterMode === 'notassessed' ? 'not-disclosed' : 'screening');
+  const waterProv = (wueOn > 0 || wueOff > 0) ? 'estimated' : (waterMode === 'notassessed' ? 'not-assessed' : 'screening');
   const waterLitres = Math.round(totalEnergyKwh * waterPerKwh);
   const waterPerStudyMl = rnd(inferKwhPerStudy * waterPerKwh * 1000, 2);
 
-  // Two-phase footprint: training is one-time, inference is per study; grade the amortised sum.
+  // An overall CEDARS Score requires both a training footprint and an inference workload.
+  // Partial assessments still report their measured/estimated components, but unknown ≠ zero.
   const deployMonths = Math.max(1, parseInt(scen.deployMonths) || 36);
   const lifetimeInferences = Math.round(inferStudies * deployMonths);
   const perInferCo2Kg = inferKwhPerStudy * inferenceEffectiveCi;
   const perInferCo2g = rnd(perInferCo2Kg * 1000, 3);
   const hasInferenceData = inferStudies > 0 && inferKwhPerStudy > 0;
-  const trainPerStudyG = lifetimeInferences > 0 ? rnd(trainCo2 * 1000 / lifetimeInferences, 3) : null;
-  const effectivePerStudyG = hasInferenceData ? rnd((trainPerStudyG ?? 0) + perInferCo2g, 3)
-    : (inferKwhPerStudy > 0 ? perInferCo2g : null);
+  const trainPerStudyG = trainingAvailable && lifetimeInferences > 0 ? rnd(trainCo2 * 1000 / lifetimeInferences, 3) : null;
+  const effectivePerStudyG = hasInferenceData && trainingAvailable ? rnd((trainPerStudyG ?? 0) + perInferCo2g, 3) : null;
   const breakEvenStudies = perInferCo2Kg > 0 && trainCo2 > 0 ? Math.round(trainCo2 / perInferCo2Kg) : null;
   const trainFlights = rnd(trainCo2 / 255, 2);
-  const hasData = totalEnergyKwh > 0 || inferKwhPerStudy > 0;
-  const gradeBasis = hasInferenceData && trainProv !== 'not-disclosed' ? 'amortised' : (inferKwhPerStudy > 0 ? 'inference' : 'none');
+  const hasData = trainingAvailable || inferKwhPerStudy > 0;
+  const gradeBasis = hasInferenceData && trainingAvailable ? 'amortised' : 'none';
+  const scoreStatus = gradeBasis === 'amortised' ? 'complete'
+    : (!trainingAvailable && inferKwhPerStudy > 0 ? 'training-unavailable'
+      : (trainingAvailable && inferKwhPerStudy > 0 && !hasInferenceData ? 'deployment-workload-missing'
+        : (inferKwhPerStudy <= 0 ? 'inference-missing' : 'not-ready')));
   const gradeValueG = gradeBasis === 'none' ? null : effectivePerStudyG;
   const graded = gradeValueG != null;
   const {score = null, rating = null} = graded ? scoreFn(gradeValueG) : {};
+  const trainingStatusLabel = trainProv === 'not-assessed' ? 'Not assessed'
+    : trainProv === 'not-disclosed' ? 'Not disclosed'
+      : trainingAvailable ? 'Available' : 'Not available';
+  const lifecycleCoverage = graded ? 'Training + inference'
+    : scoreStatus === 'training-unavailable' ? `Inference assessed · training ${trainingStatusLabel.toLowerCase()}`
+      : scoreStatus === 'deployment-workload-missing' ? 'Training + inference quantified · deployment workload missing'
+        : 'Assessment incomplete';
   const tokenWorkload = scen.architecture === 'LLM / Agent (transformer)' || ['Report generation','Agentic workflow'].includes(scen.taskType);
 
   return {
@@ -172,26 +187,27 @@ export function computeAiLabel(scen, ai, opts) {
     dim: !tokenWorkload ? (scen.dim || '—') : null,
     slices: !tokenWorkload && scen.slices ? num(scen.slices) : null,
     tokenWorkload,
-    gpuHardware: gpuCount > 1 ? `${gpuCount}× ${gpuLabel}` : gpuLabel,
+    gpuHardware: trainingAvailable ? (gpuCount > 1 ? `${gpuCount}× ${gpuLabel}` : gpuLabel) : '—',
     totalGpuHours, numRuns, energyPerRunKwh, totalEnergyKwh, trainCo2,
-    trainProv, trainTool: scen.trainTool || '', trainDisclosed: trainProv !== 'not-disclosed',
+    trainProv, trainTool: scen.trainTool || '', trainDisclosed: scen.trainDisclosed !== 'no',
+    trainingAvailable, trainingStatusLabel,
     inferProv, waterProv, waterPerKwh,
     renewablePct: inferRenewablePct, cloudProvider: scen.inferenceProvider || scen.cloudProvider, ciSource,
     ci, effectiveCi, trainingEffectiveCi, inferenceEffectiveCi,
-    trainingProvider: scen.trainingProvider || scen.cloudProvider, inferenceProvider: scen.inferenceProvider || scen.cloudProvider,
-    trainingRegion: scen.trainingRegion || scen.cloudRegion, inferenceRegion: scen.inferenceRegion || scen.cloudRegion,
+    trainingProvider: trainingAvailable ? (scen.trainingProvider || scen.cloudProvider) : '', inferenceProvider: scen.inferenceProvider || scen.cloudProvider,
+    trainingRegion: trainingAvailable ? (scen.trainingRegion || scen.cloudRegion) : '', inferenceRegion: scen.inferenceRegion || scen.cloudRegion,
     waterLitres, waterPerStudyMl, pue,
     hasInference: hasInferenceData,
     inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
     energyMeasured: trainProv === 'measured',
     energyLive: true,
-    vsReferenceRatio: ai.trainMeasured ? ai.training.vsReferenceRatio : null,
-    kwhReference: ai.trainMeasured ? ai.training.kwhReference : null,
+    vsReferenceRatio: trainingAvailable && ai.trainMeasured ? ai.training.vsReferenceRatio : null,
+    kwhReference: trainingAvailable && ai.trainMeasured ? ai.training.kwhReference : null,
     deployMonths, lifetimeInferences, perInferCo2g, trainPerStudyG, effectivePerStudyG, breakEvenStudies, trainFlights,
     tokenMode, tokensPerStudy, inferKwhPerStudy: rnd(inferKwhPerStudy, 6),
-    hasData, graded, gradeBasis, score,
+    hasData, graded, gradeBasis, score, scoreStatus, lifecycleCoverage,
     leaves: rating?.leaves ?? 0,
-    ratingLabel: rating?.label ?? (hasData ? 'Add inference to grade' : 'Select or describe a model to grade'),
+    ratingLabel: rating?.label ?? (scoreStatus === 'training-unavailable' ? 'Overall score not assigned' : scoreStatus === 'deployment-workload-missing' ? 'Add deployment workload to grade' : hasData ? 'Complete the assessment to grade' : 'Select or describe a model to grade'),
     ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
     date: new Date().toISOString().slice(0, 7),
   };

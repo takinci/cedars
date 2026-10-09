@@ -4,8 +4,8 @@ import './guided-demo.css';
 
 export const GUIDED_DEMOS = {
   leader: {
-    title: 'Radiology AI leader',
-    shortTitle: 'Leadership demo',
+    title: 'AI already in clinical use',
+    shortTitle: 'Department AI demo',
     icon: Activity,
     description: 'See how department operations and clinical AI flow into a CEDARS score, improvement scenarios, and reporting.',
     steps: [
@@ -62,75 +62,257 @@ export const GUIDED_DEMOS = {
       },
     ],
   },
-  developer: {
-    title: 'AI developer / researcher',
-    shortTitle: 'Developer demo',
-    icon: Brain,
-    description: 'Measure training and inference, track what is measured versus estimated, improve the model, and generate an AI Research EcoLabel.',
+  procure: {
+    title: 'Compare AI before purchase',
+    shortTitle: 'Procurement demo',
+    icon: Activity,
+    description: 'Compare two illustrative imaging-AI candidates under the same clinical task, workload, and compute assumptions.',
     steps: [
       {
         target: '[data-demo-target="home-ai"]',
-        kicker: '1 of 10 · INPUT',
+        kicker: '1 of 4 · INPUT',
+        title: 'Start with a purchasing decision',
+        body: 'When you are evaluating AI for clinical use, CEDARS can compare candidates without requiring you to build a model first.',
+        actionHint: 'Next opens AI Model & Informatics with an illustrative procurement pathway prepared.',
+      },
+      {
+        target: '[data-demo-target="ai-procure-card"]',
+        kicker: '2 of 4 · PROCURE / DEPLOY',
+        title: 'Choose a like-for-like comparison',
+        body: 'Use Procure / deploy for AI you are evaluating, purchasing, receiving, or preparing for clinical use. Candidate comparison is optional, but useful when more than one model could meet the same clinical need.',
+        actionHint: 'Next loads two illustrative candidates under one shared clinical definition.',
+      },
+      {
+        target: '#ai-shared-comparison-definition',
+        kicker: '3 of 4 · CLINICAL FIT',
+        title: 'Hold the clinical question constant',
+        body: 'CEDARS keeps the intended use, endpoint, validation context, workload, and compute assumptions aligned so differences between candidates are easier to interpret.',
+      },
+      {
+        target: '#ai-benchmark',
+        kicker: '4 of 4 · COMPARE',
+        title: 'Compare candidates on the same basis',
+        body: 'Review performance and environmental results side by side, then carry a selected candidate into the shared AI model record. The values in this walkthrough are illustrative rather than vendor claims.',
+      },
+    ],
+  },
+  developer: {
+    title: 'Locally developed imaging model',
+    shortTitle: 'Imaging model demo',
+    icon: Brain,
+    description: 'Follow a complete illustrative imaging-model record from measured training and inference through reporting.',
+    steps: [
+      {
+        target: '[data-demo-target="home-ai"]',
+        kicker: '1 of 12 · INPUT',
         title: 'Start with the model',
-        body: 'CEDARS supports both clinical deployment decisions and models being developed or materially retrained. This walkthrough follows a research model from development through reporting.',
+        body: 'CEDARS supports both clinical deployment decisions and models being developed or materially retrained. This walkthrough follows an imaging research model from development through reporting.',
         actionHint: 'No typing is required. Next opens AI Model & Informatics with the demo pathway prepared.',
       },
       {
         target: '[data-demo-target="ai-develop-card"]',
-        kicker: '2 of 10 · DEVELOP / TRAIN',
+        kicker: '2 of 12 · DEVELOP / TRAIN',
         title: 'Choose the lifecycle stage that matches your work',
         body: 'Use Develop / train when your team is building or materially retraining a model. CEDARS can start from measured energy values or help you choose a way to measure them. This walkthrough starts with Help me measure.',
         actionHint: 'Next opens the measurement pathway automatically; you do not need to change any fields.',
       },
       {
         target: '[data-demo-target="measure-chooser"]',
-        kicker: '3 of 10 · MEASURE',
+        kicker: '3 of 12 · MEASURE',
         title: 'Measure rather than guess when you can',
         body: 'Tell CEDARS where the model runs, whether you need training or inference numbers, and whether you can instrument the code. The recommendations narrow to tools that fit the setup.',
         actionHint: 'The demo is already set to a local GPU, training + inference, with Python available.',
       },
       {
         target: '[data-demo-target="measure-primary-action"]',
-        kicker: '4 of 10 · PROVENANCE',
-        title: 'Keep provenance attached to the number',
-        body: 'Sensor-based tools can support a Measured provenance badge; usage models and specification-based calculations remain Estimated. CEDARS carries that distinction into the Research EcoLabel instead of presenting every number as equally certain.',
-        actionHint: 'Next loads a completed illustrative CodeCarbon record automatically; no measurement needs to be entered during the demo.',
+        kicker: '4 of 12 · MEASUREMENT',
+        title: 'Show how each energy number was obtained',
+        body: 'Energy measured directly from the computer or monitoring software is labeled Measured. Energy calculated from hardware specifications, usage, or published assumptions is labeled Estimated. CEDARS keeps that distinction with the result so readers can see which values were measured and which were calculated.',
+        actionHint: 'Next loads a completed illustrative example measured with CodeCarbon.',
+      },
+      {
+        target: '[data-demo-target="ai-model-record"]',
+        kicker: '5 of 12 · MODEL & CLINICAL CONTEXT',
+        title: 'Describe what the model does and how well it performs',
+        body: 'CEDARS interprets environmental impact alongside the model’s clinical purpose and reported performance. This walkthrough uses an illustrative chest-radiograph classifier; its task, architecture, performance measure, validation context, and intended clinical benefit are kept with the environmental record.',
+        actionHint: 'The example values are already loaded; no input is required.',
+        scrollBlock: 'start',
       },
       {
         target: '[data-demo-target="ai-training-section"]',
-        kicker: '5 of 10 · TRAINING',
+        kicker: '6 of 12 · TRAINING',
         title: 'Record what training actually required',
-        body: 'CEDARS keeps model scale and training workload alongside the compute that performed the work. This imaging example records dataset size, epochs, input size, precision, hardware, runtime, experiments, measured energy, and compute context together. When measured energy is available, it takes precedence over training workload-based estimates.',
+        body: 'For this imaging model, CEDARS records dataset size, epochs, input size, precision, hardware, runtime, experiments, measured energy, and compute context together. When measured energy is available, it takes precedence over training workload-based estimates.',
+        scrollBlock: 'start',
       },
       {
         target: '[data-demo-target="ai-inference-section"]',
-        kicker: '6 of 10 · INFERENCE & DEPLOYMENT',
+        kicker: '7 of 12 · INFERENCE & DEPLOYMENT',
         title: 'Describe how the model will actually be used',
         body: 'Training is generally a one-time development footprint; inference recurs with each use. CEDARS records deployment volume, energy per study or token-based workload, expected lifetime, and the compute context where inference runs.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-water-section"]',
+        kicker: '8 of 12 · WATER',
+        title: 'Keep water visible even when it is not assessed',
+        body: 'Water use is reported separately from the current carbon-and-energy score. If site or grid water data are unavailable, CEDARS says Not assessed rather than treating water use as zero. The methodology is still evolving as provider and location-specific data improve.',
+        scrollBlock: 'start',
       },
       {
         target: '[data-demo-target="ai-disclosure"]',
-        kicker: '7 of 10 · COMPLETENESS',
-        title: 'Know what you actually know',
-        body: 'A complete disclosure does not mean every quantity was measured. It means each required element is transparently identified as measured, estimated, literature-derived, not disclosed, or not assessed. This example marks water as not assessed rather than inventing a value.',
+        scrollTarget: '[data-demo-target="ai-record-row"]',
+        scrollBlock: 'start',
+        kicker: '9 of 12 · ASSESSMENT COVERAGE',
+        title: 'Check what the assessment actually covers',
+        body: 'CEDARS distinguishes measured, estimated, published, not-disclosed, and not-assessed information. A record can be transparently reported while still having an incomplete lifecycle boundary; unknown values are never treated as zero.',
       },
       {
         target: '#ai-score-panel',
-        kicker: '8 of 10 · SCORE & ECOLABEL',
-        title: 'Separate training from recurring inference',
-        body: 'CEDARS reports training and inference separately. When deployment workload is available, the one-time training footprint can be amortized across expected use; without it, an inference-only score is explicitly provisional.',
+        kicker: '10 of 12 · SCORE & ECOLABEL',
+        title: 'See when CEDARS can assign an overall score',
+        body: 'An overall CEDARS Score requires both a training footprint and an inference workload so the phases can be combined consistently. If one lifecycle phase is unavailable, CEDARS reports the known result separately without awarding a better score for missing information.',
+        scrollBlock: 'start',
       },
       {
         target: '[data-demo-target="ai-improve-workspace"]',
-        kicker: '9 of 10 · IMPROVE',
-        title: 'Improve without confusing recommendations with results',
-        body: 'CEDARS connects the current model record to practical opportunities across development, validation, deployment, and monitoring. A recommendation does not change the score by itself; after implementation, update the values it actually changes, such as training energy, inference energy, hardware, workload, or compute region.',
+        kicker: '11 of 12 · IMPROVE',
+        title: 'Explore ways to improve efficiency',
+        body: 'CEDARS uses the current assessment to show practical opportunities across model development, validation, deployment, and monitoring. These are options to explore rather than assumed savings. After making a change, update the affected inputs to see how the result changes.',
+        scrollBlock: 'start',
       },
       {
-        target: '[data-demo-target="ai-report-materials"]',
-        kicker: '10 of 10 · RESEARCH ECOLABEL',
-        title: 'Generate reproducible research outputs',
-        body: 'Download the AI Research EcoLabel, copy Methods-ready environmental-impact text, or export structured fields for a manuscript, model card, repository, poster, or technical appendix. This remains a research assessment, not external certification.',
+        target: '[data-demo-target="ai-report-reproducibility"]',
+        kicker: '12 of 12 · REPORT & SHARE',
+        title: 'Turn the assessment into reusable reporting',
+        body: 'CEDARS provides the Research EcoLabel, a structured assumptions and provenance table, and copy-ready environmental-impact text. The table can also be copied as Markdown for a manuscript, model card, repository, or technical appendix.',
+        actionHint: 'The assumptions table and Methods-ready text are opened automatically in this walkthrough.',
+        scrollBlock: 'start',
+      },
+    ],
+  },
+  publishedLlm: {
+    title: 'Published open-source LLM benchmark',
+    shortTitle: 'Published LLM demo',
+    icon: Brain,
+    description: 'Follow a published, locally run open-source LLM inference benchmark while keeping pretraining outside the measured boundary.',
+    steps: [
+      {
+        target: '[data-demo-target="home-ai"]',
+        kicker: '1 of 7 · INPUT',
+        title: 'Start with a published LLM benchmark',
+        body: 'This walkthrough uses a published open-source LLM evaluated locally on chest-radiograph report labeling. Inference energy was measured; model pretraining was not assessed in that study.',
+        actionHint: 'No typing is required. Next loads the published benchmark example.',
+      },
+      {
+        target: '[data-demo-target="ai-model-record"]',
+        kicker: '2 of 7 · MODEL & CLINICAL CONTEXT',
+        title: 'Keep task and performance with the energy result',
+        body: 'The example uses Vicuna 1.5 7B for chest-radiograph report labeling. CEDARS keeps the model size, clinical task, reported accuracy, and validation context alongside the measured inference energy.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-inference-section"]',
+        kicker: '3 of 7 · MEASURED INFERENCE',
+        title: 'Use the measured inference result',
+        body: 'The published experiment measured GPU energy with CodeCarbon across the evaluation dataset. CEDARS records the derived per-study inference energy as Measured while keeping the illustrative deployment workload separate.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-water-section"]',
+        kicker: '4 of 7 · WATER',
+        title: 'Show what was not assessed',
+        body: 'Water was not assessed in this example. CEDARS reports that gap explicitly and does not treat it as zero or fold it silently into the carbon-and-energy score.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-disclosure"]',
+        scrollTarget: '[data-demo-target="ai-record-row"]',
+        scrollBlock: 'start',
+        kicker: '5 of 7 · ASSESSMENT COVERAGE',
+        title: 'Separate a measured experiment from a complete lifecycle assessment',
+        body: 'Measured inference does not imply that pretraining was measured. CEDARS labels pretraining as Not assessed and keeps the record transparent without inventing an upstream footprint.',
+      },
+      {
+        target: '#ai-score-panel',
+        kicker: '6 of 7 · RESULT',
+        title: 'Report inference without inventing an overall score',
+        body: 'CEDARS reports the measured inference footprint, but an overall CEDARS Score is not assigned because the training or pretraining footprint is outside the assessed boundary. Missing information cannot improve the rating.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-report-reproducibility"]',
+        kicker: '7 of 7 · REPORT & SHARE',
+        title: 'Export the measured result and its boundary',
+        body: 'The reporting outputs preserve the measured inference result, reported performance, and the fact that pretraining and water were not assessed.',
+        actionHint: 'The reporting sections are opened automatically in this walkthrough.',
+        scrollBlock: 'start',
+      },
+    ],
+  },
+  llm: {
+    title: 'Vendor-hosted AI / LLM',
+    shortTitle: 'Vendor LLM demo',
+    icon: Brain,
+    description: 'See how CEDARS handles estimated inference when training is not disclosed by a vendor.',
+    steps: [
+      {
+        target: '[data-demo-target="home-ai"]',
+        kicker: '1 of 8 · INPUT',
+        title: 'Start with a hosted AI service',
+        body: 'This walkthrough uses an illustrative hosted report-generation LLM. The same framework can also represent other vendor-hosted or multi-step agentic systems.',
+        actionHint: 'No typing is required. Next opens the Procure / deploy pathway.',
+      },
+      {
+        target: '[data-demo-target="ai-procure-card"]',
+        kicker: '2 of 8 · PROCURE / DEPLOY',
+        title: 'Assess a model you did not train locally',
+        body: 'For a hosted or vendor model, training information may be unavailable. CEDARS can still document what is known while keeping missing vendor disclosures visible.',
+        actionHint: 'Next loads an illustrative report-generation LLM via vendor API.',
+      },
+      {
+        target: '[data-demo-target="ai-model-record"]',
+        kicker: '3 of 8 · MODEL & CLINICAL CONTEXT',
+        title: 'Describe what the vendor system does',
+        body: 'The example is a report-generation LLM accessed through a vendor API. Its task and reported performance stay with the environmental record; training is explicitly marked Not disclosed.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-inference-section"]',
+        kicker: '4 of 8 · INFERENCE & DEPLOYMENT',
+        title: 'Describe token-based use',
+        body: 'For LLM and agentic systems, CEDARS can use energy per 1,000 tokens together with calls per task and tokens per call. Multi-step agents can be represented by increasing the number of calls rather than treating every workflow as a single prompt.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-water-section"]',
+        kicker: '5 of 8 · WATER',
+        title: 'Keep another unknown visible',
+        body: 'Water is also marked Not assessed in this example. CEDARS reports that status separately rather than allowing missing water information to imply a zero footprint.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-disclosure"]',
+        scrollTarget: '[data-demo-target="ai-record-row"]',
+        scrollBlock: 'start',
+        kicker: '6 of 8 · ASSESSMENT COVERAGE',
+        title: 'Make the disclosure gap explicit',
+        body: 'Inference can be estimated even when upstream training is unavailable. The record can be transparent about that limitation without pretending the lifecycle assessment is complete.',
+      },
+      {
+        target: '#ai-score-panel',
+        kicker: '7 of 8 · RESULT',
+        title: 'Do not reward missing vendor data',
+        body: 'CEDARS reports the inference footprint but does not assign an overall CEDARS Score or leaf rating while training is undisclosed. Unknown is not treated as zero.',
+        scrollBlock: 'start',
+      },
+      {
+        target: '[data-demo-target="ai-report-reproducibility"]',
+        kicker: '8 of 8 · REPORT & SHARE',
+        title: 'Export the assumptions behind the result',
+        body: 'CEDARS provides a readable assumptions and provenance table, a Markdown export, and copy-ready environmental-impact text so the inference assumptions and disclosure limits travel with the result.',
+        actionHint: 'The reporting sections are opened automatically in this walkthrough.',
+        scrollBlock: 'start',
       },
     ],
   },
@@ -145,22 +327,46 @@ function clampRect(rect, pad = 7) {
 }
 
 export function GuidedDemoLauncher({onStart}) {
+  const groups = [
+    {
+      icon: Activity,
+      question: 'How does clinical AI fit into a radiology department?',
+      audience: 'For radiology leaders, clinical AI teams, and sustainability / operations teams.',
+      options: [
+        ['leader', 'AI already in clinical use', 'See AI as one part of the department footprint.'],
+        ['procure', 'Compare AI before purchase', 'Compare candidates under the same clinical and deployment assumptions.'],
+      ],
+    },
+    {
+      icon: Brain,
+      question: 'How do I measure and report an AI model?',
+      audience: 'For AI developers, researchers, and imaging informatics teams.',
+      options: [
+        ['developer', 'Locally developed imaging model', 'Complete illustrative training + inference record.'],
+        ['publishedLlm', 'Published open-source LLM benchmark', 'Measured inference; pretraining not assessed.'],
+        ['llm', 'Vendor-hosted AI / LLM', 'See how CEDARS handles missing vendor disclosures.'],
+      ],
+    },
+  ];
   return (
     <section className="guidedDemoLauncher" aria-labelledby="guided-demo-title">
-      <div className="guidedDemoLauncherHead">
-        <div>
-          <span>GUIDED WALKTHROUGH</span>
-          <h2 id="guided-demo-title">Try CEDARS with example data</h2>
-          <p>Choose an illustrative role-based walkthrough. Values are loaded automatically, no typing is required, and your current assessment is restored when you exit.</p>
-        </div>
-      </div>
+      <div className="guidedDemoLauncherHead"><div>
+        <span>GUIDED WALKTHROUGHS · ILLUSTRATIVE EXAMPLES</span>
+        <h2 id="guided-demo-title">Which example would you like to explore?</h2>
+        <p>Choose the question closest to what you are trying to do. Values load automatically, no typing is required, and your current assessment is restored when you exit.</p>
+      </div></div>
       <div className="guidedDemoLauncherGrid">
-        {Object.entries(GUIDED_DEMOS).map(([key, demo]) => {
-          const Icon = demo.icon;
-          return <article key={key} className="guidedDemoChoice" style={{border:'1.5px dashed #a8c8aa',background:'#f6faf3'}}>
+        {groups.map(group => {
+          const Icon = group.icon;
+          return <article key={group.question} className="guidedDemoChoice" style={{gridTemplateColumns:'auto minmax(0,1fr)',border:'1.5px dashed #a8c8aa',background:'#f6faf3'}}>
             <div className="guidedDemoChoiceIcon"><Icon size={22}/></div>
-            <div className="guidedDemoChoiceCopy"><span style={{display:'inline-flex',marginBottom:5,padding:'2px 6px',border:'1px solid #b7d3b9',borderRadius:999,background:'#fff',color:'#2E7D32',fontSize:7.5,fontWeight:900,letterSpacing:'.08em'}}>ILLUSTRATIVE EXAMPLE</span><strong style={{display:'block'}}>{demo.title}</strong><p>{demo.description}</p></div>
-            <button type="button" onClick={()=>onStart(key)}>Start {key==='leader'?'leadership':'developer'} demo →</button>
+            <div className="guidedDemoChoiceCopy">
+              <strong style={{display:'block',fontSize:15}}>{group.question}</strong>
+              <p style={{marginBottom:9}}>{group.audience}</p>
+              <div style={{display:'grid',gap:7}}>
+                {group.options.map(([key,label,detail]) => <button key={key} type="button" onClick={()=>onStart(key)} style={{gridColumn:'auto',justifySelf:'stretch',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:2,padding:'9px 11px',background:'#fff',color:'#1b5e20',border:'1px solid #a5d6a7',borderRadius:11,boxShadow:'none',textAlign:'left'}}><strong style={{fontSize:11}}>{label} →</strong><span style={{fontSize:9.5,color:'#607d66',fontWeight:600}}>{detail}</span></button>)}
+              </div>
+            </div>
           </article>;
         })}
       </div>
@@ -175,6 +381,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
   const [targetMissing, setTargetMissing] = useState(false);
   const dialogRef = useRef(null);
   const selector = step?.target;
+  const scrollSelector = step?.scrollTarget || selector;
 
   const updateRect = () => {
     if (!selector) return;
@@ -191,9 +398,17 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
     let timer;
     const locate = () => {
       const el = document.querySelector(selector);
-      if (el) {
-        el.scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'});
-        window.setTimeout(updateRect, 260);
+      const scrollEl = document.querySelector(scrollSelector);
+      if (el && scrollEl) {
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        const behavior = reducedMotion ? 'auto' : 'smooth';
+        if (step?.scrollBlock === 'start') {
+          const top = Math.max(0, window.scrollY + scrollEl.getBoundingClientRect().top - 92);
+          window.scrollTo({top, behavior});
+        } else {
+          scrollEl.scrollIntoView({behavior, block:'center', inline:'nearest'});
+        }
+        window.setTimeout(updateRect, reducedMotion ? 40 : 360);
         return;
       }
       tries += 1;
@@ -202,7 +417,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
     };
     locate();
     return () => window.clearTimeout(timer);
-  }, [selector, stepIndex]);
+  }, [selector, scrollSelector, step?.scrollBlock, stepIndex]);
 
   useEffect(() => {
     const onMove = () => updateRect();
@@ -259,7 +474,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
   if (!demo || !step) return null;
   const last = stepIndex === demo.steps.length - 1;
   const popoverStyle = rect
-    ? {left: Math.min(Math.max(16, rect.left), Math.max(16, window.innerWidth - 376)), top: rect.bottom + 14 < window.innerHeight - 250 ? rect.bottom + 14 : Math.max(16, rect.top - 238)}
+    ? {left:'auto',right:16,bottom:16,top:'auto',transform:'none'}
     : {left:'50%', top:'50%', transform:'translate(-50%,-50%)'};
 
   return (
@@ -279,7 +494,7 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
         {targetMissing && <div className="guidedDemoTargetWarning">This step's target is not visible yet. Use Next to continue.</div>}
         <div className="guidedDemoActions">
           <button type="button" className="guidedDemoSecondary" disabled={stepIndex===0} onClick={()=>onStepChange(stepIndex-1)}>Back</button>
-          {!last ? <button type="button" onClick={()=>onStepChange(stepIndex+1)}>Next →</button> : <>
+          {!last ? <button type="button" onClick={()=>onStepChange(stepIndex+1)} style={{background:'#0f6175',color:'#fff',border:'1px solid #0a5264',fontWeight:850,boxShadow:'0 5px 16px rgba(15,97,117,.28)'}}>Next step →</button> : <>
             <button type="button" className="guidedDemoSecondary" onClick={onExit}>Return to my assessment</button>
             <button type="button" onClick={onKeepExample}>Explore this example</button>
           </>}
