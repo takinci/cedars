@@ -112,11 +112,11 @@ export function computeAiLabel(scen, ai, opts) {
   const trainProv = trainingProvenance(scen);
   const inferProv = inferenceProvenance(scen, ai);
 
-  // aiResultFor supplies context-specific effective intensities. Synthetic/legacy callers that do
-  // not have those fields retain the historical shared-CI + renewable calculation.
+  // Carbon remains location-based here. Renewable procurement share is retained for disclosure,
+  // but is not converted into a lower emissions factor without a separate market-based factor.
   const ci = ai.inferenceRawCi ?? ai.cloudCi;
-  const trainingEffectiveCi = ai.trainingCi ?? rnd(ai.cloudCi * (1 - trainRenewablePct / 100), 4);
-  const inferenceEffectiveCi = ai.inferenceCi ?? rnd(ai.cloudCi * (1 - inferRenewablePct / 100), 4);
+  const trainingEffectiveCi = ai.trainingCi ?? ai.trainingRawCi ?? ai.cloudCi;
+  const inferenceEffectiveCi = ai.inferenceCi ?? ai.inferenceRawCi ?? ai.cloudCi;
   const effectiveCi = inferenceEffectiveCi;
   const pue = ai.inferPue ?? ai.pue;
 

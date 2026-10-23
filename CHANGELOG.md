@@ -19,6 +19,8 @@
 - `ROADMAP.md` for shared implementation planning.
 
 ### Changed
+- Equipment overrides now carry their actual provenance into dashboard/export rows; user-entered values are no longer automatically labeled measured.
+- Renewable electricity percentages are disclosure-only in the location-based carbon inventory; they no longer linearly reduce Department, AI, or cloud carbon factors. The renewable intervention is planning guidance until a separate market-based factor is implemented.
 - Homepage journey is now **Input → Score → Improve → Share**.
 - The AI pathway keeps the name **AI Model & Informatics** (the earlier plan to rename it *AI Footprint* was reversed for clarity against the Department pathway); README and docs now match the interface.
 - The AI Research Label is now a view of the single AI model record rather than a separately-edited copy; the former "mirror until edited" behaviour and its drift are gone. Training energy per run is the model's own figure (measured, GPU-hours, or literature) times the number of runs.

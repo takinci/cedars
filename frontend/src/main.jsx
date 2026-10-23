@@ -98,9 +98,9 @@ const IMPROVE_INTERVENTION_META = {
     links:[['Our World in Data — electricity carbon intensity','https://ourworldindata.org/grapher/carbon-intensity-electricity']],
   },
   'Use renewable electricity': {
-    description:'Increase the renewable share of local operational electricity rather than crediting the same renewable supply twice.',
-    category:'Electricity supply', status:'Modeled',
-    reason:'Uses the renewable share already entered for this assessment and models only the remaining change.',
+    description:'Document renewable electricity procurement while keeping the location-based Scope 2 result separate.',
+    category:'Electricity supply', status:'Planning guidance',
+    reason:'No automatic carbon credit is applied from a percentage alone; a future market-based result requires a qualifying contractual or supplier emissions factor.',
     links:[['ESR Green Imaging Department','https://www.myesr.org/greenid/']],
   },
   'Reduce paper and film printing': {
@@ -570,7 +570,9 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     const pueValue = parseFloat(pueOverride);
     const renewable = Math.min(100, Math.max(0, parseFloat(renewableOverride) || 0));
     const rawCi = regionCi != null ? regionCi : base.ci;
-    return {provider:p, region:computeRegion || '', pue:pueValue > 0 ? pueValue : (regions?.pue ?? base.pue), rawCi, ci:rnd(rawCi * (1 - renewable / 100), 4), renewablePct:renewable};
+    // Keep the inventory location-based. Renewable procurement share is disclosure-only until
+    // a separate qualifying market-based emissions factor is supplied.
+    return {provider:p, region:computeRegion || '', pue:pueValue > 0 ? pueValue : (regions?.pue ?? base.pue), rawCi, ci:rnd(rawCi, 4), renewablePct:renewable};
   };
   const trainCf = resolveContext(overrides.trainingProvider || cloudProvider, overrides.trainingRegion || overrides.cloudRegion, overrides.trainingPue || overrides.customPue, overrides.trainingRenewablePct || overrides.renewablePct);
   const inferCf = resolveContext(overrides.inferenceProvider || cloudProvider, overrides.inferenceRegion || overrides.cloudRegion, overrides.inferencePue || overrides.customPue, overrides.inferenceRenewablePct || overrides.renewablePct);
@@ -838,7 +840,9 @@ function computeCloudCarbon(t) {
   const regionCi  = provData.regions[t.region] ?? 0.3;
   const pue       = provData.pue;
   const renewable = Math.min(100, Math.max(0, parseFloat(t.renewablePct) || 0));
-  const ci        = rnd(regionCi * (1 - renewable / 100), 4);
+  // Location-based carbon is not reduced by a self-reported renewable percentage. Keep the share
+  // for disclosure; a market-based result requires a separate qualifying emissions factor.
+  const ci        = rnd(regionCi, 4);
 
   const computeResults = t.computeLines.map(line => {
     // Locked AI lines carry an already-PUE-inclusive energy from the AI lifecycle model.
@@ -889,7 +893,7 @@ function computeCloudCarbon(t) {
     (b, [name, rci]) => rci < b.ci ? {name, ci: rci} : b,
     {name: t.region, ci: regionCi}
   );
-  const bestSameCi  = rnd(bestSame.ci * (1 - renewable / 100), 4);
+  const bestSameCi  = rnd(bestSame.ci, 4);
   const bestSameCo2 = rnd((rawComputeKwh + rawStorageKwh) * pue * bestSameCi + netKwh * bestSameCi, 2);
   const bestSameSaving = totalCo2 > 0 ? rnd((1 - bestSameCo2 / Math.max(totalCo2, 1e-6)) * 100, 1) : 0;
 
@@ -897,7 +901,7 @@ function computeCloudCarbon(t) {
   const crossProvider = Object.entries(CLOUD_REGIONS).map(([provName, provInfo]) => {
     const entries = Object.entries(provInfo.regions);
     const best    = entries.reduce((b, [n, rci]) => rci < b.ci ? {name: n, ci: rci} : b, {name: entries[0][0], ci: entries[0][1]});
-    const effCi   = rnd(best.ci * (1 - renewable / 100), 4);
+    const effCi   = rnd(best.ci, 4);
     const co2Est  = rnd((rawComputeKwh + rawStorageKwh) * provInfo.pue * effCi + netKwh * effCi, 2);
     const saving  = totalCo2 > 0 ? rnd((1 - co2Est / Math.max(totalCo2, 1e-6)) * 100, 1) : 0;
     return {provider: provName, label: provInfo.label, bestRegion: best.name, ci: best.ci, pue: provInfo.pue, co2Est, saving, isCurrent: provName === t.provider};
@@ -1031,7 +1035,7 @@ function downloadCSV(dash) {
     blank,
 
     row(['EQUIPMENT BREAKDOWN']),
-    row(['Equipment', 'Modality', 'kWh', 'kgCO2e', 'Scans', 'kWh/scan', 'Avoidable idle kWh', 'Confidence']),
+    row(['Equipment', 'Modality', 'kWh', 'kgCO2e', 'Scans', 'kWh/scan', 'Avoidable idle kWh', 'Input provenance']),
     ...dash.byEquipment.map(r =>
       row([r.equipment, r.modality, r.kwh, r.kgco2e, r.scans, r.energyPerScan ?? 'N/A', r.idleWasteKwh, r.confidence])
     ),
@@ -1137,8 +1141,8 @@ function downloadCloudCSV(result, tracker) {
   const lines = [
     row(['CEDARS Cloud Carbon Report']),
     row(['Provider', tracker.provider, 'Region', tracker.region]),
-    row(['Grid CI (kgCO2e/kWh)', result.regionCi, 'Effective CI', result.ci]),
-    row(['PUE', result.pue, 'Renewables (%)', result.renewable]),
+    row(['Grid CI (kgCO2e/kWh)', result.regionCi, 'Location-based CI', result.ci]),
+    row(['PUE', result.pue, 'Reported renewables (%)', result.renewable]),
     blank,
 
     row(['MONTHLY TOTALS']),
@@ -1202,7 +1206,7 @@ function downloadCloudCSV(result, tracker) {
 function generateDeptText(d) {
   if (!d.annualStudies) return '';
   return (
-    `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e (effective carbon intensity: ${d.effectiveCi} kgCO₂e/kWh; renewable energy: ${d.renewablePct}%; grid region: ${d.region}). ` +
+    `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e using the location-based grid factor (${d.ci} kgCO₂e/kWh; grid region: ${d.region}). Reported renewable electricity share was ${d.renewablePct}% and was not used to reduce the location-based result. ` +
     (d.clinicalToolCount > 0 ? ` This figure reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''}, whose net compute and clinical savings are included in the department energy above.` : '') +
     ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
     (d.interventionCount > 0 ? ` The department reports ${d.interventionCount} sustainability practice${d.interventionCount > 1 ? 's' : ''} as currently implemented.` : '') +
@@ -1346,7 +1350,8 @@ function downloadDeptPNG(d) {
     ['Studies / year',       d.annualStudies.toLocaleString()],
     ['Energy per study',     `${d.kwhPerStudy} kWh`],
     ...(d.utilPct != null ? [['Fleet utilisation', `${d.utilPct}% of configured fleet`]] : []),
-    ['Carbon intensity',     `${d.effectiveCi} kgCO₂e/kWh (${d.renewablePct}% renewable)`],
+    ['Location-based grid CI', `${d.ci} kgCO₂e/kWh`],
+    ['Reported renewable share', `${d.renewablePct}% (disclosure only)`],
     ['Grid region',          d.region],
     ...(d.interventionCount > 0 ? [['Current practices', `${d.interventionCount} documented as implemented`]] : []),
   ];
@@ -2483,7 +2488,7 @@ function App() {
   // amortisation values; the record should still be reconciled before publication. Clinical-effect
   // fractions remain an expected-population approximation when deployed tools overlap on studies.
   const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom, provider:settings.storageProvider, region:settings.storageRegion, cloudCi:settings.storageCloudCi, scope1AnnualKg:settings.scope1AnnualKg};
-  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides]);
+  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides, provenance), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides, provenance]);
   // Deployment workload uses the department's pre-AI imaging volume and is always normalized to studies/month.
   const departmentStudiesPerMonth = Math.round((((dash.clinicalBasis?.imagingScans ?? dash.scopes.imagingScans) || 0)) / (TIME_MULT[settings.timePeriod] ?? 1));
   const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct]);
@@ -2669,7 +2674,9 @@ function App() {
     const hasGridFactor = region !== 'Editable custom' || String(settings.customCi ?? '').trim() !== '';
     const ci = getCI(region, settings.customCi);
     const renewablePct = Math.min(100, Math.max(0, parseFloat(deptLabel.renewablePct) || 0));
-    const effectiveCi = rnd(ci * (1 - renewablePct / 100), 4);
+    // Keep Scope 2 location-based. Renewable share is disclosed separately and is not converted
+    // into a lower factor without a qualifying market-based emissions factor.
+    const effectiveCi = ci;
     const liveAnnualKwh     = rnd(efficiency.modeledAnnualKwh || (dash.totals.kwh / mult * 12), 0);
     const liveAnnualStudies = efficiency.studiesYr;
     const annualKwh     = parseFloat(deptLabel.annualKwh)     > 0 ? parseFloat(deptLabel.annualKwh)     : liveAnnualKwh;
@@ -3023,9 +3030,9 @@ function App() {
                   Custom PUE <span style={{fontWeight:400,fontSize:10,color:'#90a4ae'}}>optional</span>
                   <input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${CLOUD_REGIONS[ecoLabel.cloudProvider]?.pue ?? CLOUD[ecoLabel.cloudProvider]?.pue ?? 1.5} default`}/>
                 </label>
-                <label>Renewable energy (%)<input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/></label>
+                <label>Reported renewable electricity share (%)<input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/></label>
               </div>
-              <p className="note" style={{marginTop:8}}>Compute location sets grid carbon intensity. PUE represents facility overhead; set PUE to 1.0 when reproducing a direct single-lab-GPU energy measurement with no added data-centre overhead.</p>
+              <p className="note" style={{marginTop:8}}>Compute location sets the location-based grid carbon intensity. Reported renewable share is disclosure-only and does not reduce that factor. PUE represents facility overhead; set PUE to 1.0 when reproducing a direct single-lab-GPU energy measurement with no added data-centre overhead.</p>
               <details style={{marginTop:10}}>
                 <summary style={{cursor:'pointer',fontWeight:700,color:'#2E7D32'}}>Advanced: training used a different compute context</summary>
                 <p className="note" style={{fontSize:10.5}}>Leave blank to use the default context above. Use this only when training occurred elsewhere.</p>
@@ -3033,7 +3040,7 @@ function App() {
                   <label>Provider<select value={scen.trainingProvider} onChange={e=>setS('trainingProvider',e.target.value)}><option value="">Use default {scen.cloudProvider}</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                   <label>Region<select value={scen.trainingRegion} onChange={e=>setS('trainingRegion',e.target.value)}><option value="">Use default {scen.cloudRegion || 'provider average'}</option>{Object.keys(CLOUD_REGIONS[scen.trainingProvider || scen.cloudProvider]?.regions || {}).map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                   <label>Custom PUE<input type="number" min="1" step="0.05" value={scen.trainingPue} onChange={e=>setS('trainingPue',e.target.value)} placeholder="use default"/></label>
-                  <label>Renewable energy (%)<input type="number" min="0" max="100" value={scen.trainingRenewablePct} onChange={e=>setS('trainingRenewablePct',e.target.value)} placeholder={`use default ${scen.renewablePct || 0}%`}/></label>
+                  <label>Reported renewable share (%)<input type="number" min="0" max="100" value={scen.trainingRenewablePct} onChange={e=>setS('trainingRenewablePct',e.target.value)} placeholder={`use default ${scen.renewablePct || 0}%`}/></label>
                 </div>
               </details>
             </div>
@@ -3080,7 +3087,7 @@ function App() {
                   <label>Provider<select value={scen.inferenceProvider} onChange={e=>setS('inferenceProvider',e.target.value)}><option value="">Use default {scen.cloudProvider}</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                   <label>Region<select value={scen.inferenceRegion} onChange={e=>setS('inferenceRegion',e.target.value)}><option value="">Use default {scen.cloudRegion || 'provider average'}</option>{Object.keys(CLOUD_REGIONS[scen.inferenceProvider || scen.cloudProvider]?.regions || {}).map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                   <label>Custom PUE<input type="number" min="1" step="0.05" value={scen.inferencePue} onChange={e=>setS('inferencePue',e.target.value)} placeholder="use default"/></label>
-                  <label>Renewable energy (%)<input type="number" min="0" max="100" value={scen.inferenceRenewablePct} onChange={e=>setS('inferenceRenewablePct',e.target.value)} placeholder={`use default ${scen.renewablePct || 0}%`}/></label>
+                  <label>Reported renewable share (%)<input type="number" min="0" max="100" value={scen.inferenceRenewablePct} onChange={e=>setS('inferenceRenewablePct',e.target.value)} placeholder={`use default ${scen.renewablePct || 0}%`}/></label>
                 </div>
               </details>
             </div>
@@ -4403,13 +4410,13 @@ function App() {
                   </select>
                 </label>
                 <label>
-                  Renewable energy (%)
+                  Reported renewable electricity share (%)
                   <input type="number" min="0" max="100" value={cloudTracker.renewablePct} onChange={e => setCloud('renewablePct', e.target.value)} placeholder="0–100"/>
                 </label>
               </div>
               <p className="note" style={{marginTop:8}}>
-                Effective CI: <strong>{cloudResult.ci} kgCO₂e/kWh</strong>
-                {cloudResult.renewable > 0 && <> (after {cloudResult.renewable}% renewable adjustment)</>}.
+                Location-based CI: <strong>{cloudResult.ci} kgCO₂e/kWh</strong>.
+                {cloudResult.renewable > 0 && <> Reported renewable share: <strong>{cloudResult.renewable}%</strong> (disclosure only; no automatic location-based carbon credit).</>}
                 {' '}PUE: <strong>{cloudResult.pue}</strong> ({scen.cloudProvider} {scen.cloudProvider === 'Google Cloud' ? '— industry-leading efficiency' : 'global fleet average'}).
                 {' '}Changing region here also updates the AI Carbon tab above.
               </p>
@@ -5190,9 +5197,9 @@ function App() {
                 <label>Grid region<select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}><option value="">— use current ({settings.region}) —</option>{META.regions.map(r=><option key={r} value={r}>{r}</option>)}</select></label>
                 <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
                 <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder={`live: ${deptLabelData.annualStudies.toLocaleString()}`}/></label>
-                <label>Renewable energy (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
+                <label>Reported renewable electricity share (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
               </div>
-              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Override with utility bills / RIS counts for publication-quality figures.</p>
+              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Renewable share is disclosed separately and does not reduce the location-based Scope 2 factor. Override kWh / RIS counts with local data for publication-quality figures.</p>
 
               {/* Clinical AI now live on the Radiology Department tab */}
               <p className="note" style={{margin:'14px 0 0',padding:'10px 14px',background:'#f1f8f1',borderRadius:12}}>

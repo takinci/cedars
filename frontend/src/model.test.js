@@ -117,10 +117,18 @@ describe('buildFleet — per-device overrides', () => {
 });
 
 describe('computeDashboard — override effects on confidence, scans, and storage', () => {
-  it('an overridden row is flagged confidence:"measured"; untouched rows stay "estimated"', () => {
-    const d = computeDashboard('Germany', 'Monthly', { ct: 1, workstations: 1 }, undefined, {}, {}, { ct: { active_kw: 45 } });
-    expect(d.byEquipment.find(r => r.modality === 'CT').confidence).toBe('measured');
-    expect(d.byEquipment.find(r => r.modality === 'Workstation').confidence).toBe('estimated');
+  it('an override reports its actual provenance rather than assuming user-entered means measured', () => {
+    const d = computeDashboard(
+      'Germany', 'Monthly', { ct: 1, workstations: 1 }, undefined, {}, {},
+      { ct: { active_kw: 45 } },
+      { equipment: { ct: { active_kw: 'estimated-locally' } } },
+    );
+    expect(d.byEquipment.find(r => r.modality === 'CT').confidence).toBe('Estimated locally');
+    expect(d.byEquipment.find(r => r.modality === 'Workstation').confidence).toBe('Literature default');
+  });
+  it('an override with no source is explicitly unresolved, not measured by implication', () => {
+    const d = computeDashboard('Germany', 'Monthly', { ct: 1 }, undefined, {}, {}, { ct: { active_kw: 45 } });
+    expect(d.byEquipment.find(r => r.modality === 'CT').confidence).toBe('User-provided · source not specified');
   });
   it('overriding scans (study volume) changes imagingScans and the storage archive size', () => {
     const dDefault  = computeDashboard('Germany', 'Monthly', { ct: 1 });
@@ -169,6 +177,6 @@ describe('final accounting and intervention integrity',()=>{
   it('keeps remote Clinical AI compute out of hospital Scope 2 and uses its own carbon factor',()=>{const base=computeDashboard('Switzerland','Monthly',{ct:1});const d=computeDashboard('Switzerland','Monthly',{ct:1},undefined,{inferKwhPerStudy:0.01,aiLocalInferKwhPerStudy:0,aiCloudInferKwhPerStudy:0.01,aiCloudInferCo2PerStudy:0.005});expect(d.scopes.scope2Kg).toBeCloseTo(base.scopes.scope2Kg,1);expect(d.scopes.scope3CloudAiKg).toBeGreaterThan(0);expect(d.clinicalMeta.aiCloudKwh).toBeGreaterThan(0);});
   it('leaves Scope 1 unassessed unless a value is entered',()=>{const a=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {});expect(a.scopes.scope1Assessed).toBe(false);expect(a.scopes.scope1Kg).toBe(0);const b=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {scope1AnnualKg:'1200'}, {});expect(b.scopes.scope1Assessed).toBe(true);expect(b.scopes.scope1Kg).toBeCloseTo(100,1);});
   it('models utilization with fixed plus volume-dependent energy rather than dividing the whole footprint by utilization',()=>{const r=computeUtilizationAdjustedEnergy({annualKwh:1000,annualActiveKwh:400,capacityYr:1000,studiesYr:500});expect(r.modeledAnnualKwh).toBe(800);expect(r.energyPerStudy).toBe(1.6);expect(r.nonProductivePct).toBe(75);});
-  it('does not give an already-100%-renewable department another renewable credit',()=>{const x=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},100);expect(x.savings.co2).toBeCloseTo(0,1);});
+  it('does not turn a reported renewable percentage into a location-based Scope 2 credit',()=>{const zero=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},0);const full=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},100);expect(zero.savings.co2).toBeCloseTo(0,1);expect(full.savings.co2).toBeCloseTo(0,1);expect(full.baseline.co2).toBeCloseTo(zero.baseline.co2,1);});
   it('fleet-scaled interventions do not erase a tiny department footprint via fixed kWh constants',()=>{const x=computeInterventions(['Reduce low-value imaging','Shorten protocols','Optimize scheduling'],'Germany','Monthly',{ultrasound:1},undefined,'AWS','Standby');expect(x.savings.pctEnergy).toBeLessThan(60);expect(x.projected.kwh).toBeGreaterThan(0);});
 });

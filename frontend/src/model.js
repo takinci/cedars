@@ -164,7 +164,7 @@ const OVERRIDABLE_FIELDS = ['active_kw', 'idle_kw', 'standby_kw', 'off_kw', 'sca
 // Build a fleet array from equipment counts — scales power by count, hours stay per-unit.
 // `overrides` is a sparse {deviceKey: {field: value}} map (see OVERRIDABLE_FIELDS); devices/
 // fields absent from it keep the EQUIPMENT_UNITS default. Rows with an active override are
-// flagged `overridden: true` so computeDashboard can report confidence:"measured" for them.
+// flagged `overridden: true`; provenance is resolved separately so user-entered never implies measured.
 function buildFleet(equipment, overrides = {}) {
   return Object.entries(equipment ?? DEFAULT_EQUIPMENT)
     .filter(([, n]) => typeof n === 'number' && n > 0)
@@ -180,6 +180,8 @@ function buildFleet(equipment, overrides = {}) {
         : base;
       return {
         ...u,
+        key,
+        overrideFields: setFields,
         count:      n,                    // unit count — used to scale embodied carbon per device
         name:       n > 1 ? `${n}× ${u.name}` : u.name,
         active_kw:  u.active_kw  * n,
@@ -191,6 +193,23 @@ function buildFleet(equipment, overrides = {}) {
       };
     })
     .filter(Boolean);
+}
+
+const EQUIPMENT_PROVENANCE_LABELS = {
+  'measured-locally': 'Measured locally',
+  'estimated-locally': 'Estimated locally',
+  'assumed-other': 'Assumed / other',
+};
+function equipmentProvenanceSummary(eq, inputProvenance = {}) {
+  const fields = eq.overrideFields || [];
+  if (!fields.length) return 'Literature default';
+  const sourceMap = inputProvenance?.equipment?.[eq.key] || {};
+  const sources = fields.map(field => sourceMap[field]).filter(Boolean);
+  if (!sources.length) return 'User-provided · source not specified';
+  if (sources.length !== fields.length) return 'Mixed / incomplete provenance';
+  const unique = [...new Set(sources)];
+  if (unique.length === 1) return EQUIPMENT_PROVENANCE_LABELS[unique[0]] || 'User-provided';
+  return 'Mixed local provenance';
 }
 
 // Monthly kWh savings per intervention — conservative departmental estimates.
@@ -213,8 +232,8 @@ const INTERVENTIONS = {
   "Reduce repeat scans":                     {kwh:0, pool:'scanner-active', fraction:0.03, note: "Avoided repeats save acquisition energy. CEDARS uses a 3% scenario reduction of remaining active-scanner energy; replace with your repeat/reject rate. (AJR 2023)"},
   // grid swap from 0.38 to ≤0.10 kgCO₂e/kWh saves up to 75 % of Scope 2 (OWID)
   "Move computation to lower-carbon regions":{kwh:    0, co2Pct: 30, note: "Same energy, lower-carbon grid. (OWID carbon intensity data)"},
-  // Scope 2 elimination via green tariff or PPA (ESR Green Imaging)
-  "Use renewable electricity":               {kwh:0, renewableTargetPct:80, note: "Model a target of at least 80% renewable electricity for local operational loads. If the department already reports ≥80%, this lever adds no further credit. (ESR Green Imaging)"},
+  // Procurement disclosure only until a qualifying market-based emissions factor is supplied.
+  "Use renewable electricity":               {kwh:0, guidanceOnly:true, note: "Record renewable electricity procurement as a disclosure item. CEDARS keeps location-based Scope 2 unchanged unless a separate qualifying market-based emissions factor is supplied."},
   // film processor and laser printer loads — uncited, editable estimate
   "Reduce paper and film printing":          {kwh:0, guidanceOnly:true, note: "Reduce paper/film use. No automatic electricity credit is applied without a measured printer/processor load; report material savings separately."},
   // embodied carbon amortised over more years (ESR PP 2025, Scope 3)
@@ -308,7 +327,7 @@ function sanitizeRetentionYears(value,fallback=10){const n=Number(value);return 
 function computeClinicalScannerSavings({imagingScans=0,scannerActiveKwh=0,avoidedFrac=0,scanTimeFrac=0}={}){const scans=Number.isFinite(Number(imagingScans))?Math.max(0,Number(imagingScans)):0;const activeKwh=Number.isFinite(Number(scannerActiveKwh))?Math.max(0,Number(scannerActiveKwh)):0;const avoid=boundedFraction(avoidedFrac),scan=boundedFraction(scanTimeFrac);const avoidedEnergyKwh=activeKwh*avoid;const remainingActiveKwh=Math.max(0,activeKwh-avoidedEnergyKwh);const scanTimeEnergyKwh=remainingActiveKwh*scan;const savedKwh=Math.min(activeKwh,avoidedEnergyKwh+scanTimeEnergyKwh);return{avoidedFrac:avoid,scanTimeFrac:scan,scansAvoided:Math.round(scans*avoid),remainingScans:scans*(1-avoid),avoidedEnergyKwh:rnd(avoidedEnergyKwh,2),scanTimeEnergyKwh:rnd(scanTimeEnergyKwh,2),savedKwh:rnd(savedKwh,2)};}
 function computeUtilizationAdjustedEnergy({annualKwh=0,annualActiveKwh=0,capacityYr=0,studiesYr=0}={}){const total=Math.max(0,Number(annualKwh)||0),active=Math.min(total,Math.max(0,Number(annualActiveKwh)||0)),cap=Math.max(0,Number(capacityYr)||0),studies=Math.max(0,Number(studiesYr)||0);if(!(cap>0)||!(studies>0))return{util:0,modeledAnnualKwh:total,energyPerStudy:studies>0?total/studies:0,nonProductivePct:total>0?rnd((total-active)/total*100,1):0};const util=studies/cap;const fixed=Math.max(0,total-active);const scaledActive=active*util;const modeled=fixed+scaledActive;return{util,modeledAnnualKwh:rnd(modeled,2),energyPerStudy:rnd(modeled/studies,4),nonProductivePct:modeled>0?rnd(fixed/modeled*100,1):0};}
 
-function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}, overrides = {}) {
+function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}, overrides = {}, inputProvenance = {}) {
   const ci       = getCI(region, customCi);
   const mult     = safeTimeMult(timePeriod);
   const fleet    = buildFleet(equipment, overrides);
@@ -326,7 +345,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
             kgco2e: rnd(kgco2e), scans,
             // energyPerScan only meaningful for patient-imaging rows; null for PACS/Workstation
             energyPerScan: isImaging && scans > 0 ? rnd(kwh / scans, 3) : null,
-            idleWasteKwh: rnd(idleWasteKwh), confidence: eq.overridden ? "measured" : "estimated"};
+            idleWasteKwh: rnd(idleWasteKwh), confidence: equipmentProvenanceSummary(eq, inputProvenance)};
   });
   // Display rows are rounded before aggregation; a future numeric-core refactor can carry raw totals
   // separately if sub-0.01 kWh reconciliation becomes material.
@@ -532,8 +551,10 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   const ci=getCI(region,customCi), mult=safeTimeMult(timePeriod), fleet=buildFleet(equipment,overrides), cf=safeCloud(cloudProvider);
   const base=computeDashboard(region,timePeriod,equipment,customCi,clinicalAdj,storage,overrides);
   const currentRen=Math.min(1,Math.max(0,(Number(currentRenewablePct)||0)/100));
-  const renewableTarget=list.includes('Use renewable electricity')?Math.max(currentRen,0.80):currentRen;
-  const currentLocalCi=ci*(1-currentRen), scenarioLocalCi=ci*(1-renewableTarget);
+  // Renewable share is disclosure-only in the location-based inventory. A market-based result
+  // requires a separate contractual/supplier emissions factor rather than a linear percentage cut.
+  const renewableTarget=currentRen;
+  const currentLocalCi=ci, scenarioLocalCi=ci;
   const STATE_FIELD={Active:'active_kw',Idle:'idle_kw',Standby:'standby_kw',Off:'off_kw'};
   const targetField=own(STATE_FIELD,scannerState)?STATE_FIELD[scannerState]:'standby_kw';
   const imaging=fleet.filter(eq=>IMAGING_MODALITIES.has(eq.modality));

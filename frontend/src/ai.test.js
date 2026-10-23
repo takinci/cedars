@@ -85,10 +85,10 @@ describe('computeAiLabel — pinned grades', () => {
     expect(d.score).toBe(score(0.227).score);
     expect(d.breakEvenStudies).toBe(Math.round(16.64 / (0.00042 * 0.10)));
   });
-  it('renewable % lowers the effective carbon intensity', () => {
+  it('renewable % is disclosure-only and does not lower the location-based carbon intensity', () => {
     const d = computeAiLabel({...SCEN_DEFAULTS, renewablePct: '50'}, aiVision, opts);
-    expect(d.effectiveCi).toBe(0.05);
-    expect(d.perInferCo2g).toBe(0.021);
+    expect(d.effectiveCi).toBe(0.10);
+    expect(d.perInferCo2g).toBe(0.042);
   });
   it('uses separate training and inference carbon intensities when supplied by the engine', () => {
     const split = {...aiVision, trainingCi:0.02, inferenceCi:0.30, inferenceRawCi:0.30, trainPue:1.0, inferPue:1.2};
