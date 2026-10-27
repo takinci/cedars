@@ -35,10 +35,11 @@ CEDARS turns radiology sustainability data into a structured workflow:
 
 | Step | Purpose |
 |---|---|
-| **1 · Input** | Describe a Radiology Department or an AI model / informatics workload |
-| **2 · Score & EcoLabel** | Interpret the current footprint using the CEDARS Score, Rating, and standardized label |
+| **1 · Set up** | Describe a Radiology Department or choose the AI decision you need to make |
+| **2 · See footprint** | Review the headline operational footprint and its main drivers before opening technical detail |
 | **3 · Improve** | Test prospective changes separately from the current state and compare projected effects |
-| **4 · Report (& Share)** | Review reporting details, prepare CEDARS materials, and preserve or share the assessment |
+| **4 · Score & EcoLabel** | Interpret operational intensity using the CEDARS Score, Rating, and standardized label |
+| **5 · Report & Share** | Review disclosure gaps, prepare CEDARS materials, and preserve or share the assessment |
 
 No account or installation is required for the public site.
 
@@ -61,13 +62,13 @@ CEDARS can estimate and contextualize equipment energy, utilization, energy/carb
 
 ### AI Model & Informatics
 
-CEDARS supports one selected model or like-for-like candidate comparison; single-task imaging AI, LLM/foundation-model, and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an **AI Research Label**. CEDARS does not predict model performance.
+CEDARS starts from three user intentions: assess one AI system already selected or in use, compare like-for-like candidates, or assess a model being developed/evaluated. The underlying record supports single-task imaging AI, LLM/foundation-model and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an **AI Research Label**. CEDARS does not predict model performance.
 
 ### Improve
 
 The Improve workspace separates **current practice** from **future scenarios**. Opportunities are ranked from the current assessment when CEDARS can model them; guidance-only AI/informatics checks remain explicitly non-quantified unless sufficient inputs exist.
 
-### Report (& Share)
+### Report & Share
 
 Reporting is organized around:
 

@@ -19,13 +19,15 @@
 - `ROADMAP.md` for shared implementation planning.
 
 ### Changed
+- Navigation now follows **Set up → See footprint → Improve → Score & EcoLabel → Report & Share**, with result-first Department and AI footprint summaries and technical detail progressively disclosed beneath them.
+- AI Model & Informatics now starts from three user intentions: assess an AI system already selected/in use, compare candidates, or assess a model being developed. Candidate comparison keeps essential inputs, side-by-side results, and model selection in one decision workflow.
 - Department device duty-cycle profiles are normalized to the average calendar month (730.5 h) before annualization; this removes the prior 31-day-month overcount while preserving each device's relative state mix.
 - Avoidable-idle accounting now measures only the recoverable power-state delta; MRI/CT full-shutdown uses the named Off state, PET-CT is excluded from full shutdown, and overlapping idle interventions are not double-counted.
 - PACS/RIS application-server power is explicitly separated from long-term archive storage. Server consolidation is now a transparent 20% scenario estimate on the modeled PACS/RIS + workstation compute pool rather than a cloud-PUE-derived saving.
 - DICOM transfer uses modality-specific study sizes instead of one 0.3 GB/study average; everyday-equivalency factors are centralized in the model layer.
 - Equipment overrides now carry their actual provenance into dashboard/export rows; user-entered values are no longer automatically labeled measured.
 - Renewable electricity percentages are disclosure-only in the location-based carbon inventory; they no longer linearly reduce Department, AI, or cloud carbon factors. The renewable intervention is planning guidance until a separate market-based factor is implemented.
-- Homepage journey is now **Input → Score → Improve → Share**.
+- Homepage setup is the primary entry decision; later stages follow the same five-stage assessment journey instead of competing as separate starting points.
 - The AI pathway keeps the name **AI Model & Informatics** (the earlier plan to rename it *AI Footprint* was reversed for clarity against the Department pathway); README and docs now match the interface.
 - The AI Research Label is now a view of the single AI model record rather than a separately-edited copy; the former "mirror until edited" behaviour and its drift are gone. Training energy per run is the model's own figure (measured, GPU-hours, or literature) times the number of runs.
 - Header score badge is pathway-aware: it shows the AI model's score in the AI pathway, the Department score elsewhere.
