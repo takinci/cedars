@@ -117,9 +117,9 @@ const IMPROVE_INTERVENTION_META = {
     links:[['Rockall et al., JACR 2025','https://doi.org/10.1016/j.jacr.2025.02.009']],
   },
   'Consolidate servers': {
-    description:'Consolidate under-used server capacity through right-sizing or virtualization where reliability requirements permit.',
-    category:'Compute', status:'Modeled',
-    reason:'Acts on the modeled server/compute energy pool rather than the entire department.',
+    description:'Consolidate under-used PACS/RIS or workstation compute through right-sizing or virtualization where reliability requirements permit.',
+    category:'Compute', status:'Scenario estimate',
+    reason:'CEDARS tests a 20% reduction of the modeled PACS/RIS + workstation compute pool; replace with local metering for reporting of record.',
     links:[['Doo et al., JACR 2024','https://doi.org/10.1016/j.jacr.2023.11.011']],
   },
   'Use smaller or more efficient AI models': {
@@ -228,7 +228,7 @@ const AI_IMPROVE_PROCURE = [
 ];
 
 import {
-  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
+  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeEquivalencies, computeDicomTransfer, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
 } from './model.js';
 
 
@@ -257,7 +257,7 @@ const FLUORO_TOOLTIP    = 'Direct power-sensor measurements on a multipurpose fl
 const XRAY_TOOLTIP      = 'Active 12 kW estimated from AJR 2025 CT/radiography energy review (doi:10.2214/AJR.25.33951) and AJR 2023 (doi:10.2214/AJR.23.30189). Idle substantially lower than CT due to absence of high-power x-ray tube standby. High throughput (2,500+ scans/month) gives low per-scan footprint.';
 const ULTRASOUND_TOOLTIP= 'Active draw ~1.5 kW — lowest energy imaging modality by a large margin. References: EUF 2023 systematic review (doi:10.1016/j.euf.2023.09.009), Vosshenrich et al. Curr Opin Urol 2024 (doi:10.1097/MOU.0000000000001337). High scan volumes give lowest kWh/scan across all modalities.';
 const MAMMO_TOOLTIP     = 'Corrected 2026-08: Rossini et al. 2026 (doi:10.1007/s00330-026-12373-2), minute-by-minute power monitoring on 3 real mammography units, reports ~1,660-2,300 kWh/yr per machine — mammography’s x-ray exposure is brief and low-power (net energy just 0.05-0.09 kWh/exam), so power draw here is dominated by idle/standby baseload, not active scanning. Screening programmes have seasonal throughput variation — adjust scans accordingly.';
-const PACS_TOOLTIP      = 'Server/PACS infrastructure draws near-constant power in all states (4 kW baseline per rack/server set). Coarse estimate from general data-center literature (a fully-populated 42U rack typically draws 3-5 kW) — no dedicated medical-PACS power study found. Virtualisation and server consolidation can reduce this by 20–40% (Doo 2024, doi:10.1148/radiol.232030).';
+const PACS_TOOLTIP      = 'PACS/RIS application-server infrastructure is modeled separately from long-term archive storage. The 4 kW baseline per server/rack set is a coarse general-data-center estimate because no dedicated medical-PACS power study was found. The Improve workspace treats consolidation/right-sizing as a 20% CEDARS scenario estimate, not a universal measured saving; replace with local metering when available.';
 const WS_TOOLTIP        = 'Active 117.4 W, standby 54.2 W, off 18.2 W per workstation — direct power measurements (3 workstations, 6-month routine-use period) from Büttner et al. 2021 (Eur J Radiol Open, doi:10.1016/j.ejro.2020.100320), "Switching off for future." Büttner\'s model doesn\'t distinguish idle from powered-on, so idle = active here. A 4-workstation department uses ~3.3 MWh/yr; screen-saver and end-of-day shutdown policies capture most of the avoidable idle energy. Count shared reading stations only.';
 
 const MRI_CARDS = [
@@ -291,7 +291,7 @@ const OTHER_CARDS = [
   {key:'xray',        label:'Radiography',           Icon:Zap,      tooltip:XRAY_TOOLTIP},
   {key:'ultrasound',  label:'Ultrasound',      Icon:Droplets, tooltip:ULTRASOUND_TOOLTIP},
   {key:'mammography', label:'Mammography',     Icon:Target,   tooltip:MAMMO_TOOLTIP},
-  {key:'pacs',        label:'PACS/Servers',    Icon:Server,   tooltip:PACS_TOOLTIP},
+  {key:'pacs',        label:'PACS/RIS servers', Icon:Server,   tooltip:PACS_TOOLTIP},
   {key:'workstations',label:'Workstations',    Icon:Monitor,  tooltip:WS_TOOLTIP},
 ];
 
@@ -519,9 +519,7 @@ const PRECISION_FACTOR = {
 
 
 
-const NET_KWH_PER_GB   = 0.001; // kWh/GB fixed-line data-centre average (Aslan et al. 2018)
 const STAFF_DAYS_PER_MO = 22;  // standard working days per month
-const AVG_STUDY_GB     = 0.3;  // weighted avg DICOM study: MRI ~1 GB, CT ~0.5 GB, Radiography ~0.05 GB
 
 
 const META = {
@@ -2574,10 +2572,20 @@ function App() {
     return rnd(staffCount * staffCommuteKm * 2 * STAFF_DAYS_PER_MO * mult * CAR_CO2_KG_KM, 1);
   }, [staffCommuteAssessed, staffCount, staffCommuteKm, settings.timePeriod]);
 
-  const networkTransferCo2 = useMemo(() => {
+  const networkTransfer = useMemo(() => {
     const ci = getCI(settings.region, settings.customCi);
-    return rnd(dash.scopes.imagingScans * AVG_STUDY_GB * NET_KWH_PER_GB * ci, 2);
-  }, [dash.scopes.imagingScans, settings.region, settings.customCi]);
+    const remainingStudyFraction = dash.clinicalBasis?.imagingScans > 0
+      ? dash.scopes.imagingScans / dash.clinicalBasis.imagingScans
+      : 1;
+    return computeDicomTransfer({
+      equipment: settings.equipment,
+      timePeriod: settings.timePeriod,
+      overrides: settings.equipmentOverrides,
+      remainingStudyFraction,
+      ci,
+    });
+  }, [settings.equipment, settings.timePeriod, settings.equipmentOverrides, settings.region, settings.customCi, dash.scopes.imagingScans, dash.clinicalBasis]);
+  const networkTransferCo2 = networkTransfer.co2Kg;
 
   const sciPerStudy = useMemo(() => {
     if (!dash.scopes.imagingScans || !dash.totals.energyPerScan) return null;
@@ -2612,26 +2620,8 @@ function App() {
     const price = getPrice(settings.region, settings.electricityPrice);
     return {
       co2, kwh,
-      // Money — kWh-based (electricity cost only)
       cost: kwh * price, pricePerKwh: price, sym: currencySym(settings.region),
-      // Transport — CO₂-based
-      car_km:        Math.round(co2 / 0.17),        // avg petrol car DEFRA 2023
-      car_years:     rnd(co2 / 2100, 2),            // avg EU car 2.1 tCO₂e/yr (EEA 2023)
-      flights_short: rnd(co2 / 255, 1),             // economy short-haul seat (ICAO 2023)
-      flights_long:  rnd(co2 / 1200, 1),            // economy transatlantic seat (ICAO 2023)
-      // Home & energy — kWh-based
-      homes:         rnd(kwh / 3500, 2),            // avg EU household electricity 3 500 kWh/yr
-      phone_charges: Math.round(kwh / 0.012),       // smartphone 12 Wh per charge
-      led_years:     Math.round(kwh / 50),          // 60 W→10 W LED saves 50 kWh/yr
-      tea_cups:      Math.round(kwh / 0.025),       // 250 ml kettle boil ~0.025 kWh
-      laptop_days:   Math.round(kwh / 0.24),        // 30 W × 8 h/day
-      stream_hours:  Math.round(kwh / 0.1),         // TV streaming ~100 W device
-      // Nature — CO₂-based
-      trees_year:    Math.round(co2 / 21),          // 1 tree ~21 kgCO₂/yr absorbed
-      forest_ha:     rnd(co2 / 5500, 3),            // temperate forest ~5.5 tCO₂/ha/yr (FAO)
-      // Fossil fuels — CO₂-based
-      barrels_oil:   rnd(co2 / 430, 1),             // crude oil combustion EPA (0.43 tCO₂/barrel)
-      tonnes_coal:   rnd(co2 / 2350, 2),            // bituminous coal ~2 350 kgCO₂/tonne (IPCC)
+      ...computeEquivalencies(co2, kwh),
     };
   }, [dash, equivScope, staffCommuteCo2, networkTransferCo2, settings.region, settings.electricityPrice]);
   const resultPeriodPhrase = settings.timePeriod === 'Annual' ? 'For one year' : settings.timePeriod === 'Quarterly' ? 'For this quarter' : 'For this month';
@@ -3734,7 +3724,7 @@ function App() {
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={dash.scopes.scope3TravelAssessed?fmtCo2(dash.scopes.scope3TravelKg):'Not assessed'} sub={dash.scopes.scope3TravelAssessed?`${dash.scopes.imagingScans.toLocaleString()} scans × ${settings.patientTravelKm} km local avg round trip · passenger-car factor · Extended estimate.`:`Enter a local average round-trip distance to assess. A ${PATIENT_KM_RT} km screening reference (${fmtCo2(dash.scopes.scope3TravelScreeningKg)}) is not included in the reported subtotal.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
               <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={staffCommuteAssessed?fmtCo2(staffCommuteCo2):'Not assessed'} sub={staffCommuteAssessed?`${staffCount} staff × ${staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo · passenger-car factor · Extended estimate.`:'Enter both local staff count and average commute distance. CEDARS no longer infers FTE from scanner counts.'}/>
-              <Card icon={<Wifi/>}       title="Scope 3 — Data transfer"   value={fmtCo2(networkTransferCo2)}         sub={`${dash.scopes.imagingScans.toLocaleString()} studies × ${AVG_STUDY_GB} GB avg × 0.001 kWh/GB. DICOM network energy (Aslan et al. 2018).`}/>
+              <Card icon={<Wifi/>}       title="Scope 3 — Data transfer"   value={fmtCo2(networkTransferCo2)}         sub={`${networkTransfer.gb.toLocaleString()} GB from modality-specific study sizes × 0.001 kWh/GB. Fixed-line network segment only (Aslan et al. 2018).`}/>
               {dash.scopes.scope3CloudStorageKg>0&&<Card icon={<Database/>} title="Scope 3 — Cloud archive electricity" value={fmtCo2(dash.scopes.scope3CloudStorageKg)} sub={`Cloud archive carbon uses ${dash.storage.ci} kgCO₂e/kWh rather than the hospital grid.`}/>}
             </div>
             <section style={{marginTop:16}}>
@@ -3781,7 +3771,7 @@ function App() {
             <div className="inputSummary" style={{marginTop:16}}>
               <h3 style={{marginTop:0,marginBottom:6,color:'#1b5e20',fontSize:15}}>Data storage &amp; archiving</h3>
               <p className="note" style={{marginBottom:12,fontSize:12}}>
-                Long-term PACS/archive footprint, derived from your fleet's study volumes × per-modality file sizes, held over the retention period and added to the department total above. Separate from the PACS/reading servers and from DICOM transfer. Editable estimates — storage levers and savings from Jia et al. <em>Eur Radiol</em> 2026<Ref id="jia-eurradiol-2026" order={DEPT_STORAGE_REFS}/> (axial-only storage −69%, cloud −40 to −80%, 8-year retention −38%, all three −89%); per-modality file sizes from Doo et al. <em>JACR</em> 2024<Ref id="doo-jacr-cloud-2024" order={DEPT_STORAGE_REFS}/>.
+                Long-term PACS/archive footprint, derived from your fleet's study volumes × per-modality file sizes, held over the retention period and added to the department total above. Separate from PACS/RIS application-server power and from DICOM transfer. CEDARS models axial-only CT/PET-CT storage as a conservative 60% reduction; Jia et al. <em>Eur Radiol</em> 2026<Ref id="jia-eurradiol-2026" order={DEPT_STORAGE_REFS}/> reported up to ~69% in their cohort (with larger reductions for combined strategies). Per-modality file sizes are from Doo et al. <em>JACR</em> 2024<Ref id="doo-jacr-cloud-2024" order={DEPT_STORAGE_REFS}/>.
               </p>
               <div style={{display:'flex',gap:14,flexWrap:'wrap',alignItems:'center',marginBottom:14}}>
                 <label style={{flexDirection:'row',alignItems:'center',gap:8,fontSize:12,fontWeight:700,color:'#2E7D32'}}>
@@ -4916,13 +4906,12 @@ function App() {
                       </div>
                     </section>
 
-                    {(scenario.usesScanner||scenario.usesCloud) && <section className="improveAssumptions">
+                    {scenario.usesCloud && <section className="improveAssumptions">
                       <h3>Scenario-specific assumptions</h3>
                       <div className="grid">
-                        {scenario.usesScanner&&<Sel label="Scanner state target" value={scen.scannerState} options={META.scannerStates} onChange={v=>setS('scannerState',v)}/>}
-                        {scenario.usesCloud&&<Sel label="Cloud provider" value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>}
+                        <Sel label="Cloud provider" value={scen.cloudProvider} options={META.cloudProviders} onChange={v=>setS('cloudProvider',v)}/>
                       </div>
-                      <p className="note">{scenario.usesScanner&&<>The scanner target controls the modeled depth of overnight/standby power reduction. </>}{scenario.usesCloud&&<>The compute-region scenario uses {scen.cloudProvider}'s modeled carbon intensity rather than the local department grid.</>}</p>
+                      <p className="note">The lower-carbon compute-region scenario uses {scen.cloudProvider}'s modeled carbon intensity rather than the local department grid. Scanner shutdown/standby levers now use their named target states directly.</p>
                     </section>}
                   </div>
 

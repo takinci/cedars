@@ -19,6 +19,10 @@
 - `ROADMAP.md` for shared implementation planning.
 
 ### Changed
+- Department device duty-cycle profiles are normalized to the average calendar month (730.5 h) before annualization; this removes the prior 31-day-month overcount while preserving each device's relative state mix.
+- Avoidable-idle accounting now measures only the recoverable power-state delta; MRI/CT full-shutdown uses the named Off state, PET-CT is excluded from full shutdown, and overlapping idle interventions are not double-counted.
+- PACS/RIS application-server power is explicitly separated from long-term archive storage. Server consolidation is now a transparent 20% scenario estimate on the modeled PACS/RIS + workstation compute pool rather than a cloud-PUE-derived saving.
+- DICOM transfer uses modality-specific study sizes instead of one 0.3 GB/study average; everyday-equivalency factors are centralized in the model layer.
 - Equipment overrides now carry their actual provenance into dashboard/export rows; user-entered values are no longer automatically labeled measured.
 - Renewable electricity percentages are disclosure-only in the location-based carbon inventory; they no longer linearly reduce Department, AI, or cloud carbon factors. The renewable intervention is planning guidance until a separate market-based factor is implemented.
 - Homepage journey is now **Input → Score → Improve → Share**.

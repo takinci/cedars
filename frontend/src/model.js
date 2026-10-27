@@ -8,6 +8,8 @@ import { getCI, CARBON_INTENSITY } from './calc.js';
 // Imaging data storage — per-study file sizes (MB) by modality (Doo et al. JACR 2024, Fig 2;
 // CT with reformats from Jia et al. Eur Radiol 2026). Editable estimates; vary by site/compression.
 const MODALITY_MB = {MRI:350, CT:700, 'PET-CT':1700, 'Radiography':10, Ultrasound:300, 'Angio/IR':350, Fluoroscopy:120};
+// DICOM transfer uses source-study sizes rather than CT's larger archive-with-reformats default.
+const DICOM_TRANSFER_MB = {...MODALITY_MB, CT:300};
 
 // Storage energy intensity (kWh per TB per year, all-in incl. servers, network, PUE) — corrected
 // 2026-08. Jia et al. 2026's own formula (HDD + servers ÷ TB/server + network ÷ TB/server, × PUE)
@@ -28,6 +30,14 @@ const STORAGE_KWH_PER_TB_ONPREM = 7.9;
 const STORAGE_KWH_PER_TB_CLOUD  = 4.8;
 
 const TIME_MULT = {Monthly: 1, Quarterly: 3, Annual: 12};
+
+// Duty-cycle tables are expressed as representative monthly state hours. Normalize each profile
+// to the average Gregorian month so Monthly × 12 reconciles to 365.25 days rather than 372 days.
+const AVERAGE_MONTH_HOURS = 365.25 * 24 / 12;
+
+// Conservative CEDARS assumption: retain 40% of CT/PET-CT data with axial-only storage (60%
+// reduction), while Jia et al. 2026 reported up to ~69% in their cohort.
+const AXIAL_ONLY_RETAINED_FRACTION = 0.40;
 
 const TIME_LABEL = {Monthly: "/mo", Quarterly: "/qtr", Annual: "/yr"};
 
@@ -134,7 +144,7 @@ const EQUIPMENT_UNITS = {
   // standby_kw/off_kw here are back-solved to reproduce the real annual total at this table's
   // own hour split and scan volume — see sources.md for the derivation.
   mammography: {name:"Mammography",    modality:"Radiography",      active_kw:0.5, idle_kw:0.2, standby_kw:0.15, off_kw:0.1,  active_h:100, idle_h:250, standby_h:300, off_h:94, avoidable_idle_h:80,  scans:800},
-  pacs:        {name:"PACS / Servers", modality:"PACS/RIS",   active_kw:4,   idle_kw:4,   standby_kw:4,   off_kw:4,    active_h:160, idle_h:300, standby_h:250, off_h:34,  avoidable_idle_h:120, scans:0},
+  pacs:        {name:"PACS / RIS application servers", modality:"PACS/RIS", active_kw:4, idle_kw:4, standby_kw:4, off_kw:4, active_h:160, idle_h:300, standby_h:250, off_h:34, avoidable_idle_h:120, scans:0},
   // Hour split corrected 2026-08 (was active_h:160, idle_h:300, off_h:34; standby_h:250
   // unchanged): Walters et al. 2024 (Clin Radiol, Walters-2024) logged real on/off time on 88
   // reporting workstations before an automated shutdown protocol — 148 h/week on, i.e. ~87
@@ -178,8 +188,19 @@ function buildFleet(equipment, overrides = {}) {
       const u = overridden
         ? {...base, ...Object.fromEntries(setFields.map(f => [f, Number(ov[f])]))}
         : base;
+      const stateHourTotal = ['active_h','idle_h','standby_h','off_h']
+        .reduce((sum, field) => sum + Math.max(0, Number(u[field]) || 0), 0);
+      const hourScale = stateHourTotal > 0 ? AVERAGE_MONTH_HOURS / stateHourTotal : 1;
+      const normalizedHours = {
+        active_h: Math.max(0, Number(u.active_h) || 0) * hourScale,
+        idle_h: Math.max(0, Number(u.idle_h) || 0) * hourScale,
+        standby_h: Math.max(0, Number(u.standby_h) || 0) * hourScale,
+        off_h: Math.max(0, Number(u.off_h) || 0) * hourScale,
+        avoidable_idle_h: Math.max(0, Number(u.avoidable_idle_h) || 0) * hourScale,
+      };
       return {
         ...u,
+        ...normalizedHours,
         key,
         overrideFields: setFields,
         count:      n,                    // unit count — used to scale embodied carbon per device
@@ -218,10 +239,9 @@ function equipmentProvenanceSummary(eq, inputProvenance = {}) {
 // LLM-Energy PDF (model efficiency), Clinical-AI PDF (virtualisation).
 // Replace kwh values with before/after metering for your department.
 const INTERVENTIONS = {
-  // idle 15 kW × 8 h/night × ~20 nights ≈ 2 400 kWh/month (JMRI-2023, Radiol-243453)
-  "Turn MRI/CT scanners off overnight":      {kwh: 2400, note: "Eliminates ~8 h/night idle draw on MRI and CT. (JMRI 2023, Radiol 2024)"},
-  // standby ~40–60 % lower than idle (Herrmann 2012, CJRS 2022)
-  "Use standby mode during inactive periods":{kwh: 1200, note: "Drops idle to standby during low-activity windows. (Herrmann 2012, CJRS 2022)"},
+  // Fleet-based power-state deltas; no fixed departmental kWh credit is applied.
+  "Turn MRI/CT scanners off overnight":      {kwh:0, note: "Moves eligible MRI/CT avoidable-idle hours from Idle to each device's modeled Off state. PET-CT is excluded because full shutdown can require lengthy recalibration. Replace with local power-state logs where available. (Woolen 2023; Heye 2020; Hernandez 2026)"},
+  "Use standby mode during inactive periods":{kwh:0, note: "Moves avoidable-idle hours from Idle to each device's modeled Standby state where that state uses less power. Replace with local power-state logs where available. (Herrmann 2012; CJRS 2022)"},
   // reducing 5–10 % unnecessary scans (McKee 2024, ESR PP 2025)
   "Reduce low-value imaging":                {kwh:0, pool:'scanner-active', fraction:0.05, note: "Appropriateness-guided ordering reduces unnecessary acquisitions. CEDARS models a conservative 5% scenario reduction of remaining active-scanner energy; replace with a local measured/target rate when available. (McKee 2024; ESR PP 2025)"},
   // tighter scheduling cuts dead-time idle (IJHCQA 2016)
@@ -238,8 +258,9 @@ const INTERVENTIONS = {
   "Reduce paper and film printing":          {kwh:0, guidanceOnly:true, note: "Reduce paper/film use. No automatic electricity credit is applied without a measured printer/processor load; report material savings separately."},
   // embodied carbon amortised over more years (ESR PP 2025, Scope 3)
   "Extend hardware lifetime":                {kwh: 0, scope3EmbPct: 15, note: "Amortises embodied hardware carbon over more years; does not reduce operational electricity. (ESR PP 2025)"},
-  // virtualisation / right-sizing (Clinical-AI PDF, Doo 2024)
-  "Consolidate servers":                     {kwh:  500, note: "Virtualisation reduces physical server count. (Doo 2024, Clinical-AI)"},
+  // Qualitative evidence supports consolidation/right-sizing; 20% is an explicit CEDARS
+  // scenario assumption rather than a universal measured effect.
+  "Consolidate servers":                     {kwh:0, pool:'server', fraction:0.20, note: "Right-size or consolidate under-used PACS/RIS and workstation compute. CEDARS applies a 20% scenario reduction to that modeled server/workstation energy pool; replace with before/after metering for reporting of record. (Doo et al. JACR 2024)"},
   // lighter models use less inference compute (LLM-Energy PDF)
   "Use smaller or more efficient AI models": {kwh:0, pool:'ai-inference', fraction:0.20, note: "Right-size models to the clinical task. CEDARS models a 20% scenario reduction of deployed inference energy when Clinical AI is configured; replace with measured candidate energy when available. (Doo 2024; LLM energy literature)"},
   // data storage levers — savings computed dynamically against the storage footprint (Jia 2026; Doo 2024)
@@ -279,7 +300,26 @@ const EMBODIED_KG_MO = {
 // marked assessed. They remain exported so the UI can show an explicitly non-reported reference.
 const PATIENT_KM_RT    = 20;   // screening reference: average round-trip patient travel km
 
-const CAR_CO2_KG_KM    = 0.17; // kgCO₂e/km average car (DEFRA 2023)
+const EQUIVALENCY_FACTORS = Object.freeze({
+  carKgCo2PerKm: 0.17,
+  carKgCo2PerYear: 2100,
+  shortFlightKgCo2: 255,
+  longFlightKgCo2: 1200,
+  householdKwhPerYear: 3500,
+  phoneKwhPerCharge: 0.012,
+  ledKwhSavedPerYear: 50,
+  teaKwhPerCup: 0.025,
+  laptopKwhPerDay: 0.24,
+  streamKwhPerHour: 0.1,
+  treeKgCo2PerYear: 21,
+  forestKgCo2PerHaYear: 5500,
+  oilKgCo2PerBarrel: 430,
+  coalKgCo2PerTonne: 2350,
+});
+const CAR_CO2_KG_KM = EQUIVALENCY_FACTORS.carKgCo2PerKm; // DEFRA 2023
+
+// Fixed-line data-centre network segment only; end-user devices / last-mile are excluded.
+const NET_KWH_PER_GB = 0.001; // Aslan et al. 2018
 
 const PAPER_G_PER_ENC  = 25;   // screening reference: g paper per encounter in digital workflow
 
@@ -327,6 +367,27 @@ const safeTimeMult = period => own(TIME_MULT,period)?TIME_MULT[period]:1;
 const safeTimeLabel = period => own(TIME_LABEL,period)?TIME_LABEL[period]:TIME_LABEL.Monthly;
 const safeCloud = provider => own(CLOUD,provider)?CLOUD[provider]:CLOUD["Local compute"];
 function sanitizeRetentionYears(value,fallback=10){const n=Number(value);return Number.isFinite(n)&&n>=0&&n<=100?n:fallback;}
+function computeEquivalencies(co2Kg=0,kwh=0){
+  const co2=Math.max(0,Number(co2Kg)||0),energy=Math.max(0,Number(kwh)||0),f=EQUIVALENCY_FACTORS;
+  const homes=rnd(energy/f.householdKwhPerYear,2);
+  return {
+    car_km:Math.round(co2/f.carKgCo2PerKm), car_years:rnd(co2/f.carKgCo2PerYear,2),
+    flights_short:rnd(co2/f.shortFlightKgCo2,1), flights_long:rnd(co2/f.longFlightKgCo2,1),
+    homes, household_years:homes, phone_charges:Math.round(energy/f.phoneKwhPerCharge),
+    led_years:Math.round(energy/f.ledKwhSavedPerYear), tea_cups:Math.round(energy/f.teaKwhPerCup),
+    laptop_days:Math.round(energy/f.laptopKwhPerDay), stream_hours:Math.round(energy/f.streamKwhPerHour),
+    trees_year:Math.round(co2/f.treeKgCo2PerYear), forest_ha:rnd(co2/f.forestKgCo2PerHaYear,3),
+    barrels_oil:rnd(co2/f.oilKgCo2PerBarrel,1), tonnes_coal:rnd(co2/f.coalKgCo2PerTonne,2),
+  };
+}
+function computeDicomTransfer({equipment=DEFAULT_EQUIPMENT,timePeriod='Monthly',overrides={},remainingStudyFraction=1,ci=0}={}){
+  const mult=safeTimeMult(timePeriod), keep=Math.min(1,Math.max(0,Number(remainingStudyFraction)||0));
+  const gb=buildFleet(equipment,overrides)
+    .filter(eq=>IMAGING_MODALITIES.has(eq.modality))
+    .reduce((sum,eq)=>sum+(eq.scans*mult*(DICOM_TRANSFER_MB[eq.modality]||0)/1000),0)*keep;
+  const kwh=gb*NET_KWH_PER_GB;
+  return {gb:rnd(gb,2),kwh:rnd(kwh,4),co2Kg:rnd(kwh*Math.max(0,Number(ci)||0),2)};
+}
 function computeClinicalScannerSavings({imagingScans=0,scannerActiveKwh=0,avoidedFrac=0,scanTimeFrac=0}={}){const scans=Number.isFinite(Number(imagingScans))?Math.max(0,Number(imagingScans)):0;const activeKwh=Number.isFinite(Number(scannerActiveKwh))?Math.max(0,Number(scannerActiveKwh)):0;const avoid=boundedFraction(avoidedFrac),scan=boundedFraction(scanTimeFrac);const avoidedEnergyKwh=activeKwh*avoid;const remainingActiveKwh=Math.max(0,activeKwh-avoidedEnergyKwh);const scanTimeEnergyKwh=remainingActiveKwh*scan;const savedKwh=Math.min(activeKwh,avoidedEnergyKwh+scanTimeEnergyKwh);return{avoidedFrac:avoid,scanTimeFrac:scan,scansAvoided:Math.round(scans*avoid),remainingScans:scans*(1-avoid),avoidedEnergyKwh:rnd(avoidedEnergyKwh,2),scanTimeEnergyKwh:rnd(scanTimeEnergyKwh,2),savedKwh:rnd(savedKwh,2)};}
 function computeUtilizationAdjustedEnergy({annualKwh=0,annualActiveKwh=0,capacityYr=0,studiesYr=0}={}){const total=Math.max(0,Number(annualKwh)||0),active=Math.min(total,Math.max(0,Number(annualActiveKwh)||0)),cap=Math.max(0,Number(capacityYr)||0),studies=Math.max(0,Number(studiesYr)||0);if(!(cap>0)||!(studies>0))return{util:0,modeledAnnualKwh:total,energyPerStudy:studies>0?total/studies:0,nonProductivePct:total>0?rnd((total-active)/total*100,1):0};const util=studies/cap;const fixed=Math.max(0,total-active);const scaledActive=active*util;const modeled=fixed+scaledActive;return{util,modeledAnnualKwh:rnd(modeled,2),energyPerStudy:rnd(modeled/studies,4),nonProductivePct:modeled>0?rnd(fixed/modeled*100,1):0};}
 
@@ -340,7 +401,9 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     const activeKwh    = eq.active_kw * eq.active_h * mult;
     const idleKwh      = (eq.idle_kw * eq.idle_h + eq.standby_kw * eq.standby_h) * mult;
     const kgco2e       = kwh * ci;
-    const idleWasteKwh = eq.idle_kw * eq.avoidable_idle_h * mult;
+    // Recoverable idle is the delta to the lowest modeled non-active state, not the entire idle load.
+    const lowestNonActiveKw = Math.min(eq.idle_kw, eq.standby_kw, eq.off_kw);
+    const idleWasteKwh = Math.max(0, eq.idle_kw - lowestNonActiveKw) * eq.avoidable_idle_h * mult;
     const scans        = eq.scans * mult;
     const isImaging    = IMAGING_MODALITIES.has(eq.modality);
     return {equipment: eq.name, modality: eq.modality,
@@ -393,12 +456,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // energy intensity (on-prem or cloud). Axial-only avoids non-essential CT/PET reformats. The
   // period-scaled result is added to the department totals, so it flows into carbon, cost, and grade.
   const _retention = sanitizeRetentionYears(storage.retentionYears, 10);
-  const _reformat   = mod => (storage.reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? 0.4 : 1;
-  // REVIEW (2026-09, not yet fixed) — the model uses a 60% reduction while the intervention note
-  // cites "up to ~69% less CT storage" (Jia 2026). These can legitimately coexist: 60% may be a
-  // conservative modelling assumption and 69% a reported best case. The code should document that
-  // distinction and use a named assumption constant (e.g. AXIAL_ONLY_RETAINED_FRACTION) so the
-  // modelled default is explicit; the citation text need not be forced to equal the default.
+  const _reformat   = mod => (storage.reformats === 'axial' && (mod === 'CT' || mod === 'PET-CT')) ? AXIAL_ONLY_RETAINED_FRACTION : 1;
   const _annualDataTB = fleet.reduce((s, eq) => s + (eq.scans * 12) * (MODALITY_MB[eq.modality] || 0) * _reformat(eq.modality), 0) / 1e6 * (1 - _avoid);
   const _storedTB   = _annualDataTB * _retention;
   // Custom intensity (measured server density/PUE) fully overrides whichever on-prem/cloud
@@ -508,22 +566,7 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
     carbonPools:{localKwh:rnd(_localOperationalKwh + (storage.cloud?0:storageKwh),2), localCi:ci, cloudAiKwh:_aiCloudKwh, cloudAiCo2:_aiCloudCo2, cloudAiInferenceKwh:_aiCloudInferenceKwh, cloudAiInferenceCo2:_aiCloudInferenceCo2, cloudAiTrainingKwh:_aiCloudTrainingKwh, cloudAiTrainingCo2:_aiCloudTrainingCo2, cloudStorageKwh:storage.cloud?storageKwh:0, cloudStorageCi:storage.cloud?storageCi:null},
     clinicalMeta,
     clinicalBasis:{imagingScans:baseImagingScans,scannerActiveKwh:rnd(scannerActiveKwh,2)},
-    // REVIEW (2026-09, not yet fixed) — every divisor below is duplicated as a bare literal in
-    // main.jsx's `equivData` memo (car 0.17, phone 0.012, household 3500, trees 21, flights 255),
-    // so the same equivalency is maintained in two places and can diverge on a future edit. Worse,
-    // `totalCo2 / 0.17` re-inlines a value this module already exports as CAR_CO2_KG_KM and uses by
-    // name for scope3TravelKg twelve lines up. Fix: hoist one exported EQUIVALENCIES table
-    // ({car_km: CAR_CO2_KG_KM, trees_year: 21, …}) plus a `toEquivalencies(kwh, co2)` helper, and
-    // have both this return value and main.jsx call it. main.jsx's version carries extra rows
-    // (car_years, flights_long, forest_ha, barrels_oil, tonnes_coal), so the helper should be the
-    // superset and this object a projection of it.
-    equivalencies: {
-      car_km:          rnd(totalCo2 / 0.17,   0),
-      phone_charges:   rnd(totalKwh / 0.012,  0),
-      household_years: rnd(totalKwh / 3500,   2),
-      trees_year:      rnd(totalCo2 / 21,     1), // 1 tree absorbs ~21 kgCO₂/yr
-      flights_short:   rnd(totalCo2 / 255,    1), // avg short-haul economy seat ~255 kgCO₂ (ICAO 2023)
-    },
+    equivalencies: computeEquivalencies(totalCo2, totalKwh),
     ci, region, timePeriod,
   };
 }
@@ -536,8 +579,6 @@ const SCANNER_STATE_INTERVENTIONS = new Set([
 
 const CLOUD_INTERVENTIONS = new Set([
   'Move computation to lower-carbon regions',
-  'Consolidate servers',
-  'Use renewable electricity',
 ]);
 
 // Data-storage levers — savings computed dynamically against the archive footprint (delta from
@@ -581,32 +622,41 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   // requires a separate contractual/supplier emissions factor rather than a linear percentage cut.
   const renewableTarget=currentRen;
   const currentLocalCi=ci, scenarioLocalCi=ci;
-  const STATE_FIELD={Active:'active_kw',Idle:'idle_kw',Standby:'standby_kw',Off:'off_kw'};
-  const targetField=own(STATE_FIELD,scannerState)?STATE_FIELD[scannerState]:'standby_kw';
   const imaging=fleet.filter(eq=>IMAGING_MODALITIES.has(eq.modality));
   const scannerActiveRaw=imaging.reduce((s,eq)=>s+eq.active_kw*eq.active_h*mult,0);
   const scannerActivePool=Math.max(0,scannerActiveRaw-(base.clinicalMeta?.scannerSavedKwh||0));
-  const avoidableIdlePool=fleet.reduce((s,eq)=>s+eq.idle_kw*eq.avoidable_idle_h*mult,0);
   const serverPool=fleet.filter(eq=>['PACS/RIS','Workstation'].includes(eq.modality)).reduce((s,eq)=>s+(eq.active_kw*eq.active_h+eq.idle_kw*eq.idle_h+eq.standby_kw*eq.standby_h+eq.off_kw*eq.off_h)*mult,0);
   const aiLocalInferencePool=Math.max(0,base.clinicalMeta?.aiLocalInferenceKwh||0), aiCloudInferencePool=Math.max(0,base.clinicalMeta?.aiCloudInferenceKwh||0);
   const fracFor=pool=>1-list.filter(n=>INTERVENTIONS[n]?.pool===pool).reduce((keep,n)=>keep*(1-(INTERVENTIONS[n]?.fraction||0)),1);
   const scannerActiveSaving=rnd(scannerActivePool*fracFor('scanner-active'),2);
   const aiRightSizeFrac=fracFor('ai-inference');
   const aiLocalInferenceSaving=rnd(aiLocalInferencePool*aiRightSizeFrac,2), aiCloudInferenceSaving=rnd(aiCloudInferencePool*aiRightSizeFrac,2);
-  const powerdownLevers=list.filter(n=>SCANNER_STATE_INTERVENTIONS.has(n));
-  const powerdownSaving=powerdownLevers.length?Math.max(...powerdownLevers.map(name=>{
-    const onlyCtMri=name==='Turn MRI/CT scanners off overnight';
-    return fleet.filter(eq=>!onlyCtMri||['MRI','CT','PET-CT'].includes(eq.modality)).reduce((s,eq)=>s+Math.max(0,eq.idle_kw-(eq[targetField]??0))*eq.avoidable_idle_h*mult,0);
-  })):0;
-  const scheduleFrac=fracFor('avoidable-idle');
-  const schedulingSaving=rnd(Math.max(0,avoidableIdlePool-powerdownSaving)*scheduleFrac,2);
+
+  // Idle interventions define their own target states. Full shutdown applies to MRI/CT only;
+  // PET-CT is excluded. Scheduling is a partial imaging idle-to-standby opportunity. When selected
+  // together, take the deepest per-device reduction instead of double-counting the same hours.
+  const hasOff=list.includes('Turn MRI/CT scanners off overnight');
+  const hasStandby=list.includes('Use standby mode during inactive periods');
+  const hasScheduling=list.includes('Optimize scheduling');
+  const scheduleFraction=INTERVENTIONS['Optimize scheduling']?.fraction||0;
+  const perDeviceIdleSaving=(eq,includeScheduling)=>{
+    const hours=eq.avoidable_idle_h*mult;
+    let best=0;
+    if(hasStandby)best=Math.max(best,Math.max(0,eq.idle_kw-eq.standby_kw)*hours);
+    if(hasOff&&['MRI','CT'].includes(eq.modality))best=Math.max(best,Math.max(0,eq.idle_kw-eq.off_kw)*hours);
+    if(includeScheduling&&hasScheduling&&IMAGING_MODALITIES.has(eq.modality))best=Math.max(best,Math.max(0,eq.idle_kw-eq.standby_kw)*hours*scheduleFraction);
+    return best;
+  };
+  const powerdownSaving=rnd(fleet.reduce((s,eq)=>s+perDeviceIdleSaving(eq,false),0),2);
+  const combinedIdleSaving=rnd(fleet.reduce((s,eq)=>s+perDeviceIdleSaving(eq,true),0),2);
+  const schedulingSaving=rnd(Math.max(0,combinedIdleSaving-powerdownSaving),2);
   let serverSaving=0;
-  if(list.includes('Consolidate servers')){const localPue=CLOUD['Local compute'].pue;serverSaving=rnd(serverPool*Math.max(0,1-cf.pue/localPue),2);}
+  if(list.includes('Consolidate servers'))serverSaving=rnd(serverPool*(INTERVENTIONS['Consolidate servers'].fraction||0),2);
 
   const stgRet=sanitizeRetentionYears(storage.retentionYears,10), stgCloud=!!storage.cloud, stgRef=storage.reformats==='axial'?'axial':'all';
   const stgCustomRaw=Number(storage.intensityCustom), stgCustom=Number.isFinite(stgCustomRaw)&&stgCustomRaw>0?stgCustomRaw:null;
   const clinicalStorageKeep=1-boundedFraction(clinicalAdj.avoidedFrac||0);
-  const storageState=(cloud,reformats,retention,localCiValue)=>{const rf=mod=>(reformats==='axial'&&(mod==='CT'||mod==='PET-CT'))?0.4:1;const annualTB=fleet.reduce((s,eq)=>s+(eq.scans*12)*(MODALITY_MB[eq.modality]||0)*rf(eq.modality),0)/1e6*clinicalStorageKeep;const intensity=stgCustom!=null?stgCustom:(cloud?STORAGE_KWH_PER_TB_CLOUD:STORAGE_KWH_PER_TB_ONPREM);const kwh=annualTB*retention*intensity*mult/12;const cloudCiRaw=Number(storage.cloudCi);const carbonCi=cloud?(Number.isFinite(cloudCiRaw)&&cloudCiRaw>=0?cloudCiRaw:safeCloud(storage.provider||'AWS').ci):localCiValue;return{kwh,co2:kwh*carbonCi,ci:carbonCi};};
+  const storageState=(cloud,reformats,retention,localCiValue)=>{const rf=mod=>(reformats==='axial'&&(mod==='CT'||mod==='PET-CT'))?AXIAL_ONLY_RETAINED_FRACTION:1;const annualTB=fleet.reduce((s,eq)=>s+(eq.scans*12)*(MODALITY_MB[eq.modality]||0)*rf(eq.modality),0)/1e6*clinicalStorageKeep;const intensity=stgCustom!=null?stgCustom:(cloud?STORAGE_KWH_PER_TB_CLOUD:STORAGE_KWH_PER_TB_ONPREM);const kwh=annualTB*retention*intensity*mult/12;const cloudCiRaw=Number(storage.cloudCi);const carbonCi=cloud?(Number.isFinite(cloudCiRaw)&&cloudCiRaw>=0?cloudCiRaw:safeCloud(storage.provider||'AWS').ci):localCiValue;return{kwh,co2:kwh*carbonCi,ci:carbonCi};};
   const currentStorage=storageState(stgCloud,stgRef,stgRet,currentLocalCi);
   const afterStorage=storageState(list.includes(STORAGE_CLOUD_LEVER)?true:stgCloud,list.includes(STORAGE_AXIAL_LEVER)?'axial':stgRef,list.includes(STORAGE_RETENTION_LEVER)?Math.min(stgRet,8):stgRet,scenarioLocalCi);
   const storageSaving=rnd(Math.max(0,currentStorage.kwh-afterStorage.kwh),2);
@@ -653,7 +703,9 @@ export {
   WATER_PER_KWH,
   EMBODIED_KG_MO,
   PATIENT_KM_RT,
+  EQUIVALENCY_FACTORS,
   CAR_CO2_KG_KM,
+  NET_KWH_PER_GB,
   PAPER_G_PER_ENC,
   HAZ_WASTE_G_SCAN,
   CONTRAST,
@@ -661,6 +713,8 @@ export {
   IMAGING_MODALITIES,
   rnd,
   sanitizeRetentionYears,
+  computeEquivalencies,
+  computeDicomTransfer,
   computeClinicalScannerSavings,
   computeUtilizationAdjustedEnergy,
   computeDashboard,

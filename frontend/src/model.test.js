@@ -4,7 +4,7 @@
 // hand. Weak-proxy travel/resource categories stay unassessed until local values are entered.
 // Run: `npm test`.
 import { describe, it, expect } from 'vitest';
-import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, sanitizeRetentionYears } from './model.js';
+import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDicomTransfer, sanitizeRetentionYears } from './model.js';
 
 // One reference department: 2 CT, 1 MRI 1.5T, 3 Radiography, 2 Ultrasound, 1 PACS, 5 workstations.
 const FLEET = { ct: 2, mri_15t: 1, xray: 3, ultrasound: 2, pacs: 1, workstations: 5 };
@@ -22,6 +22,10 @@ describe('buildFleet — scales specs by count', () => {
     expect(ct.idle_kw).toBe(5.2);   // 2.6 kW × 2
     expect(ct.scans).toBe(3600);    // 1800 × 2
   });
+  it('normalizes each device duty-cycle profile to an average calendar month', () => {
+    const ct = f.find(r => r.modality === 'CT');
+    expect(ct.active_h + ct.idle_h + ct.standby_h + ct.off_h).toBeCloseTo(730.5, 6);
+  });
 });
 
 describe('computeDashboard — FLEET, Germany, Annual', () => {
@@ -30,15 +34,15 @@ describe('computeDashboard — FLEET, Germany, Annual', () => {
     expect(d.scopes.imagingScans).toBe(205200); // (2·1800 + 1000 + 3·2500 + 2·2500) × 12
   });
   it('total energy, carbon, and energy-per-scan', () => {
-    expect(d.totals.kwh).toBeCloseTo(301887.49, 2);
-    expect(d.totals.co2Kg).toBeCloseTo(108679.5, 1);
-    expect(d.totals.energyPerScan).toBeCloseTo(1.471, 3); // kWh ÷ scans
+    expect(d.totals.kwh).toBeCloseTo(296486.17, 2);
+    expect(d.totals.co2Kg).toBeCloseTo(106735.0, 1);
+    expect(d.totals.energyPerScan).toBeCloseTo(1.445, 3); // kWh ÷ scans
   });
   it('carbon = total energy × Germany grid intensity (0.36 kgCO₂e/kWh)', () => {
     expect(d.totals.co2Kg).toBeCloseTo(d.totals.kwh * 0.36, 0);
   });
   it('GHG scopes: Scope 2 = operational carbon; patient travel is not assessed by default', () => {
-    expect(d.scopes.scope2Kg).toBeCloseTo(108679.5, 1);
+    expect(d.scopes.scope2Kg).toBeCloseTo(106735.0, 1);
     expect(d.scopes.scope3TravelAssessed).toBe(false);
     expect(d.scopes.scope3TravelKg).toBe(0);
     expect(d.scopes.scope3TravelScreeningKg).toBe(697680); // visible reference only: 205200 × 20 × 0.17
@@ -85,10 +89,10 @@ describe('computeInterventions — FLEET, delta from current config', () => {
       ['Turn MRI/CT scanners off overnight', 'Reduce low-value imaging'],
       'Germany', 'Annual', FLEET, undefined, 'AWS', 'Standby', {});
     expect(iv.count).toBe(2);
-    expect(iv.baseline.kwh).toBeCloseTo(301887.49, 2);
-    expect(iv.savings.kwh).toBe(21840);              // overnight 15408 + fleet-scaled low-value 6432
-    expect(iv.projected.kwh).toBeCloseTo(280047.49, 2);
-    expect(iv.savings.pctEnergy).toBeCloseTo(7.2, 1);
+    expect(iv.baseline.kwh).toBeCloseTo(296486.17, 2);
+    expect(iv.savings.kwh).toBeCloseTo(19322.9, 1);  // MRI/CT idle→Off delta + fleet-scaled low-value imaging
+    expect(iv.projected.kwh).toBeCloseTo(277163.27, 1);
+    expect(iv.savings.pctEnergy).toBeCloseTo(6.5, 1);
   });
   it('storage axial-only lever saves the reformats delta vs current all-reformats config', () => {
     const iv = computeInterventions(
@@ -186,6 +190,30 @@ describe('phase 3 integrity guards',()=>{
   it('invalid retention falls back to 10 years',()=>{expect(sanitizeRetentionYears('abc')).toBe(10);const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {retentionYears:'abc',cloud:false,reformats:'all'}, {});expect(d.storage.retentionYears).toBe(10);expect(d.storage.kwh).toBeGreaterThan(0);});
   it('department clinical savings use the same helper',()=>{const base=computeDashboard('Germany','Monthly',FLEET);const expected=computeClinicalScannerSavings({imagingScans:base.clinicalBasis.imagingScans,scannerActiveKwh:base.clinicalBasis.scannerActiveKwh,avoidedFrac:0.2,scanTimeFrac:0.5});const d=computeDashboard('Germany','Monthly',FLEET,undefined,{avoidedFrac:0.2,scanTimeFrac:0.5});expect(d.clinicalMeta.scannerSavedKwh).toBeCloseTo(expected.savedKwh,1);});
   it('zero scan-volume does not produce Infinity',()=>{const d=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {ct:{scans:0}});expect(d.byEquipment.find(x=>x.modality==='CT').energyPerScan).toBeNull();});
+});
+
+describe('Chunk 4 accounting integrity',()=>{
+  it('full shutdown uses the named Off state and excludes PET-CT',()=>{
+    const active=computeInterventions(['Turn MRI/CT scanners off overnight'],'Germany','Monthly',{ct:1},undefined,'AWS','Active');
+    const standby=computeInterventions(['Turn MRI/CT scanners off overnight'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby');
+    const pet=computeInterventions(['Turn MRI/CT scanners off overnight'],'Germany','Monthly',{petct:1},undefined,'AWS','Off');
+    expect(active.savings.kwh).toBeCloseTo(standby.savings.kwh,6);
+    expect(active.savings.kwh).toBeGreaterThan(0);
+    expect(pet.savings.kwh).toBe(0);
+  });
+  it('server consolidation is a 20% scenario on PACS/RIS compute and does not depend on cloud PUE',()=>{
+    const local=computeInterventions(['Consolidate servers'],'Germany','Monthly',{pacs:1},undefined,'Local compute','Standby');
+    const aws=computeInterventions(['Consolidate servers'],'Germany','Monthly',{pacs:1},undefined,'AWS','Standby');
+    expect(local.assumptions.serverSaving).toBeCloseTo(584.4,1);
+    expect(aws.assumptions.serverSaving).toBeCloseTo(local.assumptions.serverSaving,6);
+  });
+  it('DICOM transfer uses modality-specific source-study sizes rather than one average study size',()=>{
+    const ct=computeDicomTransfer({equipment:{ct:1},timePeriod:'Monthly',ci:0.36});
+    const xray=computeDicomTransfer({equipment:{xray:1},timePeriod:'Monthly',ci:0.36});
+    expect(ct.gb).toBe(540);    // 1,800 × 0.3 GB source-study size
+    expect(xray.gb).toBe(25);   // 2,500 × 0.01 GB
+    expect(ct.co2Kg).toBeGreaterThan(xray.co2Kg);
+  });
 });
 
 describe('final accounting and intervention integrity',()=>{
