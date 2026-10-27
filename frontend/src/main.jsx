@@ -23,6 +23,7 @@ import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
 import { buildAssessmentSnapshot, parseAssessmentText, saveAssessmentLocally, loadLocalAssessment, clearLocalAssessment, assessmentFilename } from './assessment.js';
 import { modelRecordFromScen, modelScenFromRecord, migrateLegacyAiState, toolFromDeployment } from './aiRecords.js';
+import { applyClinicalEffectEvidence, clinicalEffectBasisLabel, systemEffectsStatus } from './clinicalEffects.js';
 import { getDepartmentScoreReadiness, getAiScoreReadiness } from './scoreReadiness.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend);
@@ -478,34 +479,32 @@ const BENCHMARK_CI = CARBON_INTENSITY['Global average']; // 0.473 kgCO₂e/kWh
 
 // ── AI model library ─────────────────────────────────────────────────────────
 // GPU power, inference latency, and training energy from LLM-Energy PDF and Doo 2024.
-// Clinical benefit estimates from sources: scan time reduction (Radiol 2023 10.1148/radiol.230441),
-// low-value imaging reduction McKee 2024 (10.1148/radiol.240219), ESR PP 2025.
 // Embodied GPU CO₂ from ESR PP 2025 / Clinical-AI PDF.
 // Task-family model library. Each entry is an editable, literature-anchored starting point
 // spanning the real space of radiology AI. Energy drivers (params, dim, resolution, inferSec,
-// gpuKw, trainMwh) are physically grounded; performance fields (accuracyPct, accuracyMetric,
-// scanTimeReductPct, lowValueReductPct) are the model's REPORTED values from the cited
-// reference — CEDARS never predicts accuracy, it only records what the user enters.
+// gpuKw, trainMwh) are physically grounded; performance values are reference starting points.
+// Clinical-effect fields deliberately start at zero: a task-family template must never create
+// an avoided-scan or scan-time benefit in the user's current footprint by default.
 // LLM / agentic entries carry unit:'tokens' — their inference energy is token-driven
 // (callsPerTask × tokensPerCall × whPer1kTokens), NOT GPU-seconds. See sources.md.
 const AI_MODEL_LIBRARY = [
   {key:'cad',        label:'Classification / triage',          Icon:Target,   reference:'CheXNet (DenseNet-121)',          refCite:'Rajpurkar 2017, arXiv:1711.05225',
-   architecture:'CNN / ResNet',                dim:'2D', resolution:224,  slices:1,   paramsM:8,    inferSec:0.4, gpuKw:0.07, trainMwh:0.05, embCo2Kg:40,  accuracyPct:84, accuracyMetric:'AUC',         scanTimeReductPct:0,  lowValueReductPct:12},
+   architecture:'CNN / ResNet',                dim:'2D', resolution:224,  slices:1,   paramsM:8,    inferSec:0.4, gpuKw:0.07, trainMwh:0.05, embCo2Kg:40,  accuracyPct:84, accuracyMetric:'AUC',         scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'detect',     label:'Lesion / nodule detection',        Icon:Scan,     reference:'RetinaNet-style detector',        refCite:'Lin 2017 (focal loss); task-specific',
-   architecture:'CNN / ResNet',                dim:'2D', resolution:512,  slices:1,   paramsM:35,   inferSec:0.8, gpuKw:0.15, trainMwh:0.2,  embCo2Kg:60,  accuracyPct:90, accuracyMetric:'Sensitivity', scanTimeReductPct:0,  lowValueReductPct:8},
+   architecture:'CNN / ResNet',                dim:'2D', resolution:512,  slices:1,   paramsM:35,   inferSec:0.8, gpuKw:0.15, trainMwh:0.2,  embCo2Kg:60,  accuracyPct:90, accuracyMetric:'Sensitivity', scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'seg2d',      label:'Organ segmentation (2D)',          Icon:Brain,    reference:'U-Net',                           refCite:'Ronneberger 2015, MICCAI',
    architecture:'U-Net (segmentation)',        dim:'2D', resolution:256,  slices:1,   paramsM:30,   inferSec:0.6, gpuKw:0.12, trainMwh:0.15, embCo2Kg:60,  accuracyPct:91, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'seg3d',      label:'Volumetric segmentation (3D / nnU-Net)', Icon:Cpu, reference:'nnU-Net',                       refCite:'Isensee 2021, Nat Methods',
    architecture:'U-Net (segmentation)',        dim:'3D', resolution:128,  slices:128, paramsM:30,   inferSec:8,   gpuKw:0.25, trainMwh:2,    embCo2Kg:100, accuracyPct:88, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'recon',      label:'Reconstruction / denoising',       Icon:Activity, reference:'DL recon (low-dose CT / fast MRI)', refCite:'Radiology 2023, 10.1148/radiol.230441',
-   architecture:'CNN / ResNet',                dim:'2D', resolution:256,  slices:1,   paramsM:10,   inferSec:1.2, gpuKw:0.2,  trainMwh:0.5,  embCo2Kg:80,  accuracyPct:95, accuracyMetric:'SSIM',        scanTimeReductPct:50, lowValueReductPct:0},
+   architecture:'CNN / ResNet',                dim:'2D', resolution:256,  slices:1,   paramsM:10,   inferSec:1.2, gpuKw:0.2,  trainMwh:0.5,  embCo2Kg:80,  accuracyPct:95, accuracyMetric:'SSIM',        scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'synth',      label:'Image synthesis (diffusion)',      Icon:Zap,      reference:'Diffusion model (e.g. MRI→CT)',   refCite:'Kazerouni 2023, Med Image Anal',
    architecture:'Diffusion / Generative AI',   dim:'2D', resolution:256,  slices:1,   paramsM:120,  inferSec:6,   gpuKw:0.3,  trainMwh:8,    embCo2Kg:150, accuracyPct:90, accuracyMetric:'SSIM',        scanTimeReductPct:0,  lowValueReductPct:0},
   {key:'report',     label:'Report generation (LLM / VLM)',    Icon:FileText, reference:'Radiology report-generation LLM', refCite:'Doo 2024, Radiology 10.1148/radiol.240320',
-   architecture:'LLM / Agent (transformer)',   dim:'2D', resolution:512,  slices:1,   paramsM:7000, inferSec:12,  gpuKw:0.35, trainMwh:50,   embCo2Kg:200, accuracyPct:70, accuracyMetric:'RadGraph F1', scanTimeReductPct:0,  lowValueReductPct:5,
+   architecture:'LLM / Agent (transformer)',   dim:'2D', resolution:512,  slices:1,   paramsM:7000, inferSec:12,  gpuKw:0.35, trainMwh:50,   embCo2Kg:200, accuracyPct:70, accuracyMetric:'RadGraph F1', scanTimeReductPct:0,  lowValueReductPct:0,
    unit:'tokens', whPer1kTokens:0.4, callsPerTask:1,  tokensPerCall:2500},
   {key:'agentic',    label:'Agentic workflow (LLM orchestration)', Icon:Bot, reference:'Multi-step LLM agent (planning · retrieval · tool use · self-critique)', refCite:'illustrative token-based estimate; see sources.md',
-   architecture:'LLM / Agent (transformer)',   dim:'2D', resolution:512,  slices:1,   paramsM:70000, inferSec:12, gpuKw:0.4,  trainMwh:0,    embCo2Kg:200, accuracyPct:0,  accuracyMetric:'—',           scanTimeReductPct:0,  lowValueReductPct:5,
+   architecture:'LLM / Agent (transformer)',   dim:'2D', resolution:512,  slices:1,   paramsM:70000, inferSec:12, gpuKw:0.4,  trainMwh:0,    embCo2Kg:200, accuracyPct:0,  accuracyMetric:'—',           scanTimeReductPct:0,  lowValueReductPct:0,
    unit:'tokens', whPer1kTokens:0.4, callsPerTask:10, tokensPerCall:4000},
   {key:'foundation', label:'Foundation / prompt model (MedSAM)', Icon:Globe,  reference:'MedSAM (Segment Anything, medical)', refCite:'Ma 2024, Nat Commun',
    architecture:'Vision Transformer (ViT)',    dim:'2D', resolution:1024, slices:1,   paramsM:90,   inferSec:3,   gpuKw:0.3,  trainMwh:5,    embCo2Kg:150, accuracyPct:89, accuracyMetric:'Dice',        scanTimeReductPct:0,  lowValueReductPct:0},
@@ -669,23 +668,22 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
   const embGpuKgCo2e     = rnd(model.embCo2Kg / DEPLOY_MO, 2);
   const grossKgCo2e      = rnd(inferKwhMonthly * inferCf.ci + trainKwhMonth * trainCf.ci + embGpuKgCo2e, 3);
 
-  // ── Clinical co-benefits ─────────────────────────────────────────────────
-  const clinicalSavings = computeClinicalScannerSavings({imagingScans:STUDIES,scannerActiveKwh:SCANNER_ACTIVE_KWH,avoidedFrac:model.lowValueReductPct/100,scanTimeFrac:model.scanTimeReductPct/100});
-  const scansAvoided=clinicalSavings.scansAvoided;
-  const avoidedEnergySaved=clinicalSavings.avoidedEnergyKwh;
-  const scanTimeEnergySaved=clinicalSavings.scanTimeEnergyKwh;
-  const scanEnergySaved=clinicalSavings.savedKwh;
-  const savingsKgCo2e=rnd(scanEnergySaved*ci,2);
+  // ── Clinical effects ──────────────────────────────────────────────────────
+  // Entered workflow effects remain visible for scenario/planning use, but they reduce the
+  // CURRENT modeled footprint only when backed by local observed or locally validated evidence.
+  const clinicalScenario = computeClinicalScannerSavings({imagingScans:STUDIES,scannerActiveKwh:SCANNER_ACTIVE_KWH,avoidedFrac:model.lowValueReductPct/100,scanTimeFrac:model.scanTimeReductPct/100});
+  const clinicalAccounting = applyClinicalEffectEvidence({basis:model.clinicalEffectBasis,savedKwh:clinicalScenario.savedKwh,carbonIntensity:ci});
+  const scansAvoided=clinicalScenario.scansAvoided;
+  const avoidedEnergySaved=clinicalScenario.avoidedEnergyKwh;
+  const scanTimeEnergySaved=clinicalScenario.scanTimeEnergyKwh;
+  const scanEnergySaved=clinicalScenario.savedKwh;
+  const creditedScanEnergySaved=rnd(clinicalAccounting.creditedKwh,2);
+  const savingsKgCo2e=rnd(clinicalAccounting.creditedCo2Kg,2);
   const netKgCo2e=rnd(grossKgCo2e-savingsKgCo2e,3);
 
-  // ── Infrastructure & efficiency ──────────────────────────────────────────  // ── Infrastructure & efficiency ──────────────────────────────────────────
+  // ── Infrastructure ────────────────────────────────────────────────────────
   const waterLitres     = rnd(totalMonthlyKwh * WATER_PER_KWH, 1);
-  // Reported performance per monthly inference kWh. The metric/unit/direction are carried
-  // explicitly so this ratio is only compared like-for-like; percent-based legacy records retain
-  // the same numerator they had before this schema change.
-  const efficiencyRatio = inferKwhMonthly > 0 ? rnd((model.performanceValue || 0) / inferKwhMonthly, 3) : 0;
-  // Rebound risk: faster reads may induce more scan orders, negating savings (§4 counter-metric)
-  const reboundRisk     = model.scanTimeReductPct > 60 ? "High" : model.scanTimeReductPct > 30 ? "Moderate" : "Low";
+  const systemEffects = systemEffectsStatus({scanTimeReductionPct:model.scanTimeReductPct,lowValueReductionPct:model.lowValueReductPct});
 
   return {
     architecture, modelSize: sizeLabel(model.paramsM), precision, archDesc: arch.desc,
@@ -699,11 +697,12 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     trainMeasured: trainKwhCustom !== null,
     monthly:   {kwh: totalMonthlyKwh, co2: rnd(inferKwhMonthly * inferCf.ci + trainKwhMonth * trainCf.ci, 3)},
     ampSavingPct, grossKgCo2e, embGpuKgCo2e, savingsKgCo2e, netKgCo2e,
-    pue: inferCf.pue, cloudCi: inferCf.ci, trainPue: trainCf.pue, inferPue: inferCf.pue, trainingCi: trainCf.ci, inferenceCi: inferCf.ci, trainingRawCi: trainCf.rawCi, inferenceRawCi: inferCf.rawCi, trainingContext: trainCf, inferenceContext: inferCf, waterLitres, efficiencyRatio,
+    pue: inferCf.pue, cloudCi: inferCf.ci, trainPue: trainCf.pue, inferPue: inferCf.pue, trainingCi: trainCf.ci, inferenceCi: inferCf.ci, trainingRawCi: trainCf.rawCi, inferenceRawCi: inferCf.rawCi, trainingContext: trainCf, inferenceContext: inferCf, waterLitres,
     accuracy: model.accuracy, accuracyMetric: model.accuracyMetric,
     performanceValue: model.performanceValue, performanceUnit: model.performanceUnit, performanceDirection: model.performanceDirection,
     scanTimeReductPct: model.scanTimeReductPct, lowValueReductPct: model.lowValueReductPct,
-    scansAvoided, avoidedEnergySaved, scanTimeEnergySaved, scanEnergySaved, reboundRisk,
+    clinicalEffectBasis: clinicalAccounting.basis, clinicalEffectBasisLabel: clinicalEffectBasisLabel(clinicalAccounting.basis), clinicalEffectCredited: clinicalAccounting.credited,
+    scansAvoided, avoidedEnergySaved, scanTimeEnergySaved, scanEnergySaved, creditedScanEnergySaved, systemEffectsStatus:systemEffects,
     unit: isToken ? 'tokens' : 'gpu', tokensPerStudy, callsPerTask, tokensPerCall, whPer1kTokens: model.whPer1kTokens || 0, deployMonths:DEPLOY_MO,
   };
 }
@@ -779,6 +778,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
     performanceValue: parseFloat(cfg.accuracyPct) || 0,
     performanceUnit: cfg.performanceUnit || 'percent',
     performanceDirection: cfg.performanceDirection === 'lower' ? 'lower' : 'higher',
+    clinicalEffectBasis: cfg.clinicalEffectBasis || 'none',
     scanTimeReductPct: Math.max(0, parseFloat(cfg.scanTimeReductPct) || 0),
     lowValueReductPct: Math.max(0, parseFloat(cfg.lowValueReductPct) || 0),
   };
@@ -794,7 +794,7 @@ function aiResultFor(cfg, region, customCi, equipment, equipOverrides = {}) {
 // region, equipment, customCi — is held constant and applied at compute time).
 const AI_CFG_FIELDS = ['modelId','modelKey','architecture','precision','paramsM','dim','resolution','slices','inferSec','inferKwh',
   'whPer1kTokens','callsPerTask','tokensPerCall',
-  'accuracyPct','accuracyMetric','performanceUnit','performanceDirection','performanceValidationContext','performanceSource','scanTimeReductPct','lowValueReductPct',
+  'accuracyPct','accuracyMetric','performanceUnit','performanceDirection','performanceValidationContext','performanceSource','clinicalEffectBasis','scanTimeReductPct','lowValueReductPct',
   'cloudProvider','cloudRegion','trainGpu','trainNumGpus','trainHours','trainCustomTdpW','testStudies','deployMonths','customPue','renewablePct',
   'trainingProvider','trainingRegion','trainingPue','trainingRenewablePct','inferenceProvider','inferenceRegion','inferencePue','inferenceRenewablePct','trainingBoundary'];
 function pickAiCfg(s) {
@@ -807,7 +807,7 @@ function benchCfgFromLib(key) {
     paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '',
     whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
     accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric, performanceUnit:'percent', performanceDirection:'higher', performanceValidationContext:'', performanceSource:'',
-    scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
+    clinicalEffectBasis:'none', scanTimeReductPct:'0', lowValueReductPct:'0',
     cloudProvider: 'Local compute', cloudRegion: 'On-premise (Switzerland)', trainingProvider:'', trainingRegion:'', trainingPue:'', trainingRenewablePct:'', inferenceProvider:'', inferenceRegion:'', inferencePue:'', inferenceRenewablePct:'', trainingBoundary:'upstream',
     trainGpu: '', trainNumGpus: '1', trainHours: '', testStudies: '500', deployMonths: '36',
   };
@@ -1104,16 +1104,18 @@ function downloadAICSV(ai, scen, region) {
     row(['Metric', 'Value', 'Unit']),
     row(['Gross CO2e',                   ai.grossKgCo2e,              'kgCO2e/mo']),
     row(['Embodied GPU carbon',          ai.embGpuKgCo2e,             'kgCO2e/mo (amortised)']),
-    row(['Clinical savings',             ai.savingsKgCo2e,            'kgCO2e/mo']),
-    row(['Net CO2e impact',              ai.netKgCo2e,                'kgCO2e/mo']),
+    row(['Credited local clinical effect',ai.savingsKgCo2e,           'kgCO2e/mo']),
+    row(['Net after eligible local effects',ai.netKgCo2e,             'kgCO2e/mo']),
     blank,
 
-    row(['CLINICAL CO-BENEFITS (monthly)']),
+    row(['CLINICAL EFFECTS (monthly; entered values)']),
     row(['Metric', 'Value', 'Unit']),
+    row(['Evidence basis',               ai.clinicalEffectBasisLabel, ai.clinicalEffectCredited ? 'credited to current footprint' : 'reported only']),
     row(['Scan time reduction',          ai.scanTimeReductPct,        '%']),
-    row(['Scanner energy saved',         ai.scanEnergySaved,          'kWh/mo']),
+    row(['Potential scanner energy change',ai.scanEnergySaved,        'kWh/mo']),
+    row(['Credited scanner energy reduction',ai.creditedScanEnergySaved,'kWh/mo']),
     row(['Low-value scans avoided',      ai.scansAvoided,             'scans/mo']),
-    row(['Rebound effect risk',          ai.reboundRisk,              '']),
+    row(['System effects / rebound',     ai.systemEffectsStatus,      'no categorical risk score assigned']),
     blank,
 
     row(['EFFICIENCY & RESOURCES']),
@@ -1690,7 +1692,7 @@ function App() {
       paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '', inferKwh: '',
       whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
       accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
-      scanTimeReductPct: String(m.scanTimeReductPct), lowValueReductPct: String(m.lowValueReductPct),
+      clinicalEffectBasis:'none', scanTimeReductPct:'0', lowValueReductPct:'0',
     }));
   };
   // Provider + region are shared between the AI lifecycle math and the Infrastructure tab.
@@ -2509,6 +2511,7 @@ function App() {
         customPue:'', renewablePct:'0',
         trainingProvider:'', trainingRegion:'', trainingPue:'', trainingRenewablePct:'',
         inferenceProvider:'', inferenceRegion:'', inferencePue:'', inferenceRenewablePct:'',
+        clinicalEffectBasis:'none', scanTimeReductPct:'0', lowValueReductPct:'0',
         inferStudiesMonth: scen.inferStudiesMonth,
         deployMonths: scen.deployMonths,
       };
@@ -2524,7 +2527,7 @@ function App() {
         performanceValidationContext: cfg.performanceValidationContext || cfg.validationBasis || '',
         trainCo2: r.training.kgCo2e, kwhPerStudy: r.inference.kwhPerStudy,
         carbonPerStudyG, inferenceCo2G, trainPerStudyG,
-        netCo2: r.netKgCo2e, lifetimeCo2: r.lifetimeCo2, efficiency: r.efficiencyRatio,
+        aiFootprintMonthly: r.grossKgCo2e, lifetimeCo2: r.lifetimeCo2,
       };
     });
     const metrics = [...new Set(rows.map(r => `${r.performanceMetric}|${r.performanceUnit}|${r.performanceDirection}|${r.performanceValidationContext}`))];
@@ -2541,8 +2544,7 @@ function App() {
     const minBy = key => rows.length ? Math.min(...rows.map(r => r[key])) : 0;
     const maxBy = key => rows.length ? Math.max(...rows.map(r => r[key])) : 0;
     const bestPerformance = !comparablePerformance || !rows.length ? null : rows[0].performanceDirection === 'lower' ? minBy('performanceValue') : maxBy('performanceValue');
-    return {rows, metrics, comparisonDefinitionComplete, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), netCo2: minBy('netCo2'), lifetimeCo2: minBy('lifetimeCo2'),
-      performanceValue: bestPerformance, efficiency: rows[0]?.performanceDirection === 'lower' ? minBy('efficiency') : maxBy('efficiency')}};
+    return {rows, metrics, comparisonDefinitionComplete, comparablePerformance, best: {trainCo2: minBy('trainCo2'), carbonPerStudyG: minBy('carbonPerStudyG'), aiFootprintMonthly: minBy('aiFootprintMonthly'), lifetimeCo2: minBy('lifetimeCo2'), performanceValue: bestPerformance}};
   }, [benchModels, scen.cloudProvider, scen.cloudRegion, scen.inferStudiesMonth, scen.deployMonths, scen.compareBasis, scen.compareClinicalTask, scen.compareEndpoint, scen.compareCohort, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // Worked agentic example: a single-pass vision model vs a single-pass LLM vs a multi-call
@@ -2908,8 +2910,8 @@ function App() {
               <Sel label="Architecture" value={ecoLabel.architecture} options={META.architectures} onChange={v=>setEco('architecture',v)}/>
             </div>
             <div style={{marginTop:18,paddingTop:16,borderTop:'1px solid #e0eee2'}}>
-              <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>Reported performance &amp; clinical benefit</h3>
-              <p className="note" style={{margin:'0 0 12px',fontSize:10.5}}>Replace example or reference values with your own validation results when available. Environmental efficiency should be interpreted alongside clinical performance and intended benefit.</p>
+              <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>Reported performance &amp; clinical effects</h3>
+              <p className="note" style={{margin:'0 0 12px',fontSize:10.5}}>Performance and workflow effects are separate evidence domains. Reference templates no longer seed workflow benefits. Enter clinical-effect values only when they are relevant to this deployment, and identify their evidence basis below.</p>
               <div className="grid grid3">
                 <label>Performance value<input type="number" step="0.001" value={scen.accuracyPct} onChange={e=>setS('accuracyPct',e.target.value)}/></label>
                 <label>Metric<select value={scen.accuracyMetric} onChange={e=>setS('accuracyMetric',e.target.value)}>{['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','MAE','Other'].map(m=><option key={m} value={m}>{m}</option>)}</select></label>
@@ -2917,10 +2919,11 @@ function App() {
                 <label>Better direction<select value={scen.performanceDirection} onChange={e=>setS('performanceDirection',e.target.value)}><option value="higher">Higher is better</option><option value="lower">Lower is better</option></select></label>
                 <label>Validation context<input value={scen.performanceValidationContext} onChange={e=>setS('performanceValidationContext',e.target.value)} placeholder="e.g. external validation"/></label>
                 <label>Source / provenance<input value={scen.performanceSource} onChange={e=>setS('performanceSource',e.target.value)} placeholder="publication, local study, vendor"/></label>
+                <label>Basis for clinical-effect values<select value={scen.clinicalEffectBasis} onChange={e=>setS('clinicalEffectBasis',e.target.value)}><option value="none">No current clinical-effect credit</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence (report only)</option><option value="scenario">Scenario assumption (report only)</option></select></label>
                 <label>Scan-time reduction (%)<input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)}/></label>
                 <label>Low-value imaging avoided (%)<input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)}/></label>
               </div>
-              <p className="note" style={{marginTop:8,fontSize:10.5}}>Set workflow-benefit fields to 0 when they do not apply. They are reported separately from model-performance metrics.</p>
+              <p className="note" style={{marginTop:8,fontSize:10.5}}>Only <strong>Observed locally</strong> and <strong>Locally validated estimate</strong> can reduce the current modeled footprint. Published external evidence and scenario assumptions remain visible but receive no current-footprint credit. System/rebound effects are not assigned an unsupported Low/Moderate/High category.</p>
             </div>
           </div>
 
@@ -4246,7 +4249,8 @@ function App() {
 
             {/* Summary pills + tabs */}
             <div className="aiSummary" style={{marginTop:8,paddingTop:8}}>
-              <span>Net impact <b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e} kgCO₂e/mo</b></span>
+              <span>AI footprint <b>{ai.grossKgCo2e} kgCO₂e/mo</b></span>
+              {ai.clinicalEffectCredited && <span>After eligible local effects <b>{ai.netKgCo2e} kgCO₂e/mo</b></span>}
               <span>Inference CI <b>{ai.cloudCi} kgCO₂e/kWh</b></span>
             </div>
           </div>
@@ -4331,21 +4335,21 @@ function App() {
           {/* ── Carbon ── */}
           <button type="button" className="accHead" onClick={()=>toggleAi('carbon')} aria-expanded={!!aiOpen['carbon']}>
             <span className="accCaret">{aiOpen['carbon']?'▾':'▸'}</span>
-            <span className="accTitle">Carbon — operational &amp; net</span>
-            <span className="accVal">net {ai.netKgCo2e} kgCO₂e/mo</span>
+            <span className="accTitle">Carbon — AI footprint &amp; eligible local effects</span>
+            <span className="accVal">{ai.grossKgCo2e} kgCO₂e/mo</span>
           </button>
           {aiOpen['carbon'] && (
           <section id="ai-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>Carbon emissions summary</h2>
-            <p className="note" style={{marginBottom:12}}>Operational carbon uses cloud provider CI ({ai.cloudCi} kgCO₂e/kWh). Clinical savings use local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh). Global avg: 0.473 · EU avg: 0.237 (Vosshenrich)</p>
+            <p className="note" style={{marginBottom:12}}>The gross AI footprint is reported independently of downstream clinical effects. Entered clinical effects use the local grid ({settings.region}: {getCI(settings.region, settings.customCi)} kgCO₂e/kWh) but reduce the current modeled footprint only when their basis is local observed or locally validated evidence.</p>
             <div className="cards">
               <Card icon={<Leaf/>}        title="Gross CO₂e/month"          value={`${ai.grossKgCo2e} kgCO₂e`}                 sub="Inference + amortised training + embodied GPU (all monthly)."/>
               <Card icon={<Cpu/>}         title="Embodied GPU carbon"        value={`${ai.embGpuKgCo2e} kgCO₂e/mo`}            sub={`Total ${ai.embCo2KgTotal} kgCO₂e manufacturing, amortised ${ai.deployMonths} months. (ESR PP 2025)`}/>
-              <Card icon={<TrendingDown/>} title="Clinical savings"          value={`−${ai.savingsKgCo2e} kgCO₂e/mo`}          sub="Scanner time reduction + avoided scans. Replace with measured before/after metering."/>
+              <Card icon={<TrendingDown/>} title="Credited local clinical effect" value={ai.clinicalEffectCredited ? `−${ai.savingsKgCo2e} kgCO₂e/mo` : '0 kgCO₂e/mo'} sub={ai.clinicalEffectCredited ? `${ai.clinicalEffectBasisLabel}; ${ai.creditedScanEnergySaved} kWh/month of modeled scanner energy is credited.` : `${ai.clinicalEffectBasisLabel}; entered workflow effects are reported separately and not subtracted from the current footprint.`}/>
               <section className="card">
-                <div className="cardHead"><BarChart3/><span>Net AI impact / month</span></div>
-                <b style={{color: ai.netKgCo2e < 0 ? '#2E7D32' : '#c62828'}}>{ai.netKgCo2e} kgCO₂e</b>
-                <p>{ai.netKgCo2e < 0 ? "Net positive — clinical savings outweigh full AI footprint." : "Net negative — AI costs currently exceed measured savings."}</p>
+                <div className="cardHead"><BarChart3/><span>After eligible local effects</span></div>
+                <b>{ai.netKgCo2e} kgCO₂e</b>
+                <p>{ai.clinicalEffectCredited ? 'Gross AI footprint minus the eligible locally supported clinical effect.' : 'No clinical-effect credit is applied, so this equals the gross AI footprint.'}</p>
               </section>
             </div>
             {ai.grossKgCo2e>0 && <div style={{marginTop:14,padding:'9px 12px',background:'#f7fbf8',border:'1px solid #dce9dc',borderRadius:10,fontSize:11,color:'#607d66'}}><strong style={{color:'#455a64'}}>Carbon in context:</strong> the gross monthly AI footprint is about {fmtBig(ai.grossKgCo2e/CAR_CO2_KG_KM)} km driven by a typical car. Illustrative comparison only.</div>}
@@ -4356,18 +4360,18 @@ function App() {
           {/* ── Clinical ── */}
           <button type="button" className="accHead" onClick={()=>toggleAi('clinical')} aria-expanded={!!aiOpen['clinical']}>
             <span className="accCaret">{aiOpen['clinical']?'▾':'▸'}</span>
-            <span className="accTitle">Clinical co-benefits</span>
-            <span className="accVal">−{ai.savingsKgCo2e} kgCO₂e/mo</span>
+            <span className="accTitle">Clinical effects &amp; system effects</span>
+            <span className="accVal">{ai.clinicalEffectCredited ? 'eligible local effect' : 'reported separately'}</span>
           </button>
           {aiOpen['clinical'] && (
           <section id="ai-clinical" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
-            <h2 style={{marginBottom:12}}>Clinical sustainability co-benefits</h2>
-            <p className="note" style={{marginBottom:12}}>Unnecessary imaging estimated at 20–50% of all scans (Implementation Guide §1). AI decision support targets the Prevent tier of the Recycling Pyramid.</p>
+            <h2 style={{marginBottom:12}}>Clinical effects and system effects</h2>
+            <p className="note" style={{marginBottom:12}}>Entered workflow effects are shown separately from the AI footprint. CEDARS credits them to the current footprint only when supported by local observed or locally validated evidence; external published values and scenarios remain disclosure/planning inputs.</p>
             <div className="cards">
-              <Card icon={<TrendingDown/>} title="Scan time reduction"        value={`${ai.scanTimeReductPct}%`}                sub={`Applied only to studies that still occur after any avoided studies; saves ${ai.scanTimeEnergySaved} kWh/month of active scanner energy.`}/>
-              <Card icon={<Leaf/>}         title="Low-value imaging avoided"  value={`${ai.lowValueReductPct}%`}               sub={`~${ai.scansAvoided} scans/month avoided; approximately ${ai.avoidedEnergySaved} kWh/month of active scanner energy is avoided before scan-time savings are applied.`}/>
-              <Card icon={<Zap/>}          title="Scanner energy saved/month" value={`${ai.scanEnergySaved} kWh`}              sub="Combined active-scanner saving after sequentially accounting for avoided acquisitions and shorter remaining protocols; fixed department loads are excluded."/>
-              <Card icon={<AlertTriangle/>} title="Rebound effect risk"        value={ai.reboundRisk}                          sub="Faster reads may induce more scan orders, cancelling gains. Monitor scan volume after deployment. (Implementation Guide §4)"/>
+              <Card icon={<TrendingDown/>} title="Entered scan-time reduction" value={`${ai.scanTimeReductPct}%`} sub={`Potentially ${ai.scanTimeEnergySaved} kWh/month of active scanner energy after any avoided studies.`}/>
+              <Card icon={<Leaf/>} title="Entered low-value imaging avoided" value={`${ai.lowValueReductPct}%`} sub={`~${ai.scansAvoided} studies/month in this scenario; ${ai.avoidedEnergySaved} kWh/month of active scanner energy before scan-time effects.`}/>
+              <Card icon={<Zap/>} title="Potential scanner-energy change" value={`${ai.scanEnergySaved} kWh/mo`} sub={ai.clinicalEffectCredited ? `${ai.creditedScanEnergySaved} kWh/month is eligible for current-footprint credit (${ai.clinicalEffectBasisLabel}).` : `Not credited to the current footprint (${ai.clinicalEffectBasisLabel}).`}/>
+              <Card icon={<AlertTriangle/>} title="System effects / rebound" value={ai.systemEffectsStatus} sub="CEDARS does not infer a Low/Moderate/High rebound-risk category from scan-time reduction. Monitor post-deployment workload, downstream imaging, and workflow expansion when relevant."/>
             </div>
           </section>
 
@@ -4655,7 +4659,7 @@ function App() {
                     <th style={{padding:'8px 10px'}}>Training CO₂e</th>
                     <th style={{padding:'8px 10px'}}>kWh/study</th>
                     <th style={{padding:'8px 10px'}}>gCO₂e/study</th>
-                    <th style={{padding:'8px 10px'}}>Net CO₂e/mo</th>
+                    <th style={{padding:'8px 10px'}}>AI footprint/mo</th>
                     <th style={{padding:'8px 10px'}}>Lifetime CO₂e</th>
                     <th style={{padding:'8px 10px'}}/>
                   </tr>
@@ -4675,7 +4679,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.trainCo2===best.trainCo2)}}>{fmtCo2(r.trainCo2)}</td>
                         <td style={{padding:'7px 10px'}}>{r.kwhPerStudy}</td>
                         <td style={{padding:'7px 10px',...hi(r.carbonPerStudyG===best.carbonPerStudyG)}}>{r.carbonPerStudyG}</td>
-                        <td style={{padding:'7px 10px',...hi(r.netCo2===best.netCo2)}}>{r.netCo2}</td>
+                        <td style={{padding:'7px 10px',...hi(r.aiFootprintMonthly===best.aiFootprintMonthly)}}>{r.aiFootprintMonthly}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
                           <button type="button" data-demo-target={r.id==='demo-candidate-a'?'ai-select-candidate':undefined} onClick={()=>useBenchModel(r.id)} style={{padding:'5px 8px',fontSize:11,marginRight:4}}>Use this candidate →</button>

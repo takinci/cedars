@@ -63,7 +63,7 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
   it('interventions encode as compact indices, not full strings', () => {
     const names = [ALL_INTERVENTIONS[0], ALL_INTERVENTIONS[2]];
     const enc = encodeConfig({ activeInterventions: names });
-    expect(enc).toBe('in=0-2');                       // indices, not the long labels
+    expect(enc).toBe('in=0-2&v=2');                   // indices, not the long labels; v pins URL semantics
     expect(decodeConfig('#' + enc).activeInterventions).toEqual(names);
   });
 
@@ -90,6 +90,20 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     const scen = { ...SCEN_DEFAULTS, customPue: '1.0' };
     const decoded = decodeConfig('#' + encodeConfig({ scen }));
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
+  });
+
+  it('clinical-effect evidence basis survives encode → decode and the default claims no benefit', () => {
+    expect(SCEN_DEFAULTS.lowValueReductPct).toBe('0');
+    expect(SCEN_DEFAULTS.scanTimeReductPct).toBe('0');
+    expect(SCEN_DEFAULTS.clinicalEffectBasis).toBe('none');
+    const scen = { ...SCEN_DEFAULTS, clinicalEffectBasis:'validated-local', scanTimeReductPct:'12', lowValueReductPct:'3' };
+    const encoded = encodeConfig({ scen });
+    expect(encoded).toContain('v=2');
+    const decoded = decodeConfig('#' + encoded);
+    expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
+    const legacy = decodeConfig('#mk=cad&ik=0.001');
+    expect(legacy.scen.lowValueReductPct).toBe('12');
+    expect(legacy.scen.clinicalEffectBasis).toBe('scenario');
   });
 
   it('inferKwh (measured inference energy override) survives encode → decode', () => {

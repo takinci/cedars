@@ -27,6 +27,10 @@
 - Header score badge is pathway-aware: it shows the AI model's score in the AI pathway, the Department score elsewhere.
 - Department *Water footprint* card now explains that its factor is a data-centre screening proxy and links the evidence; the number is unchanged.
 - Deployed `Clinical AI tools` terminology is simplified to **Clinical AI**.
+- AI task-family templates no longer seed scan-time or avoided-imaging benefits; clinical-effect fields now default to zero and require an explicit evidence basis.
+- Only locally observed or locally validated clinical effects may reduce the current AI footprint; published external effects and scenario assumptions remain visible but are not credited to the current result.
+- Removed the categorical rebound-risk label and the deployment-volume-dependent performance/monthly-kWh ratio; candidate comparison now uses separate performance and environmental-intensity dimensions plus the existing Pareto view.
+- Non-default shareable URLs now carry a `v=2` state marker; legacy AI links restore the historical 12% avoided-imaging default as scenario-only disclosure rather than silently converting it into current-footprint credit.
 - EcoLabel now states: **Research assessment — not (yet) an external certification.**
 - Privacy language now distinguishes browser-local use from explicit research contribution.
 
