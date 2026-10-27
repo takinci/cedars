@@ -20,7 +20,9 @@
 
 ### Changed
 - Navigation now follows **Set up → See footprint → Improve → Score & EcoLabel → Report & Share**, with result-first Department and AI footprint summaries and technical detail progressively disclosed beneath them.
-- AI Model & Informatics now starts from three user intentions: assess an AI system already selected/in use, compare candidates, or assess a model being developed. Candidate comparison keeps essential inputs, side-by-side results, and model selection in one decision workflow.
+- AI Model & Informatics now starts from two work-context lanes: **evaluating/using AI in clinical care** versus **developing/materially retraining AI**. The clinical lane then asks whether to assess one system or compare candidates; both lanes ask the AI family only after the work context is clear. Role examples explicitly include clinicians, radiology leaders, procurement, administrators, informatics/IT, governance, sustainability teams, researchers, and ML engineers.
+- Guided walkthroughs are reduced to three role-aligned journeys: Department/operations, clinical AI evaluation/use, and AI development/retraining. Published LLM, vendor-hosted LLM, agentic, synthetic-imaging, and measured-classifier records remain loadable examples rather than separate workflows.
+- Candidate comparison keeps essential inputs, side-by-side results, and model selection in one decision workflow.
 - Sitewide visual hierarchy is tightened after the workflow redesign: denser cards and accordions, clearer result-versus-input emphasis, stronger keyboard focus states, and improved tablet/mobile behavior.
 - Department device duty-cycle profiles are normalized to the average calendar month (730.5 h) before annualization; this removes the prior 31-day-month overcount while preserving each device's relative state mix.
 - Avoidable-idle accounting now measures only the recoverable power-state delta; MRI/CT full-shutdown uses the named Off state, PET-CT is excluded from full shutdown, and overlapping idle interventions are not double-counted.

@@ -13,7 +13,7 @@ export const AI_EXAMPLES = [
     ref: null,
     note: 'An in-house classifier with energy measured on a local GPU. Illustrative numbers in the shape of a complete, measured record.',
     scen: {
-      aiRoute: 'own', ownMode: 'measured', projectName: 'Chest radiograph nodule classifier (example)',
+      aiRoute: 'own', ownMode: 'measured', aiSystemType: 'imaging', projectName: 'Chest radiograph nodule classifier (example)',
       modelKey: 'cad', architecture: 'CNN / ResNet', paramsM: '25', resolution: '512', taskType: 'Classification',
       trainGpu: 'NVIDIA A100 (80GB SXM4)', trainNumGpus: '2', trainHours: '18', numRuns: '4',
       trainKwhMeasured: '41.6', trainTool: 'CodeCarbon', datasetSize: '112000', epochs: '30',
@@ -30,7 +30,7 @@ export const AI_EXAMPLES = [
     ref: 'doo-radiology-llm-2024',
     note: 'Published local-compute benchmark of Vicuna 1.5 7B on chest-radiograph report labeling. GPU inference energy was measured with CodeCarbon across 3,665 reports; the per-study value below is derived from that measured total. Model pretraining was not assessed in the study, and the deployment volume shown here is illustrative.',
     scen: {
-      aiRoute: 'own', ownMode: 'measured', projectName: 'Vicuna 1.5 7B report-labeling benchmark (published example)',
+      aiRoute: 'own', ownMode: 'measured', aiSystemType: 'foundation', projectName: 'Vicuna 1.5 7B report-labeling benchmark (published example)',
       modelKey: 'report', architecture: 'LLM / Agent (transformer)', taskType: 'Classification', paramsM: '7000',
       trainDisclosed: 'no', trainMissingReason: 'notassessed',
       inferKwh: '0.00003547', inferStudiesMonth: '2500', deployMonths: '36',
@@ -45,7 +45,7 @@ export const AI_EXAMPLES = [
     ref: null,
     note: 'A hosted LLM drafting reports. Inference is estimated from token use; training is explicitly marked not disclosed by the vendor. CEDARS reports the inference footprint but does not assign an overall lifecycle score while training is unavailable.',
     scen: {
-      aiRoute: 'own', ownMode: 'spec', projectName: 'Report-generation LLM, vendor API (example)',
+      aiRoute: 'own', ownMode: 'spec', aiSystemType: 'foundation', projectName: 'Report-generation LLM, vendor API (example)',
       modelKey: 'report', architecture: 'LLM / Agent (transformer)', taskType: 'Report generation',
       trainDisclosed: 'no', trainMissingReason: 'vendor', callsPerTask: '1', tokensPerCall: '2500', whPer1kTokens: '0.4',
       inferStudiesMonth: '2500', deployMonths: '36',
@@ -60,7 +60,7 @@ export const AI_EXAMPLES = [
     ref: 'tzanis-maistro-2025',
     note: 'mAIstro (Tzanis & Klontzas, 2025) is a master agent coordinating eight task-specific agents; it is LLM-agnostic. The publication reports task success per LLM but no energy, so carbon here is an estimate from token counts and the agent count. The reasoning LLM is the lever.',
     scen: {
-      aiRoute: 'compare', compareVolumeSource: 'custom', projectName: 'mAIstro multi-agent workflow (example)',
+      aiRoute: 'compare', aiSystemType: 'foundation', compareVolumeSource: 'custom', projectName: 'mAIstro multi-agent workflow (example)',
       modelKey: 'agentic', architecture: 'LLM / Agent (transformer)', taskType: 'Agentic workflow',
       trainDisclosed: 'no', callsPerTask: '9', tokensPerCall: '4000', whPer1kTokens: '0.4',
       inferStudiesMonth: '2500', deployMonths: '36',
@@ -82,7 +82,7 @@ export const AI_EXAMPLES = [
     ref: 'chambon-roentgen-2022',
     note: 'RoentGen (Chambon et al., 2022) adapts a latent diffusion model to chest radiographs conditioned on report text. The publication reports no energy; training and generation energy here are library estimates scaled to the model, badged Estimated.',
     scen: {
-      aiRoute: 'own', ownMode: 'spec', projectName: 'RoentGen synthetic chest radiographs (example)',
+      aiRoute: 'own', ownMode: 'spec', aiSystemType: 'imaging', projectName: 'RoentGen synthetic chest radiographs (example)',
       modelKey: 'synth', architecture: 'Diffusion / Generative AI', taskType: 'Image synthesis', resolution: '512',
       trainGpu: 'NVIDIA A100 (80GB SXM4)', trainNumGpus: '8', trainHours: '60', numRuns: '1',
       inferStudiesMonth: '1000', deployMonths: '24',

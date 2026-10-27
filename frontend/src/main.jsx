@@ -2132,32 +2132,29 @@ function App() {
       if (stepIndex === 0) {
         setPage('landing');
       } else if (stepIndex === 1) {
-        setInputTarget('dashboard');
-        setInputReturnMode(false);
-        setPage('input');
-      } else if (stepIndex === 2) {
         setPage('dashboard');
         setDeptSetupOpen(true);
-      } else if (stepIndex === 3) {
-        applyLeaderDemoFleet();
-        setPage('dashboard');
-        setDeptSetupOpen(false);
-      } else if (stepIndex === 4) {
+      } else if (stepIndex === 2) {
         applyLeaderDemoFleet();
         setPage('dashboard');
         setDeptSetupOpen(false);
         setDashOpen(o => ({...o, clinicalai:true}));
+      } else if (stepIndex === 3) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setPage('dashboard');
+        setDeptSetupOpen(false);
+      } else if (stepIndex === 4) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setEcoLabelMode('department');
+        setPage('scenario');
       } else if (stepIndex === 5) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setEcoLabelMode('department');
         setPage('ecolabel');
-      } else if (stepIndex === 6) {
-        applyLeaderDemoFleet();
-        loadClinicalAiExample();
-        setEcoLabelMode('department');
-        setPage('scenario');
-      } else if (stepIndex === 7) {
+      } else if (stepIndex >= 6) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setEcoLabelMode('department');
@@ -2173,24 +2170,31 @@ function App() {
         setAiExampleLoaded('');
         setComparisonSelection(null);
         setComparisonDetailsOpen(true);
-        setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:'imaging'});
+        setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:''});
         setPage('ai');
-      } else if (stepIndex >= 2 && stepIndex <= 5) {
+      } else if (stepIndex === 2 || stepIndex === 3) {
         applyProcurementDemo();
-        setComparisonDetailsOpen(stepIndex <= 3);
+        setComparisonDetailsOpen(stepIndex === 2);
         setEcoLabelMode('ai');
         setPage('ai');
+      } else if (stepIndex === 4) {
+        const candidates = applyProcurementDemo();
+        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setPage('ai');
+      } else if (stepIndex === 5) {
+        const candidates = applyProcurementDemo();
+        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
+        setEcoLabelMode('ai');
+        setImproveAiStage('procure');
+        setImproveAiLifecycleStep('deploy');
+        setPage('scenario');
       } else if (stepIndex === 6) {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
-        setPage('ai');
-      } else if (stepIndex === 7) {
-        const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
-        setEcoLabelMode('ai');
         setPage('ecolabel');
-      } else if (stepIndex === 8) {
+      } else if (stepIndex >= 7) {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
@@ -2204,79 +2208,27 @@ function App() {
         setPage('landing');
       } else if (stepIndex === 1) {
         setAiExampleLoaded('');
-        setScen({...SCEN_DEFAULTS, ownMode:'measure'});
+        setScen({...SCEN_DEFAULTS, ownMode:'measure', aiSystemType:''});
         setPage('ai');
-      } else if (stepIndex === 2 || stepIndex === 3) {
+      } else if (stepIndex === 2) {
         setAiExampleLoaded('');
-        setScen(s => ({...s, aiRoute:'own', ownMode:'measure'}));
+        setScen(s => ({...s, aiRoute:'own', ownMode:'measure', aiSystemType:'imaging'}));
         setPage('ai');
-      } else if (stepIndex >= 4 && stepIndex <= 8) {
+      } else if (stepIndex === 3) {
         setPage('ai');
         loadAiExample('cxr-measured', {scrollToTop:false});
-      } else if (stepIndex === 9) {
-        loadAiExample('cxr-measured', {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setPage('ecolabel');
-      } else if (stepIndex === 10) {
+      } else if (stepIndex === 4) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
         setImproveAiStage('develop');
         setImproveAiLifecycleStep('build');
         setPage('scenario');
-      } else if (stepIndex === 11) {
+      } else if (stepIndex === 5) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
-        setPage('report');
-      }
-      return;
-    }
-
-    if (kind === 'publishedLlm') {
-      if (stepIndex === 0) {
-        setPage('landing');
-      } else if (stepIndex >= 1 && stepIndex <= 4) {
-        setPage('ai');
-        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
-      } else if (stepIndex === 5) {
-        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
-        setEcoLabelMode('ai');
         setPage('ecolabel');
-      } else if (stepIndex === 6) {
-        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setImproveAiStage('procure');
-        setImproveAiLifecycleStep('deploy');
-        setPage('scenario');
-      } else if (stepIndex === 7) {
-        loadAiExample('published-llm-vicuna7b', {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setPage('report');
-      }
-      return;
-    }
-
-    if (kind === 'llm') {
-      if (stepIndex === 0) {
-        setPage('landing');
-      } else if (stepIndex === 1) {
-        setAiExampleLoaded('');
-        setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:'foundation'});
-        setPage('ai');
-      } else if (stepIndex >= 2 && stepIndex <= 5) {
-        setPage('ai');
-        loadAiExample('report-llm-api', {scrollToTop:false});
-      } else if (stepIndex === 6) {
-        loadAiExample('report-llm-api', {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setPage('ecolabel');
-      } else if (stepIndex === 7) {
-        loadAiExample('report-llm-api', {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setImproveAiStage('procure');
-        setImproveAiLifecycleStep('deploy');
-        setPage('scenario');
-      } else if (stepIndex === 8) {
-        loadAiExample('report-llm-api', {scrollToTop:false});
+      } else if (stepIndex >= 6) {
+        loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('report');
       }
@@ -3212,7 +3164,7 @@ function App() {
                 <div className="workflowCardPrompt">What would you like to assess?</div>
                 <div className="startChoiceGrid">
                   <button type="button" data-demo-target="home-department" className="startChoice department" onClick={()=>goToAssessmentContext('dashboard')}><Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span></button>
-                  <button type="button" data-demo-target="home-ai" className="startChoice ai" onClick={()=>goToAssessmentContext('ai')}><Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>One model, candidate comparison, or development</small></span><span aria-hidden="true">→</span></button>
+                  <button type="button" data-demo-target="home-ai" className="startChoice ai" onClick={()=>goToAssessmentContext('ai')}><Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Clinical evaluation/use or AI development</small></span><span aria-hidden="true">→</span></button>
                 </div>
               </div>
               <div className="workflowCard"><div className="workflowCardKicker"><span className="workflowNumber">2</span><span>SEE FOOTPRINT</span></div><div className="workflowCardBody">Start with the headline operational footprint and its main drivers. Methods and assumptions stay one level deeper.</div><span className="workflowCardSequenceHint">After setup</span></div>
@@ -3880,7 +3832,7 @@ function App() {
         <main>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} ai onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI model:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" onClick={returnToAiImprove} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Return to AI Improve</button>}{scen.aiRoute&&<button type="button" className="download aiBackOptionsButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Back to AI options</button>}</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" onClick={returnToAiImprove} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Return to AI Improve</button>}{scen.aiRoute&&<button type="button" className="download aiBackOptionsButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Change AI pathway</button>}</div>
           </div>
 
           {aiEntryOrigin === 'department' && !aiExampleLoaded && (
@@ -3906,7 +3858,7 @@ function App() {
               examples={AI_EXAMPLES} onExample={loadAiExample} onReset={startBlankAiRecord}
             />
           ) : (
-            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode}
+            <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} systemType={scen.aiSystemType || ''}
               onComparison={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
               onBackToComparison={benchModels.length ? ()=>{setS('aiRoute','compare');setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);} : null}
               onStartComparison={startComparisonFromCurrent}/>
@@ -5619,7 +5571,7 @@ function App() {
             </details>
 
             <div data-demo-target="ai-report-reproducibility">
-            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===7) || (guidedDemo?.kind==='llm' && guidedDemo.step===8)) || undefined}>
+            <details className="reportDisclosureDetails" open={(guidedDemo?.kind==='developer' && guidedDemo.step===6) || undefined}>
               <summary>Assumptions &amp; provenance table · Markdown export available</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>This is an optional structured record of the same assumptions, provenance, and reporting fields. Use it for model cards, repositories, technical appendices, computational-science venues, or other settings where a field-by-field record is useful. It does not need to be a separate manuscript table.</p>
@@ -5633,7 +5585,7 @@ function App() {
               </div>
             </details>
 
-            <details className="reportDisclosureDetails" open={((guidedDemo?.kind==='developer' && guidedDemo.step===11) || (guidedDemo?.kind==='publishedLlm' && guidedDemo.step===7) || (guidedDemo?.kind==='llm' && guidedDemo.step===8)) || undefined}>
+            <details className="reportDisclosureDetails" open={(guidedDemo?.kind==='developer' && guidedDemo.step===6) || undefined}>
               <summary>Methods-ready environmental impact text</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section. For transparent reporting, retain the accompanying CEDARS assumptions and provenance table when feasible.</p>
