@@ -22,7 +22,7 @@ describe('CEDARS assessment persistence', () => {
   it('builds and parses a versioned assessment snapshot', () => {
     const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'}, scen:{modelKey:'cad', modelId:'model-a'}, disclosure:{department:{score:72}}, scenarioInterventions:['Turn MRI/CT scanners off overnight'], savedAt:'2026-09-20T00:00:00.000Z'});
     expect(snapshot.format).toBe('CEDARS');
-    expect(snapshot.schemaVersion).toBe(2);
+    expect(snapshot.schemaVersion).toBe(3);
     expect(snapshot.assessment.disclosure.department.score).toBe(72);
     expect(snapshot.assessment.scenarioInterventions).toEqual(['Turn MRI/CT scanners off overnight']);
     expect(snapshot.assessment.activeAiModelId).toBe('model-a');
@@ -59,9 +59,19 @@ describe('CEDARS assessment persistence', () => {
     const parsed = parseAssessmentText(JSON.stringify(old));
     expect(parsed.ok).toBe(true);
     expect(parsed.migratedFrom).toBe(1);
-    expect(parsed.value.schemaVersion).toBe(2);
+    expect(parsed.value.schemaVersion).toBe(3);
     expect(parsed.value.assessment.customLegacyField).toBe('kept');
     expect(parsed.value.assessment.aiModels[parsed.value.assessment.activeAiModelId]).toBeTruthy();
+  });
+
+  it('migrates schema-v2 assessments without inventing new local weak-proxy inputs', () => {
+    const old = {format:'CEDARS', schemaVersion:2, appVersion:'web', savedAt:'2026-10-20T00:00:00.000Z', assessment:{settings:{region:'Switzerland',staffCommuteKm:'15'}, scen:{modelId:'model-a'}}};
+    const parsed = parseAssessmentText(JSON.stringify(old));
+    expect(parsed.ok).toBe(true);
+    expect(parsed.migratedFrom).toBe(2);
+    expect(parsed.value.schemaVersion).toBe(3);
+    expect(parsed.value.assessment.settings.staffCommuteKm).toBe('15');
+    expect(parsed.value.assessment.settings.staffCount).toBeUndefined();
   });
 
   it('rejects unrelated JSON', () => {

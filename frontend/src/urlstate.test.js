@@ -22,7 +22,9 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     const settings = {
       ...SETTINGS_DEFAULTS,
       region: 'Germany', metricType: 'Carbon', timePeriod: 'Annual', customCi: '0.42',
-      staffCommuteKm: '22', electricityPrice: '0.31',
+      staffCount:'85', staffCommuteKm: '22', patientTravelKm:'18',
+      waterLitresAnnual:'120000', paperKgAnnual:'500', hazardousKgAnnual:'900',
+      electricityPrice: '0.31',
       storageRetentionYears: '7', storageCloud: true, storageReformats: 'axial',
       equipment: { ct: 2, mri_15t: 1, xray: 3 },
     };
@@ -63,7 +65,7 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
   it('interventions encode as compact indices, not full strings', () => {
     const names = [ALL_INTERVENTIONS[0], ALL_INTERVENTIONS[2]];
     const enc = encodeConfig({ activeInterventions: names });
-    expect(enc).toBe('in=0-2&v=2');                   // indices, not the long labels; v pins URL semantics
+    expect(enc).toBe('in=0-2&v=3');                   // indices, not the long labels; v pins URL semantics
     expect(decodeConfig('#' + enc).activeInterventions).toEqual(names);
   });
 
@@ -98,12 +100,19 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     expect(SCEN_DEFAULTS.clinicalEffectBasis).toBe('none');
     const scen = { ...SCEN_DEFAULTS, clinicalEffectBasis:'validated-local', scanTimeReductPct:'12', lowValueReductPct:'3' };
     const encoded = encodeConfig({ scen });
-    expect(encoded).toContain('v=2');
+    expect(encoded).toContain('v=3');
     const decoded = decodeConfig('#' + encoded);
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
     const legacy = decodeConfig('#mk=cad&ik=0.001');
     expect(legacy.scen.lowValueReductPct).toBe('12');
     expect(legacy.scen.clinicalEffectBasis).toBe('scenario');
+    const current = decodeConfig('#mk=cad&ik=0.001&v=3');
+    expect(current.scen.lowValueReductPct).toBeUndefined();
+    expect(current.scen.clinicalEffectBasis).toBeUndefined();
+  });
+
+  it('weak-proxy department fields default to not assessed', () => {
+    expect(SETTINGS_DEFAULTS).toMatchObject({staffCount:'', staffCommuteKm:'', patientTravelKm:'', waterLitresAnnual:'', paperKgAnnual:'', hazardousKgAnnual:''});
   });
 
   it('inferKwh (measured inference energy override) survives encode → decode', () => {

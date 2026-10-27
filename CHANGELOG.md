@@ -25,12 +25,15 @@
 - The AI pathway keeps the name **AI Model & Informatics** (the earlier plan to rename it *AI Footprint* was reversed for clarity against the Department pathway); README and docs now match the interface.
 - The AI Research Label is now a view of the single AI model record rather than a separately-edited copy; the former "mirror until edited" behaviour and its drift are gone. Training energy per run is the model's own figure (measured, GPU-hours, or literature) times the number of runs.
 - Header score badge is pathway-aware: it shows the AI model's score in the AI pathway, the Department score elsewhere.
-- Department *Water footprint* card now explains that its factor is a data-centre screening proxy and links the evidence; the number is unchanged.
+- Department water, paper, generic hazardous waste, patient travel, and staff commute are no longer auto-promoted from weak generic proxies. They default to **Not assessed** and require local inputs before appearing as reported extended estimates; historical proxy calculations remain screening references only.
+- Staff count is no longer inferred from scanner/device counts for commute accounting.
+- Department reporting now distinguishes the **Core quantified** operational score boundary from **Extended estimates** and **Not assessed** categories; extended Scope 1/3 and resource estimates do not alter the CEDARS Score.
 - Deployed `Clinical AI tools` terminology is simplified to **Clinical AI**.
 - AI task-family templates no longer seed scan-time or avoided-imaging benefits; clinical-effect fields now default to zero and require an explicit evidence basis.
 - Only locally observed or locally validated clinical effects may reduce the current AI footprint; published external effects and scenario assumptions remain visible but are not credited to the current result.
 - Removed the categorical rebound-risk label and the deployment-volume-dependent performance/monthly-kWh ratio; candidate comparison now uses separate performance and environmental-intensity dimensions plus the existing Pareto view.
-- Non-default shareable URLs now carry a `v=2` state marker; legacy AI links restore the historical 12% avoided-imaging default as scenario-only disclosure rather than silently converting it into current-footprint credit.
+- Non-default shareable URLs now carry a `v=3` state marker for the revised Department boundary semantics. The pre-v2 AI migration still restores the historical 12% avoided-imaging default as scenario-only disclosure, while v2/v3 links are never misclassified as legacy AI state.
+- Portable `.cedars.json` assessments use schema v3; schema-v1/v2 files remain readable and are migrated without inventing new local weak-proxy inputs.
 - EcoLabel now states: **Research assessment — not (yet) an external certification.**
 - Privacy language now distinguishes browser-local use from explicit research contribution.
 

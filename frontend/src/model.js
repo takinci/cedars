@@ -274,13 +274,16 @@ const EMBODIED_KG_MO = {
   "Radiography": 33, "Ultrasound": 12, "PACS/RIS": 30, "Workstation": 5,
 };
 
-const PATIENT_KM_RT    = 20;   // avg round-trip patient travel km — replace with local data (ESR sustainability guidance)
+// Screening references only. These weak proxies are never auto-promoted into the reported
+// Department footprint; local values must be entered before the corresponding category is
+// marked assessed. They remain exported so the UI can show an explicitly non-reported reference.
+const PATIENT_KM_RT    = 20;   // screening reference: average round-trip patient travel km
 
 const CAR_CO2_KG_KM    = 0.17; // kgCO₂e/km average car (DEFRA 2023)
 
-const PAPER_G_PER_ENC  = 25;   // g paper per encounter in digital workflow (ESR Green Imaging)
+const PAPER_G_PER_ENC  = 25;   // screening reference: g paper per encounter in digital workflow
 
-const HAZ_WASTE_G_SCAN = 50;   // g hazardous waste per imaging scan — contrast media disposal estimate
+const HAZ_WASTE_G_SCAN = 50;   // screening reference: g generic hazardous waste per imaging scan
 
 // Contrast media — fixed literature-default parameters (institution-dependent; editable in future).
 // Iodinated (ICM) for CT/PET-CT/angio/fluoro; gadolinium (GBCA) for MRI. Excreted contrast passes
@@ -412,9 +415,23 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // outsourced AI or cloud archive electricity at the hospital grid intensity.
   totalCo2 = rnd(_localOperationalKwh * ci + _aiCloudCo2 + storageCo2, 2);
 
-  // Resource metrics
-  const waterLitres  = rnd(totalKwh * WATER_PER_KWH, 0);
-  const paperKg      = rnd(imagingScans * PAPER_G_PER_ENC / 1000, 1);
+  // Resource metrics. Department water, paper and generic hazardous waste no longer auto-populate
+  // from weak literature proxies. Local annual values become the reported result; the historical
+  // proxies remain visible only as screening references for orientation.
+  const optionalAnnual = value => {
+    const raw = String(value ?? '').trim();
+    const n = Number(raw);
+    return {assessed: raw !== '' && Number.isFinite(n) && n >= 0, annual: Number.isFinite(n) && n >= 0 ? n : 0};
+  };
+  const waterInput = optionalAnnual(storage.waterLitresAnnual);
+  const paperInput = optionalAnnual(storage.paperKgAnnual);
+  const hazardousInput = optionalAnnual(storage.hazardousKgAnnual);
+  const waterScreeningLitres = rnd(totalKwh * WATER_PER_KWH, 0);
+  const paperScreeningKg = rnd(imagingScans * PAPER_G_PER_ENC / 1000, 1);
+  const hazardousScreeningKg = rnd(imagingScans * HAZ_WASTE_G_SCAN / 1000, 1);
+  const waterLitres = waterInput.assessed ? rnd(waterInput.annual * mult / 12, 0) : 0;
+  const paperKg = paperInput.assessed ? rnd(paperInput.annual * mult / 12, 1) : 0;
+  const hazardousKg = hazardousInput.assessed ? rnd(hazardousInput.annual * mult / 12, 1) : 0;
 
   // Contrast media & contamination — from per-modality exam counts × fixed literature defaults
   let icmExams = 0, gbcaExams = 0;
@@ -437,7 +454,6 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   // per the FULL procured vial volume (see CONTRAST.icmCo2eGPerMl note) — GBCA has no equivalent
   // sourced figure, so gbcaExams don't contribute here.
   const contrastCo2eKg    = rnd(icmExams * CONTRAST.icmMlPerExam * CONTRAST.icmCo2eGPerMl / 1000, 1); // g → kg
-  const hazardousKg  = rnd(imagingScans * HAZ_WASTE_G_SCAN / 1000, 1);
   const contrast = {
     enhancedExams: Math.round(icmExams + gbcaExams), icmExams: Math.round(icmExams), gbcaExams: Math.round(gbcaExams),
     iodineKg, gadKg, gadGrams: rnd(gbcaExams * CONTRAST.gadGramsPerExam, 0),
@@ -445,16 +461,21 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
   };
 
   // GHG Protocol scope breakdown
-  // Scope 1: direct fuel/gas estimated at 8% of Scope 2 (backup generators, medical gas) — McKee 2024
+  // Scope 1: user-entered direct fuel/gas/other direct emissions when available.
   // Scope 3 embodied: hardware manufacturing amortised (ESR PP 2025) — use fleet for profile-awareness
-  // Scope 3 travel: patient travel at PATIENT_KM_RT × CAR_CO2_KG_KM (DEFRA 2023)
+  // Scope 3 patient travel: only reported after a local average round-trip distance is entered.
+  // The historical PATIENT_KM_RT value is retained only as a UI screening reference.
   // Scope 3 contrast: ICM supply-chain carbon (Nghiem et al. 2026) — see CONTRAST.icmCo2eGPerMl
   const scope2Kg        = rnd(_localOperationalKwh*ci + (storage.cloud ? 0 : storageCo2));
   const _scope1Annual = Number(storage.scope1AnnualKg);
   const scope1Assessed = Number.isFinite(_scope1Annual) && _scope1Annual >= 0 && String(storage.scope1AnnualKg ?? '').trim() !== '';
   const scope1Kg = scope1Assessed ? rnd(_scope1Annual * mult / 12, 1) : 0;
   const scope3EmbKg     = rnd(fleet.reduce((s, eq) => s + (EMBODIED_KG_MO[eq.modality] ?? 0) * (eq.count ?? 1) * mult, 0) + _aiEmbodiedKg);
-  const scope3TravelKg  = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
+  const patientTravelRaw = String(storage.patientTravelKm ?? '').trim();
+  const patientTravelKm = Number(patientTravelRaw);
+  const scope3TravelAssessed = patientTravelRaw !== '' && Number.isFinite(patientTravelKm) && patientTravelKm >= 0;
+  const scope3TravelKg = scope3TravelAssessed ? rnd(imagingScans * patientTravelKm * CAR_CO2_KG_KM) : 0;
+  const scope3TravelScreeningKg = rnd(imagingScans * PATIENT_KM_RT * CAR_CO2_KG_KM);
   const scope3ContrastKg = contrastCo2eKg;
   const scope3CloudStorageKg = storage.cloud ? storageCo2 : 0;
   const scope3CloudAiKg = _aiCloudCo2;
@@ -474,8 +495,13 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
       activePct: totalKwh > 0 ? rnd(totalActiveKwh / totalKwh * 100, 1) : 0,
       idlePct:   totalKwh > 0 ? rnd(totalIdleKwh   / totalKwh * 100, 1) : 0,
     },
-    scopes:    {scope1Kg, scope1Assessed, scope2Kg, scope3EmbKg, scope3TravelKg, scope3ContrastKg, scope3CloudStorageKg, scope3CloudAiKg, scope3Kg, imagingScans},
-    resources: {waterLitres, paperKg, hazardousKg, contrast},
+    scopes:    {scope1Kg, scope1Assessed, scope2Kg, scope3EmbKg, scope3TravelKg, scope3TravelAssessed, scope3TravelScreeningKg, scope3ContrastKg, scope3CloudStorageKg, scope3CloudAiKg, scope3Kg, imagingScans},
+    resources: {
+      waterLitres, waterAssessed:waterInput.assessed, waterScreeningLitres,
+      paperKg, paperAssessed:paperInput.assessed, paperScreeningKg,
+      hazardousKg, hazardousAssessed:hazardousInput.assessed, hazardousScreeningKg,
+      contrast,
+    },
     storage:   {kwh: storageKwh, storedTB: rnd(_storedTB, 1), annualDataTB: rnd(_annualDataTB, 2),
       retentionYears: _retention, cloud: !!storage.cloud, reformats: storage.reformats || 'all', provider:storage.provider || '', region:storage.region || '',
       co2: rnd(storageCo2, 1), ci:storageCi, intensity: _storageInt},

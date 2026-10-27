@@ -1,7 +1,7 @@
 import {buildAiState, migrateLegacyAiState} from './aiRecords.js';
 
 export const CEDARS_ASSESSMENT_FORMAT = 'CEDARS';
-export const CEDARS_SCHEMA_VERSION = 2;
+export const CEDARS_SCHEMA_VERSION = 3;
 // Keep the storage key stable so existing browser saves remain discoverable and can be migrated.
 export const CEDARS_LOCAL_STORAGE_KEY = 'cedars.assessment.v1';
 
@@ -49,16 +49,16 @@ export function validateAssessmentSnapshot(value) {
   if (!value || typeof value !== 'object') return {ok:false, error:'This file does not contain a CEDARS assessment.'};
   if (value.format !== CEDARS_ASSESSMENT_FORMAT) return {ok:false, error:'This is not a recognized CEDARS assessment file.'};
   const version = Number(value.schemaVersion);
-  if (version !== 1 && version !== CEDARS_SCHEMA_VERSION) {
-    return {ok:false, error:`This CEDARS file uses schema version ${String(value.schemaVersion ?? 'unknown')}; this version of CEDARS supports schema versions 1 and ${CEDARS_SCHEMA_VERSION}.`};
+  if (![1,2,CEDARS_SCHEMA_VERSION].includes(version)) {
+    return {ok:false, error:`This CEDARS file uses schema version ${String(value.schemaVersion ?? 'unknown')}; this version of CEDARS supports schema versions 1–${CEDARS_SCHEMA_VERSION}.`};
   }
   if (!value.assessment || typeof value.assessment !== 'object') return {ok:false, error:'The CEDARS assessment payload is missing.'};
   if (!value.assessment.settings || typeof value.assessment.settings !== 'object') return {ok:false, error:'The CEDARS settings payload is missing.'};
-  if (version === 1) {
+  if (version < CEDARS_SCHEMA_VERSION) {
     const migrated = cloneJson(value);
     migrated.schemaVersion = CEDARS_SCHEMA_VERSION;
-    migrated.assessment = migrateLegacyAiState(migrated.assessment);
-    return {ok:true, value:migrated, migratedFrom:1};
+    if (version === 1) migrated.assessment = migrateLegacyAiState(migrated.assessment);
+    return {ok:true, value:migrated, migratedFrom:version};
   }
   return {ok:true, value};
 }

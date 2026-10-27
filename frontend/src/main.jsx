@@ -244,17 +244,6 @@ const DEPARTMENT_PRESETS = [
   {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}},
 ];
 
-// Estimated FTE per device — illustrative expert estimate, not a literature-sourced figure
-// (one exception: `angio`, partially corroborated by RCR Census 2023's 1:6 IR consultant rota
-// recommendation for a 24/7 service). Corrected 2026-08: no per-device-unit whole-department FTE
-// benchmark exists in the published literature (checked directly against the UK RCR workforce
-// census, NHS DID, and a dedicated radiographer-staffing methodology paper) — see sources.md
-// "Staff count estimation from device fleet" for the full research trail. Replace with your own
-// department's HR/rostering data.
-// Imaging devices include technologists, radiologist share, nursing/admin; PACS = IT; workstations = reading radiologists.
-const STAFF_PER_DEVICE = {mri_035t:4, mri_15t:5, mri_3t:5, mri_7t:6, ct:4, petct:5, angio:6, fluoro:3, xray:3, ultrasound:2, mammography:2, pacs:2, workstations:1};
-
-
 // MRI cards rendered as a separate grouped section; other cards below.
 // Equipment card tooltips — cite primary source for each modality's power/energy assumptions.
 const MRI_035T_TOOLTIP  = 'Permanent magnet; no cryocooler, so idle ≈ off. Active 6 kW estimated from low-field data in EurRad 2024 (doi:10.1007/s00330-024-11056-0) and Chaban et al. JMRI 2023 (doi:10.1002/jmri.28994). Projected ~18 MWh/yr — far lower than superconducting systems.';
@@ -1013,16 +1002,19 @@ function downloadCSV(dash) {
     row(['Scope 1 — Direct',           dash.scopes.scope1Assessed ? dash.scopes.scope1Kg : 'Not assessed']),
     row(['Scope 2 — Electricity',      dash.scopes.scope2Kg]),
     row(['Scope 3 — Embodied carbon',  dash.scopes.scope3EmbKg]),
-    row(['Scope 3 — Patient travel',   dash.scopes.scope3TravelKg]),
+    row(['Scope 3 — Patient travel',   dash.scopes.scope3TravelAssessed ? dash.scopes.scope3TravelKg : 'Not assessed']),
     row(['Scope 3 — Contrast supply chain', dash.scopes.scope3ContrastKg]),
-    row(['Scope 3 — Total',            dash.scopes.scope3Kg]),
+    row(['Scope 3 — Modeled subtotal', dash.scopes.scope3Kg]),
     blank,
 
     row(['RESOURCES']),
     row(['Metric', 'Value', 'Unit']),
-    row(['Water footprint',   dash.resources.waterLitres, 'L']),
-    row(['Paper consumption', dash.resources.paperKg,     'kg']),
-    row(['Hazardous waste',   dash.resources.hazardousKg, 'kg']),
+    row(['Water use',         dash.resources.waterAssessed ? dash.resources.waterLitres : 'Not assessed', dash.resources.waterAssessed ? 'L' : '']),
+    row(['Water screening reference', dash.resources.waterScreeningLitres, 'L · not reported']),
+    row(['Paper consumption', dash.resources.paperAssessed ? dash.resources.paperKg : 'Not assessed', dash.resources.paperAssessed ? 'kg' : '']),
+    row(['Paper screening reference', dash.resources.paperScreeningKg, 'kg · not reported']),
+    row(['Hazardous waste',   dash.resources.hazardousAssessed ? dash.resources.hazardousKg : 'Not assessed', dash.resources.hazardousAssessed ? 'kg' : '']),
+    row(['Hazardous-waste screening reference', dash.resources.hazardousScreeningKg, 'kg · not reported']),
     blank,
 
     row(['REAL-WORLD EQUIVALENCIES (Scope 2)']),
@@ -1211,6 +1203,9 @@ function generateDeptText(d) {
     `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e using the location-based grid factor (${d.ci} kgCO₂e/kWh; grid region: ${d.region}). Reported renewable electricity share was ${d.renewablePct}% and was not used to reduce the location-based result. ` +
     (d.clinicalToolCount > 0 ? ` This figure reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''}, whose net compute and clinical savings are included in the department energy above.` : '') +
     ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
+    ` The CEDARS Score boundary is operational energy-related carbon per imaging study; extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score.` +
+    (d.extendedCategories?.length ? ` Extended estimates reported separately: ${d.extendedCategories.join(', ')}.` : '') +
+    (d.notAssessedCategories?.length ? ` Not assessed: ${d.notAssessedCategories.join(', ')}.` : '') +
     (d.interventionCount > 0 ? ` The department reports ${d.interventionCount} sustainability practice${d.interventionCount > 1 ? 's' : ''} as currently implemented.` : '') +
     ` Sustainability metrics were estimated using CEDARS (${d.date}); assumptions, methodology, and literature sources are documented at https://github.com/takinci/cedars/blob/main/sources.md.`
   );
@@ -2489,11 +2484,12 @@ function App() {
   // deterministic if two deployment adapters for the same model carry inconsistent legacy
   // amortisation values; the record should still be reconciled before publication. Clinical-effect
   // fractions remain an expected-population approximation when deployed tools overlap on studies.
-  const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom, provider:settings.storageProvider, region:settings.storageRegion, cloudCi:settings.storageCloudCi, scope1AnnualKg:settings.scope1AnnualKg};
-  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides, provenance), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides, provenance]);
+  const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom, provider:settings.storageProvider, region:settings.storageRegion, cloudCi:settings.storageCloudCi, scope1AnnualKg:settings.scope1AnnualKg,
+    patientTravelKm:settings.patientTravelKm, waterLitresAnnual:settings.waterLitresAnnual, paperKgAnnual:settings.paperKgAnnual, hazardousKgAnnual:settings.hazardousKgAnnual};
+  const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides, provenance), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.patientTravelKm, settings.waterLitresAnnual, settings.paperKgAnnual, settings.hazardousKgAnnual, settings.equipmentOverrides, provenance]);
   // Deployment workload uses the department's pre-AI imaging volume and is always normalized to studies/month.
   const departmentStudiesPerMonth = Math.round((((dash.clinicalBasis?.imagingScans ?? dash.scopes.imagingScans) || 0)) / (TIME_MULT[settings.timePeriod] ?? 1));
-  const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct]);
+  const scenario = useMemo(() => computeInterventions(scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct), [scenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.patientTravelKm, settings.waterLitresAnnual, settings.paperKgAnnual, settings.hazardousKgAnnual, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
@@ -2567,16 +2563,16 @@ function App() {
   }, [settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
   // ── Scope 3 extensions (Doo et al. JACR 2024) ──────────────────────────────
-  const derivedStaffCount = useMemo(() =>
-    Object.entries(settings.equipment).reduce((sum, [key, n]) =>
-      sum + (STAFF_PER_DEVICE[key] ?? 0) * Math.max(0, n || 0), 0),
-  [settings.equipment]);
-
+  const staffCountRaw = String(settings.staffCount ?? '').trim();
+  const staffCommuteRaw = String(settings.staffCommuteKm ?? '').trim();
+  const staffCount = Number(staffCountRaw);
+  const staffCommuteKm = Number(staffCommuteRaw);
+  const staffCommuteAssessed = staffCountRaw !== '' && staffCommuteRaw !== '' && Number.isFinite(staffCount) && staffCount >= 0 && Number.isFinite(staffCommuteKm) && staffCommuteKm >= 0;
   const staffCommuteCo2 = useMemo(() => {
+    if (!staffCommuteAssessed) return 0;
     const mult = TIME_MULT[settings.timePeriod] ?? 1;
-    const km = Math.max(0, parseFloat(settings.staffCommuteKm) || 0);
-    return rnd(derivedStaffCount * km * 2 * STAFF_DAYS_PER_MO * mult * CAR_CO2_KG_KM, 1);
-  }, [derivedStaffCount, settings.staffCommuteKm, settings.timePeriod]);
+    return rnd(staffCount * staffCommuteKm * 2 * STAFF_DAYS_PER_MO * mult * CAR_CO2_KG_KM, 1);
+  }, [staffCommuteAssessed, staffCount, staffCommuteKm, settings.timePeriod]);
 
   const networkTransferCo2 = useMemo(() => {
     const ci = getCI(settings.region, settings.customCi);
@@ -2608,9 +2604,10 @@ function App() {
   }, [settings.equipment,settings.equipmentOverrides,settings.actualStudiesYear,settings.timePeriod,dash.totals.kwh,dash.totals.activeKwh,dash.totals.energyPerScan,dash.ci]);
 
   const equivData = useMemo(() => {
+    const coreOperationalCo2 = dash.totals.co2Kg;
     const co2 = equivScope === 'scope2'
-      ? dash.scopes.scope2Kg
-      : dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2;
+      ? coreOperationalCo2
+      : coreOperationalCo2 + dash.scopes.scope1Kg + dash.scopes.scope3EmbKg + dash.scopes.scope3TravelKg + dash.scopes.scope3ContrastKg + staffCommuteCo2 + networkTransferCo2;
     const kwh = dash.totals.kwh;
     const price = getPrice(settings.region, settings.electricityPrice);
     return {
@@ -2718,6 +2715,27 @@ function App() {
       ? rnd(Math.max(0, potentialFacilityCo2) / annualStudies, 3) : 0;
     const potentialScore = hasData ? cedarsScore(potentialCo2PerStudy, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
     const potentialRating = potentialScore != null ? cedarsRating(potentialScore) : rating;
+    const extendedCategories = [
+      ...(dash.scopes.scope1Assessed ? ['direct emissions (Scope 1)'] : []),
+      'embodied hardware',
+      ...(dash.scopes.scope3TravelAssessed ? ['patient travel'] : []),
+      'contrast supply chain', 'DICOM transfer',
+      ...(staffCommuteAssessed ? ['staff commute'] : []),
+      ...(dash.resources.waterAssessed ? ['water use'] : []),
+      ...(dash.resources.paperAssessed ? ['paper use'] : []),
+      ...(dash.resources.hazardousAssessed ? ['hazardous waste'] : []),
+    ];
+    const notAssessedCarbonCategories = [
+      ...(!dash.scopes.scope1Assessed ? ['direct emissions (Scope 1)'] : []),
+      ...(!dash.scopes.scope3TravelAssessed ? ['patient travel'] : []),
+      ...(!staffCommuteAssessed ? ['staff commute'] : []),
+    ];
+    const notAssessedCategories = [
+      ...notAssessedCarbonCategories,
+      ...(!dash.resources.waterAssessed ? ['water use'] : []),
+      ...(!dash.resources.paperAssessed ? ['paper use'] : []),
+      ...(!dash.resources.hazardousAssessed ? ['hazardous waste'] : []),
+    ];
     return {
       deptName: deptLabel.deptName || 'Unnamed Department',
       hospitalName: deptLabel.hospitalName || '',
@@ -2733,9 +2751,11 @@ function App() {
       interventionCount: deptLabel.activeInterventions.length,
       modeledInterventionCount: scenario.count,
       facilityCo2, clinicalToolCount: clinicalAdj.count,
+      scoreBoundaryLabel:'Operational energy-related carbon per imaging study',
+      extendedCategories, notAssessedCategories, notAssessedCarbonCategories,
       date: new Date().toISOString().slice(0, 7),
     };
-  }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash.totals.kwh, efficiency.capacityYr, efficiency.studiesYr, clinicalAdj.count, scenario.monthlyKwhSaved, scenario.savings.co2Fraction]);
+  }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash, efficiency.capacityYr, efficiency.studiesYr, clinicalAdj.count, staffCommuteAssessed, networkTransferCo2, scenario.monthlyKwhSaved, scenario.savings.pctCo2]);
 
   const departmentScoreReadiness = useMemo(() => getDepartmentScoreReadiness({
     annualKwh: deptLabelData.annualKwh,
@@ -2843,11 +2863,11 @@ function App() {
       {label:`Scope 1 — Direct (${scopePct(dash.scopes.scope1Kg)}%)`,              data:[scopePct(dash.scopes.scope1Kg)],       backgroundColor:'#81C784'},
       {label:`Scope 2 — Electricity (${scopePct(dash.scopes.scope2Kg)}%)`,          data:[scopePct(dash.scopes.scope2Kg)],       backgroundColor:'#2E7D32'},
       {label:`Scope 3 — Embodied (${scopePct(dash.scopes.scope3EmbKg)}%)`,          data:[scopePct(dash.scopes.scope3EmbKg)],    backgroundColor:'#4DB6AC'},
-      {label:`Scope 3 — Patient travel (${scopePct(dash.scopes.scope3TravelKg)}%)`, data:[scopePct(dash.scopes.scope3TravelKg)], backgroundColor:'#A5D6A7'},
+      {label:dash.scopes.scope3TravelAssessed?`Scope 3 — Patient travel (${scopePct(dash.scopes.scope3TravelKg)}%)`:'Scope 3 — Patient travel (not assessed)', data:[scopePct(dash.scopes.scope3TravelKg)], backgroundColor:'#A5D6A7'},
       {label:`Scope 3 — Contrast supply chain (${scopePct(dash.scopes.scope3ContrastKg)}%)`, data:[scopePct(dash.scopes.scope3ContrastKg)], backgroundColor:'#66BB6A'},
       {label:`Scope 3 — Cloud AI (${scopePct(dash.scopes.scope3CloudAiKg)}%)`, data:[scopePct(dash.scopes.scope3CloudAiKg)], backgroundColor:'#29B6F6'},
       {label:`Scope 3 — Cloud archive (${scopePct(dash.scopes.scope3CloudStorageKg)}%)`, data:[scopePct(dash.scopes.scope3CloudStorageKg)], backgroundColor:'#26A69A'},
-      {label:`Scope 3 — Staff commute (${scopePct(staffCommuteCo2)}%)`,             data:[scopePct(staffCommuteCo2)],            backgroundColor:'#FFB74D'},
+      {label:staffCommuteAssessed?`Scope 3 — Staff commute (${scopePct(staffCommuteCo2)}%)`:'Scope 3 — Staff commute (not assessed)', data:[scopePct(staffCommuteCo2)], backgroundColor:'#FFB74D'},
       {label:`Scope 3 — Data transfer (${scopePct(networkTransferCo2)}%)`,          data:[scopePct(networkTransferCo2)],         backgroundColor:'#90A4AE'},
     ],
   };
@@ -3699,33 +3719,28 @@ function App() {
           {dashOpen['carbon'] && (
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>2. Carbon emissions — GHG Protocol scopes</h2>
-            <p className="note" style={{marginBottom:12}}>Scope 1 is reported only when you enter measured/estimated direct emissions; CEDARS no longer derives it as a percentage of electricity. Scope 2 is purchased local electricity. Scope 3 includes embodied carbon, patient travel, contrast, cloud archive carbon, staff commute, and DICOM transfer. All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
+            <p className="note" style={{marginBottom:12}}>GHG scopes and the CEDARS Score boundary are related but not identical. The Score uses operational energy-related carbon per study; extended Scope 1/3 categories are disclosed separately. Patient travel and staff commute are <strong>not assessed</strong> until local inputs are entered. All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14,background:'#f1f8f1',borderRadius:12,padding:'8px 16px',flexWrap:'wrap'}}>
-              <span style={{fontSize:12,color:'#607d66'}}>
-                Staff commute — <strong style={{color:'#263238'}}>{derivedStaffCount} FTE estimated</strong> from {Object.values(settings.equipment).reduce((s,n)=>s+(n||0),0)} devices (illustrative estimate — see sources.md)
-              </span>
-              <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32',marginLeft:'auto'}}>
-                Avg one-way commute
-                <input type="number" min="0" step="1" value={settings.staffCommuteKm} onChange={e=>set('staffCommuteKm',e.target.value)}
-                  style={{width:60,padding:'4px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/>
-                km
-              </label>
+              <span style={{fontSize:12,color:'#607d66',fontWeight:700}}>Optional local travel inputs</span>
+              <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Patient avg round trip <input type="number" min="0" step="1" value={settings.patientTravelKm} onChange={e=>set('patientTravelKm',e.target.value)} placeholder="blank" style={{width:70,padding:'4px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/> km</label>
+              <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Staff count <input type="number" min="0" step="1" value={settings.staffCount} onChange={e=>set('staffCount',e.target.value)} placeholder="blank" style={{width:70,padding:'4px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/> FTE</label>
+              <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Avg one-way commute <input type="number" min="0" step="1" value={settings.staffCommuteKm} onChange={e=>set('staffCommuteKm',e.target.value)} placeholder="blank" style={{width:70,padding:'4px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/> km</label>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}><label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Direct emissions / Scope 1 (kgCO₂e/year) <input type="number" min="0" step="1" value={settings.scope1AnnualKg} onChange={e=>set('scope1AnnualKg',e.target.value)} placeholder="leave blank if not assessed" style={{width:150,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8}}/></label><span className="note" style={{fontSize:10}}>Optional. Enter fuel/generator/medical-gas emissions when known; blank is reported as not assessed.</span></div>
             <div className="cards">
               <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={dash.scopes.scope1Assessed?fmtCo2(dash.scopes.scope1Kg):'Not assessed'}       sub={dash.scopes.scope1Assessed?'User-entered annual direct emissions, scaled to this reporting period.':'No automatic percentage proxy is applied.'}/>
               <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Local Clinical AI compute is included here; outsourced cloud AI is reported in Scope 3.`}/>
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
-              <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={fmtCo2(dash.scopes.scope3TravelKg)} sub={`${dash.scopes.imagingScans.toLocaleString()} scans × ${PATIENT_KM_RT} km avg round trip.`}/>
+              <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={dash.scopes.scope3TravelAssessed?fmtCo2(dash.scopes.scope3TravelKg):'Not assessed'} sub={dash.scopes.scope3TravelAssessed?`${dash.scopes.imagingScans.toLocaleString()} scans × ${settings.patientTravelKm} km local avg round trip · passenger-car factor · Extended estimate.`:`Enter a local average round-trip distance to assess. A ${PATIENT_KM_RT} km screening reference (${fmtCo2(dash.scopes.scope3TravelScreeningKg)}) is not included in the reported subtotal.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
-              <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={fmtCo2(staffCommuteCo2)}            sub={`~${derivedStaffCount} staff (estimated from device fleet) × ${settings.staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo. DEFRA 2023.`}/>
+              <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={staffCommuteAssessed?fmtCo2(staffCommuteCo2):'Not assessed'} sub={staffCommuteAssessed?`${staffCount} staff × ${staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo · passenger-car factor · Extended estimate.`:'Enter both local staff count and average commute distance. CEDARS no longer infers FTE from scanner counts.'}/>
               <Card icon={<Wifi/>}       title="Scope 3 — Data transfer"   value={fmtCo2(networkTransferCo2)}         sub={`${dash.scopes.imagingScans.toLocaleString()} studies × ${AVG_STUDY_GB} GB avg × 0.001 kWh/GB. DICOM network energy (Aslan et al. 2018).`}/>
               {dash.scopes.scope3CloudStorageKg>0&&<Card icon={<Database/>} title="Scope 3 — Cloud archive electricity" value={fmtCo2(dash.scopes.scope3CloudStorageKg)} sub={`Cloud archive carbon uses ${dash.storage.ci} kgCO₂e/kWh rather than the hospital grid.`}/>}
             </div>
             <section style={{marginTop:16}}>
               <h2>Scope 1 / 2 / 3 breakdown</h2>
               <Suspense fallback={<div style={{height:80}}/>}><Bar data={chartScopes} options={scopeBarOpts}/></Suspense>
-              <p className="note" style={{marginTop:8}}>Patient travel typically dominates Scope 3 in clean-grid regions — reducing unnecessary scans cuts more carbon than efficiency measures alone. Absolute values shown in cards above.</p>
+              <p className="note" style={{marginTop:8}}>This is a modeled subtotal of categories currently assessed or estimated in CEDARS, not a claim of complete Scope 3 coverage. Unassessed travel categories are omitted rather than filled with generic defaults.</p>
             </section>
           </section>
 
@@ -3750,7 +3765,7 @@ function App() {
           <button type="button" className="accHead" onClick={()=>toggleDash('infrastructure')} aria-expanded={!!dashOpen['infrastructure']}>
             <span className="accCaret">{dashOpen['infrastructure']?'▾':'▸'}</span>
             <span className="accTitle">Infrastructure &amp; hardware</span>
-            <span className="accVal">Scope 3 {fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)}</span>
+            <span className="accVal">Modeled Scope 3 {fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)}</span>
           </button>
           {dashOpen['infrastructure'] && (
           <section id="dash-infrastructure" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
@@ -3759,7 +3774,7 @@ function App() {
               <Card icon={<Cpu/>}          title="Top idle waster"    value={dash.topOpportunities[0]?.equipment ?? '—'}          sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
               <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="Radiography 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
               <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
-              <Card icon={<Gauge/>}        title="Scope 3 total"      value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Embodied + patient travel + contrast supply chain + outsourced cloud AI/archive electricity + staff commute + DICOM data transfer."/>
+              <Card icon={<Gauge/>}        title="Modeled Scope 3 subtotal" value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Includes only categories currently assessed/estimated in CEDARS; unassessed patient travel or staff commute are omitted rather than assumed."/>
             </div>
 
             {/* Data storage & archiving — fleet-driven long-term PACS/archive footprint */}
@@ -3832,22 +3847,27 @@ function App() {
           <button type="button" className="accHead" onClick={()=>toggleDash('resources')} aria-expanded={!!dashOpen['resources']}>
             <span className="accCaret">{dashOpen['resources']?'▾':'▸'}</span>
             <span className="accTitle">Resource footprint — water, waste, contrast</span>
-            <span className="accVal">{fmtL(dash.resources.waterLitres)} water</span>
+            <span className="accVal">{[dash.resources.waterAssessed,dash.resources.paperAssessed,dash.resources.hazardousAssessed].filter(Boolean).length}/3 local resource inputs</span>
           </button>
           {dashOpen['resources'] && (
           <section id="dash-resources" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>4. Resource footprint</h2>
-            <p className="note" style={{marginBottom:12}}>Replace defaults with procurement records, waste manifests, and water bills for publication-quality figures.</p>
+            <p className="note" style={{marginBottom:12}}>Water, paper, and generic hazardous waste are <strong>not assessed by default</strong>. Enter local annual totals from water bills, procurement records, or waste manifests to report them. Historical proxy calculations remain visible only as screening references.</p>
+            <div className="grid" style={{marginBottom:12}}>
+              <label>Annual department water (L)<input type="number" min="0" value={settings.waterLitresAnnual} onChange={e=>set('waterLitresAnnual',e.target.value)} placeholder="blank = not assessed"/></label>
+              <label>Annual paper use (kg)<input type="number" min="0" value={settings.paperKgAnnual} onChange={e=>set('paperKgAnnual',e.target.value)} placeholder="blank = not assessed"/></label>
+              <label>Annual hazardous waste (kg)<input type="number" min="0" value={settings.hazardousKgAnnual} onChange={e=>set('hazardousKgAnnual',e.target.value)} placeholder="blank = not assessed"/></label>
+            </div>
             <div className="cards">
-              <Card icon={<Droplets/>} title={`Water footprint ${dash.totals.label}`}      value={fmtL(dash.resources.waterLitres)}  sub={`${WATER_PER_KWH} L/kWh screening factor — a data-centre proxy, not a measured imaging value. See "How is this estimated?" below.`}/>
-              <Card icon={<FileText/>} title={`Paper consumption ${dash.totals.label}`}    value={`${dash.resources.paperKg} kg`}    sub={`~${PAPER_G_PER_ENC}g/encounter digital workflow. Full film-based: ~200g. (ESR Green Imaging)`}/>
-              <Card icon={<Trash2/>}   title={`Hazardous waste ${dash.totals.label}`}      value={`${dash.resources.hazardousKg} kg`} sub="Contrast media disposal, sharps. Replace with waste manifest data."/>
+              <Card icon={<Droplets/>} title={`Water use ${dash.totals.label}`} value={dash.resources.waterAssessed?fmtL(dash.resources.waterLitres):'Not assessed'} sub={dash.resources.waterAssessed?'Local annual water input, scaled to this reporting period.':`Screening reference only: ${fmtL(dash.resources.waterScreeningLitres)} using ${WATER_PER_KWH} L/kWh data-centre proxy; not included as a Department result.`}/>
+              <Card icon={<FileText/>} title={`Paper consumption ${dash.totals.label}`} value={dash.resources.paperAssessed?`${dash.resources.paperKg} kg`:'Not assessed'} sub={dash.resources.paperAssessed?'Local annual paper input, scaled to this reporting period.':`Screening reference only: ~${dash.resources.paperScreeningKg} kg at ${PAPER_G_PER_ENC} g/encounter; not included as a Department result.`}/>
+              <Card icon={<Trash2/>}   title={`Hazardous waste ${dash.totals.label}`} value={dash.resources.hazardousAssessed?`${dash.resources.hazardousKg} kg`:'Not assessed'} sub={dash.resources.hazardousAssessed?'Local annual waste-manifest input, scaled to this reporting period.':`Screening reference only: ~${dash.resources.hazardousScreeningKg} kg at ${HAZ_WASTE_G_SCAN} g/scan; not included as a Department result.`}/>
               <Card icon={<Leaf/>}     title={`Total Scope 2 carbon ${dash.totals.label}`} value={fmtCo2(dash.scopes.scope2Kg)}      sub="All electricity-derived emissions. Primary target for renewable energy procurement."/>
             </div>
             <details className="methodologyDetails" style={{marginTop:10}}>
-              <summary>How is the water footprint estimated? (area of active investigation)</summary>
+              <summary>Why is the water screening reference not reported by default?</summary>
               <div className="note" style={{marginTop:8}}>
-                CEDARS multiplies the department's electricity by a {WATER_PER_KWH} L/kWh screening factor. That figure is a data-centre cooling proxy; no published study has measured water use per kWh for imaging equipment. The best evidence available is for cooling <em>energy</em>: in a one-year instrumented study of three CT and four MRI scanners, dedicated cooling systems accounted for 44.5% of the combined scanner-plus-cooling consumption<Ref id="heye-radiology-2020" order={DEPT_WATER_REFS}/>. Whether that cooling consumes water depends on the plant: closed-loop air-cooled chillers reject heat to air and use essentially no water on site; water-cooled chillers fed by a cooling tower lose water to evaporation; once-through city-water cooling consumes the most; and many hospitals run scanners from a shared chilled-water loop, where the water sits at the central plant. Off-site, every kWh also carries the water used to generate it, which varies by grid<Ref id="li-thirsty-2023" order={DEPT_WATER_REFS}/>. Treat this line as a placeholder, not a measurement. CEDARS will replace the screening factor with a cooling-type model as evidence becomes available, and welcomes measured data from departments (see About).
+                CEDARS can calculate a screening reference by multiplying department electricity by {WATER_PER_KWH} L/kWh, but that figure is a data-centre cooling proxy; no published study has measured water use per kWh for imaging equipment. It is therefore shown for orientation only and is not promoted into the reported Department result unless a local annual water value is entered. The best evidence available is for cooling <em>energy</em>: in a one-year instrumented study of three CT and four MRI scanners, dedicated cooling systems accounted for 44.5% of the combined scanner-plus-cooling consumption<Ref id="heye-radiology-2020" order={DEPT_WATER_REFS}/>. Whether that cooling consumes water depends on the plant: closed-loop air-cooled chillers reject heat to air and use essentially no water on site; water-cooled chillers fed by a cooling tower lose water to evaporation; once-through city-water cooling consumes the most; and many hospitals run scanners from a shared chilled-water loop, where the water sits at the central plant. Off-site, every kWh also carries the water used to generate it, which varies by grid<Ref id="li-thirsty-2023" order={DEPT_WATER_REFS}/>. CEDARS will replace the screening factor with a cooling-type model as evidence becomes available, and welcomes measured data from departments (see About).
                 <ReferenceList ids={DEPT_WATER_REFS} compact/>
               </div>
             </details>
@@ -5096,11 +5116,12 @@ function App() {
                 </div>
                 <div>
                   <div className="scoreScopeToggle" aria-label="Emissions included in everyday equivalents">
-                    <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}><strong>Electricity only</strong><small>Purchased electricity · Scope 2</small></button>
-                    <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}><strong>Broader modeled footprint</strong><small>Direct + indirect sources included here · Scopes 1–3 where assessed</small></button>
+                    <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}><strong>Core quantified</strong><small>Operational energy/carbon · CEDARS Score boundary</small></button>
+                    <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}><strong>Core + extended estimates</strong><small>Additional modeled categories · not scored</small></button>
                   </div>
-                  <div className="scoreScopeExplain"><strong>Electricity only</strong> shows emissions from purchased electricity. <strong>Broader modeled footprint</strong> also includes the direct and upstream/downstream sources that have been assessed in CEDARS.</div>
+                  <div className="scoreScopeExplain"><strong>Core quantified</strong> shows operational energy-related carbon used by the Department Score, including operational cloud compute/archive where applicable. <strong>Core + extended estimates</strong> adds assessed direct emissions and modeled embodied, contrast, DICOM-transfer, patient-travel, and staff-commute categories without changing the Score.</div>
                   {equivScope==='all'&&!dash.scopes.scope1Assessed&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Direct fuel/gas emissions are not included because Scope 1 has not been assessed.</div>}
+                  {equivScope==='all'&&deptLabelData.notAssessedCarbonCategories?.length>0&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Additional carbon categories not assessed: {deptLabelData.notAssessedCarbonCategories.join(', ')}.</div>}
                 </div>
               </div>
 
@@ -5140,7 +5161,7 @@ function App() {
               <details className="methodologyDetails">
                 <summary>Methodology &amp; scoring</summary>
                 <div>
-                  The CEDARS Score (0–100) and Rating (1–5 leaves) are based on kgCO₂e per imaging study — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department can score well even at a high absolute footprint while an under-used fleet does not. The scale is benchmarked against published radiology carbon-intensity data; see the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">full source list</a>. Its visual reporting logic draws on consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer">EU Energy Label</a>.
+                  The CEDARS Score (0–100) and Rating (1–5 leaves) are based on <strong>operational energy-related kgCO₂e per imaging study</strong> — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department can score well even at a high absolute footprint while an under-used fleet does not. Operational cloud compute/archive is included when configured. Extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score. The scale is benchmarked against published radiology carbon-intensity data; see the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">full source list</a>. Its visual reporting logic draws on consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer">EU Energy Label</a>.
                 </div>
               </details>
             </div>
@@ -5331,6 +5352,9 @@ function App() {
                   ['6', 'Current sustainability practices', d.interventionCount > 0 ? `${d.interventionCount} documented as implemented` : 'none reported', d.interventionCount > 0, 'Current state'],
                   ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
                   ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
+                  ['9', 'CEDARS Score boundary', d.scoreBoundaryLabel, true, 'Boundary'],
+                  ['10', 'Extended estimates reported separately', d.extendedCategories.length ? d.extendedCategories.join(' · ') : 'none', true, 'Boundary'],
+                  ['11', 'Not assessed', d.notAssessedCategories.length ? d.notAssessedCategories.join(' · ') : 'none', d.notAssessedCategories.length===0, 'Boundary'],
                 ];
                 return (
                   <div style={{border:'1px solid #c8e6c9', borderRadius:14, overflow:'hidden'}}>
