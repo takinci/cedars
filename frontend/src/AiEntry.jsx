@@ -9,8 +9,8 @@ import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 // aiSystemType then keeps imaging AI separate from LLM / multimodal / agentic workloads.
 export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025', 'kpodzro-haip-2026'];
 
-const q = {fontSize:12, fontWeight:700, color:'#2E7D32', margin:'0 0 6px'};
-const inset = {background:'#f7fbf8', border:'1px solid #e0efe2', borderRadius:12, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10};
+const q = {fontSize:13, fontWeight:700, color:'#2E7D32', margin:'0 0 6px'};
+const inset = {background:'#fff', border:'1px solid #dfe6df', borderRadius:10, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10};
 
 export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVolume}) {
   const hasDeptVolume = dept.studiesPerMonth > 0;
@@ -20,7 +20,7 @@ export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVol
       <div>
         <p style={q}>Expected deployment workload</p>
         <p className="note" style={{margin:0}}>
-          Every candidate is compared at the same monthly study volume. Choose a published practice estimate, use the Radiology Department volume already in this assessment, or enter a custom workload.<Ref id={VOLUME_ESTIMATE_REF} order={AI_ENTRY_REFS}/>
+          Compare every candidate at the same monthly workload.<Ref id={VOLUME_ESTIMATE_REF} order={AI_ENTRY_REFS}/>
         </p>
       </div>
       <div className="deploymentWorkloadGrid" role="group" aria-label="Expected deployment workload">
@@ -55,15 +55,15 @@ export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVol
         </div>
       </div>
       <p className="note" style={{margin:0}}>
-        These are workload assumptions, not compute-location assumptions. Provider and compute region are set separately and applied consistently to every candidate.
+        Compute provider and region are set separately and held constant across candidates.
       </p>
     </div>
   );
 }
 
 const SYSTEM_CHOICES = [
-  ['imaging', 'Imaging AI', 'Detection, classification, segmentation, reconstruction, image generation, or another imaging task.'],
-  ['foundation', 'LLM / multimodal / agentic AI', 'Report generation, NLP, vision-language models, copilots, or multi-call agentic workflows.'],
+  ['imaging', 'Imaging AI', 'Detection, classification, segmentation, reconstruction, or image generation.'],
+  ['foundation', 'LLM / multimodal / agentic AI', 'LLMs, multimodal models, copilots, or agentic workflows.'],
 ];
 
 export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, onOwnMode, examples, onExample, onReset}) {
@@ -83,34 +83,33 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
       <div className="aiIntentHeader">
         <span className="aiIntentKicker">START HERE</span>
         <div>
-          <h2 id="ai-intent-title">What best describes the work you’re doing today?</h2>
-          <p>Start with the work context. CEDARS will then ask only the AI details needed for that pathway.</p>
+          <h2 id="ai-intent-title">How are you using AI?</h2>
+          <p>Choose the path that fits your work.</p>
         </div>
       </div>
 
       <div className="aiIntentGrid aiRoleGrid" role="group" aria-label="AI work context">
         <button type="button" data-demo-target="ai-clinical-lane" className={`aiIntentCard aiIntentLane ${lane==='clinical'?'active':''}`} aria-pressed={lane==='clinical'} onClick={()=>setLane('clinical')}>
           <span className="aiIntentIcon"><TrendingUp size={21}/></span>
-          <span className="aiIntentEyebrow">EVALUATE · SELECT · USE</span>
-          <strong>Evaluating or using AI in clinical care</strong>
-          <small>For radiology leaders, clinicians, procurement, informatics/IT, AI governance, operations, administrators, and sustainability teams.</small>
-          <b>{lane==='clinical'?'Selected':'Choose this pathway →'}</b>
+          <span className="aiIntentEyebrow">CLINICAL USE</span>
+          <strong>Clinical use</strong>
+          <small>Assess an existing system or compare candidates for clinical deployment.</small>
+          <b>{lane==='clinical'?'Selected':'Choose →'}</b>
         </button>
         <button type="button" data-demo-target="ai-developer-lane" className={`aiIntentCard aiIntentLane ${lane==='develop'?'active':''}`} aria-pressed={lane==='develop'} onClick={()=>setLane('develop')}>
           <span className="aiIntentIcon"><Cpu size={21}/></span>
-          <span className="aiIntentEyebrow">DEVELOP · RETRAIN</span>
-          <strong>Developing or materially retraining AI</strong>
-          <small>For researchers, ML engineers, technical imaging-informatics teams, and others building or materially retraining a model.</small>
-          <b>{lane==='develop'?'Selected':'Choose this pathway →'}</b>
+          <span className="aiIntentEyebrow">DEVELOPMENT</span>
+          <strong>Development</strong>
+          <small>Measure or enter the energy used to develop and run a model.</small>
+          <b>{lane==='develop'?'Selected':'Choose →'}</b>
         </button>
       </div>
 
       {lane && (
         <div className="aiLaneDetail" data-demo-target="ai-lane-detail">
           <div className="aiLaneDetailHeader">
-            <span>{lane==='clinical'?'CLINICAL / OPERATIONAL PATHWAY':'DEVELOPMENT PATHWAY'}</span>
-            <strong>{lane==='clinical'?'What kind of AI are you evaluating or using?':'What kind of AI are you developing or retraining?'}</strong>
-            <small>{lane==='clinical'?'You do not need to be an AI developer to use this pathway.':'Use this pathway when your team owns the model-development or material-retraining work.'}</small>
+            <span>AI TYPE</span>
+            <strong>What type of AI is this?</strong>
           </div>
           <div className="aiSystemChoiceGrid" role="group" aria-label="AI system family">
             {SYSTEM_CHOICES.map(([key,title,desc]) => (
@@ -121,43 +120,43 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           </div>
 
           <div className={`aiTaskChoiceBlock ${systemType?'ready':''}`}>
-            <span>{lane==='clinical'?'WHAT ARE YOU DOING?':'HOW DO YOU WANT TO START?'}</span>
+            <span>NEXT</span>
             {lane==='clinical' ? (
               <div className="aiTaskChoiceGrid">
                 <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseClinical('single')}>
                   <strong>Assess one system</strong>
-                  <small>Use this when a system is already selected, already deployed, or is the only system you need to evaluate. No comparison is required.</small>
+                  <small>Already selected or deployed.</small>
                   <b>Assess one system →</b>
                 </button>
                 <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseClinical('compare')}>
-                  <strong>Compare candidates</strong>
-                  <small>Use this when two or more systems could address the same clinical need and should be compared on a like-for-like basis.</small>
-                  <b>Compare candidates →</b>
+                  <strong>Compare systems</strong>
+                  <small>Two or more candidates for the same clinical need.</small>
+                  <b>Compare systems →</b>
                 </button>
               </div>
             ) : (
               <div className="aiTaskChoiceGrid">
                 <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseDevelopment('measure')}>
-                  <strong>Help me measure</strong>
-                  <small>Choose a measurement approach for training and/or inference based on where and how your model runs.</small>
-                  <b>Choose a measurement path →</b>
+                  <strong>Measure energy</strong>
+                  <small>Choose a measurement approach for training or inference.</small>
+                  <b>Measure energy →</b>
                 </button>
                 <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseDevelopment('measured')}>
-                  <strong>I have energy numbers</strong>
-                  <small>Enter measured training or inference energy and keep its provenance attached to the model record.</small>
-                  <b>Enter model data →</b>
+                  <strong>Enter known energy</strong>
+                  <small>Enter energy you already measured or obtained.</small>
+                  <b>Enter energy →</b>
                 </button>
               </div>
             )}
-            {!systemType && <small className="aiTaskChoiceHint">Choose the AI type above to continue.</small>}
+            {!systemType && <small className="aiTaskChoiceHint">Choose an AI type to continue.</small>}
           </div>
         </div>
       )}
 
       <details id="ai-examples" className="aiExamplesDetails">
-        <summary>Examples &amp; quick start <small>optional</small></summary>
+        <summary>Examples <small>optional</small></summary>
         <div>
-          <p>Examples are shortcuts, not separate pathways. Load one to explore CEDARS, or start with a blank AI record. Example values are illustrative or literature-derived, not local measurements.</p>
+          <p>Load an example or start empty. Example values are illustrative or literature-derived.</p>
           <div className="quickStartChoices"><button type="button" onClick={onReset}>Start empty</button>{examples.map(ex => <button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>{ex.title}</button>)}</div>
         </div>
       </details>

@@ -1,0 +1,130 @@
+/* Chunk 7C — visual simplification and stable interaction hierarchy. */
+body{font-size:14px;color:#263238}
+main .note{font-size:13px!important;line-height:1.55!important}
+main small{font-size:12px!important;line-height:1.45}
+main input,main select,main textarea{font-size:13px}
+
+/* Keep context visible without turning it into a paragraph of metadata. */
+.assessmentContextStrip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#455a64}
+.assessmentContextTag{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #dce5dc;border-radius:7px;background:#fff}
+.assessmentContextTag>svg{color:#2E7D32}
+.assessmentContextTag>span{font-size:11px;font-weight:700;color:#607d66;letter-spacing:0}
+.assessmentContextTag>strong{font-size:13px;color:#263238}
+.assessmentContextTag.aiComputeTag{border-color:#cfded0}
+.assessmentContextPeriod{font-size:12px;color:#607d66}
+.assessmentContextStrip .contextEditLink{font-size:12px!important;font-weight:700;text-decoration:none}
+
+/* Quiet step navigation instead of four dashboard cards. */
+.workflowRailWrap{background:#fff!important;padding:8px 28px 6px!important;border-bottom:1px solid #e5e9e5!important}
+.workflowRail{display:flex!important;align-items:center;gap:20px!important;max-width:1200px;margin:0 auto;min-width:0}
+.workflowRailStep{min-height:0!important;border:0!important;border-radius:0!important;background:transparent!important;padding:5px 2px 7px!important;box-shadow:none!important}
+.workflowRailStep:first-child{display:flex;align-items:center;gap:10px;margin-right:auto}
+.workflowRailStep.active{border-bottom:2px solid #2E7D32!important;box-shadow:none!important}
+.workflowRailLabel{gap:6px}
+.workflowRailLabel>span,.workflowRailStep.active .workflowRailLabel>span{width:auto;height:auto;background:transparent!important;color:#607d66;font-size:12px;font-weight:700}
+.workflowRailStep.active .workflowRailLabel>span,.workflowRailStep.active .workflowRailLabel strong{color:#1b5e20}
+.workflowRailLabel strong{font-size:13px!important;letter-spacing:0!important;font-weight:750}
+.workflowRailStep.action small{display:none!important}
+.workflowRail .pathwayChips{margin:0;gap:5px}
+.workflowRail .pathwayChips button{font-size:12px!important;padding:5px 8px!important;border-radius:6px!important}
+
+/* Home: fewer visual layers, readable copy. */
+.workflowCard,.workflowCardStart{min-height:0!important;border:1px solid #dfe5df!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important;padding:15px!important}
+.workflowCardStart{border-color:#b7cdb9!important}
+.workflowCardKicker{font-size:12px!important;letter-spacing:0!important;margin-bottom:7px}
+.workflowCardPrompt{font-size:16px!important;margin:2px 0 10px}
+.workflowCardBody{font-size:13px!important;line-height:1.5!important;color:#52605a}
+.workflowCardSequenceHint{display:none!important}
+.startHereBadge{font-size:11px!important;letter-spacing:0!important;border-radius:5px!important;padding:3px 6px!important}
+.startChoice{border-radius:8px!important;box-shadow:none!important}
+.startChoice strong{font-size:14px!important}
+.startChoice small{font-size:12px!important}
+
+/* Flatten the main scientific/result surfaces. */
+.footprintHero,.inputSummary,.aiLaneDetail,.aiImproveHeader,.aiImproveRecommendation,.reportStageCard,.reportShareSection,.scoreResultPanel,.quickStartNotice,.guidedDemoLauncher{border-radius:10px!important;box-shadow:none!important}
+.footprintHero,.workflowCardStart,.guidedDemoLauncher{background:#fff!important}
+.footprintHeroHeader>div:first-child>span,.comparisonDecisionHeader span,.comparisonWorkspaceHeading span,.footprintExplore>div>span,.aiImproveHeader>div>span,.reportStageHeading>div:nth-child(2)>span,.improveWorkspaceHeading>div:first-child>span,.improveGuidanceHeading>span{font-size:11px!important;letter-spacing:.02em!important;font-weight:700!important}
+.footprintHeroHeader p,.comparisonDecisionHeader p,.comparisonWorkspaceHeading p,.footprintExplore p,.aiImproveHeader p,.reportStageHeading p{font-size:13px!important;line-height:1.5!important}
+.footprintHeroPrimary small{font-size:12px!important}
+.footprintHeroActions button,.footprintExploreActions button{font-size:12.5px!important;padding:8px 11px!important;box-shadow:none!important}
+.footprintMetricGrid span,.footprintBoundaryGrid span{font-size:11.5px!important;letter-spacing:0!important}
+.footprintMetricGrid strong{font-size:15px!important}
+.footprintBoundaryGrid small{font-size:12px!important}
+
+/* AI start: two plain choices, then the minimum next decision. */
+.aiIntentHeader h2{font-size:22px!important}
+.aiIntentHeader p{font-size:13px!important;line-height:1.5!important}
+.aiIntentKicker{font-size:11px!important;letter-spacing:.03em!important}
+.aiIntentLane{min-height:0!important;border-radius:9px!important;padding:15px!important;box-shadow:none!important}
+.aiIntentLane>strong{font-size:17px!important}
+.aiIntentLane>small{font-size:13px!important;line-height:1.45!important;color:#52605a!important}
+.aiIntentEyebrow,.aiIntentLane>b,.aiTaskChoice>b{display:none!important}
+.aiLaneDetail{background:#fff!important;border-color:#dfe5df!important;padding:14px 15px!important}
+.aiLaneDetailHeader>span,.aiTaskChoiceBlock>span{font-size:11px!important;letter-spacing:.02em!important;font-weight:700!important}
+.aiLaneDetailHeader>strong{font-size:16px!important}
+.aiLaneDetailHeader>small{font-size:12.5px!important}
+.aiSystemChoice,.aiTaskChoice{border-radius:8px!important;padding:11px 12px!important;box-shadow:none!important}
+.aiSystemChoice strong,.aiTaskChoice strong{font-size:14px!important}
+.aiSystemChoice small,.aiTaskChoice small,.aiTaskChoiceHint{font-size:12.5px!important;line-height:1.45!important}
+.aiExamplesDetails summary,.aiExamplesDetails p{font-size:13px!important}
+.deploymentWorkloadCard strong{font-size:13px!important}
+.deploymentWorkloadCard small{font-size:12px!important}
+
+/* Results: one result selector, readable data, less badge language. */
+.ecoChooserHeader.prominent>span{font-size:11px!important;letter-spacing:.02em!important}
+.ecoChooserHeader h2{font-size:20px!important}
+.ecoChooserHeader p,.ecoProductDesc{font-size:13px!important;line-height:1.5!important}
+.ecoProductChoice{border-radius:9px!important;box-shadow:none!important}
+.ecoProductTitle{font-size:15px!important}
+.ecoProductAction{font-size:12.5px!important}
+.ecoProductSelected{font-size:10.5px!important;letter-spacing:0!important;border-radius:5px!important}
+.scoreDataGrid span{font-size:11.5px!important;letter-spacing:0!important;text-transform:none!important}
+.scoreDataGrid strong{font-size:14px!important}
+.scoreEmptyState strong{font-size:13px!important}
+.scoreEmptyState p{font-size:12.5px!important}
+.ecoIntroBlock p{font-size:13px!important;line-height:1.55!important}
+
+/* Improve: keep evidence, but stop presenting every datum as micro-UI. */
+.improveScopeSelector button{border-radius:8px!important;box-shadow:none!important}
+.improveScopeSelector strong{font-size:14px!important}
+.improveScopeSelector small{font-size:12px!important}
+.improveStateStrip span,.improveWorkspaceHeading>div:first-child>span,.improveGuidanceHeading>span,.improveReceiptHeader span,.improveReceiptTotal>span,.improveScoreBox>span{font-size:11px!important;letter-spacing:0!important}
+.improveStateStrip strong,.improveGuidanceCard strong{font-size:13px!important}
+.improveWorkspaceHeading p,.improveGuidanceHeading p,.improveSectionHeading p,.improveGuidanceCard p,.improveReceiptNote{font-size:12.5px!important;line-height:1.5!important}
+.improveWorkspaceCount{font-size:11.5px!important;border-radius:5px!important}
+.improveOpportunityText span,.improveChangeSelect small,.improveEvidence summary,.improveEvidence p,.improveEvidenceLinks a,.improveAssumptions p,.improveReceiptRow span,.improveReceiptEmpty,.improveGuidanceCard small{font-size:12px!important;line-height:1.45!important}
+.improveOpportunityRow button,.improveReceipt>button{font-size:12px!important}
+.improveBadges>span,.improveReceiptPills span{font-size:10.5px!important;border-radius:5px!important;letter-spacing:0!important}
+.improveStandalone span{display:none!important}
+.improveStandalone strong,.improveReceiptRow strong,.improveScoreBox small{font-size:12.5px!important}
+.aiImproveStageGrid>button{border-radius:8px!important;box-shadow:none!important}
+.aiImproveStageGrid>button>span{font-size:11px!important;letter-spacing:.02em!important}
+.aiImproveStageGrid strong{font-size:14px!important}
+.aiImproveStageGrid small,.aiImproveStageIntro p{font-size:12.5px!important}
+.aiImproveStageIntro{background:#fafcfb!important;border-radius:0 8px 8px 0!important}
+
+/* Reporting and walkthroughs should read like documents, not dashboards. */
+.reportStageNumber{width:30px;height:30px;font-size:13px}
+.reportStageHeading h2,.reportShareSection>h2{font-size:21px!important}
+.reportSteps strong{font-size:13px!important}
+.reportSteps small,.reportContextBar span,.reportContextChoices button{font-size:12px!important}
+.researchAssessmentNotice{font-size:12.5px!important}
+.guidedDemoLauncherHead>div>span,.guidedDemoChoiceEyebrow,.guidedDemoProgress,.guidedDemoTargetWarning{font-size:11px!important;letter-spacing:.02em!important}
+.guidedDemoLauncherHead p,.guidedDemoChoiceCopy>small,.guidedDemoExampleNote,.guidedDemoPopover p,.guidedDemoActionHint{font-size:13px!important;line-height:1.5!important}
+.guidedDemoChoice button,.guidedDemoActions button,.guidedDemoBanner button{font-size:12px!important}
+.guidedDemoBanner strong,.guidedDemoBanner span{font-size:12px!important}
+.guidedDemoPopover h3{font-size:18px!important}
+
+@media(max-width:760px){
+  .workflowRailWrap{overflow-x:auto;padding:6px 12px!important}
+  .workflowRail{display:flex!important;min-width:max-content;gap:16px!important}
+  .workflowRailStep,.workflowRail>.workflowRailStep:first-child,.workflowRail>.workflowRailStep:last-child{grid-column:auto!important}
+  .workflowRailStep:first-child{margin-right:0}
+  .workflowRail .pathwayChips{display:none!important}
+  .workflowRailLabel strong{font-size:12.5px!important}
+  .assessmentContextStrip{gap:6px}
+  .assessmentContextTag{padding:5px 7px}
+  .assessmentContextPeriod{display:none}
+  .homeWorkflowGrid{gap:9px!important}
+  .guidedDemoPopover{max-height:52vh!important}
+}
