@@ -1700,7 +1700,7 @@ function App() {
   const goToAssessmentContext = (returnTo = '', returnMode = false) => {
     // AI starts directly in its role-first setup; shared local context remains editable from the page header.
     if (returnTo === 'ai' && !returnMode) {
-      setInputTarget(''); setInputReturnMode(false); setPage('ai');
+      setInputTarget(''); setInputReturnMode(false); setEcoLabelMode('ai'); setPage('ai');
       window.setTimeout(() => window.scrollTo({top:0, behavior:'smooth'}), 0);
       return;
     }
@@ -3123,8 +3123,8 @@ function App() {
           page={page}
           setupActive={(page==='dashboard'&&deptSetupOpen)||(page==='ai'&&!scen.aiRoute)}
           onInput={()=>goToAssessmentContext(page==='ai'?'ai':page==='dashboard'?'dashboard':ecoLabelMode==='ai'?'ai':'dashboard',true)}
-          onDepartment={()=>{setPage('dashboard');setDeptSetupOpen(true);}}
-          onAi={()=>setPage('ai')}
+          onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);}}
+          onAi={()=>{setEcoLabelMode('ai');setPage('ai');}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
             if (aiProduct) {
@@ -3137,7 +3137,7 @@ function App() {
             }
           }}
           onImprove={()=>{if(page==='ai'){setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}else if(page==='dashboard')setEcoLabelMode('department');setPage('scenario');}}
-          onReport={()=>setPage('report')}
+          onReport={()=>{if(page==='ai')setEcoLabelMode('ai');else if(page==='dashboard')setEcoLabelMode('department');setPage('report');}}
         />
       )}
 
@@ -3219,12 +3219,12 @@ function App() {
               )}
             </div>
             <div className="assessmentContextNote">
-              <strong>Used for:</strong> department footprint, local clinical-benefit calculations, costs, and the Department EcoLabel.
+              <strong>Used for:</strong> the Department Sustainability Profile — footprint, local clinical-benefit calculations, costs, and reporting outputs.
               <span> <strong>AI compute region:</strong> selected separately within AI Model &amp; Informatics.</span>
             </div>
           </section>
           <div className="inputGatewayMessage">
-            <span>STEP 1 · INPUT</span>
+            <span>STEP 1 · BUILD PROFILE</span>
             <h1>{inputTarget ? (inputReturnMode ? `Edit shared context, then return to ${inputTargetName(inputTarget)}.` : `Continue to ${inputTargetName(inputTarget)}.`) : 'Choose a pathway to continue.'}</h1>
             <p>Review the shared context above first. These assumptions carry into either pathway; AI compute/deployment location is still set separately on the AI page.</p>
             {inputTarget ? (
@@ -3236,10 +3236,10 @@ function App() {
               </div>
             ) : (
               <div className="startChoiceGrid" style={{marginTop:14,maxWidth:760}}>
-                <button type="button" className="startChoice department" onClick={()=>setPage('dashboard')}>
+                <button type="button" className="startChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');}}>
                   <Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span>
                 </button>
-                <button type="button" className="startChoice ai" onClick={()=>setPage('ai')}>
+                <button type="button" className="startChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');}}>
                   <Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Develop/train a model or procure/deploy clinical AI</small></span><span aria-hidden="true">→</span>
                 </button>
               </div>
@@ -3443,18 +3443,18 @@ function App() {
             <div className="clinicalAiSetupPrompt">
               <Brain size={18}/>
               <div>
-                <strong>Clinical AI is a department input</strong>
-                <p>Add deployed AI tools to include their compute and clinical effects — avoided scans, shorter protocols, and contrast changes — in the department footprint and EcoLabel.</p>
+                <strong>Clinical AI belongs in the Department Sustainability Profile</strong>
+                <p>Add deployed AI to include local compute and supported workflow effects — avoided scans, shorter protocols, and contrast changes — in Department Results.</p>
               </div>
               <button type="button" onClick={()=>{
                 setDashOpen(o=>({...o,clinicalai:true}));
                 setDeptSetupOpen(false);
                 requestAnimationFrame(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}));
-              }}>{(deptLabel.aiTools||[]).length ? `Edit ${(deptLabel.aiTools||[]).length} deployed tool${(deptLabel.aiTools||[]).length===1?'':'s'} →` : 'Add clinical AI tools →'}</button>
+              }}>{(deptLabel.aiTools||[]).length ? `Edit ${(deptLabel.aiTools||[]).length} deployed AI use${(deptLabel.aiTools||[]).length===1?'':'s'} →` : 'Add Clinical AI →'}</button>
             </div>
             <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>To model an AI system's own training/inference footprint rather than its department-level clinical effect, use <button onClick={()=>setPage('ai')} className="inlineTextButton">AI Model &amp; Informatics →</button>.</p>
             <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
-              <button onClick={()=>{setDeptSetupOpen(false);requestAnimationFrame(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}));}} style={{padding:'8px 13px',fontSize:12}}>Done — view department overview ↓</button>
+              <button onClick={()=>{setDeptSetupOpen(false);requestAnimationFrame(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}));}} style={{padding:'8px 13px',fontSize:12}}>Done — view Results ↓</button>
             </div>
 
               </div>
@@ -3486,7 +3486,7 @@ function App() {
               <Brain size={19}/>
               <span className="primaryInputSummaryText">
                 <strong>Clinical AI — department input</strong>
-                <small>{(deptLabel.aiTools||[]).length} deployed · Optional, but changes the department footprint and EcoLabel when used</small>
+                <small>{(deptLabel.aiTools||[]).length} deployed · Optional · contributes to Department Results when used locally</small>
               </span>
               <span>{dashOpen['clinicalai'] ? 'Hide input ▴' : 'Add / edit input ▾'}</span>
             </button>
@@ -3737,7 +3737,7 @@ function App() {
                 <Card icon={<Droplets/>}     title={`Storage cost ${dash.totals.label}`}   value={fmtMoney(dash.storage.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub="Electricity cost at your tariff; cloud service fees billed separately."/>
               </div>
               <p className="note" style={{marginTop:8,fontSize:11}}>
-                These toggles set your <strong>current</strong> storage practice. The same three strategies also appear as tickable actions on the <strong>Interventions</strong> and <strong>EcoLabel</strong> tabs, where their savings are modelled as a <em>change from</em> this current setup (so they never double-count). Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
+                These toggles set your <strong>current</strong> storage practice. The same three strategies also appear as prospective actions in <strong>Improve</strong>, where savings are modeled as a <em>change from</em> this baseline so they never double-count. Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
               </p>
               <ReferenceList ids={DEPT_STORAGE_REFS} compact/>
             </div>
@@ -3836,9 +3836,9 @@ function App() {
           </div>
 
           {aiEntryOrigin === 'department' && !aiExampleLoaded && (
-            <div className="quickStartNotice" style={{marginBottom:14,border:'2px solid #2E7D32',boxShadow:'0 4px 14px rgba(46,125,50,0.12)'}}><Brain size={17}/><div style={{width:'100%'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><strong>You opened this model from Radiology Department → Clinical AI</strong><button type="button" onClick={returnToClinicalAi} style={{background:'#1b5e20',color:'#fff',fontWeight:800,padding:'7px 12px'}}>← Return to Clinical AI</button></div><p style={{marginBottom:0}}>Changes to this shared model record are saved back to the Clinical AI setup automatically. Return there to add or edit local workflows, study share, and department accounting.</p></div></div>
+            <div className="quickStartNotice" style={{marginBottom:14,border:'2px solid #2E7D32',boxShadow:'0 4px 14px rgba(46,125,50,0.12)'}}><Brain size={17}/><div style={{width:'100%'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><strong>You opened this model from Radiology Department → Clinical AI</strong><button type="button" onClick={returnToClinicalAi} style={{background:'#1b5e20',color:'#fff',fontWeight:800,padding:'7px 12px'}}>← Return to Clinical AI</button></div><p style={{marginBottom:0}}>Changes to this shared AI Sustainability Profile are saved back to the Clinical AI setup automatically. Return there to add or edit local workflows, study share, and department accounting.</p></div></div>
           )}
-          {aiExampleLoaded && (()=>{const ex=AI_EXAMPLES.find(e=>e.key===aiExampleLoaded);return <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Example loaded{ex?.title?`: ${ex.title}`:''}</strong><p>You are viewing a completed example record, not your department's measured model. Explore the inputs and calculations, return to the AI start screen, or copy the example into a new model record before using it in your own assessment.</p><div className="quickStartChoices"><button type="button" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Back to AI start</button><button type="button" onClick={useLoadedExampleAsStartingPoint}>Use as my starting point</button>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi}>Return to Clinical AI without using example</button>}</div></div></div>;})()}
+          {aiExampleLoaded && (()=>{const ex=AI_EXAMPLES.find(e=>e.key===aiExampleLoaded);return <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Example loaded{ex?.title?`: ${ex.title}`:''}</strong><p>You are viewing a completed example profile, not your department's measured model. Explore the inputs and calculations, return to the AI start screen, or copy the example into a new AI Sustainability Profile before using it in your own assessment.</p><div className="quickStartChoices"><button type="button" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Back to AI start</button><button type="button" onClick={useLoadedExampleAsStartingPoint}>Use as my starting point</button>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi}>Return to Clinical AI without using example</button>}</div></div></div>;})()}
 
           {/* ── Entry step: development vs clinical selection/deployment ── */}
           {!scen.aiRoute ? (
@@ -4565,7 +4565,7 @@ function App() {
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection comparisonDecisionPanel workflowAnchor" style={{background:'none',boxShadow:'none',padding:0,marginTop:18}} data-demo-target="ai-candidate-results">
-            <div className="comparisonDecisionHeader"><div><span>STEP 2 · SEE RESULTS</span><h2>Compare and select a candidate</h2><p>Review performance and environmental intensity in one decision surface. Select a candidate here to carry it into the standard AI assessment.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
+            <div className="comparisonDecisionHeader"><div><span>STEP 2 · SEE RESULTS</span><h2>Compare and select a candidate</h2><p>Review performance and environmental intensity in one decision surface. Select a candidate here to carry its data into the AI Sustainability Profile.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
             <div className="comparisonProgress" aria-label="Candidate comparison workflow">
               <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Define clinical comparison</span>
               <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Add candidate details</span>
@@ -4594,7 +4594,7 @@ function App() {
             <div style={{margin:'2px 0 12px'}}>
               <div style={{fontSize:11,fontWeight:800,color:'#2E7D32',letterSpacing:'0.06em'}}>CANDIDATE RESULTS</div>
               <h3 style={{margin:'3px 0 4px',fontSize:18}}>Compare candidates</h3>
-              <p className="note" style={{margin:0,fontSize:12}}><strong>Select a candidate to continue.</strong> Review reported performance and estimated environmental results side by side, then use <strong>Use this candidate →</strong> to carry its data into the standard AI assessment.</p>
+              <p className="note" style={{margin:0,fontSize:12}}><strong>Select a candidate to continue.</strong> Review reported performance and estimated environmental results side by side, then use <strong>Use this candidate →</strong> to carry its data into the AI Sustainability Profile.</p>
             </div>
 
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:16}}>
@@ -4733,7 +4733,7 @@ function App() {
               <div>
                 <span style={{fontSize:10,fontWeight:800,color:'#2E7D32',letterSpacing:'0.05em'}}>SELECTED FROM CANDIDATE COMPARISON</span>
                 <strong style={{display:'block',fontSize:15,color:'#1b5e20',marginTop:2}}>{comparisonSelection.label}</strong>
-                <p className="note" style={{margin:'3px 0 0',fontSize:11}}>This candidate is now in the standard AI model assessment. Review the carried-forward information, complete any missing lifecycle fields, then review the result.</p>
+                <p className="note" style={{margin:'3px 0 0',fontSize:11}}>This candidate now populates the AI Sustainability Profile. Review the carried-forward information, complete any missing lifecycle fields, then review Results.</p>
               </div>
               <button type="button" className="download" onClick={returnToComparison}>Return to comparison</button>
             </div>
@@ -4885,7 +4885,7 @@ function App() {
               </section>
 
               <section id="improve-before-after" className="inputSummary improveResultSection" style={{marginBottom:18}}>
-                <h2>Projected effect on your EcoLabel</h2>
+                <h2>Projected effect on your CEDARS Score</h2>
                 {(()=>{
                   const cur=deptLabelData;
                   const frac=scenario.baseline.co2>0?scenario.savings.co2/scenario.baseline.co2:0;
@@ -4910,8 +4910,8 @@ function App() {
               </section>
 
               <div className="workflowNextStep">
-                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the projected result in Results</strong><small>The baseline and modeled scenario remain separate; the score page interprets the current assessment before final reporting.</small></div>
-                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Results <ArrowRight size={17}/></button><button className="download" onClick={()=>setPage('report')}>Skip to report</button></div>
+                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current baseline in Results</strong><small>Your scenario remains prospective. Results continues to show the current Sustainability Profile until an implemented change is reflected in the underlying inputs.</small></div>
+                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Results <ArrowRight size={17}/></button><button className="download" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Report current profile</button></div>
               </div>
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
@@ -5103,8 +5103,8 @@ function App() {
                 <small>Continue to Report &amp; Share, or return to Improve first.</small>
               </div>
               <div className="workflowNextActions">
-                <button className="workflowNextPrimary" onClick={()=>setPage('report')}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
-                <button className="download" onClick={()=>setPage('scenario')}>Improve first</button>
+                <button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
+                <button className="download" onClick={()=>{setEcoLabelMode('department');setPage('scenario');}}>Improve first</button>
               </div>
             </div>
             </>}
@@ -5383,8 +5383,8 @@ function App() {
                 <small>Continue to Report &amp; Share, or return to Improve first.</small>
               </div>
               <div className="workflowNextActions">
-                <button className="workflowNextPrimary" onClick={()=>setPage('report')}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
-                <button className="download" onClick={()=>setPage('scenario')}>Improve first</button>
+                <button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('ai');setPage('report');}}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
+                <button className="download" onClick={()=>{setEcoLabelMode('ai');setPage('scenario');}}>Improve first</button>
               </div>
             </div>
             </>}
@@ -5395,7 +5395,7 @@ function App() {
                 <div>
                   <span>REVIEW &amp; FINALIZE</span>
                   <h2>AI model CEDARS summary</h2>
-                  <p>Review the model record you built in AI Model &amp; Informatics. Report &amp; Share summarizes that record rather than creating a second copy.</p>
+                  <p>Review the AI Sustainability Profile you built in AI Model &amp; Informatics. Report &amp; Share summarizes that same profile rather than creating a second assessment.</p>
                 </div>
               </div>
 
@@ -5615,11 +5615,11 @@ function App() {
           />
           {(()=>{
             const departmentReady = !!(deptLabelData.hasData && deptLabelData.annualStudies>0 && deptLabelData.annualKwh>0 && deptLabelData.region);
-            const aiReady = !!(ecoLabelData.hasData && ecoLabelData.graded);
+            const aiReady = !!ecoLabelData.hasData;
             const reportReady = ecoLabelMode==='department' ? departmentReady : aiReady;
             return reportReady ? (
               <div className="reportCompletion">
-                <div><span>✓</span><div><strong>Your CEDARS result is ready to preserve or share</strong><small>Save on this device or download a complete CEDARS file above if you want to return to this exact assessment later.</small></div></div>
+                <div><span>✓</span><div><strong>Your CEDARS result is ready to preserve or share</strong><small>{ecoLabelMode==='ai' && !ecoLabelData.graded ? 'This AI Sustainability Profile contains reportable lifecycle data but does not support an overall CEDARS Score; missing phases remain explicitly disclosed.' : 'Save on this device or download a complete CEDARS file above if you want to return to this exact assessment later.'}</small></div></div>
                 <div className="reportCompletionActions">
                   <button type="button" onClick={saveOnThisDevice}><Save size={15}/> Save on this device</button>
                   <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
@@ -5627,7 +5627,7 @@ function App() {
               </div>
             ) : (
               <div className="reportCompletion needsWork">
-                <div><span>!</span><div><strong>This CEDARS report still needs assessment data</strong><small>{ecoLabelMode==='department' ? 'Complete the core Radiology Department inputs before treating this as a final Department EcoLabel.' : 'Complete the AI model and deployment information needed for an in-use AI Research EcoLabel.'} You can still save incomplete work using the controls above.</small></div></div>
+                <div><span>!</span><div><strong>This CEDARS report still needs assessment data</strong><small>{ecoLabelMode==='department' ? 'Complete the core Radiology Department inputs before treating this as a final Department EcoLabel.' : 'Add at least one quantified AI training or inference energy result. A partial lifecycle assessment can still be reported when unavailable phases are disclosed explicitly.'} You can still save incomplete work using the controls above.</small></div></div>
                 <div className="reportCompletionActions">
                   <button type="button" onClick={()=>ecoLabelMode==='department' ? (setPage('dashboard'),setDeptSetupOpen(true)) : setPage('ai')}>{ecoLabelMode==='department' ? 'Complete Department input →' : 'Edit AI model details →'}</button>
                   <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
