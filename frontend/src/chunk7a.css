@@ -1,0 +1,9 @@
+/* Chunk 7A — one Sustainability Profile story: Profile → Results → Improve → Report. */
+.workflowRail{grid-template-columns:minmax(200px,1.25fr) repeat(3,minmax(0,1fr))}
+.homeWorkflowGrid{grid-template-columns:minmax(270px,1.45fr) repeat(3,minmax(145px,.8fr))}
+@media(max-width:1050px){.homeWorkflowGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.homeWorkflowGrid>.workflowCardStart{grid-column:1/-1}.workflowRail{grid-template-columns:repeat(3,minmax(0,1fr))}.workflowRail>.workflowRailStep:first-child{grid-column:1/-1}}
+@media(max-width:760px){.workflowRail{grid-template-columns:1fr 1fr}.workflowRail>.workflowRailStep:first-child{grid-column:1/-1}}
+@media(max-width:560px){.homeWorkflowGrid,.workflowRail{grid-template-columns:1fr}.homeWorkflowGrid>.workflowCardStart,.workflowRail>.workflowRailStep:first-child{grid-column:auto}}
+
+/* Keep walkthrough guidance anchored while the page/spotlight moves. */
+@media(min-width:761px){.guidedDemoPopover{right:16px!important;left:auto!important;top:72px!important;bottom:auto!important;transform:none!important;max-height:calc(100vh - 88px);overflow:auto}}

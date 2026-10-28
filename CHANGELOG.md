@@ -19,9 +19,10 @@
 - `ROADMAP.md` for shared implementation planning.
 
 ### Changed
-- Navigation now follows **Set up → See footprint → Improve → Score & EcoLabel → Report & Share**, with result-first Department and AI footprint summaries and technical detail progressively disclosed beneath them.
+- Navigation now follows **Build profile → See results → Improve → Report & Share**. The **Sustainability Profile** is the shared object for Department and AI; CEDARS Score is interpreted with Results, while EcoLabel generation and export live in Report & Share.
+- AI Model & Informatics opens directly from Home rather than routing through a separate location-only page; shared local context remains editable, while AI compute/deployment context is handled inside the AI workflow.
 - AI Model & Informatics now starts from two work-context lanes: **evaluating/using AI in clinical care** versus **developing/materially retraining AI**. The clinical lane then asks whether to assess one system or compare candidates; both lanes ask the AI family only after the work context is clear. Role examples explicitly include clinicians, radiology leaders, procurement, administrators, informatics/IT, governance, sustainability teams, researchers, and ML engineers.
-- Guided walkthroughs are reduced to three role-aligned journeys: Department/operations, clinical AI evaluation/use, and AI development/retraining. Published LLM, vendor-hosted LLM, agentic, synthetic-imaging, and measured-classifier records remain loadable examples rather than separate workflows.
+- Guided walkthroughs are reduced to three role-aligned journeys: Department/operations, clinical AI evaluation/use, and AI development/retraining. Published LLM, vendor-hosted LLM, agentic, synthetic-imaging, and measured-classifier records remain loadable examples rather than separate workflows. The guidance panel stays anchored to the right on desktop/tablet and to the bottom on mobile while the spotlight moves.
 - Candidate comparison keeps essential inputs, side-by-side results, and model selection in one decision workflow.
 - Sitewide visual hierarchy is tightened after the workflow redesign: denser cards and accordions, clearer result-versus-input emphasis, stronger keyboard focus states, and improved tablet/mobile behavior.
 - Department device duty-cycle profiles are normalized to the average calendar month (730.5 h) before annualization; this removes the prior 31-day-month overcount while preserving each device's relative state mix.
@@ -30,7 +31,7 @@
 - DICOM transfer uses modality-specific study sizes instead of one 0.3 GB/study average; everyday-equivalency factors are centralized in the model layer.
 - Equipment overrides now carry their actual provenance into dashboard/export rows; user-entered values are no longer automatically labeled measured.
 - Renewable electricity percentages are disclosure-only in the location-based carbon inventory; they no longer linearly reduce Department, AI, or cloud carbon factors. The renewable intervention is planning guidance until a separate market-based factor is implemented.
-- Homepage setup is the primary entry decision; later stages follow the same five-stage assessment journey instead of competing as separate starting points.
+- Homepage profile selection is the primary entry decision; later stages follow the same four-stage assessment journey instead of competing as separate starting points.
 - The AI pathway keeps the name **AI Model & Informatics** (the earlier plan to rename it *AI Footprint* was reversed for clarity against the Department pathway); README and docs now match the interface.
 - The AI Research Label is now a view of the single AI model record rather than a separately-edited copy; the former "mirror until edited" behaviour and its drift are gone. Training energy per run is the model's own figure (measured, GPU-hours, or literature) times the number of runs.
 - Header score badge is pathway-aware: it shows the AI model's score in the AI pathway, the Department score elsewhere.
