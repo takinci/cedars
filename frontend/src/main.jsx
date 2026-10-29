@@ -10,6 +10,7 @@ import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText
 import './styles.css';
 import './chunk7a.css';
 import './chunk7c.css';
+import './chunk7d.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -1542,24 +1543,24 @@ const SEO_PAGES = {
 // the selected interventions — so a shared link reproduces the whole setup. SETTINGS_DEFAULTS and
 // SCEN_DEFAULTS are the single source of truth for the initial `settings` / `scen` state below.
 
-function WorkflowRail({page, setupActive, onInput, onDepartment, onAi, onFootprint, onImprove, onReport}) {
-  const stage = page === 'input' || setupActive ? 1
-    : page === 'dashboard' || page === 'ai' || page === 'ecolabel' ? 2
+function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, onAi, onFootprint, onImprove, onReport}) {
+  const stage = page === 'input' || page === 'ai' || setupActive ? 1
+    : page === 'dashboard' || page === 'ecolabel' ? 2
       : page === 'scenario' ? 3
         : page === 'report' ? 4 : 0;
-  const selectedInput = page === 'dashboard' ? 'dashboard' : page === 'ai' ? 'ai' : '';
+  const selectedInput = activeProduct === 'ai' ? 'ai' : 'dashboard';
   return (
     <div className="workflowRailWrap" aria-label="CEDARS workflow navigation">
       <div className="workflowRail">
         <div className={`workflowRailStep ${stage===1?'active':''}`}>
-          <button type="button" className="workflowRailLabel workflowRailLabelButton" onClick={onInput}><span>1</span><strong>BUILD PROFILE</strong></button>
+          <button type="button" className="workflowRailLabel workflowRailLabelButton" onClick={onInput}><span>1</span><strong>PROFILE</strong></button>
           <div className="pathwayChips" role="group" aria-label="Sustainability Profile pathway">
             <button type="button" className={selectedInput==='dashboard'?'on':''} aria-pressed={selectedInput==='dashboard'} onClick={onDepartment}>Department</button>
             <button type="button" className={selectedInput==='ai'?'on':''} aria-pressed={selectedInput==='ai'} onClick={onAi}>AI model</button>
           </div>
         </div>
         <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onFootprint}>
-          <div className="workflowRailLabel"><span>2</span><strong>SEE RESULTS</strong></div>
+          <div className="workflowRailLabel"><span>2</span><strong>RESULTS</strong></div>
           <small>Footprint + drivers + score</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onImprove}>
@@ -1567,7 +1568,7 @@ function WorkflowRail({page, setupActive, onInput, onDepartment, onAi, onFootpri
           <small>Test changes</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===4?'active':''}`} onClick={onReport}>
-          <div className="workflowRailLabel"><span>4</span><strong>REPORT &amp; SHARE</strong></div>
+          <div className="workflowRailLabel"><span>4</span><strong>REPORT</strong></div>
           <small>EcoLabel + assumptions + export</small>
         </button>
       </div>
@@ -1717,6 +1718,13 @@ function App() {
     setPage('input');
     window.setTimeout(() => document.getElementById('assessment-context-title')?.scrollIntoView({behavior:'smooth', block:'start'}), 60);
   };
+  const scrollToAiWorkspace = (selector = '[data-ai-workspace-start]') => {
+    window.setTimeout(() => {
+      const target = document.querySelector(selector);
+      if (target) target.scrollIntoView({behavior:'auto', block:'start'});
+      else window.scrollTo({top:0, behavior:'auto'});
+    }, 60);
+  };
   // Cross-page workflow links should land on the relevant section, not merely the top of the page.
   // The calculator state remains in memory while switching pages; this only changes the visible view.
   const goToWorkflowSection = (targetPage, sectionId) => {
@@ -1853,6 +1861,7 @@ function App() {
     }));
     setAiOpen(o => ({...o, benchmark:false, model:true}));
     if (scrollToTop) window.setTimeout(() => window.scrollTo({top:0, behavior:'auto'}), 0);
+    else scrollToAiWorkspace('#ai-profile-editor');
   };
   const returnToComparison = () => {
     setComparisonSelection(null);
@@ -2190,14 +2199,14 @@ function App() {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
-        setImproveAiStage('procure');
-        setImproveAiLifecycleStep('deploy');
-        setPage('scenario');
+        setPage('ecolabel');
       } else if (stepIndex === 6) {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
-        setPage('ecolabel');
+        setImproveAiStage('procure');
+        setImproveAiLifecycleStep('deploy');
+        setPage('scenario');
       } else if (stepIndex >= 7) {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
@@ -2224,13 +2233,13 @@ function App() {
       } else if (stepIndex === 4) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
-        setImproveAiStage('develop');
-        setImproveAiLifecycleStep('build');
-        setPage('scenario');
+        setPage('ecolabel');
       } else if (stepIndex === 5) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
-        setPage('ecolabel');
+        setImproveAiStage('develop');
+        setImproveAiLifecycleStep('build');
+        setPage('scenario');
       } else if (stepIndex >= 6) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
@@ -2734,8 +2743,8 @@ function App() {
       setPage('ai');
       if (key === 'energy') setAiOpen(o => ({...o, model:true, training:true, inference:true}));
       window.setTimeout(() => {
-        if (key === 'pathway') window.scrollTo({top:0, behavior:'smooth'});
-        else document.getElementById('ai-training')?.scrollIntoView({behavior:'smooth', block:'start'});
+        if (key === 'pathway') window.scrollTo({top:0, behavior:'auto'});
+        else document.getElementById('ai-training-section')?.scrollIntoView({behavior:'smooth', block:'start'});
       }, 100);
       return;
     }
@@ -2848,13 +2857,13 @@ function App() {
   const openAiChecklistItem = section => {
     if (section === 'score') { setEcoLabelMode('ai'); setPage('ecolabel'); return; }
     setPage('ai');
-    if (section === 'model') {
-      window.setTimeout(()=>document.querySelector('[data-demo-target="ai-model-record"]')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
-      return;
-    }
-    const key = section || 'training';
-    setAiOpen(o => ({...o, [key]:true}));
-    window.setTimeout(()=>document.getElementById(`ai-${key}`)?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+    const target = {
+      model:'ai-model-record',
+      training:'ai-training-section',
+      inference:'ai-inference-section',
+      carbon:'ai-water-section',
+    }[section || 'training'] || 'ai-model-record';
+    window.setTimeout(()=>document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'}),60);
   };
   const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023', 'doo-radiology-llm-2024'];
   const AI_IMPROVE_REFS = ['doo-jacr-2024','doo-radiology-llm-2024','doo-jacr-cloud-2024','jia-eurradiol-2026','jegham-llm-2025','fernandez-llm-energy-2025','oviedo-inference-2025','kpodzro-haip-2026','strubell-nlp-2019','schwartz-green-ai-2020','henderson-reporting-2020','patterson-4ms-2022','hanafy-war-efficiencies-2023','wright-efficiency-not-enough-2023','dietrich-training-policy-2026','nghiem-doo-sustainable-ai-2026','owid-ci','codecarbon'];
@@ -2900,7 +2909,7 @@ function App() {
             </div>
           </div>
 
-          <div className="inputSummary" data-demo-target="ai-training-section" style={{marginBottom:24}}>
+          <div id="ai-training-section" className="inputSummary" data-demo-target="ai-training-section" style={{marginBottom:24}}>
             <h2 style={{marginTop:0, marginBottom:14, color:'#1b5e20'}}>Training</h2>
             <h3 style={{margin:'0 0 6px',fontSize:14,color:'#1b5e20'}}>{aiUsesTokenWorkload ? 'Model scale & fine-tuning workload' : 'Training workload'}</h3>
             <p className="note" style={{margin:'0 0 14px',fontSize:11,lineHeight:1.5}}>These fields describe computational workload; they do <strong>not</strong> replace measured energy. When measured energy is available, it takes precedence over <strong>training</strong> workload-based estimates.</p>
@@ -3022,7 +3031,7 @@ function App() {
             </div>
           </div>
 
-          <div className="inputSummary" data-demo-target="ai-inference-section" style={{marginBottom:24}}>
+          <div id="ai-inference-section" className="inputSummary" data-demo-target="ai-inference-section" style={{marginBottom:24}}>
             <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Inference &amp; deployment <span style={{fontWeight:400,fontSize:14,color:'#607d66'}}>(drives the in-use grade)</span></h2>
             <p className="note" style={{marginBottom:12}}>Training is generally a one-time development footprint; inference recurs with each use. Enter the expected deployment workload to combine training and inference over the model's period of use. Leave deployment workload blank if you are reporting training only.</p>
             {/* Inference energy unit — flat kWh (vision) vs token-driven (LLM / agentic) */}
@@ -3069,7 +3078,7 @@ function App() {
             </div>
           </div>
 
-          <div className="inputSummary" data-demo-target="ai-water-section" style={{marginBottom:32}}>
+          <div id="ai-water-section" className="inputSummary" data-demo-target="ai-water-section" style={{marginBottom:32}}>
             <h2 style={{marginTop:0, marginBottom:6, color:'#1b5e20'}}>Water accounting <span style={{fontWeight:400,fontSize:12,color:'#607d66'}}>optional but reported explicitly<Ref id="li-thirsty-2023" order={AI_PAGE_REFS}/></span></h2>
             <p className="note" style={{margin:'0 0 12px',fontSize:10.5}}>Water applies across compute rather than belonging only to training or inference. Enter site/grid values when known, use the screening estimate, or explicitly report water as not assessed. <strong>Not assessed does not mean zero.</strong> Water is currently reported separately and does not affect the carbon-and-energy CEDARS Score.</p>
             <div className="grid grid3">
@@ -3112,7 +3121,7 @@ function App() {
             <span style={{fontSize:18,fontWeight:900,color:b.ratingColor,lineHeight:1}}>{bHas ? b.score : '—'}</span>
             <span style={{display:'flex',flexDirection:'column',lineHeight:1.1,textAlign:'left'}}>
               <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:b.ratingColor}}>{aiProduct ? 'AI SCORE' : 'CEDARS SCORE'}</span>
-              <span style={{fontSize:10,color:'#37474f'}}>{b.leaves}/5 leaves</span>
+              <span style={{fontSize:10,color:'#37474f'}}>{bHas ? `${b.leaves}/5 leaves` : '— / 5 leaves'}</span>
             </span>
           </button>
           ); })()}
@@ -3124,22 +3133,24 @@ function App() {
         <WorkflowRail
           page={page}
           setupActive={(page==='dashboard'&&deptSetupOpen)||(page==='ai'&&!scen.aiRoute)}
-          onInput={()=>goToAssessmentContext(page==='ai'?'ai':page==='dashboard'?'dashboard':ecoLabelMode==='ai'?'ai':'dashboard',true)}
-          onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);}}
-          onAi={()=>{setEcoLabelMode('ai');setPage('ai');}}
+          activeProduct={page==='ai'||(page==='input'&&inputTarget==='ai')||(!['dashboard','input'].includes(page)&&ecoLabelMode==='ai')?'ai':'dashboard'}
+          onInput={()=>{
+            const aiProduct = page==='ai' || (page==='input'&&inputTarget==='ai') || (!['dashboard','input'].includes(page)&&ecoLabelMode==='ai');
+            if (aiProduct) { setEcoLabelMode('ai'); setPage('ai'); scrollToAiWorkspace(); }
+            else { setEcoLabelMode('department'); setPage('dashboard'); setDeptSetupOpen(true); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
+          }}
+          onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
+          onAi={()=>{setEcoLabelMode('ai');setPage('ai');scrollToAiWorkspace();}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
-            if (aiProduct) {
-              setPage('ai');
-              if (scen.aiRoute==='compare') setAiOpen(o=>({...o,benchmark:true}));
-              window.setTimeout(()=>document.getElementById(scen.aiRoute==='compare'?'ai-benchmark':'ai-footprint-summary')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
-            } else {
+            if (aiProduct) goToScore('ai');
+            else {
               setPage('dashboard'); setDeptSetupOpen(false);
               window.setTimeout(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
             }
           }}
-          onImprove={()=>{if(page==='ai'){setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}else if(page==='dashboard')setEcoLabelMode('department');setPage('scenario');}}
-          onReport={()=>{if(page==='ai')setEcoLabelMode('ai');else if(page==='dashboard')setEcoLabelMode('department');setPage('report');}}
+          onImprove={()=>{if(page==='ai'){setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}else if(page==='dashboard')setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
+          onReport={()=>{if(page==='ai')setEcoLabelMode('ai');else if(page==='dashboard')setEcoLabelMode('department');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
         />
       )}
 
@@ -3844,6 +3855,7 @@ function App() {
 
           {/* ── Entry step: development vs clinical selection/deployment ── */}
           {!scen.aiRoute ? (
+            <div id="ai-entry-start" data-ai-workspace-start className="workflowAnchor">
             <AiEntryStep
               route={scen.aiRoute} ownMode={scen.ownMode}
               systemType={scen.aiSystemType || ''}
@@ -3855,10 +3867,12 @@ function App() {
                   setAiOpen(o => ({...o, benchmark: true}));
                   if (compareCtx !== 'custom' || !(parseFloat(scen.inferStudiesMonth) > 0)) applyCompareCtx(compareCtx);
                 }
+                scrollToAiWorkspace();
               }}
               onOwnMode={m => setS('ownMode', m)}
               examples={AI_EXAMPLES} onExample={loadAiExample} onReset={startBlankAiRecord}
             />
+            </div>
           ) : (
             <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} systemType={scen.aiSystemType || ''}
               onComparison={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
@@ -3867,7 +3881,7 @@ function App() {
           )}
 
           {scen.aiRoute === 'compare' && (
-            <div style={{marginTop:12,display:'grid',gap:10}}>
+            <div id="ai-comparison-workspace" data-ai-workspace-start className="workflowAnchor" style={{marginTop:12,display:'grid',gap:10}}>
               <AiDeploymentContext ctxSource={compareCtx} dept={{region:settings.region, ci:getCI(settings.region, settings.customCi), studiesPerMonth:Math.round((dash.scopes.imagingScans || 0) / (TIME_MULT[settings.timePeriod] ?? 1))}} volume={scen.inferStudiesMonth} onCtxSource={applyCompareCtx} onVolume={v=>setScen(s=>({...s, compareVolumeSource:'custom', inferStudiesMonth:v}))}/>
               <div className="inputSummary" style={{margin:0}}>
                 <h3 style={{margin:'0 0 8px',color:'#1b5e20',fontSize:15}}>Shared compute &amp; comparison context</h3>
@@ -3894,18 +3908,16 @@ function App() {
           )}
 
           {scen.aiRoute === 'own' && scen.ownMode === 'measure' && (
-            <MeasureChooser scen={scen} onUse={patch => setScen(sc => ({...sc, ...patch}))} onDone={() => setS('ownMode', 'measured')}/>
+            <div id="ai-measure-workspace" data-ai-workspace-start className="workflowAnchor">
+              <MeasureChooser scen={scen} onUse={patch => setScen(sc => ({...sc, ...patch}))} onDone={()=>{setS('ownMode','measured');scrollToAiWorkspace('#ai-profile-editor');}}/>
+            </div>
           )}
 
-          {scen.aiRoute === 'own' && (
-            <section id="ai-footprint-summary" className="footprintHero aiFootprintHero workflowAnchor" aria-labelledby="ai-footprint-title">
-              <div className="footprintHeroHeader">
-                <div><span>STEP 2 · SEE RESULTS</span><h2 id="ai-footprint-title">AI operational footprint</h2><p>Training and inference are shown separately so a one-time development cost is not confused with recurring deployment use.</p></div>
-                <div className="footprintHeroPrimary"><small>Gross AI footprint / month</small><strong>{ai.grossKgCo2e} kgCO₂e</strong></div>
-              </div>
-              <div className="footprintMetricGrid"><div><span>Training · one-time</span><strong>{ai.training.kgCo2e} kgCO₂e</strong></div><div><span>Inference · per study</span><strong>{rnd(ai.inference.kwhPerStudy*1000,3)} Wh</strong></div><div><span>Lifecycle coverage</span><strong>{ecoLabelData.lifecycleCoverage}</strong></div></div>
-              <div className="footprintHeroActions"><button type="button" className="download" onClick={()=>document.querySelector('[data-demo-target="ai-record-row"]')?.scrollIntoView({behavior:'smooth',block:'start'})}>Review model inputs ↓</button><button type="button" onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.ownMode==='spec'?'procure':'develop');setPage('scenario');}}>Improve this AI →</button><button type="button" className="download" onClick={()=>goToScore('ai')}>View score →</button></div>
-            </section>
+          {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && (
+            <div className="aiProfileStatus" data-ai-workspace-start data-demo-target="ai-profile-status">
+              <div><span>PROFILE STATUS</span><strong>{ecoLabelData.hasData ? 'Results available' : 'Complete the profile'}</strong><small>{ecoLabelData.lifecycleCoverage}</small></div>
+              <button type="button" onClick={()=>goToScore('ai')}>View Results →</button>
+            </div>
           )}
 
           {scen.aiRoute && (<>
@@ -4015,8 +4027,9 @@ function App() {
             </div>
           )}
 
-          {/* The detailed single-model editor is reused by Development and one-model clinical assessment. */}
-          {scen.aiRoute === 'own' && (<>
+          {/* Legacy calculation editor retained temporarily for regression safety, but no longer rendered.
+              The canonical Sustainability Profile below is the only editable single-model surface. */}
+          {false && scen.aiRoute === 'own' && (<>
           {/* Advanced calculation inputs remain available without duplicating the primary Model & clinical context record below. */}
           <div className="stickyControls" style={{padding:'10px 14px'}}>
             <div style={{fontSize:10,color:'#607d66',marginBottom:7}}><strong style={{color:'#1b5e20'}}>Advanced details</strong> · optional calculation inputs and technical assumptions</div>
@@ -4730,7 +4743,7 @@ function App() {
 
           </>)}
 
-          {scen.aiRoute === 'own' && comparisonSelection && (
+          {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && comparisonSelection && (
             <div data-demo-target="ai-selected-candidate" style={{margin:'14px 0',padding:'12px 14px',border:'1px solid #a5d6a7',borderRadius:12,background:'#f1f8f1',display:'flex',justifyContent:'space-between',alignItems:'center',gap:14,flexWrap:'wrap'}}>
               <div>
                 <span style={{fontSize:10,fontWeight:800,color:'#2E7D32',letterSpacing:'0.05em'}}>SELECTED FROM CANDIDATE COMPARISON</span>
@@ -4741,9 +4754,14 @@ function App() {
             </div>
           )}
 
-          {scen.aiRoute === 'own' && (
-            <div data-demo-target="ai-record-row" style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid">
+          {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && (
+            <div id="ai-profile-editor" data-demo-target="ai-record-row" style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid workflowAnchor">
               <div>
+                <div className="aiProfileEditorHeading">
+                  <span>BUILD PROFILE</span>
+                  <h2>AI Sustainability Profile</h2>
+                  <p>Enter each model, training, deployment, and boundary value once. Results are calculated from this profile.</p>
+                </div>
                 {renderAiRecordForm()}
               </div>
               <div style={{position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12}}>
@@ -4755,13 +4773,13 @@ function App() {
                   )}
                   <div className="note" style={{margin:0}}>The full checklist, with each item explained, is on <button type="button" className="inlineTextButton" onClick={()=>{setEcoLabelMode('ai');setPage('report');}}>Report &amp; Share</button>, where the exports are generated.</div>
                 </div>
-                <div className="aiRecordNextActions"><button onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.ownMode==='spec'?'procure':'develop');setPage('scenario');}}>Continue to Improve →</button><button className="download" onClick={()=>goToScore('ai')}>Skip to Results</button></div>
+                <div className="aiRecordNextActions"><button onClick={()=>goToScore('ai')}>View Results →</button><button className="download" onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.ownMode==='spec'?'procure':'develop');setPage('scenario');}}>Go to Improve</button></div>
               </div>
             </div>
           )}
           </>)}
 
-          <ReferenceList ids={AI_PAGE_REFS}/>
+          {!(scen.aiRoute==='own' && scen.ownMode==='measure') && <ReferenceList ids={AI_PAGE_REFS}/>}
 
         </main>
       )}
@@ -5113,11 +5131,10 @@ function App() {
             {page==='report' && <>
             <section className="reportStageCard">
               <div className="reportStageHeading">
-                <div className="reportStageNumber">1</div>
                 <div>
                   <span>REVIEW &amp; FINALIZE</span>
-                  <h2>Review &amp; finalize your Department EcoLabel</h2>
-                  <p>CEDARS has carried forward your Radiology Department values. Review the label details and reporting values below; replace modeled values only when you have better measured data.</p>
+                  <h2>Department summary</h2>
+                  <p>Review the current Department profile and resolve any missing information before export.</p>
                 </div>
                 <button className="download reportEditButton" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);}}>Edit department inputs →</button>
               </div>
@@ -5197,11 +5214,10 @@ function App() {
 
             <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
               <div className="reportStageHeading compact">
-                <div className="reportStageNumber">2</div>
                 <div>
                   <span>PREPARE YOUR CEDARS MATERIALS</span>
-                  <h2>Your Department EcoLabel</h2>
-                  <p>Download the EcoLabel or copy a concise reporting paragraph. More detailed reporting and reproducibility fields are available below when needed.</p>
+                  <h2>Department EcoLabel &amp; exports</h2>
+                  <p>Download the EcoLabel or copy a concise reporting paragraph. Expand the reproducibility options only when you need them.</p>
                 </div>
               </div>
 
@@ -5364,10 +5380,19 @@ function App() {
                 </div>
                 <div className="aiWorkloadMetrics"><div><span>Modeled carbon intensity</span><strong>{aiWorkloadScenario.intensityG!=null?`${aiWorkloadScenario.intensityG} gCO₂e/study`:'—'}</strong></div><div><span>Inference / month</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.inferenceMonthKg} kgCO₂e`:'—'}</strong></div><div><span>Training share</span><strong>{aiWorkloadScenario.trainingShareG!=null?`${aiWorkloadScenario.trainingShareG} gCO₂e/study`:'—'}</strong></div><div><span>Training + inference over deployment</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.deploymentKg} kgCO₂e`:'—'}</strong><small>Operational model only; embodied hardware remains a separate disclosure.</small></div></div>
                 <p>Higher use can spread one-time training emissions across more studies, lowering <strong>carbon intensity per study</strong>, while increasing <strong>total inference emissions</strong>. Use this explorer to test scale before changing the saved assessment.</p>
-                <div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>{setPage('ai');setAiOpen(o=>({...o,inference:true}));window.setTimeout(()=>document.getElementById('ai-inference')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div>
+                <div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>openAiChecklistItem('inference')}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div>
               </div>}
                             <SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>document.getElementById('ai-system-effects')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}/>
             </div>
+            <details className="aiCalculationDetails">
+              <summary>Calculation details &amp; assumptions <span>(expand to read more)</span></summary>
+              <div className="aiCalculationGrid">
+                <div><span>Training</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Not set'}</small></div>
+                <div><span>Inference</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
+                <div><span>Deployment</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Workload not entered'}</strong><small>{ecoLabelData.deployMonths || '—'} month deployment</small></div>
+                <div><span>Water</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `${ecoLabelData.waterLitres.toLocaleString()} L training` : 'Not quantified'}</strong><small>Reported separately from the carbon-and-energy Score</small></div>
+              </div>
+            </details>
             <div className="ecoIntroBlock">
               <p><strong>AI result.</strong> Review lifecycle coverage before interpreting the Score. Missing phases remain explicit.</p>
               <details className="methodologyDetails">
@@ -5393,11 +5418,10 @@ function App() {
             {page==='report' && <>
             <section className="reportStageCard">
               <div className="reportStageHeading">
-                <div className="reportStageNumber">1</div>
                 <div>
                   <span>REVIEW &amp; FINALIZE</span>
-                  <h2>AI model CEDARS summary</h2>
-                  <p>Review the AI Sustainability Profile you built in AI Model &amp; Informatics. Report &amp; Share summarizes that same profile rather than creating a second assessment.</p>
+                  <h2>AI summary</h2>
+                  <p>Review the AI profile and resolve any missing information before export.</p>
                 </div>
               </div>
 
@@ -5425,10 +5449,9 @@ function App() {
 
           <section className="reportStageCard reportMaterialsStage" data-demo-target="ai-report-materials">
             <div className="reportStageHeading compact">
-              <div className="reportStageNumber">2</div>
               <div>
                 <span>PREPARE YOUR CEDARS MATERIALS</span>
-                <h2>Your AI Research EcoLabel</h2>
+                <h2>AI Research EcoLabel &amp; exports</h2>
                 <p>Download the label or copy concise Methods / Environmental Impact text. Expand the structured options only when your venue or technical audience needs them.</p>
               </div>
             </div>

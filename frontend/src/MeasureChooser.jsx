@@ -118,9 +118,11 @@ export function MeasureChooser({scen, onUse, onDone}) {
   const [a, setA] = useState({run: 'local', phase: ['training', 'inference'], python: 'yes'});
   const togglePhase = p => setA(x => ({...x, phase: x.phase.includes(p) ? x.phase.filter(q => q !== p) : [...x.phase, p]}));
   const fitting = useMemo(() => MEASURE_TOOLS.filter(t => t.fits(a)).sort((x, y) => y.rank(a) - x.rank(a)), [a]);
-  const primary = fitting.filter(t => t.rank(a) > 0).slice(0, 2);
-  const fallback = fitting.find(t => t.id === 'nvidia-smi' && !primary.includes(t));
-  const hidden = MEASURE_TOOLS.filter(t => !fitting.includes(t));
+  const ranked = fitting.filter(t => t.rank(a) > 0);
+  const primary = ranked.slice(0, 1);
+  const compatible = ranked.slice(1, 4);
+  const fallback = fitting.find(t => t.id === 'nvidia-smi' && !primary.includes(t) && !compatible.includes(t));
+  const hidden = MEASURE_TOOLS.filter(t => !primary.includes(t) && !compatible.includes(t) && t !== fallback);
   const runLabel = {local: 'a local GPU', hpc: 'an HPC cluster', cloud: 'a cloud VM', api: 'a vendor API'}[a.run];
 
   return (
@@ -162,8 +164,7 @@ export function MeasureChooser({scen, onUse, onDone}) {
             </div>
           )}
           <div className="note" style={{borderTop:'1px solid #e0efe2', paddingTop:14, margin:0}}>
-            <strong>How to read the badges.</strong> A tool either reads hardware sensors (RAPL for CPUs, NVML for NVIDIA GPUs), models usage from job logs, or estimates from a specification. Sensor-read values earn the <span style={{...tag(), fontSize:10}}>MEASURED</span> badge on your label; the other two earn <span style={{...tag('meta'), fontSize:10}}>ESTIMATED</span>.
-            <div style={{marginTop:10}}>This chooser follows the tool categories in Doo et al.<Ref id="doo-jacr-2024" order={MEASURE_REFS}/> (Fig. 3), with the tool list re-checked October 2026.</div>
+            <strong>Measured</strong> means the tool reads hardware energy sensors; <strong>Estimated</strong> means energy is derived from logs or specifications.<Ref id="doo-jacr-2024" order={MEASURE_REFS}/>
           </div>
         </div>
 
@@ -174,39 +175,57 @@ export function MeasureChooser({scen, onUse, onDone}) {
           </div>
           {primary.length === 0 && <p className="note">Nothing matches every answer — the no-code fallback below always applies.</p>}
           {primary.map((t, i) => (
-            <div key={t.id} style={{border:`1px solid ${i===0?'#2E7D32':'#c8e6c9'}`, boxShadow: i===0 ? 'inset 0 0 0 1px #2E7D32' : 'none', borderRadius:14, padding:'16px 18px', background:'#fff', display:'flex', flexDirection:'column', gap:10}}>
-              <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                <strong style={{fontSize:16}}>{t.name}{t.ref && <Ref id={t.ref} order={MEASURE_REFS}/>}</strong>
+            <div key={t.id} className="measurePrimaryTool">
+              <div className="measureToolHeader">
+                <strong>{t.name}{t.ref && <Ref id={t.ref} order={MEASURE_REFS}/>}</strong>
                 {i===0 && <span style={tag()}>BEST FIT</span>}
                 <span style={tag('meta')}>{t.status}</span>
-                {t.fills.map(f => <span key={f} style={tag('fill')}>fills → {f}</span>)}
               </div>
-              <dl style={{display:'grid', gridTemplateColumns:'130px 1fr', gap:'4px 12px', fontSize:12, color:'#37474f', margin:0}}>
-                <dt style={{fontWeight:700, color:'#1b3a22'}}>What it reads</dt><dd style={{margin:0}}>{t.reads}</dd>
-                <dt style={{fontWeight:700, color:'#1b3a22'}}>Output</dt><dd style={{margin:0}}>{t.output}</dd>
-                <dt style={{fontWeight:700, color:'#1b3a22'}}>Effort</dt><dd style={{margin:0}}>{t.effort}</dd>
-                <dt style={{fontWeight:700, color:'#1b3a22'}}>Watch out</dt><dd style={{margin:0}}>{t.watch}</dd>
-              </dl>
-              {t.snippet && <pre style={{margin:0, background:'#f4f7f5', border:'1px solid #e0efe2', borderRadius:8, padding:'10px 12px', fontSize:12, lineHeight:1.5, overflowX:'auto'}}>{t.snippet}</pre>}
-              <div style={{display:'flex', gap:14, alignItems:'center', flexWrap:'wrap'}}>
+              <p>{t.output}</p>
+              <div className="measureToolFills">{t.fills.map(f => <span key={f} style={tag('fill')}>fills → {f}</span>)}</div>
+              <div className="measureToolActions">
                 <button type="button" data-demo-target={i===0?'measure-primary-action':undefined} onClick={()=>{ onUse({trainTool: t.name.split(' (')[0]}); onDone(); }}>I ran it — enter results →</button>
                 {t.ref && REFS[t.ref] && <ExternalLink href={refUrl(REFS[t.ref])}>Documentation and source</ExternalLink>}
               </div>
+              <details className="measureToolDetails">
+                <summary>How it works, effort &amp; limitations <span>(expand to read more)</span></summary>
+                <dl>
+                  <dt>What it reads</dt><dd>{t.reads}</dd>
+                  <dt>Effort</dt><dd>{t.effort}</dd>
+                  <dt>Watch out</dt><dd>{t.watch}</dd>
+                </dl>
+                {t.snippet && <pre>{t.snippet}</pre>}
+              </details>
             </div>
           ))}
+          {compatible.length > 0 && (
+            <div className="measureCompatibleList">
+              <div className="measureCompatibleHeading"><h3>Other compatible tools</h3><small>Alternatives remain visible; expand a tool only for technical detail.</small></div>
+              {compatible.map(t => (
+                <div key={t.id} className="measureCompatibleTool">
+                  <div className="measureToolHeader"><strong>{t.name}{t.ref && <Ref id={t.ref} order={MEASURE_REFS}/>}</strong><span style={tag('meta')}>{t.status}</span></div>
+                  <p>{t.effort}</p>
+                  <div className="measureCompatibleActions">
+                    <button type="button" className="download" onClick={()=>{ onUse({trainTool: t.name.split(' (')[0]}); onDone(); }}>Use this tool →</button>
+                    <details className="measureToolDetails">
+                      <summary>Details <span>(expand to read more)</span></summary>
+                      <div><strong>Output:</strong> {t.output}</div>
+                      <div><strong>Watch out:</strong> {t.watch}</div>
+                      {t.ref && REFS[t.ref] && <div><ExternalLink href={refUrl(REFS[t.ref])}>Documentation and source</ExternalLink></div>}
+                    </details>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {fallback && (
             <div style={{border:'1px solid #c8e6c9', borderRadius:14, padding:'14px 18px', background:'#fbfdfb', display:'flex', flexDirection:'column', gap:8}}>
               <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}><strong>No-code fallback</strong><span style={tag('meta')}>manual</span><span style={tag('fill')}>fills → either field, as ESTIMATED</span></div>
               <div className="note" style={{margin:0}}>Run <code>{fallback.snippet}</code> during the job, then average the watts and multiply by hours ÷ 1000. Or enter the GPU model and hours and let CEDARS apply TDP × PUE.</div>
             </div>
           )}
-          <div className="note" style={{margin:0, padding:'0 4px'}}>
-            Not shown for these answers: {hidden.map((t, i) => <span key={t.id}><strong>{t.name.split(' (')[0]}</strong>{i < hidden.length - 1 ? ' · ' : ''}</span>)}{hidden.length ? ' · ' : ''}
-            <strong>AI Energy Score</strong><Ref id="ai-energy-score" order={MEASURE_REFS}/> (external 1–5 star benchmark for general-purpose models) · <strong>Boavizta</strong><Ref id="boavizta" order={MEASURE_REFS}/> (embodied hardware carbon). Change the answers to see the rest.
-          </div>
-          <div className="note" style={{border:'1px solid #dfe3d6', background:'#f3f4ee', borderRadius:12, padding:'12px 16px', margin:0}}>
-            <strong style={{color:'#1b3a22'}}>Current as of October 2026.</strong> Tools in this area change quickly. If you know of a newer or better resource, or find an error here, please tell the CEDARS leads — contact details are on the About page.
-          </div>
+          {hidden.length > 0 && <details className="measureOtherTools"><summary>Other tools in the guide · {hidden.length} <span>(expand to read more)</span></summary><div>{hidden.map(t => <span key={t.id}>{t.name.split(' (')[0]}</span>)}</div></details>}
+          <p className="measureUpdated">Tool guide updated October 2026 · methods and sources remain available below.</p>
         </div>
       </div>
       <ReferenceList ids={MEASURE_REFS} compact/>

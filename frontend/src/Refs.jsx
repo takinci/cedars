@@ -84,22 +84,27 @@ export function Ref({id, order}) {
 
 export function ReferenceList({ids, compact = false}) {
   return (
-    <div className="note" style={{fontSize:11,lineHeight:1.6,borderTop:'1px solid #c8e6c9',paddingTop:10,marginTop:14}}>
-      <strong style={{color:'#1b3a22'}}>References</strong>
-      <span> · external links open in a new tab after a short notice</span>
-      <ol style={{margin:'6px 0 0',paddingLeft:18}}>
-        {ids.map(id => {
-          const r = REFS[id]; if (!r) return <li key={id}>{id}</li>;
-          const url = refUrl(r);
-          const linkText = r.doi ? `doi:${r.doi}` : url.replace(/^https?:\/\//,'').replace(/\/$/,'');
-          return (
-            <li key={id}>
-              {compact ? `${r.authors.split(',')[0]} et al. ` : `${r.authors}. ${r.title}. `}
-              <em>{r.venue}</em> {r.cite}. <ExternalLink href={url}>{linkText}</ExternalLink>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
+    <details className={`referenceList ${compact ? 'compact' : ''}`}>
+      <summary>
+        <span>Evidence &amp; references</span>
+        <small>{ids.length} source{ids.length===1?'':'s'} · (expand to read more)</small>
+      </summary>
+      <div className="referenceListBody">
+        <p>External links open in a new tab after a short notice.</p>
+        <ol>
+          {ids.map(id => {
+            const r = REFS[id]; if (!r) return <li key={id}>{id}</li>;
+            const url = refUrl(r);
+            const linkText = r.doi ? `doi:${r.doi}` : url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+            return (
+              <li key={id}>
+                {compact ? `${r.authors.split(',')[0]} et al. ` : `${r.authors}. ${r.title}. `}
+                <em>{r.venue}</em> {r.cite}. <ExternalLink href={url}>{linkText}</ExternalLink>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </details>
   );
 }
