@@ -23,7 +23,7 @@ function summaryValue(parts, fallback='Not documented') {
 export default function AiProfileEditor({
   scen, ecoLabel, ecoLabelData, setS, setEco, setModel, setCloudProvider,
   meta, modelLibrary, cloudRegions, cloud, waterPerKwh, volumeEstimates, provenance,
-  refsOrder, onContribute, section, onSection, localRegion,
+  refsOrder, onContribute, section, onSection, localRegion, onMeasureEnergy,
 }) {
   const tokenWorkload=ecoLabel.architecture==='LLM / Agent (transformer)' || ['Report generation','Agentic workflow'].includes(ecoLabel.taskType);
   const metricExamples=METRIC_EXAMPLES[ecoLabel.taskType] || METRIC_EXAMPLES.Other;
@@ -32,8 +32,8 @@ export default function AiProfileEditor({
   const pue=cloudRegions[provider]?.pue ?? cloud[provider]?.pue ?? 1.5;
   const providers=meta.cloudProviders || [];
   const regions=p=>Object.entries(cloudRegions[p]?.regions ?? {});
-  const trainingCompute=scen.trainingRegion || region || 'not specified';
-  const inferenceCompute=scen.inferenceRegion || region || 'not specified';
+  const trainingCompute=[scen.trainingProvider||provider,scen.trainingRegion||region].filter(Boolean).join(' · ') || 'not specified';
+  const inferenceCompute=[scen.inferenceProvider||provider,scen.inferenceRegion||region].filter(Boolean).join(' · ') || 'not specified';
   const clinicalEffectStatus=scen.clinicalEffectBasis==='none'
     ? 'No downstream effect credited'
     : summaryValue([
@@ -147,12 +147,12 @@ export default function AiProfileEditor({
 
     <section className="aiContextBand" aria-label="Clinical and AI compute context">
       <div><span>CLINICAL CONTEXT</span><strong>{localRegion||'Not set'}</strong><small>Where care is being assessed.</small></div>
-      <div><span>DEFAULT AI COMPUTE</span><strong>{provider||'Not set'}{region?` · ${region}`:''}</strong><small>May be local, cloud-hosted, vendor-hosted, or different from the clinical location.</small></div>
-      <button type="button" className="download" onClick={()=>onSection('compute')}>Edit AI compute context →</button>
+      <div><span>AI COMPUTE SETTINGS</span><strong>{provider||'Not set'}{region?` · ${region}`:''}</strong><small>Shared default shown here; Training and Inference may use different compute locations.</small></div>
+      <button type="button" className="download" onClick={()=>onSection('compute')}>Review compute settings →</button>
     </section>
 
     {section==='compute'&&<section id="ai-compute-section" className="aiLifecycleEditor aiContextEditor">
-      <h2>AI compute context</h2><p className="note">Set a default compute location independently from the clinical location. Training and inference inherit it unless a phase-specific override is entered.</p>
+      <h2>AI compute settings</h2><p className="note">Use a shared default when both phases run in the same environment. If Training and Inference differ, record their phase-specific provider, region, PUE, or renewable-share overrides below.</p>
       <div className="grid grid3">
         <label>Compute provider<select value={provider} onChange={e=>setCloudProvider(e.target.value)}>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
         <label>Region <span className="aiOptionalTag">sets grid carbon intensity</span><select value={region} onChange={e=>setEco('cloudRegion',e.target.value)}>{regions(provider).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
@@ -174,6 +174,7 @@ export default function AiProfileEditor({
     {section==='training'&&<section id="ai-training-section" className="aiLifecycleEditor" data-demo-target="ai-training-section">
       <h2>Training</h2>
       <p className="note">Use measured energy when available. Otherwise CEDARS estimates training from the workload and hardware information entered here.</p>
+      {onMeasureEnergy&&<button type="button" className="download aiMeasureMethodButton" onClick={onMeasureEnergy}>Need to measure energy? Choose a measurement method →</button>}
       <div className="aiAvailabilityRow"><span>Training footprint</span><button type="button" onClick={()=>{setEco('trainDisclosed','yes');setS('trainMissingReason','');}} className={ecoLabel.trainDisclosed!=='no'?'on':''}>Available</button><button type="button" onClick={()=>{setEco('trainDisclosed','no');if(!scen.trainMissingReason)setS('trainMissingReason','vendor');}} className={ecoLabel.trainDisclosed==='no'?'on':''}>Unavailable</button></div>
       {ecoLabel.trainDisclosed==='no'?<label className="aiNarrowField">Why is training unavailable?<select value={scen.trainMissingReason||'vendor'} onChange={e=>setS('trainMissingReason',e.target.value)}><option value="vendor">Not disclosed by developer / vendor</option><option value="notassessed">Not assessed in this study / evaluation</option></select></label>:<div className="grid grid3">
         <label>{tokenWorkload?'Training / fine-tuning examples':'Training dataset (studies / images)'}<input type="number" min="0" value={ecoLabel.datasetSize} onChange={e=>setEco('datasetSize',e.target.value)} placeholder={tokenWorkload?'optional':'e.g. 45000'}/></label>

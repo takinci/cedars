@@ -13,6 +13,7 @@ import './chunk7c.css';
 import './chunk7d.css';
 import './chunk7g.css';
 import './chunk7h.css';
+import './chunk7i.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -21,6 +22,7 @@ import { labelFromScen, computeAiLabel, LABEL_TO_SCEN, migrateLegacyLabel, PROVE
 import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AI_ENTRY_REFS } from './AiEntry.jsx';
 import { MeasureChooser } from './MeasureChooser.jsx';
 import AiProfileEditor from './AiProfileEditor.jsx';
+import AiProfileWorkspace from './AiProfileWorkspace.jsx';
 import AiImproveWorkspace from './AiImproveWorkspace.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
@@ -3846,9 +3848,9 @@ function App() {
       {/* ── Equivalencies ── */}
       {/* ── AI ── */}
       {page==='ai' && (
-        <main>
+        <main className="aiPage">
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-            <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} ai computeProvider={scen.inferenceProvider || scen.cloudProvider} computeRegion={scen.inferenceRegion || scen.cloudRegion} onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
+            <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" onClick={returnToAiImprove} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Return to AI Improve</button>}{scen.aiRoute&&<button type="button" className="download aiBackOptionsButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Change AI pathway</button>}</div>
           </div>
 
@@ -4774,15 +4776,22 @@ function App() {
                   <h2>AI Sustainability Profile</h2>
                   <p>Record the clinical context and lifecycle evidence once, then use the same profile for Results, Improve, and Report.</p>
                 </div>
-                <AiProfileEditor
+                <AiProfileWorkspace
                   scen={scen} ecoLabel={ecoLabel} ecoLabelData={ecoLabelData}
-                  setS={setS} setEco={setEco} setModel={setModel} setCloudProvider={setCloudProvider}
-                  meta={META} modelLibrary={AI_MODEL_LIBRARY} cloudRegions={CLOUD_REGIONS} cloud={CLOUD}
-                  waterPerKwh={WATER_PER_KWH} volumeEstimates={VOLUME_ESTIMATES} provenance={PROVENANCE}
-                  refsOrder={AI_PAGE_REFS} onContribute={()=>setContributeOpen(true)}
                   section={aiProfileSection} onSection={setAiProfileSection}
-                  localRegion={settings.region}
-                />
+                  checklistDone={aiChecklistDone} checklistTotal={aiChecklist.length}
+                >
+                  <AiProfileEditor
+                    scen={scen} ecoLabel={ecoLabel} ecoLabelData={ecoLabelData}
+                    setS={setS} setEco={setEco} setModel={setModel} setCloudProvider={setCloudProvider}
+                    meta={META} modelLibrary={AI_MODEL_LIBRARY} cloudRegions={CLOUD_REGIONS} cloud={CLOUD}
+                    waterPerKwh={WATER_PER_KWH} volumeEstimates={VOLUME_ESTIMATES} provenance={PROVENANCE}
+                    refsOrder={AI_PAGE_REFS} onContribute={()=>setContributeOpen(true)}
+                    section={aiProfileSection} onSection={setAiProfileSection}
+                    localRegion={settings.region}
+                    onMeasureEnergy={()=>{setS('ownMode','measure');window.setTimeout(()=>document.getElementById('ai-measure-workspace')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
+                  />
+                </AiProfileWorkspace>
               </div>
               <div className="aiReportingBar" data-demo-target="ai-disclosure">
                 <div className="aiReportingBarMain">

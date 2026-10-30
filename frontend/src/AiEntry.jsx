@@ -1,16 +1,14 @@
 import React, {useState} from 'react';
-import {TrendingUp, Cpu} from 'lucide-react';
+import {Search, Columns3, Cpu} from 'lucide-react';
 import {Ref} from './Refs.jsx';
 import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 
-// The first thing on the AI Model & Informatics page is the work context, not a technical taxonomy.
-// Clinical / operational evaluation includes one-system assessment and candidate comparison.
-// Development includes models being built or materially retrained by the user's team.
-// aiSystemType then keeps imaging AI separate from LLM / multimodal / agentic workloads.
+// The first step is the user's task, not a technical taxonomy. Assessment, comparison, and
+// development are distinct workflows; measurement is an input method within the lifecycle record.
 export const AI_ENTRY_REFS = ['doo-jacr-2024', 'tzanis-maistro-2025', 'chambon-roentgen-2022', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'jegham-llm-2025', 'fernandez-llm-energy-2025', 'oviedo-inference-2025', 'kpodzro-haip-2026'];
 
-const q = {fontSize:13, fontWeight:700, color:'#2E7D32', margin:'0 0 6px'};
-const inset = {background:'#fff', border:'1px solid #dfe6df', borderRadius:10, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10};
+const q = {fontSize:13, fontWeight:700, color:'#2F6B57', margin:'0 0 6px'};
+const inset = {background:'#fff', border:'1px solid #D8DEDA', borderRadius:10, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10};
 
 export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVolume}) {
   const hasDeptVolume = dept.studiesPerMonth > 0;
@@ -66,103 +64,102 @@ const SYSTEM_CHOICES = [
   ['foundation', 'LLM / multimodal / agentic AI', 'LLMs, multimodal models, copilots, or agentic workflows.'],
 ];
 
+const ENTRY_CHOICES = [
+  {key:'assess', eyebrow:'ASSESS', title:'Assess one model', desc:'A model is already selected, purchased, or deployed.', icon:Search, tone:'clinical'},
+  {key:'compare', eyebrow:'COMPARE', title:'Compare candidates', desc:'Evaluate two or more models for the same clinical need.', icon:Columns3, tone:'evidence'},
+  {key:'develop', eyebrow:'DEVELOP', title:'Develop / fine-tune', desc:'Build, adapt, fine-tune, or materially retrain a model.', icon:Cpu, tone:'technical'},
+];
+
+function exampleKind(ex) {
+  if (ex.key.includes('cxr')) return ['cxr','CXR'];
+  if (ex.key.includes('maistro')) return ['agent','AGENT'];
+  if (ex.key.includes('roentgen')) return ['image','GEN'];
+  return ['llm','LLM'];
+}
+
+function exampleUse(ex) {
+  if (ex.scen?.aiRoute==='compare') return 'Compare candidates';
+  if (ex.scen?.ownMode==='spec') return 'Assess one model';
+  return 'Develop / measured';
+}
+
 export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, onOwnMode, examples, onExample, onReset}) {
   const [lane, setLane] = useState('');
-  const chooseClinical = action => {
-    if (!systemType) return;
-    onOwnMode('spec');
-    onRoute(action === 'compare' ? 'compare' : 'own');
-  };
-  const chooseDevelopment = mode => {
-    if (!systemType) return;
-    onOwnMode(mode);
+  const continueWithSelection = () => {
+    if (!lane || !systemType) return;
+    if (lane==='compare') {
+      onOwnMode('spec');
+      onRoute('compare');
+      return;
+    }
+    if (lane==='assess') {
+      onOwnMode('spec');
+      onRoute('own');
+      return;
+    }
+    onOwnMode('measured');
     onRoute('own');
   };
+  const filtered = systemType ? examples.filter(ex => !ex.scen?.aiSystemType || ex.scen.aiSystemType===systemType) : examples;
   return (
-    <section className="aiIntentStart" aria-labelledby="ai-intent-title">
-      <div className="aiIntentHeader">
+    <section className="aiIntentStart aiEntryRedesign" aria-labelledby="ai-intent-title">
+      <div className="aiIntentHeader aiEntryHero">
         <span className="aiIntentKicker">START HERE</span>
         <div>
-          <h2 id="ai-intent-title">How are you using AI?</h2>
-          <p>Choose the path that fits your work.</p>
+          <h2 id="ai-intent-title">What would you like to do?</h2>
+          <p>Choose the task first. CEDARS will then ask only for the model and lifecycle information needed for that workflow.</p>
         </div>
       </div>
 
-      <div className="aiIntentGrid aiRoleGrid" role="group" aria-label="AI work context">
-        <button type="button" data-demo-target="ai-clinical-lane" className={`aiIntentCard aiIntentLane ${lane==='clinical'?'active':''}`} aria-pressed={lane==='clinical'} onClick={()=>setLane('clinical')}>
-          <span className="aiIntentIcon"><TrendingUp size={21}/></span>
-          <span className="aiIntentEyebrow">CLINICAL USE</span>
-          <strong>Clinical use</strong>
-          <small>Assess an existing system or compare candidates for clinical deployment.</small>
-          <b>{lane==='clinical'?'Selected':'Choose →'}</b>
-        </button>
-        <button type="button" data-demo-target="ai-developer-lane" className={`aiIntentCard aiIntentLane ${lane==='develop'?'active':''}`} aria-pressed={lane==='develop'} onClick={()=>setLane('develop')}>
-          <span className="aiIntentIcon"><Cpu size={21}/></span>
-          <span className="aiIntentEyebrow">DEVELOPMENT</span>
-          <strong>Development</strong>
-          <small>Measure or enter the energy used to develop and run a model.</small>
-          <b>{lane==='develop'?'Selected':'Choose →'}</b>
-        </button>
+      <div className="aiIntentGrid aiTaskLaneGrid" role="group" aria-label="AI task">
+        {ENTRY_CHOICES.map(choice=>{
+          const Icon=choice.icon;
+          const active=lane===choice.key;
+          return <button key={choice.key} type="button" data-demo-target={`ai-${choice.key}-lane`} className={`aiIntentCard aiTaskLane ${choice.tone} ${active?'active':''}`} aria-pressed={active} onClick={()=>setLane(choice.key)}>
+            <span className="aiIntentIcon"><Icon size={21}/></span>
+            <span className="aiIntentEyebrow">{choice.eyebrow}</span>
+            <strong>{choice.title}</strong>
+            <small>{choice.desc}</small>
+            <b>{active?'Selected':'Select →'}</b>
+          </button>;
+        })}
       </div>
 
-      {lane && (
-        <div className="aiLaneDetail" data-demo-target="ai-lane-detail">
-          <div className="aiLaneDetailHeader">
-            <span>AI TYPE</span>
-            <strong>What type of AI is this?</strong>
-          </div>
-          <div className="aiSystemChoiceGrid" role="group" aria-label="AI system family">
-            {SYSTEM_CHOICES.map(([key,title,desc]) => (
-              <button key={key} type="button" className={`aiSystemChoice ${systemType===key?'active':''}`} aria-pressed={systemType===key} onClick={()=>onSystemType(key)}>
-                <strong>{title}</strong><small>{desc}</small>
-              </button>
-            ))}
-          </div>
-
-          <div className={`aiTaskChoiceBlock ${systemType?'ready':''}`}>
-            <span>NEXT</span>
-            {lane==='clinical' ? (
-              <div className="aiTaskChoiceGrid">
-                <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseClinical('single')}>
-                  <strong>Assess one system</strong>
-                  <small>Already selected or deployed.</small>
-                  <b>Assess one system →</b>
-                </button>
-                <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseClinical('compare')}>
-                  <strong>Compare systems</strong>
-                  <small>Two or more candidates for the same clinical need.</small>
-                  <b>Compare systems →</b>
-                </button>
-              </div>
-            ) : (
-              <div className="aiTaskChoiceGrid">
-                <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseDevelopment('measure')}>
-                  <strong>Measure energy</strong>
-                  <small>Choose a measurement approach for training or inference.</small>
-                  <b>Measure energy →</b>
-                </button>
-                <button type="button" className="aiTaskChoice" disabled={!systemType} onClick={()=>chooseDevelopment('measured')}>
-                  <strong>Enter known energy</strong>
-                  <small>Enter energy you already measured or obtained.</small>
-                  <b>Enter energy →</b>
-                </button>
-              </div>
-            )}
-            {!systemType && <small className="aiTaskChoiceHint">Choose an AI type to continue.</small>}
-          </div>
+      {lane && <div className="aiLaneDetail aiTypeStep" data-demo-target="ai-lane-detail">
+        <div className="aiLaneDetailHeader">
+          <span>STEP 2 · AI TYPE</span>
+          <strong>What kind of AI is this?</strong>
+          <small>This separates image-model workloads from language, multimodal, and agentic workloads.</small>
         </div>
-      )}
+        <div className="aiSystemChoiceGrid" role="group" aria-label="AI system family">
+          {SYSTEM_CHOICES.map(([key,title,desc]) => (
+            <button key={key} type="button" className={`aiSystemChoice ${systemType===key?'active':''}`} aria-pressed={systemType===key} onClick={()=>onSystemType(key)}>
+              <strong>{title}</strong><small>{desc}</small>
+            </button>
+          ))}
+        </div>
+        <div className="aiEntryContinueRow">
+          <span>{!systemType?'Choose an AI type to continue.':'You can enter a blank profile or load a worked example below.'}</span>
+          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue with a blank profile →</button>
+        </div>
+      </div>}
 
-      {(()=>{
-        const filtered = systemType ? examples.filter(ex => !ex.scen?.aiSystemType || ex.scen.aiSystemType===systemType) : examples;
-        const featured = filtered.slice(0,3), more = filtered.slice(3);
-        return <section id="ai-examples" className="aiExamplesGuide">
-          <div className="aiExamplesGuideHeader"><span>NEW TO CEDARS?</span><div><strong>Start from an example</strong><p>Load a worked example, then replace its values with your own. Examples are illustrative or literature-derived.</p></div></div>
-          <div className="aiExampleChoiceGrid">{featured.map(ex=><button key={ex.key} type="button" className="aiExampleChoice" onClick={()=>onExample(ex.key)}><strong>{ex.title}</strong><small>{ex.scen?.ownMode==='spec'?'Clinical evaluation example':'Development / measured example'}</small><b>Load example →</b></button>)}</div>
-          {more.length>0&&<details className="aiExamplesMore"><summary>More examples ({more.length})</summary><div className="quickStartChoices">{more.map(ex=><button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>{ex.title}</button>)}</div></details>}
-          <div className="aiExamplesStartBlank"><button type="button" className="download" onClick={onReset}>Start with a blank profile →</button></div>
-        </section>;
-      })()}
+      <section id="ai-examples" className="aiExamplesGuide aiExamplesExpanded">
+        <div className="aiExamplesGuideHeader">
+          <span>OPTIONAL STARTING POINTS</span>
+          <div><strong>Worked examples</strong><p>Load a complete example and replace its values with your own. Examples are illustrative or literature-derived and never become evidence for a different model automatically.</p></div>
+        </div>
+        <div className="aiExampleChoiceGrid aiExampleChoiceGridExpanded">
+          {filtered.map(ex=>{
+            const [kind,label]=exampleKind(ex);
+            return <button key={ex.key} type="button" className="aiExampleChoice aiExampleChoiceVisual" onClick={()=>onExample(ex.key)}>
+              <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><b>{label}</b></span>
+              <span className="aiExampleChoiceCopy"><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small><em>{ex.subtitle}</em></span>
+              <b className="aiExampleLoad">Load example →</b>
+            </button>;
+          })}
+        </div>
+      </section>
     </section>
   );
 }
@@ -171,9 +168,9 @@ export function AiRouteStrip({route, ownMode, systemType, onComparison, onBackTo
   const family = systemType === 'imaging' ? 'Imaging AI'
     : systemType === 'foundation' ? 'LLM / multimodal / agentic AI'
       : 'AI system';
-  const label = route === 'compare' ? `Clinical evaluation · ${family} · comparing candidates`
-    : ownMode === 'spec' ? `Clinical evaluation · ${family} · one system`
-      : `Development · ${family}`;
+  const label = route === 'compare' ? `Compare candidates · ${family}`
+    : ownMode === 'spec' ? `Assess one model · ${family}`
+      : `Develop / fine-tune · ${family}`;
   return (
     <div className="aiRouteStrip">
       <span className="aiIntentKicker">AI PATHWAY</span>

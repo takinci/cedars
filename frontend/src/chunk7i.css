@@ -1,0 +1,198 @@
+/* Chunk 7I — AI workspace redesign: clearer task entry, scientific sidebar, compact lifecycle, and a forest/ivory design system. */
+.aiPage{
+  --cedars-forest:#2F6B57;
+  --cedars-forest-deep:#254C40;
+  --cedars-sage:#DDE8E1;
+  --cedars-sage-soft:#EEF4F0;
+  --cedars-ivory:#F7F5EF;
+  --cedars-card:#FFFFFF;
+  --cedars-ink:#25302D;
+  --cedars-muted:#66716D;
+  --cedars-border:#D8DEDA;
+  --cedars-gold:#C2A45F;
+  --cedars-gold-soft:#F6F0DF;
+  --cedars-info:#708894;
+  --cedars-info-soft:#EEF3F5;
+  color:var(--cedars-ink);
+}
+body:has(.aiPage){background:var(--cedars-ivory,#F7F5EF)}
+.aiPage *,.aiPage *::before,.aiPage *::after{box-sizing:border-box}
+.aiPage h1,.aiPage h2,.aiPage h3{color:var(--cedars-ink)}
+.aiPage .note{color:var(--cedars-muted)}
+.aiPage input,.aiPage select{border-color:var(--cedars-border);color:var(--cedars-ink);background:#fff;max-width:100%;min-width:0}
+.aiPage label{color:var(--cedars-forest-deep);min-width:0}
+.aiPage .grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.aiPage button,.aiPage .download{max-width:100%}
+.aiPage .inlineTextButton{color:var(--cedars-forest)!important}
+.aiPage .assessmentContextStrip{color:var(--cedars-muted)}
+.aiPage .assessmentContextTag svg{color:var(--cedars-forest)}
+
+/* Entry: three actual tasks, then AI type. */
+.aiPage .aiIntentStart.aiEntryRedesign{background:var(--cedars-card);border:1px solid var(--cedars-border);border-top:4px solid var(--cedars-forest);border-radius:16px;padding:22px;box-shadow:0 8px 28px rgba(37,76,64,.06)}
+.aiPage .aiEntryHero{margin-bottom:18px}
+.aiPage .aiEntryHero .aiIntentKicker{background:var(--cedars-sage-soft);color:var(--cedars-forest-deep)}
+.aiPage .aiEntryHero h2{font-size:25px;color:var(--cedars-ink);letter-spacing:-.015em}
+.aiPage .aiEntryHero p{font-size:13px;max-width:760px;color:var(--cedars-muted)}
+.aiTaskLaneGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+.aiPage .aiTaskLane{position:relative;min-height:184px;padding:16px!important;background:#fff!important;border:1px solid var(--cedars-border)!important;border-radius:13px!important;color:var(--cedars-ink)!important;box-shadow:none!important;text-align:left;align-items:flex-start!important}
+.aiPage .aiTaskLane:hover{border-color:#AEBDB5!important;transform:translateY(-1px)}
+.aiPage .aiTaskLane.active{background:var(--cedars-sage-soft)!important;border-color:var(--cedars-forest)!important;box-shadow:inset 0 0 0 1px var(--cedars-forest)!important}
+.aiPage .aiTaskLane .aiIntentIcon{width:38px;height:38px;border-radius:10px;background:var(--cedars-sage-soft);color:var(--cedars-forest)}
+.aiPage .aiTaskLane.evidence .aiIntentIcon{background:var(--cedars-info-soft);color:var(--cedars-info)}
+.aiPage .aiTaskLane.technical .aiIntentIcon{background:#E8EEEB;color:var(--cedars-forest-deep)}
+.aiPage .aiTaskLane.active .aiIntentIcon{background:var(--cedars-forest);color:#fff}
+.aiPage .aiTaskLane.evidence.active .aiIntentIcon{background:var(--cedars-info);color:#fff}
+.aiPage .aiTaskLane .aiIntentEyebrow{color:var(--cedars-muted);font-size:9px;letter-spacing:.09em}
+.aiPage .aiTaskLane>strong{font-size:17px;color:var(--cedars-ink);line-height:1.25}
+.aiPage .aiTaskLane>small{font-size:11.5px;line-height:1.45;color:var(--cedars-muted);font-weight:500}
+.aiPage .aiTaskLane>b{margin-top:auto;font-size:11px;color:var(--cedars-forest);padding-top:10px}
+.aiPage .aiTypeStep{background:#FBFBF8;border:1px solid var(--cedars-border);padding:16px 17px;margin-top:14px}
+.aiPage .aiTypeStep .aiLaneDetailHeader>span{color:var(--cedars-forest)}
+.aiPage .aiTypeStep .aiLaneDetailHeader>strong{color:var(--cedars-ink);font-size:15px}
+.aiPage .aiTypeStep .aiLaneDetailHeader>small{color:var(--cedars-muted)}
+.aiPage .aiSystemChoice{border-color:var(--cedars-border);color:var(--cedars-ink);background:#fff}
+.aiPage .aiSystemChoice.active{border-color:var(--cedars-forest);background:var(--cedars-sage-soft);box-shadow:inset 0 0 0 1px var(--cedars-forest)}
+.aiPage .aiSystemChoice.active strong{color:var(--cedars-forest-deep)}
+.aiEntryContinueRow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:13px;margin-top:13px;border-top:1px solid var(--cedars-border)}
+.aiEntryContinueRow>span{font-size:11px;color:var(--cedars-muted);line-height:1.4}
+.aiEntryContinueRow>button{background:var(--cedars-forest)!important;color:#fff!important;font-weight:750;white-space:nowrap}
+.aiEntryContinueRow>button:disabled{opacity:.45;cursor:not-allowed}
+
+/* Worked examples are deliberately visible, not a hidden secondary pathway. */
+.aiPage .aiExamplesGuide.aiExamplesExpanded{margin-top:18px;padding:17px;border:1px solid var(--cedars-border);border-left:0;border-radius:13px;background:#F2EFE7}
+.aiPage .aiExamplesGuideHeader{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;margin-bottom:13px}
+.aiPage .aiExamplesGuideHeader>span{color:var(--cedars-info);font-size:9px;letter-spacing:.08em;padding-top:3px}
+.aiPage .aiExamplesGuideHeader strong{font-size:16px;color:var(--cedars-ink)}
+.aiPage .aiExamplesGuideHeader p{font-size:11.5px;color:var(--cedars-muted);max-width:760px}
+.aiExampleChoiceGridExpanded{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.aiPage .aiExampleChoiceVisual{display:grid!important;grid-template-columns:70px minmax(0,1fr) auto;gap:11px;align-items:center!important;min-height:108px;padding:10px!important;border:1px solid var(--cedars-border)!important;border-radius:11px!important;background:#fff!important;color:var(--cedars-ink)!important;text-align:left;box-shadow:none!important}
+.aiPage .aiExampleChoiceVisual:hover{border-color:#B8C4BE!important;background:#FFFEFB!important}
+.aiExampleThumb{display:grid;place-items:center;width:70px;height:70px;border-radius:9px;overflow:hidden;position:relative;background:#DDE6E1;color:var(--cedars-forest-deep)}
+.aiExampleThumb::before,.aiExampleThumb::after{content:"";position:absolute;inset:10px;border:1px solid rgba(37,76,64,.24);border-radius:50%}
+.aiExampleThumb::after{inset:20px;border-radius:4px;transform:rotate(45deg)}
+.aiExampleThumb.llm,.aiExampleThumb.agent{background:var(--cedars-info-soft);color:#526B79}
+.aiExampleThumb.llm::before,.aiExampleThumb.llm::after,.aiExampleThumb.agent::before,.aiExampleThumb.agent::after{border-color:rgba(82,107,121,.28)}
+.aiExampleThumb.image{background:#E7ECE7;color:#405B4E}
+.aiExampleThumb>b{position:relative;z-index:1;font-size:10px;letter-spacing:.08em;background:rgba(255,255,255,.82);padding:3px 5px;border-radius:4px}
+.aiExampleChoiceCopy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.aiExampleChoiceCopy>strong{font-size:12px!important;color:var(--cedars-ink)}
+.aiExampleChoiceCopy>small{font-size:10px!important;color:var(--cedars-muted)!important}
+.aiExampleChoiceCopy>em{font-style:normal;font-size:9.5px;color:#7D8682;line-height:1.35;overflow-wrap:anywhere}
+.aiExampleLoad{font-size:10px!important;color:var(--cedars-forest)!important;white-space:nowrap;align-self:end}
+
+/* Route strip: neutral framing, green identity only where it helps. */
+.aiPage .aiRouteStrip{border-color:var(--cedars-border);background:#fff}
+.aiPage .aiRouteStrip .aiIntentKicker{background:var(--cedars-sage-soft);color:var(--cedars-forest-deep)}
+.aiPage .aiRouteStrip>strong{color:var(--cedars-ink)}
+
+/* Expert workspace: a quiet scientific navigation rail beside the editable record. */
+.aiProfileWorkspace{display:grid;grid-template-columns:220px minmax(0,1fr);gap:22px;align-items:start;min-width:0}
+.aiProfileWorkspaceMain{min-width:0}
+.aiProfileSidebar{position:sticky;top:92px;background:#fff;border:1px solid var(--cedars-border);border-radius:13px;padding:13px;box-shadow:0 6px 20px rgba(37,76,64,.05);max-height:calc(100vh - 112px);overflow:auto}
+.aiProfileSidebarIntro{padding:2px 3px 11px;border-bottom:1px solid var(--cedars-border);display:flex;flex-direction:column;gap:2px}
+.aiProfileSidebarIntro>span,.aiProfileNavGroup>span{font-size:8.5px;font-weight:850;letter-spacing:.085em;color:var(--cedars-muted)}
+.aiProfileSidebarIntro>strong{font-size:14px;color:var(--cedars-ink)}
+.aiProfileSidebarIntro>small{font-size:10px;line-height:1.35;color:var(--cedars-muted)}
+.aiProfileNav{display:flex!important;flex-direction:column;gap:13px;margin-top:12px}
+.aiProfileNavGroup{display:flex;flex-direction:column;gap:4px}
+.aiProfileNavGroup>span{padding:0 4px 2px}
+.aiProfileNavItem{width:100%;display:grid!important;grid-template-columns:14px minmax(0,1fr);gap:7px;align-items:start!important;text-align:left!important;padding:7px 8px!important;border-radius:8px!important;background:transparent!important;color:var(--cedars-ink)!important;box-shadow:none!important;border:1px solid transparent!important}
+.aiProfileNavItem:hover{background:#F7F8F6!important;border-color:#E5E9E6!important}
+.aiProfileNavItem.active{background:var(--cedars-sage-soft)!important;border-color:#C9D9D0!important}
+.aiProfileNavCopy{display:flex;flex-direction:column;gap:1px;min-width:0}
+.aiProfileNavCopy strong{font-size:10.8px;line-height:1.25;color:var(--cedars-ink);font-weight:720}
+.aiProfileNavCopy small{font-size:8.8px;line-height:1.25;color:#7B8681;font-weight:500;overflow-wrap:anywhere}
+.aiProfileNavItem.evidence .aiProfileNavCopy strong{color:#526B79}
+.aiProfileNavItem.lifecycle .aiProfileNavCopy strong{color:var(--cedars-forest-deep)}
+.aiProfileNavStatus{display:grid;place-items:center;width:12px;height:12px;border-radius:50%;font-size:8px;font-weight:900;margin-top:1px}
+.aiProfileNavStatus.complete{background:var(--cedars-forest);color:#fff}
+.aiProfileNavStatus.attention{background:var(--cedars-gold-soft);border:1px solid var(--cedars-gold);color:#8B6E2D}
+.aiProfileNavStatus.neutral{background:#ECEFEC;color:#87918C}
+.aiProfileSidebarLegend{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--cedars-border);padding:9px 3px 1px;margin-top:12px}
+.aiProfileSidebarLegend span{display:inline-flex;gap:4px;align-items:center;font-size:8.5px;color:#7C8681}
+.aiProfileSidebarLegend i{width:8px;height:8px;border-radius:50%;display:inline-block}.aiProfileSidebarLegend i.complete{background:var(--cedars-forest)}.aiProfileSidebarLegend i.attention{background:var(--cedars-gold)}
+
+/* The record itself uses neutral cards; green identifies clinical/sustainability states, blue-gray evidence. */
+.aiPage .aiProfileEditorHeading>span{color:var(--cedars-forest)}
+.aiPage .aiProfileEditorHeading h2{color:var(--cedars-ink)}
+.aiPage .aiProfileIdentity{background:#fff;border:1px solid var(--cedars-border);box-shadow:0 6px 20px rgba(37,76,64,.04)}
+.aiPage .aiProfileIdentity>div:first-child{border-left:3px solid var(--cedars-forest);padding-left:11px}
+.aiPage .aiProfileDisclosure{border-color:var(--cedars-border);border-radius:9px}
+.aiPage .aiProfileDisclosure>summary strong{color:var(--cedars-ink)}
+.aiPage .aiProfileDisclosure>summary small,.aiPage .aiProfileDisclosure>summary b{color:var(--cedars-muted)}
+.aiPage .aiProfileDisclosure[open]>summary{background:#FAFBF9;border-color:var(--cedars-border)}
+.aiPage .aiPerformanceDisclosure>summary{border-left-color:var(--cedars-info)}
+.aiPage .aiEffectsDisclosure>summary{border-left-color:var(--cedars-forest)}
+.aiPage .aiTechnicalDisclosure>summary{border-left-color:#82908A}
+.aiPage .aiMetricBestPractice{background:var(--cedars-info-soft);border-color:#D7E2E6}
+.aiPage .aiMetricBestPractice>strong{color:#526B79}
+.aiPage .aiMetricGuideLinks a{color:#526B79!important}
+
+/* Compute context is part of the model record, not a second location in the page header. */
+.aiPage .aiContextBand{grid-template-columns:minmax(180px,.65fr) minmax(280px,1.35fr) auto;background:#fff;border:1px solid var(--cedars-border);border-radius:10px;padding:11px 12px;margin:15px 0}
+.aiPage .aiContextBand span{color:var(--cedars-muted)}
+.aiPage .aiContextBand strong{color:var(--cedars-ink)}
+.aiPage .aiContextBand>div:nth-child(2){border-left:3px solid var(--cedars-forest);padding-left:10px}
+.aiPage .aiContextBand>button{background:#fff!important;color:var(--cedars-forest)!important;border:1px solid var(--cedars-border)!important}
+.aiPage .aiContextEditor{border-color:var(--cedars-border);box-shadow:none}
+
+/* Lifecycle: directional status rail, not two competing dashboard cards. */
+.aiPage .aiLifecycleIntro{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:22px 0 8px;border-top:1px solid var(--cedars-border);padding-top:15px}
+.aiPage .aiLifecycleIntro h3{font-size:15px;color:var(--cedars-ink)}
+.aiPage .aiLifecycleIntro p{font-size:11px;color:var(--cedars-muted);text-align:right;max-width:620px}
+.aiPage .aiLifecycleSequence{grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);gap:4px;margin:0 0 13px;border-top:1px solid var(--cedars-border);border-bottom:1px solid var(--cedars-border);padding:7px 0}
+.aiPage .aiLifecycleSummaryCard{min-height:78px!important;padding:9px 11px!important;border:0!important;border-left:3px solid transparent!important;border-radius:7px!important;background:transparent!important}
+.aiPage .aiLifecycleSummaryCard:hover{background:#F7F8F6!important}
+.aiPage .aiLifecycleSummaryCard.active{background:var(--cedars-sage-soft)!important;border-left-color:var(--cedars-forest)!important;box-shadow:none!important}
+.aiPage .aiLifecycleSummaryCard>span{font-size:9px;color:var(--cedars-muted)}
+.aiPage .aiLifecycleSummaryCard>strong{font-size:13px;color:var(--cedars-ink);margin-top:3px}
+.aiPage .aiLifecycleSummaryCard>small{font-size:10px;color:#7B8581;margin-top:2px}
+.aiPage .aiLifecycleSummaryCard>b{font-size:9.5px;color:var(--cedars-forest);padding-top:4px}
+.aiPage .aiLifecycleArrow{color:#9AA49F}
+.aiPage .aiLifecycleEditor{border-color:var(--cedars-border);border-radius:10px;box-shadow:0 4px 16px rgba(37,76,64,.035);padding:17px;background:#fff}
+.aiPage .aiLifecycleEditor>h2{color:var(--cedars-ink);font-size:20px;border-left:3px solid var(--cedars-forest);padding-left:9px}
+.aiPage .aiMeasureMethodButton{margin:0 0 12px;background:#fff!important;color:var(--cedars-forest)!important;border:1px solid var(--cedars-border)!important;box-shadow:none!important}
+.aiPage .aiAvailabilityRow button{background:#fff!important;color:var(--cedars-muted)!important;border:1px solid var(--cedars-border)!important;box-shadow:none!important}
+.aiPage .aiAvailabilityRow button.on{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important;border-color:var(--cedars-forest)!important;box-shadow:inset 0 0 0 1px var(--cedars-forest)!important}
+.aiPage .aiBoundarySummary{background:#fff;border:1px solid var(--cedars-border);border-left:3px solid #87938D;border-radius:9px;padding:11px 12px}
+.aiPage .aiBoundarySummary>button{background:#fff!important;color:var(--cedars-forest)!important;border:1px solid var(--cedars-border)!important}
+
+/* Reporting is a review footer, not a floating third navigation system. */
+.aiPage .aiReportingBar{position:static!important;bottom:auto!important;margin:15px 0 2px;background:#fff;border-color:var(--cedars-border);box-shadow:0 4px 16px rgba(37,76,64,.04);backdrop-filter:none}
+.aiPage .aiReportingTrack{background:#E7EBE8}.aiPage .aiReportingTrack>span{background:var(--cedars-forest)}
+.aiPage .aiReportingBarLabel strong{color:var(--cedars-ink)}
+.aiPage .aiReportingActions>button:not(.download){background:var(--cedars-forest)}
+.aiPage .aiReportingActions>.download{background:#fff;color:var(--cedars-forest);border:1px solid var(--cedars-border)}
+.aiPage .aiReportingGapText{color:#8B6E2D;background:var(--cedars-gold-soft);border-radius:6px;padding:5px 7px;margin-top:7px}
+
+/* Prevent the clipping seen in intermediate desktop widths. */
+.aiPage .inputSummary,.aiPage .aiProfileDisclosure,.aiPage .aiLifecycleEditor,.aiPage .aiContextBand,.aiPage .aiBoundarySummary{min-width:0;max-width:100%}
+.aiPage .grid>*{min-width:0}
+.aiPage input,.aiPage select,.aiPage textarea{width:100%;min-width:0}
+.aiPage strong,.aiPage small,.aiPage p,.aiPage label,.aiPage button{overflow-wrap:anywhere}
+
+@media(max-width:1080px){
+  .aiProfileWorkspace{grid-template-columns:190px minmax(0,1fr);gap:15px}
+  .aiPage .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .aiExampleChoiceGridExpanded{grid-template-columns:1fr!important}
+}
+@media(max-width:850px){
+  .aiTaskLaneGrid{grid-template-columns:1fr!important}
+  .aiPage .aiTaskLane{min-height:0}
+  .aiProfileWorkspace{grid-template-columns:1fr}
+  .aiProfileSidebar{position:static;max-height:none;padding:11px}
+  .aiProfileNav{display:grid!important;grid-template-columns:1fr 1fr;gap:10px!important}
+  .aiProfileNavGroup{border-top:1px solid var(--cedars-border);padding-top:8px}
+  .aiProfileSidebarLegend{display:none}
+  .aiPage .aiContextBand{grid-template-columns:1fr 1fr}.aiPage .aiContextBand>button{grid-column:1/-1;justify-self:start}
+  .aiPage .aiExamplesGuideHeader{grid-template-columns:1fr;gap:4px}
+}
+@media(max-width:650px){
+  .aiPage .grid3{grid-template-columns:1fr}
+  .aiProfileNav{grid-template-columns:1fr!important}
+  .aiEntryContinueRow{align-items:stretch;flex-direction:column}.aiEntryContinueRow>button{width:100%;justify-content:center}
+  .aiPage .aiExampleChoiceVisual{grid-template-columns:58px minmax(0,1fr);align-items:start!important}.aiExampleThumb{width:58px;height:58px}.aiExampleLoad{grid-column:2;justify-self:start}
+  .aiPage .aiLifecycleIntro{align-items:flex-start;flex-direction:column}.aiPage .aiLifecycleIntro p{text-align:left}
+  .aiPage .aiLifecycleSequence{grid-template-columns:1fr}.aiPage .aiLifecycleArrow{transform:rotate(90deg);min-height:12px}
+  .aiPage .aiContextBand{grid-template-columns:1fr}.aiPage .aiContextBand>div:nth-child(2){border-left:0;border-top:3px solid var(--cedars-forest);padding:8px 0 0}
+}
