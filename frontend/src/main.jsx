@@ -16,6 +16,7 @@ import './chunk7h.css';
 import './chunk7i.css';
 import './theme.css';
 import './chunk7o.css';
+import './chunk7p.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -3168,7 +3169,6 @@ function App() {
               <p className="eyebrow">Radiology + AI + Planetary Health</p>
               <h1>Turn environmental impact into decisions.</h1>
               <p className="homeHeroLead">Quantify energy, carbon, resource use, and lifecycle impacts with transparent, editable assumptions. Compare alternatives, test prospective changes, and preserve the evidence behind each result.</p>
-              <p className="homeGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong> Environmental efficiency is considered only within clinically appropriate care and clinically acceptable AI.</p>
             </div>
           </section>
 
@@ -4832,6 +4832,8 @@ function App() {
             });
             const individualByName = Object.fromEntries(individual.map(x=>[x.name,x]));
             const ranked = individual.filter(x=>x.totalCo2>0).sort((x,y)=>y.totalCo2-x.totalCo2);
+            const rankedPreview = ranked.slice(0,3);
+            const rankedMore = ranked.slice(3);
             const selectedRows = scenarioInterventions.map(name=>individualByName[name]).filter(Boolean);
             const totalCarbonSaving = rnd((scenario.savings.co2||0)+(scenario.embodied.savedCo2eKg||0)+(scenario.contrast.savedCo2eKg||0),1);
             const periodCostSaving = scenario.savings.kwh * price;
@@ -4843,9 +4845,17 @@ function App() {
               if (row.totalCo2>0) parts.push(`−${row.totalCo2.toLocaleString()} kgCO₂e`);
               return parts.length ? parts.join(' · ') : 'No change with the current assessment inputs';
             };
+            const renderOpportunityRow = (row,i) => {
+              const active=scenarioInterventions.includes(row.name);
+              return <div key={row.name} className="improveOpportunityRow">
+                <div className="improveRank">{i+1}</div>
+                <div className="improveOpportunityText"><strong>{row.name}</strong><span>−{row.totalCo2.toLocaleString()} kgCO₂e · {row.meta.reason}</span></div>
+                <button type="button" className={active?'added':''} disabled={active} onClick={()=>toggleScenarioIntervention(row.name)}>{active?'Added ✓':'Add to scenario'}</button>
+              </div>;
+            };
 
             return <>
-              <div className="improveStateStrip" aria-label="Improve workflow status">
+              <div className="improveStateStrip" data-demo-target="department-improve-state" aria-label="Improve workflow status">
                 <div><span>CURRENT ASSESSMENT</span><strong>Baseline</strong></div>
                 <ArrowRight size={18}/>
                 <div className="active"><span>YOUR SCENARIO</span><strong>{scenario.count} change{scenario.count===1?'':'s'} selected</strong></div>
@@ -4855,30 +4865,21 @@ function App() {
 
               <section className="inputSummary improveWorkspace" data-demo-target="department-improve-workspace" style={{marginBottom:20}}>
                 <div className="improveWorkspaceHeading">
-                  <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Start with the largest modeled opportunities for this assessment, then follow the radiology workflow below to browse where other changes act.</p></div>
+                  <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Use the radiology workflow as the main way to browse changes. The largest quantified opportunities are summarized first so you can see where the current assessment has the most modeled leverage.</p></div>
                   <div className="improveWorkspaceCount">{scenario.count} selected</div>
                 </div>
 
                 <div className="improveWorkspaceGrid">
                   <div className="improveChooser">
                     <section className="improveOpportunities">
-                      <h3>Modeled opportunities for this assessment</h3>
+                      <h3>Largest modeled opportunities</h3>
                       <div className="improveClinicalGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong><span>This ordering shows modeled environmental opportunity only. Exclude any option that is not clinically appropriate or operationally safe; CEDARS does not trade patient care against carbon or cost.</span></div>
-                      <p className="note">All quantified positive opportunities are shown, ordered by modeled carbon reduction using the assessment you entered. The number therefore varies with the current profile rather than being fixed.</p>
-                      {ranked.length>0 ? <div className="improveOpportunityList">
-                        {ranked.map((row,i)=>{
-                          const active=scenarioInterventions.includes(row.name);
-                          return <div key={row.name} className="improveOpportunityRow">
-                            <div className="improveRank">{i+1}</div>
-                            <div className="improveOpportunityText"><strong>{row.name}</strong><span>−{row.totalCo2.toLocaleString()} kgCO₂e · {row.meta.reason}</span></div>
-                            <button type="button" className={active?'added':''} disabled={active} onClick={()=>toggleScenarioIntervention(row.name)}>{active?'Added ✓':'Add to scenario'}</button>
-                          </div>;
-                        })}
-                      </div> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
+                      <p className="note">This preview is ordered by modeled carbon reduction from the current assessment; it is not a clinical recommendation. Browse the workflow below to see every change by where it acts.</p>
+                      {ranked.length>0 ? <><div className="improveOpportunityList improveOpportunityPreview">{rankedPreview.map(renderOpportunityRow)}</div>{rankedMore.length>0&&<details className="improveOpportunityMore"><summary>Show {rankedMore.length} more modeled {rankedMore.length===1?'opportunity':'opportunities'}</summary><div className="improveOpportunityList">{rankedMore.map((row,i)=>renderOpportunityRow(row,i+rankedPreview.length))}</div></details>}</> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
                     </section>
 
                     <section className="improveAllChanges">
-                      <div className="improveSectionHeading"><div><h3>Follow the radiology workflow</h3><p>Use the pathway to see where each opportunity acts. Your highest modeled opportunities remain ranked above; this map is for browsing by workflow stage.</p></div><button type="button" className="inlineTextButton" onClick={()=>setImproveDeptStage('order')}>Start at ordering →</button></div>
+                      <div className="improveSectionHeading"><div><h3>Follow the radiology workflow</h3><p>Browse every change by where it acts in care delivery. The quantified preview above is only a shortcut; this workflow is the primary scenario-building view.</p></div><button type="button" className="inlineTextButton" onClick={()=>setImproveDeptStage('order')}>Start at ordering →</button></div>
                       <div className="improveWorkflowMap" role="tablist" aria-label="Radiology sustainability workflow">
                         {IMPROVE_WORKFLOW_STAGES.slice(0,5).map((stage,i)=><React.Fragment key={stage.key}><button type="button" role="tab" aria-selected={improveDeptStage===stage.key} className={improveDeptStage===stage.key?'active':''} onClick={()=>setImproveDeptStage(stage.key)}><span>{stage.step}</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></button>{i<4&&<ArrowRight size={18}/>}</React.Fragment>)}
                       </div>

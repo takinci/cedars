@@ -391,7 +391,7 @@ export const GUIDED_DEMOS = {
       {target:'[data-demo-target="leader-regional-preset"]', kicker:'BUILD PROFILE', title:'Build the operational baseline', body:'Equipment and imaging workload establish the department baseline. This walkthrough uses the illustrative Regional hospital preset; a real assessment should verify or replace every value.', actionHint:'The preset loads automatically when you continue.'},
       {target:'[data-demo-target="leader-clinical-ai-example"]', kicker:'BUILD PROFILE · CLINICAL AI', title:'Add Clinical AI where it is actually used', body:'Clinical AI belongs inside the department when it changes local compute or imaging operations. The model record is shared, while local study share and supported workflow effects stay specific to the department.', actionHint:'Illustrative Clinical AI uses load automatically when you continue.'},
       {target:'#department-overview', kicker:'PROFILE · CURRENT FOOTPRINT', title:'Read the result before the methods', body:'Start with operational energy, carbon, per-study intensity, and major drivers. Core quantified results stay separate from extended estimates and categories that were not assessed.'},
-      {target:'[data-demo-target="department-improve-workspace"]', kicker:'IMPROVE', title:'Test changes without rewriting the baseline', body:'Improve models prospective changes separately from the current state. Quantified scenario estimates remain distinct from planning guidance and from changes that have actually been implemented.'},
+      {target:'[data-demo-target="department-improve-state"]', extraTargets:['[data-demo-target="department-improve-workspace"]'], kicker:'IMPROVE', title:'Test changes without rewriting the baseline', body:'Improve keeps the current assessment, your prospective scenario, and the projected assessment separate. Use the radiology workflow to browse where changes act; the short ranked preview only surfaces the largest modeled opportunities from this illustrative baseline.'},
       {target:'#department-score-panel', kicker:'SCORE & ECOLABEL', title:'Interpret the current operational result', body:'The Department Score summarizes operational carbon intensity per delivered study within the stated boundary. It is not a claim that the entire department has no other environmental impacts.'},
       {target:'[data-demo-target="department-report-materials"]', kicker:'REPORT & SHARE', title:'Prepare a reproducible department report', body:'Review disclosure gaps, generate the Department EcoLabel and reporting text, and preserve the assumptions with the result. The EcoLabel is a research reporting output, not external certification.'},
       {...SAVE_SHARE_STEP},
@@ -449,8 +449,8 @@ export function GuidedDemoLauncher({onStart}) {
   return (
     <details className="guidedDemoLauncher" aria-labelledby="guided-demo-title">
       <summary>
-        <span className="guidedDemoLauncherSummaryCopy"><span>GUIDED EXAMPLES</span><strong id="guided-demo-title">New to CEDARS? Try a guided walkthrough</strong><small>Illustrative values load automatically; your current assessment is restored when you exit.</small></span>
-        <span className="guidedDemoLauncherSummaryAction">View walkthroughs ↓</span>
+        <span className="guidedDemoLauncherSummaryCopy"><span>GUIDED WALKTHROUGHS</span><strong id="guided-demo-title">See CEDARS with illustrative data</strong><small>Follow a Department, clinical-AI, or AI-development example without changing your current assessment.</small></span>
+        <span className="guidedDemoLauncherSummaryAction">Explore walkthroughs →</span>
       </summary>
       <div className="guidedDemoLauncherBody">
         <div className="guidedDemoLauncherGrid">
