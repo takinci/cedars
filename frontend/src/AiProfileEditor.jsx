@@ -58,6 +58,15 @@ export default function AiProfileEditor({
     scen.accuracyPct!==''&&scen.accuracyPct!=null?scen.accuracyPct:'',
     scen.performanceSource
   ],'Not assessed (optional)');
+  const profilePath=scen.aiRoute==='compare'?'compare':scen.ownMode==='spec'?'assess':'develop';
+  const developing=profilePath==='develop';
+  const comparing=profilePath==='compare';
+  const contextTitle=developing?'Purpose & evaluation context':comparing?'Clinical comparison context':'Clinical use context';
+  const contextNote=developing
+    ? 'Define what you are building and how it will be evaluated. Clinical-use evidence is not required to estimate development or training footprint; if the model is intended for care, document the intended use and available validation. Workflow effects belong to deployment and can remain unassessed until a local use is defined.'
+    : comparing
+      ? 'Define the shared clinical need and a comparable validation basis before environmental ranking. Clinical suitability is a gate, not a weighted offset against environmental performance.'
+      : 'Document the clinical purpose, available validation, and local workflow context for the selected or deployed model. These fields travel with the environmental result; they do not reduce the footprint.';
 
   const openContext=id=>{
     const node=document.getElementById(id);
@@ -68,11 +77,11 @@ export default function AiProfileEditor({
   return <>
     <section id="ai-model-record" className="inputSummary aiProfileIdentity" data-demo-target="ai-model-record">
       <div>
-        <h2>Clinical context</h2>
-        <p className="note">Document the clinical purpose first, then add performance/validation and workflow-effect context when available. These fields travel with the environmental result; they do not reduce the footprint. For candidate comparison, clinical suitability must be established before environmental ranking.</p>
+        <h2>{contextTitle}</h2>
+        <p className="note">{contextNote}</p>
       </div>
 
-      <div className="aiContextStepHeader"><span>1 · CLINICAL PURPOSE</span><strong>What is this AI intended to do?</strong></div>
+      <div className="aiContextStepHeader"><span>{developing?'1 · PURPOSE':comparing?'1 · SHARED CLINICAL PURPOSE':'1 · CLINICAL PURPOSE'}</span><strong>{developing?'What are you building it to do?':comparing?'What clinical need must every candidate address?':'What is this AI intended to do?'}</strong></div>
 
       <label className="aiIdentityName">
         <span className="aiFieldLabelLine"><span>Model / project name</span><span className="aiOptionalTag">optional</span></span>
@@ -80,14 +89,14 @@ export default function AiProfileEditor({
       </label>
 
       <div className="aiProfilePrimaryGrid">
-        <label>Clinical task
+        <label>{developing?'Intended task':comparing?'Shared clinical task':'Clinical task'}
           <select value={ecoLabel.taskType||''} onChange={e=>setEco('taskType',e.target.value)}>
-            <option value="">— Choose clinical task —</option>
+            <option value="">{developing?'— Choose intended task —':'— Choose clinical task —'}</option>
             {meta.taskTypes.map(v=><option key={v} value={v}>{v}</option>)}
           </select>
         </label>
-        <label>Intended clinical use
-          <input type="text" value={scen.modelIntendedUse||''} onChange={e=>setS('modelIntendedUse',e.target.value)} placeholder="e.g. triage suspected PE on CTPA"/>
+        <label>{developing?'Intended use / research objective':comparing?'Shared intended clinical use':'Intended clinical use'}
+          <input type="text" value={scen.modelIntendedUse||''} onChange={e=>setS('modelIntendedUse',e.target.value)} placeholder={developing?'e.g. detect pulmonary embolism on CTPA or benchmark model efficiency':'e.g. triage suspected PE on CTPA'}/>
         </label>
         <label>
           <span className="aiFieldLabelLine"><span>Reference preset</span><span className="aiOptionalTag">optional helper</span></span>
@@ -101,13 +110,13 @@ export default function AiProfileEditor({
 
       <details id="ai-performance-section" className="aiProfileDisclosure aiPerformanceDisclosure">
         <summary>
-          <span><strong>2 · Performance &amp; validation</strong><small>Optional for environmental-only accounting; required context before clinically informed candidate ranking.</small></span>
+          <span><strong>2 · {developing?'Evaluation & validation':'Performance & validation'}</strong><small>{developing?'Optional for development-footprint accounting; document planned or available evaluation when useful.':comparing?'Required context before candidate ranking; compare like-for-like evidence.':'Optional for environmental accounting; useful for clinical interpretation and governance.'}</small></span>
           <b>{performanceStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody">
           <div className="aiMetricBestPractice">
-            <strong>Use problem-aware validation, not a task-name shortcut.</strong>
-            <p>CEDARS stores one primary comparison metric plus supporting context. This is clinical evidence context, not an environmental lifecycle input. Complete validation often needs complementary metrics, uncertainty, and task-specific interpretation.</p>
+            <strong>{developing?'Plan problem-aware evaluation, not a task-name shortcut.':'Use problem-aware validation, not a task-name shortcut.'}</strong>
+            <p>{developing?'CEDARS stores one primary evaluation metric plus supporting context. This evidence context does not change the lifecycle footprint. Clinical validation can remain incomplete during development, but should be documented before clinical use.':'CEDARS stores one primary comparison metric plus supporting context. This is clinical evidence context, not an environmental lifecycle input. Complete validation often needs complementary metrics, uncertainty, and task-specific interpretation.'}</p>
             {ecoLabel.taskType&&<div className="aiMetricExamples"><span>Examples to consider, not automatic recommendations:</span>{metricExamples.map(m=><em key={m}>{m}</em>)}</div>}
             {ecoLabel.taskType&&<div className="aiMetricGuideLinks">{METRICS_RELOADED_TASKS.has(ecoLabel.taskType)&&<><ExternalLink href="https://www.nature.com/articles/s41592-023-02151-z">Metrics Reloaded problem-aware guidance</ExternalLink><ExternalLink href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10990563/">MIDRC MetricTree</ExternalLink></>}<ExternalLink href="https://doi.org/10.1007/s00330-025-11890-w">ESR / EuSoMII radiology metric guidance</ExternalLink></div>}
           </div>
@@ -124,7 +133,7 @@ export default function AiProfileEditor({
         </div>
       </details>
 
-      <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure">
+      {!developing ? <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure">
         <summary>
           <span><strong>3 · Workflow effects</strong><small>Optional deployment context for downstream changes in care or workflow that may alter resource use.</small></span>
           <b>{clinicalEffectStatus}</b>
@@ -138,7 +147,11 @@ export default function AiProfileEditor({
           </div>
           <p className="note">Additional local effects such as contrast reduction are recorded when the model is attached to a specific Department use, where the affected imaging workflow is known.</p>
         </div>
-      </details>
+      </details> : <div className="aiDevelopWorkflowNote">
+        <span>DEPLOYMENT-STAGE CONTEXT</span>
+        <strong>Workflow effects come later</strong>
+        <p>Do not assume scan-time, utilization, or downstream-care effects while the model is still being developed. Add locally observed or validated workflow effects after a deployment context is defined; prospective assumptions belong in Improve.</p>
+      </div>}
 
       <details id="ai-technical-section" className="aiProfileDisclosure aiTechnicalDisclosure">
         <summary>

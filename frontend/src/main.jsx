@@ -15,6 +15,7 @@ import './chunk7g.css';
 import './chunk7h.css';
 import './chunk7i.css';
 import './theme.css';
+import './chunk7o.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -3165,7 +3166,7 @@ function App() {
           <section className="homeHero">
             <div className="homeHeroCopy">
               <p className="eyebrow">Radiology + AI + Planetary Health</p>
-              <h1>Environmental assessment for radiology and medical AI.</h1>
+              <h1>Turn environmental impact into decisions.</h1>
               <p className="homeHeroLead">Quantify energy, carbon, resource use, and lifecycle impacts with transparent, editable assumptions. Compare alternatives, test prospective changes, and preserve the evidence behind each result.</p>
               <p className="homeGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong> Environmental efficiency is considered only within clinically appropriate care and clinically acceptable AI.</p>
             </div>
@@ -3182,7 +3183,13 @@ function App() {
               <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Clinical purpose, validation, candidate comparison, training, inference, and deployment.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
             </div>
             <div className="homeFlow" aria-label="CEDARS assessment workflow">
-              <span><b>Profile</b><small>Define the current state</small></span><ArrowRight size={14}/><span><b>Score &amp; EcoLabel</b><small>Interpret result + boundary</small></span><ArrowRight size={14}/><span><b>Improve</b><small>Test prospective changes</small></span><ArrowRight size={14}/><span><b>Report &amp; Share</b><small>Preserve assumptions + evidence</small></span>
+              <span className="homeFlowStep"><b>1</b><span className="homeFlowCopy"><strong>Profile</strong><small>Define the current state</small></span></span>
+              <ArrowRight className="homeFlowArrow" size={14}/>
+              <span className="homeFlowStep"><b>2</b><span className="homeFlowCopy"><strong>Score &amp; EcoLabel</strong><small>Interpret result + boundary</small></span></span>
+              <ArrowRight className="homeFlowArrow" size={14}/>
+              <span className="homeFlowStep"><b>3</b><span className="homeFlowCopy"><strong>Improve</strong><small>Test prospective changes</small></span></span>
+              <ArrowRight className="homeFlowArrow" size={14}/>
+              <span className="homeFlowStep"><b>4</b><span className="homeFlowCopy"><strong>Report &amp; Share</strong><small>Preserve assumptions + evidence</small></span></span>
             </div>
           </section>
 

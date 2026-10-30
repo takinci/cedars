@@ -1,0 +1,46 @@
+/* 7O — homepage decision framing, AI role separation, and route-adaptive profile context. */
+
+/* The workflow labels are no longer forced into 18px badges. */
+.homeFlow{display:grid!important;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,1fr)!important;gap:8px 10px!important;align-items:stretch!important}
+.homeFlowStep{display:grid!important;grid-template-columns:22px minmax(0,1fr);gap:7px!important;align-items:start!important;min-width:0}
+.homeFlowStep>b{display:grid!important;place-items:center!important;width:22px!important;height:22px!important;min-width:22px;border-radius:50%;background:#EEF1EE;color:var(--cedars-forest-deep);font-size:9px;line-height:1}
+.homeFlowCopy{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:2px!important;min-width:0}
+.homeFlowCopy strong{font-size:10.5px;line-height:1.2;color:var(--cedars-ink);white-space:normal}
+.homeFlowCopy small{font-size:9.5px;line-height:1.3;color:var(--cedars-muted)}
+.homeFlowArrow{align-self:center;justify-self:center;color:#A0A8A4}
+
+/* First choose the role/task family, then the AI type. */
+.aiRoleTaskGrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:12px;align-items:stretch}
+.aiRoleGroup{min-width:0;border:1px solid var(--cedars-border);border-radius:10px;padding:11px}
+.aiClinicalRoleGroup{background:#F7FAF8}.aiTechnicalRoleGroup{background:#F2F4F3}
+.aiRoleGroupHeader{display:flex;flex-direction:column;gap:2px;margin:0 0 9px;padding:0 1px}
+.aiRoleGroupHeader>span{font-size:9px;font-weight:850;letter-spacing:.08em;color:var(--cedars-forest-deep)}
+.aiTechnicalRoleGroup .aiRoleGroupHeader>span{color:#62736B}
+.aiRoleGroupHeader>small{font-size:10.5px;line-height:1.35;color:var(--cedars-muted)}
+.aiClinicalTaskGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}.aiTechnicalTaskGrid{grid-template-columns:1fr!important;gap:8px!important}
+.aiPage .aiTaskLane{min-height:150px!important}
+.aiPage .aiTaskLane.clinical{background:#EFF6F1!important}.aiPage .aiTaskLane.evidence{background:#EEF4F7!important}.aiPage .aiTaskLane.technical{background:#EDEFEF!important}
+.aiPage .aiTaskLane.clinical:hover{background:#EAF3ED!important}.aiPage .aiTaskLane.evidence:hover{background:#E8F0F4!important}.aiPage .aiTaskLane.technical:hover{background:#E8EBEA!important}
+.aiPage .aiTaskLane.clinical.active{background:var(--cedars-sage-soft)!important}.aiPage .aiTaskLane.evidence.active{background:var(--cedars-info-soft)!important}.aiPage .aiTaskLane.technical.active{background:#E1E8E4!important;border-color:var(--cedars-forest)!important}
+
+/* Examples should read as examples, not as another set of pathway cards. */
+.aiPage .aiExamplesGuide.aiExamplesExpanded{background:#F6F2E9!important;border:1px solid #E3DDD0!important;border-radius:10px!important;padding:16px!important}
+.aiPage .aiExampleChoiceVisual{grid-template-columns:56px minmax(0,1fr) auto!important;background:#fff!important}
+.aiPage .aiExampleThumb{display:grid!important;place-items:center!important;width:54px!important;height:54px!important;border-radius:10px!important;overflow:hidden;position:relative}
+.aiPage .aiExampleThumb::before,.aiPage .aiExampleThumb::after{display:none!important;content:none!important}
+.aiPage .aiExampleThumb svg{position:relative;z-index:1}
+
+/* Development does not pretend that deployment workflow effects are already observed. */
+.aiDevelopWorkflowNote{display:flex;flex-direction:column;gap:3px;margin:10px 0;padding:11px 12px;border:1px solid var(--cedars-border);border-left:3px solid #82908A;border-radius:9px;background:#F7F8F7}
+.aiDevelopWorkflowNote>span{font-size:9px;font-weight:850;letter-spacing:.08em;color:var(--cedars-muted)}
+.aiDevelopWorkflowNote>strong{font-size:12px;color:var(--cedars-ink)}
+.aiDevelopWorkflowNote>p{margin:1px 0 0;font-size:10.5px;line-height:1.45;color:var(--cedars-muted)}
+
+@media(max-width:900px){
+  .homeFlow{grid-template-columns:repeat(2,minmax(0,1fr))!important}.homeFlowArrow{display:none!important}
+  .aiRoleTaskGrid{grid-template-columns:1fr}.aiTechnicalTaskGrid{grid-template-columns:1fr!important}
+}
+@media(max-width:620px){
+  .homeFlow{grid-template-columns:1fr!important}.aiClinicalTaskGrid{grid-template-columns:1fr!important}
+  .aiPage .aiExampleChoiceVisual{grid-template-columns:48px minmax(0,1fr)!important}.aiPage .aiExampleThumb{width:46px!important;height:46px!important}.aiExampleLoad{grid-column:2;justify-self:start}
+}
