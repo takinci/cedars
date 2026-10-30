@@ -10,6 +10,7 @@ const DEVELOPMENT_OPTIONS = [
   {group:'Inference & deployment', purpose:'Strengthen the assessment', title:'Measure representative inference energy', body:'Replace inference estimates with a direct per-use measurement on representative serving hardware when feasible.', refs:['doo-jacr-2024','oviedo-inference-2025','codecarbon'], action:'profile-inference'},
   {group:'Inference & deployment', purpose:'Reduce environmental impact', title:'Review serving efficiency and numerical precision', body:'Test batching, caching, accelerator utilization and compatible lower-precision serving rather than assuming the development configuration is the best deployment configuration.', refs:['fernandez-llm-energy-2025','oviedo-inference-2025'], clinical:'Revalidate the clinically relevant endpoint before implementation.', action:'scenario-inference'},
   {group:'Inference & deployment', purpose:'Reduce environmental impact', title:'Review AI compute location', body:'Distinguish energy efficiency from carbon efficiency. A different compute region can change carbon intensity without changing kWh.', refs:['doo-jacr-cloud-2024','patterson-4ms-2022'], clinical:'Also review latency, data governance, availability and operational constraints.', action:'profile-compute'},
+  {group:'Monitoring & lifecycle', purpose:'Strengthen the assessment', title:'Measure workflow effects that matter locally', body:'If the deployed AI may change exam duration, repeat imaging, downstream utilization, or another clinically relevant workflow measure, define and monitor that outcome locally rather than assuming an external study transfers to your setting.', refs:['kpodzro-haip-2026','doo-jacr-2024'], action:'profile-effects'},
   {group:'Monitoring & lifecycle', purpose:'Strengthen the assessment', title:'Track retraining, demand growth and model updates', body:'Refresh the profile when retraining, model versions, serving patterns, or workload materially change.', refs:['wright-efficiency-not-enough-2023','doo-jacr-2024'], action:'profile-training'},
 ];
 
@@ -20,6 +21,7 @@ const CLINICAL_OPTIONS = [
   {group:'Inference & deployment', purpose:'Strengthen the assessment', title:'Validate deployment assumptions locally', body:'Replace generic workload, serving and compute assumptions with values that reflect the planned clinical deployment.', refs:['doo-jacr-cloud-2024','oviedo-inference-2025'], action:'profile-inference'},
   {group:'Inference & deployment', purpose:'Reduce environmental impact', title:'Ask for efficient serving options', body:'Ask whether the same validated product can use a smaller tier, mixed precision, batching, caching, autoscaling or another supported deployment option.', refs:['fernandez-llm-energy-2025','oviedo-inference-2025'], clinical:'The alternative should preserve the cleared or locally validated clinical behavior.', action:'scenario-inference'},
   {group:'Inference & deployment', purpose:'Reduce environmental impact', title:'Review AI compute location', body:'If hosting is flexible, compare carbon intensity across feasible regions while keeping energy and workload assumptions explicit.', refs:['doo-jacr-cloud-2024'], clinical:'Also review latency, data governance, residency, security and availability requirements.', action:'profile-compute'},
+  {group:'Monitoring & lifecycle', purpose:'Strengthen the assessment', title:'Measure workflow effects that matter locally', body:'If the deployed AI may change exam duration, repeat imaging, downstream utilization, or another clinically relevant workflow measure, define and monitor that outcome locally rather than assuming an external study transfers to your setting.', refs:['kpodzro-haip-2026','doo-jacr-2024'], action:'profile-effects'},
   {group:'Monitoring & lifecycle', purpose:'Strengthen the assessment', title:'Plan for updates and demand growth', body:'Document how model updates, hosting changes, added agent calls or workflow expansion will trigger a refreshed environmental profile.', refs:['kpodzro-haip-2026','wright-efficiency-not-enough-2023'], action:'profile-inference'},
 ];
 
@@ -65,23 +67,20 @@ export default function AiImproveWorkspace({
     const ranked=[];
     const push=title=>{const item=options.find(x=>x.title===title);if(item&&!ranked.includes(item))ranked.push(item)};
     if(!clinicalReady) push(mode==='develop'?'Document clinically meaningful performance evidence':'Confirm clinical acceptability before environmental ranking');
+    if((scen.clinicalEffectBasis||'none')==='none') push('Measure workflow effects that matter locally');
     if(mode==='develop') {
       if(!ecoLabelData.trainingAvailable || ecoLabelData.trainProv!=='measured') push('Measure the full development footprint');
       if(!(Number(ecoLabelData.inferKwhPerStudy)>0)) push('Measure representative inference energy');
-      if(clinicalReady) {
-        push('Right-size the model and experimentation strategy');
-        push('Review AI compute location');
-      }
+      push('Right-size the model and experimentation strategy');
+      push('Review AI compute location');
     } else {
       if(!ecoLabelData.trainingAvailable) push('Request lifecycle disclosure from the vendor');
       push('Validate deployment assumptions locally');
-      if(clinicalReady) {
-        push('Ask for efficient serving options');
-        push('Review AI compute location');
-      }
+      push('Ask for efficient serving options');
+      push('Review AI compute location');
     }
     return ranked;
-  },[hasModel,mode,options,clinicalReady,ecoLabelData.inferKwhPerStudy,ecoLabelData.trainingAvailable,ecoLabelData.trainProv]);
+  },[hasModel,mode,options,clinicalReady,scen.clinicalEffectBasis,ecoLabelData.inferKwhPerStudy,ecoLabelData.trainingAvailable,ecoLabelData.trainProv]);
 
   const scenario=useMemo(()=>{
     const months=Math.max(1,Number(scen.deployMonths)||36);
@@ -124,7 +123,7 @@ export default function AiImproveWorkspace({
     <div className="aiImprovePrinciple"><strong>Clinical acceptability comes first.</strong><span>Environmental efficiency helps differentiate options only after intended use, safety, performance, validation and workflow fit are acceptable for patient care.</span></div>
 
     <section className="aiImproveTopRecommendations">
-      <div className="aiImproveSectionHeading"><div><span>PRIORITIES SURFACED FROM THIS PROFILE</span><h3>{topRecommendations.length} relevant priorit{topRecommendations.length===1?'y':'ies'} from the current record</h3></div><small>{clinicalReady?'The number varies with the record; clinical acceptability remains a prerequisite, not a weighted trade-off against footprint.':'Clinical gate incomplete: only clinical and assessment-strengthening priorities are surfaced until intended use, performance metric, and evidence source are documented.'}</small></div>
+      <div className="aiImproveSectionHeading"><div><span>PRIORITIES SURFACED FROM THIS PROFILE</span><h3>{topRecommendations.length} relevant priorit{topRecommendations.length===1?'y':'ies'} from the current record</h3></div><small>{clinicalReady?'The number varies with the record; clinical acceptability remains a prerequisite, not a weighted trade-off against footprint.':'Clinical evidence is not fully documented. Environmental accounting and improvement review can still proceed, but implementation remains conditional on clinical suitability; candidate ranking requires adequate clinical evidence first.'}</small></div>
       <div className="aiImproveRecommendationList">{topRecommendations.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div>
     </section>
 

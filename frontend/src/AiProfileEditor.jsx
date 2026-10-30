@@ -52,19 +52,27 @@ export default function AiProfileEditor({
     Number(ecoLabel.paramsMillion)>0?`${ecoLabel.paramsMillion}M parameters`:'',
     !tokenWorkload&&scen.dim?scen.dim:'',
     !tokenWorkload&&scen.resolution?`${scen.resolution}px input`:''
-  ],'Not specified');
+  ],'Not specified (optional)');
   const performanceStatus=summaryValue([
     scen.accuracyMetric,
     scen.accuracyPct!==''&&scen.accuracyPct!=null?scen.accuracyPct:'',
     scen.performanceSource
-  ],'Not documented');
+  ],'Not assessed (optional)');
+
+  const openContext=id=>{
+    const node=document.getElementById(id);
+    if (node?.tagName==='DETAILS') node.open=true;
+    node?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
 
   return <>
     <section id="ai-model-record" className="inputSummary aiProfileIdentity" data-demo-target="ai-model-record">
       <div>
-        <h2>Model &amp; clinical purpose</h2>
-        <p className="note">Define what this AI is for before describing its environmental lifecycle. Technical presets can help with setup, but they do not supply clinical evidence.</p>
+        <h2>Clinical context</h2>
+        <p className="note">Document the clinical purpose first, then add performance/validation and workflow-effect context when available. These fields travel with the environmental result; they do not reduce the footprint. For candidate comparison, clinical suitability must be established before environmental ranking.</p>
       </div>
+
+      <div className="aiContextStepHeader"><span>1 · CLINICAL PURPOSE</span><strong>What is this AI intended to do?</strong></div>
 
       <label className="aiIdentityName">
         <span className="aiFieldLabelLine"><span>Model / project name</span><span className="aiOptionalTag">optional</span></span>
@@ -93,13 +101,13 @@ export default function AiProfileEditor({
 
       <details id="ai-performance-section" className="aiProfileDisclosure aiPerformanceDisclosure">
         <summary>
-          <span><strong>Performance &amp; validation</strong><small>Important for clinically informed comparison; it does not make the environmental footprint smaller.</small></span>
+          <span><strong>2 · Performance &amp; validation</strong><small>Optional for environmental-only accounting; required context before clinically informed candidate ranking.</small></span>
           <b>{performanceStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody">
           <div className="aiMetricBestPractice">
             <strong>Use problem-aware validation, not a task-name shortcut.</strong>
-            <p>CEDARS stores one primary comparison metric plus supporting context. Complete validation often needs complementary metrics, uncertainty, and task-specific interpretation.</p>
+            <p>CEDARS stores one primary comparison metric plus supporting context. This is clinical evidence context, not an environmental lifecycle input. Complete validation often needs complementary metrics, uncertainty, and task-specific interpretation.</p>
             {ecoLabel.taskType&&<div className="aiMetricExamples"><span>Examples to consider, not automatic recommendations:</span>{metricExamples.map(m=><em key={m}>{m}</em>)}</div>}
             {ecoLabel.taskType&&<div className="aiMetricGuideLinks">{METRICS_RELOADED_TASKS.has(ecoLabel.taskType)&&<><ExternalLink href="https://www.nature.com/articles/s41592-023-02151-z">Metrics Reloaded problem-aware guidance</ExternalLink><ExternalLink href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10990563/">MIDRC MetricTree</ExternalLink></>}<ExternalLink href="https://doi.org/10.1007/s00330-025-11890-w">ESR / EuSoMII radiology metric guidance</ExternalLink></div>}
           </div>
@@ -118,11 +126,11 @@ export default function AiProfileEditor({
 
       <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure">
         <summary>
-          <span><strong>Clinical &amp; workflow effects</strong><small>Verified downstream changes in care or workflow that can alter resource use.</small></span>
+          <span><strong>3 · Workflow effects</strong><small>Optional deployment context for downstream changes in care or workflow that may alter resource use.</small></span>
           <b>{clinicalEffectStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody">
-          <p className="note">This is the bridge between clinical use and downstream sustainability effects. “No effect credited” is a valid result. Only locally observed or locally validated effects change the current modeled footprint; published evidence and scenarios remain visible without being credited.</p>
+          <p className="note">This is the bridge between clinical use and downstream sustainability effects. “No current effect credit” is a valid state and does not imply that the AI has no workflow effect. Only locally observed or locally validated effects may change the current modeled footprint; published evidence remains contextual and scenario assumptions belong in Improve.</p>
           <div className="grid grid3">
             <label>Evidence basis<select value={scen.clinicalEffectBasis} onChange={e=>setS('clinicalEffectBasis',e.target.value)}><option value="none">No downstream effect credited</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence (report only)</option><option value="scenario">Scenario assumption (Improve only)</option></select></label>
             <label>Scan-time reduction (%)<input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)}/></label>
@@ -134,7 +142,7 @@ export default function AiProfileEditor({
 
       <details id="ai-technical-section" className="aiProfileDisclosure aiTechnicalDisclosure">
         <summary>
-          <span><strong>Technical model profile</strong><small>Architecture, model scale and input configuration.</small></span>
+          <span><strong>Advanced technical assumptions</strong><small>Optional unless these details are needed to estimate energy or characterize the workload.</small></span>
           <b>{technicalStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody grid grid3">
@@ -161,7 +169,7 @@ export default function AiProfileEditor({
     </section>
 
     {section==='compute'&&<section id="ai-compute-section" className="aiLifecycleEditor aiContextEditor">
-      <h2>Training and inference compute</h2><p className="note">Record where each lifecycle phase actually runs. Training and inference may use the same infrastructure, but CEDARS does not assume they share a provider or region.</p>
+      <h2>Phase-specific compute context</h2><p className="note">This is an advanced cross-phase editor. Compute location belongs to the lifecycle phase where the work occurs: training and inference may use the same infrastructure, but CEDARS does not assume they share a provider or region.</p>
       <div className="aiComputePhaseGrid">
         <div className="aiComputePhaseCard">
           <div className="aiComputePhaseHeading"><span>1 · TRAINING COMPUTE</span><button type="button" className="inlineTextButton" onClick={()=>{setS('trainingProvider','');setS('trainingRegion','');setS('trainingPue','');setS('trainingRenewablePct','');}}>Use shared fallback</button></div>
@@ -213,6 +221,11 @@ export default function AiProfileEditor({
         <label>Measured energy / run (kWh) <span className="aiOptionalTag">overrides estimate</span><input type="number" min="0" step="0.01" value={ecoLabel.energyKwhPerRun} onChange={e=>setEco('energyKwhPerRun',e.target.value)} placeholder="e.g. 24.0"/></label>
         <label>Measured with<select value={ecoLabel.trainTool} onChange={e=>setEco('trainTool',e.target.value)}><option value="">—</option>{['CodeCarbon','Zeus','Carbontracker','EcoLogits','Green Algorithms','nvidia-smi','Power meter','Cloud provider dashboard','Other'].map(t=><option key={t} value={t}>{t}</option>)}</select></label>
       </div>}
+      <div className="aiPhaseSubcontext">
+        <div><span>TRAINING COMPUTE CONTEXT</span><strong>{trainingCompute}</strong><small>Where training runs belongs to this phase and may differ from deployment.</small></div>
+        <button type="button" className="download" onClick={()=>onSection('compute')}>Edit training compute →</button>
+      </div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>openContext('ai-model-record')}>← Clinical context</button><button type="button" onClick={()=>onSection('inference')}>Next: inference &amp; deployment →</button></div>
     </section>}
 
     {section==='inference'&&<section id="ai-inference-section" className="aiLifecycleEditor" data-demo-target="ai-inference-section">
@@ -224,6 +237,15 @@ export default function AiProfileEditor({
         <label>Deployment lifetime (months)<input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/></label>
       </div>
       {ecoLabel.inferMode==='tokens'&&<p className="note">{ecoLabelData.tokensPerStudy>0?<>{ecoLabelData.tokensPerStudy.toLocaleString()} tokens/study → <strong>{ecoLabelData.inferKwhPerStudy} kWh/study</strong> ({ecoLabelData.perInferCo2g} gCO₂e).</>:<>Enter tokens/call to derive kWh/study.</>}</p>}
+      <div className="aiPhaseSubcontext">
+        <div><span>INFERENCE / DEPLOYMENT COMPUTE</span><strong>{inferenceCompute}</strong><small>Recurring deployment compute belongs to this phase and can differ from training.</small></div>
+        <button type="button" className="download" onClick={()=>onSection('compute')}>Edit inference compute →</button>
+      </div>
+      <div className="aiDeploymentEffectsLink">
+        <div><span>DEPLOYMENT-LINKED WORKFLOW EFFECTS</span><strong>{clinicalEffectStatus}</strong><small>Only locally observed or locally validated effects may alter current accounting. External evidence stays contextual; hypothetical effects stay in Improve.</small></div>
+        <button type="button" className="download" onClick={()=>openContext('ai-effects-section')}>Review workflow effects →</button>
+      </div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('training')}>← Training</button><button type="button" onClick={()=>onSection('water')}>Next: environmental boundary →</button></div>
     </section>}
 
     <section className="aiBoundarySummary">
@@ -236,6 +258,7 @@ export default function AiProfileEditor({
       <div className="grid grid3"><label>Cooling water at compute site (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label><label>Water from electricity generation (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label><label>If unknown<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use the {waterPerKwh} L/kWh screening factor (Estimated)</option><option value="notassessed">Report water as not assessed</option></select></label></div>
       <p className="note">Water is reported separately and does not currently affect the carbon-and-energy CEDARS Score.<Ref id="li-thirsty-2023" order={refsOrder}/></p>
       <button type="button" className="download" onClick={onContribute}>Contribute water data or methodology →</button>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('inference')}>← Inference &amp; deployment</button><button type="button" onClick={()=>document.querySelector('[data-demo-target="ai-disclosure"]')?.scrollIntoView({behavior:'smooth',block:'center'})}>Review reporting completeness →</button></div>
     </section>}
   </>;
 }
