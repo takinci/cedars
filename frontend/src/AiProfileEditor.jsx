@@ -32,8 +32,14 @@ export default function AiProfileEditor({
   const pue=cloudRegions[provider]?.pue ?? cloud[provider]?.pue ?? 1.5;
   const providers=meta.cloudProviders || [];
   const regions=p=>Object.entries(cloudRegions[p]?.regions ?? {});
-  const trainingCompute=[scen.trainingProvider||provider,scen.trainingRegion||region].filter(Boolean).join(' · ') || 'not specified';
-  const inferenceCompute=[scen.inferenceProvider||provider,scen.inferenceRegion||region].filter(Boolean).join(' · ') || 'not specified';
+  const trainingProvider=scen.trainingProvider||provider;
+  const trainingRegion=scen.trainingRegion || (scen.trainingProvider ? '' : region);
+  const inferenceProvider=scen.inferenceProvider||provider;
+  const inferenceRegion=scen.inferenceRegion || (scen.inferenceProvider ? '' : region);
+  const trainingPueDefault=cloudRegions[trainingProvider]?.pue ?? cloud[trainingProvider]?.pue ?? pue;
+  const inferencePueDefault=cloudRegions[inferenceProvider]?.pue ?? cloud[inferenceProvider]?.pue ?? pue;
+  const trainingCompute=[trainingProvider,trainingRegion||'provider average'].filter(Boolean).join(' · ') || 'not specified';
+  const inferenceCompute=[inferenceProvider,inferenceRegion||'provider average'].filter(Boolean).join(' · ') || 'not specified';
   const clinicalEffectStatus=scen.clinicalEffectBasis==='none'
     ? 'No downstream effect credited'
     : summaryValue([
@@ -145,23 +151,41 @@ export default function AiProfileEditor({
       </details>
     </section>
 
-    <section className="aiContextBand" aria-label="Clinical and AI compute context">
-      <div><span>CLINICAL CONTEXT</span><strong>{localRegion||'Not set'}</strong><small>Where care is being assessed.</small></div>
-      <div><span>AI COMPUTE SETTINGS</span><strong>{provider||'Not set'}{region?` · ${region}`:''}</strong><small>Shared default shown here; Training and Inference may use different compute locations.</small></div>
-      <button type="button" className="download" onClick={()=>onSection('compute')}>Review compute settings →</button>
+    <section className="aiContextBand aiPhaseContextBand" aria-label="Clinical and AI compute context">
+      <div className="aiClinicalContext"><span>CLINICAL CONTEXT</span><strong>{localRegion||'Not set'}</strong><small>Where care is being assessed; this does not define where AI compute runs.</small></div>
+      <div className="aiPhaseComputeSummary">
+        <div><span>TRAINING COMPUTE</span><strong>{trainingCompute}</strong><small>{scen.trainingProvider||scen.trainingRegion?'Phase-specific context':'Using shared fallback settings'}</small></div>
+        <div><span>INFERENCE / DEPLOYMENT COMPUTE</span><strong>{inferenceCompute}</strong><small>{scen.inferenceProvider||scen.inferenceRegion?'Phase-specific context':'Using shared fallback settings'}</small></div>
+      </div>
+      <button type="button" className="download" onClick={()=>onSection('compute')}>Edit compute contexts →</button>
     </section>
 
     {section==='compute'&&<section id="ai-compute-section" className="aiLifecycleEditor aiContextEditor">
-      <h2>AI compute settings</h2><p className="note">Use a shared default when both phases run in the same environment. If Training and Inference differ, record their phase-specific provider, region, PUE, or renewable-share overrides below.</p>
-      <div className="grid grid3">
-        <label>Compute provider<select value={provider} onChange={e=>setCloudProvider(e.target.value)}>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-        <label>Region <span className="aiOptionalTag">sets grid carbon intensity</span><select value={region} onChange={e=>setEco('cloudRegion',e.target.value)}>{regions(provider).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
-        <label>Custom PUE <span className="aiOptionalTag">optional</span><input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${pue} default`}/></label>
-        <label>Reported renewable electricity share (%)<input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/></label>
+      <h2>Training and inference compute</h2><p className="note">Record where each lifecycle phase actually runs. Training and inference may use the same infrastructure, but CEDARS does not assume they share a provider or region.</p>
+      <div className="aiComputePhaseGrid">
+        <div className="aiComputePhaseCard">
+          <div className="aiComputePhaseHeading"><span>1 · TRAINING COMPUTE</span><button type="button" className="inlineTextButton" onClick={()=>{setS('trainingProvider','');setS('trainingRegion','');setS('trainingPue','');setS('trainingRenewablePct','');}}>Use shared fallback</button></div>
+          <div className="grid grid3">
+            <label>Provider<select value={trainingProvider} onChange={e=>{setS('trainingProvider',e.target.value);setS('trainingRegion','');}}>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+            <label>Region <span className="aiOptionalTag">sets grid carbon intensity</span><select value={trainingRegion} onChange={e=>setS('trainingRegion',e.target.value)}><option value="">Provider average</option>{regions(trainingProvider).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
+            <label>Custom PUE <span className="aiOptionalTag">optional</span><input type="number" min="1" step="0.05" value={scen.trainingPue} onChange={e=>setS('trainingPue',e.target.value)} placeholder={`${trainingPueDefault} provider default`}/></label>
+            <label>Reported renewable share (%)<input type="number" min="0" max="100" value={scen.trainingRenewablePct} onChange={e=>setS('trainingRenewablePct',e.target.value)} placeholder={`${ecoLabel.renewablePct||0}% fallback`}/></label>
+          </div>
+          <small>Used for training energy-to-carbon conversion and training disclosures.</small>
+        </div>
+        <div className="aiComputePhaseCard">
+          <div className="aiComputePhaseHeading"><span>2 · INFERENCE / DEPLOYMENT COMPUTE</span><button type="button" className="inlineTextButton" onClick={()=>{setS('inferenceProvider','');setS('inferenceRegion','');setS('inferencePue','');setS('inferenceRenewablePct','');}}>Use shared fallback</button></div>
+          <div className="grid grid3">
+            <label>Provider<select value={inferenceProvider} onChange={e=>{setS('inferenceProvider',e.target.value);setS('inferenceRegion','');}}>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+            <label>Region <span className="aiOptionalTag">sets grid carbon intensity</span><select value={inferenceRegion} onChange={e=>setS('inferenceRegion',e.target.value)}><option value="">Provider average</option>{regions(inferenceProvider).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
+            <label>Custom PUE <span className="aiOptionalTag">optional</span><input type="number" min="1" step="0.05" value={scen.inferencePue} onChange={e=>setS('inferencePue',e.target.value)} placeholder={`${inferencePueDefault} provider default`}/></label>
+            <label>Reported renewable share (%)<input type="number" min="0" max="100" value={scen.inferenceRenewablePct} onChange={e=>setS('inferenceRenewablePct',e.target.value)} placeholder={`${ecoLabel.renewablePct||0}% fallback`}/></label>
+          </div>
+          <small>Used for recurring deployment energy, carbon intensity, workload, and lifecycle reporting.</small>
+        </div>
       </div>
+      <details className="aiTechnicalDetails aiComputeFallback"><summary>Shared fallback settings <span>(compatibility / convenience)</span></summary><div className="aiProfileDisclosureBody"><p className="note">These values are used only when a phase-specific field is blank. Existing saved assessments therefore retain their prior shared compute context without implying that Training and Inference occur in the same place.</p><div className="grid grid3"><label>Fallback provider<select value={provider} onChange={e=>setCloudProvider(e.target.value)}>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label><label>Fallback region<select value={region} onChange={e=>setEco('cloudRegion',e.target.value)}>{regions(provider).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label><label>Fallback custom PUE<input type="number" min="1" step="0.05" value={ecoLabel.customPue} onChange={e=>setEco('customPue',e.target.value)} placeholder={`${pue} provider default`}/></label><label>Fallback reported renewable share (%)<input type="number" min="0" max="100" value={ecoLabel.renewablePct} onChange={e=>setEco('renewablePct',e.target.value)} placeholder="0–100"/></label></div></div></details>
       <p className="note">Reported renewable share is disclosure-only in the location-based result; it does not automatically reduce the grid factor.</p>
-      <details className="aiTechnicalDetails"><summary>Training used a different compute context <span>(optional override)</span></summary><div className="grid grid3"><label>Provider<select value={scen.trainingProvider} onChange={e=>setS('trainingProvider',e.target.value)}><option value="">Use default {provider}</option>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label><label>Region<select value={scen.trainingRegion} onChange={e=>setS('trainingRegion',e.target.value)}><option value="">Use default {region||'provider average'}</option>{regions(scen.trainingProvider||provider).map(([name])=><option key={name} value={name}>{name}</option>)}</select></label><label>Custom PUE<input type="number" min="1" step="0.05" value={scen.trainingPue} onChange={e=>setS('trainingPue',e.target.value)} placeholder="use default"/></label><label>Reported renewable share (%)<input type="number" min="0" max="100" value={scen.trainingRenewablePct} onChange={e=>setS('trainingRenewablePct',e.target.value)} placeholder="use default"/></label></div></details>
-      <details className="aiTechnicalDetails"><summary>Inference used a different compute context <span>(optional override)</span></summary><div className="grid grid3"><label>Provider<select value={scen.inferenceProvider} onChange={e=>setS('inferenceProvider',e.target.value)}><option value="">Use default {provider}</option>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label><label>Region<select value={scen.inferenceRegion} onChange={e=>setS('inferenceRegion',e.target.value)}><option value="">Use default {region||'provider average'}</option>{regions(scen.inferenceProvider||provider).map(([name])=><option key={name} value={name}>{name}</option>)}</select></label><label>Custom PUE<input type="number" min="1" step="0.05" value={scen.inferencePue} onChange={e=>setS('inferencePue',e.target.value)} placeholder="use default"/></label><label>Reported renewable share (%)<input type="number" min="0" max="100" value={scen.inferenceRenewablePct} onChange={e=>setS('inferenceRenewablePct',e.target.value)} placeholder="use default"/></label></div></details>
     </section>}
 
     <div className="aiLifecycleIntro"><h3>Lifecycle</h3><p>Training precedes recurring inference and deployment. A phase may be unavailable, but the lifecycle order does not change.</p></div>

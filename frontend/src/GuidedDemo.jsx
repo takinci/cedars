@@ -88,10 +88,10 @@ const LEGACY_GUIDED_DEMOS = {
         actionHint: 'Next opens AI Model & Informatics with an illustrative procurement pathway prepared.',
       },
       {
-        target: '[data-demo-target="ai-procure-card"]',
-        kicker: '2 of 9 · PROCURE / DEPLOY',
+        target: '[data-demo-target="ai-compare-lane"]',
+        kicker: '2 of 9 · COMPARE CANDIDATES',
         title: 'Choose a like-for-like comparison',
-        body: 'Use Procure / deploy for AI you are evaluating, purchasing, receiving, or preparing for clinical use. Candidate comparison is optional, but useful when more than one model could meet the same clinical need.',
+        body: 'Use Compare candidates when two or more systems address the same clinical need. Comparison is optional; if one model is already selected, use Assess one model instead.',
         actionHint: 'Next loads two illustrative candidates under one shared clinical definition.',
       },
       {
@@ -155,10 +155,10 @@ const LEGACY_GUIDED_DEMOS = {
         actionHint: 'No typing is required. Next opens AI Model & Informatics with the demo pathway prepared.',
       },
       {
-        target: '[data-demo-target="ai-develop-card"]',
-        kicker: '2 of 12 · DEVELOP / TRAIN',
-        title: 'Choose the lifecycle stage that matches your work',
-        body: 'Use Develop / train when your team is building or materially retraining a model. CEDARS can start from measured energy values or help you choose a way to measure them. This walkthrough starts with Help me measure.',
+        target: '[data-demo-target="ai-develop-lane"]',
+        kicker: '2 of 12 · DEVELOP / FINE-TUNE',
+        title: 'Choose the development pathway',
+        body: 'Use Develop / fine-tune when your team is building, adapting, or materially retraining a model. Energy measurement is handled inside the lifecycle record rather than as a separate top-level workflow.',
         actionHint: 'Next opens the measurement pathway automatically; you do not need to change any fields.',
       },
       {
@@ -318,10 +318,10 @@ const LEGACY_GUIDED_DEMOS = {
         actionHint: 'No typing is required. Next opens the Procure / deploy pathway.',
       },
       {
-        target: '[data-demo-target="ai-procure-card"]',
-        kicker: '2 of 9 · PROCURE / DEPLOY',
+        target: '[data-demo-target="ai-assess-lane"]',
+        kicker: '2 of 9 · ASSESS ONE MODEL',
         title: 'Assess a model you did not train locally',
-        body: 'For a hosted or vendor model, training information may be unavailable. CEDARS can still document what is known while keeping missing vendor disclosures visible.',
+        body: 'Use Assess one model when a hosted or vendor system is already selected. Training information may be unavailable; CEDARS documents what is known while keeping missing vendor disclosures visible.',
         actionHint: 'Next loads an illustrative report-generation LLM via vendor API.',
       },
       {
@@ -404,7 +404,7 @@ export const GUIDED_DEMOS = {
     description: 'For clinical leaders, clinicians, procurement, informatics, governance, administrators, and sustainability teams evaluating or using AI.',
     steps: [
       {target:'[data-demo-target="home-ai"]', kicker:'BUILD PROFILE', title:'Start with AI Model & Informatics', body:'Use this pathway when the question is about an AI system itself rather than the whole radiology department.', actionHint:'Next opens the AI start screen.'},
-      {target:'[data-demo-target="ai-clinical-lane"]', kicker:'BUILD PROFILE · CLINICAL / OPERATIONAL', title:'Choose the clinical evaluation / use lane', body:'This lane is for people evaluating, selecting, deploying, governing, operating, or reporting AI in clinical care. You do not need to be an AI developer.', actionHint:'The walkthrough then prepares two illustrative imaging-AI candidates.'},
+      {target:'[data-demo-target="ai-compare-lane"]', kicker:'BUILD PROFILE · COMPARE CANDIDATES', title:'Choose the candidate-comparison task', body:'Use this task when two or more systems address the same clinical need. Hold clinical purpose and validation context constant before comparing environmental intensity.', actionHint:'The walkthrough then prepares two illustrative imaging-AI candidates.'},
       {target:'#ai-shared-comparison-definition', kicker:'BUILD PROFILE · COMPARE', title:'Define one clinical decision before comparing systems', body:'Hold intended use, endpoint, validation context, workload, and compute assumptions constant so candidate differences remain interpretable.'},
       {target:'[data-demo-target="ai-candidate-results"]', kicker:'SEE RESULTS · COMPARE', title:'Compare performance and environmental intensity together', body:'The decision view puts reported performance and estimated environmental results on the same surface. Comparison is optional in CEDARS; use it only when more than one system addresses the same need.'},
       {target:'[data-demo-target="ai-profile-status"]', kicker:'BUILD PROFILE · SELECTED AI', title:'Carry the selected system into one AI profile', body:'After selection, review the lifecycle boundary, recurring inference, available training information, and disclosure gaps in the same profile.'},
@@ -421,7 +421,7 @@ export const GUIDED_DEMOS = {
     description: 'For researchers, ML engineers, and technical imaging-informatics teams building or materially retraining AI.',
     steps: [
       {target:'[data-demo-target="home-ai"]', kicker:'BUILD PROFILE', title:'Start with AI Model & Informatics', body:'Development uses the same model record and reporting framework as clinical evaluation, but the inputs emphasize training, validation, inference, and measurement provenance.'},
-      {target:'[data-demo-target="ai-developer-lane"]', kicker:'BUILD PROFILE · DEVELOPMENT', title:'Choose the development / retraining lane', body:'Use this lane when your team is building the model or materially retraining it. Select the AI family, then either measure the compute or enter energy numbers you already have.', actionHint:'Next opens the measurement helper for an illustrative imaging model.'},
+      {target:'[data-demo-target="ai-develop-lane"]', kicker:'BUILD PROFILE · DEVELOP / FINE-TUNE', title:'Choose the development pathway', body:'Use this task when your team is building, adapting, or materially retraining the model. Select the AI family, then record or measure lifecycle energy in the profile.', actionHint:'Next opens the measurement helper for an illustrative imaging model.'},
       {target:'[data-demo-target="measure-chooser"]', kicker:'BUILD PROFILE · MEASURE', title:'Measure rather than guess when you can', body:'CEDARS narrows measurement options based on where the model runs, whether you need training or inference numbers, and whether you can instrument the code.', actionHint:'A completed CodeCarbon-style illustrative example loads when you continue.'},
       {target:'[data-demo-target="ai-profile-status"]', kicker:'BUILD PROFILE · REVIEW', title:'Review the completed AI profile', body:'Training, inference, provenance, compute context, and lifecycle coverage are recorded once here before you interpret the result.'},
       {target:'#ai-score-panel', kicker:'SEE RESULTS · SCORE', title:'Check lifecycle coverage before interpreting the score', body:'A complete overall score requires the lifecycle inputs needed for the calculation. Partial measurement remains useful, but missing phases are reported explicitly.'},

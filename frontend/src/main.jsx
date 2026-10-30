@@ -14,6 +14,7 @@ import './chunk7d.css';
 import './chunk7g.css';
 import './chunk7h.css';
 import './chunk7i.css';
+import './theme.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -569,8 +570,10 @@ function computeAI(cloudProvider, region, model, precision, architecture, custom
     // a separate qualifying market-based emissions factor is supplied.
     return {provider:p, region:computeRegion || '', pue:pueValue > 0 ? pueValue : (regions?.pue ?? base.pue), rawCi, ci:rnd(rawCi, 4), renewablePct:renewable};
   };
-  const trainCf = resolveContext(overrides.trainingProvider || cloudProvider, overrides.trainingRegion || overrides.cloudRegion, overrides.trainingPue || overrides.customPue, overrides.trainingRenewablePct || overrides.renewablePct);
-  const inferCf = resolveContext(overrides.inferenceProvider || cloudProvider, overrides.inferenceRegion || overrides.cloudRegion, overrides.inferencePue || overrides.customPue, overrides.inferenceRenewablePct || overrides.renewablePct);
+  // A phase-specific provider without a phase-specific region uses that provider's average.
+  // Do not inherit a shared region that may belong to a different provider.
+  const trainCf = resolveContext(overrides.trainingProvider || cloudProvider, overrides.trainingRegion || (overrides.trainingProvider ? '' : overrides.cloudRegion), overrides.trainingPue || (overrides.trainingProvider ? '' : overrides.customPue), overrides.trainingRenewablePct || (overrides.trainingProvider ? '' : overrides.renewablePct));
+  const inferCf = resolveContext(overrides.inferenceProvider || cloudProvider, overrides.inferenceRegion || (overrides.inferenceProvider ? '' : overrides.cloudRegion), overrides.inferencePue || (overrides.inferenceProvider ? '' : overrides.customPue), overrides.inferenceRenewablePct || (overrides.inferenceProvider ? '' : overrides.renewablePct));
   const ci    = getCI(region, customCi);
   const arch  = AI_ARCHITECTURES[architecture] ?? AI_ARCHITECTURES["CNN / ResNet"];
   const ampF  = PRECISION_FACTOR[precision]    ?? 1.0;
@@ -1071,9 +1074,9 @@ function downloadAICSV(ai, scen, region) {
   const lines = [
     row(['CEDARS AI Sustainability Report']),
     row(['Department context', region]),
-    row(['Training provider', ai.trainingContext?.provider || scen.trainingProvider || scen.cloudProvider, 'Training region', ai.trainingContext?.region || scen.trainingRegion || scen.cloudRegion]),
+    row(['Training provider', ai.trainingContext?.provider || scen.trainingProvider || scen.cloudProvider, 'Training region', ai.trainingContext?.region ?? scen.trainingRegion ?? scen.cloudRegion]),
     row(['Training CI (kgCO2e/kWh)', ai.trainingCi, 'Training PUE', ai.trainPue]),
-    row(['Inference provider', ai.inferenceContext?.provider || scen.inferenceProvider || scen.cloudProvider, 'Inference region', ai.inferenceContext?.region || scen.inferenceRegion || scen.cloudRegion]),
+    row(['Inference provider', ai.inferenceContext?.provider || scen.inferenceProvider || scen.cloudProvider, 'Inference region', ai.inferenceContext?.region ?? scen.inferenceRegion ?? scen.cloudRegion]),
     row(['Inference CI (kgCO2e/kWh)', ai.inferenceCi, 'Inference PUE', ai.inferPue]),
     row(['Model template', AI_MODEL_BY_KEY[scen.modelKey]?.label ?? scen.modelKey, 'Reference', AI_MODEL_BY_KEY[scen.modelKey]?.reference ?? '']),
     row(['Architecture', scen.architecture, 'Model size', ai.modelSize]),
@@ -3162,34 +3165,40 @@ function App() {
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
-        <main>
-          <p className="eyebrow">Radiology + AI + Planetary Health</p>
-          <h1 style={{fontSize:44,lineHeight:1.05,margin:'0 0 10px'}}>Turn environmental impact into decisions.</h1>
-          <p className="note" style={{marginTop:0,marginBottom:24,fontSize:15,maxWidth:900,lineHeight:1.6}}>
-            Measure the environmental impact of radiology operations and AI, test practical improvements, and create transparent reports. CEDARS keeps the assumptions and evidence behind each result.
-          </p>
+        <main className="landingPage">
+          <section className="homeHero">
+            <div className="homeHeroCopy">
+              <p className="eyebrow">Radiology + AI + Planetary Health</p>
+              <h1>Turn environmental impact into decisions.</h1>
+              <p className="homeHeroLead">Measure the environmental impact of radiology operations and AI, test practical improvements, and create transparent reports. CEDARS keeps the assumptions and evidence behind each result.</p>
+            </div>
+            <aside className="homeSciencePrinciple" aria-label="CEDARS scientific principle">
+              <span>CEDARS PRINCIPLE</span>
+              <strong>Clinical fit first. Environmental efficiency comes next.</strong>
+              <p>Clinical purpose, performance, validation, and workflow fit are prerequisites. CEDARS then quantifies lifecycle impact and tests efficiency changes without rewarding missing data or clinically inappropriate care.</p>
+            </aside>
+          </section>
 
           {/* One CEDARS story: profile, results, improvement, reporting. */}
-          <section aria-labelledby="cedars-workflow-title" style={{marginBottom:22}}>
-            <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap',marginBottom:10}}>
-              <h2 id="cedars-workflow-title" style={{margin:0,color:'#1b5e20',fontSize:22}}>How CEDARS works</h2>
+          <section className="homeJourney" aria-labelledby="cedars-workflow-title" style={{marginBottom:22}}>
+            <div className="homeJourneyHeading">
+              <span>ONE ASSESSMENT · FOUR STEPS</span>
+              <h2 id="cedars-workflow-title">From profile to transparent reporting</h2>
             </div>
-            <p className="note" style={{margin:'0 0 14px',fontSize:13,maxWidth:920,lineHeight:1.55}}>
-              Build a profile, review Results, test changes, and report.
-            </p>
+            <p className="note" style={{margin:'0 0 14px',fontSize:13,maxWidth:920,lineHeight:1.55}}>Build the profile once, then carry the same assumptions through Results, Improve, and Report &amp; Share.</p>
 
             <div className="homeWorkflowGrid">
               <div className="workflowCard workflowCardStart">
                 <div className="workflowCardKicker"><span className="workflowNumber">1</span><span>BUILD PROFILE</span><span className="startHereBadge">START HERE</span></div>
                 <div className="workflowCardPrompt">What are you assessing?</div>
                 <div className="startChoiceGrid">
-                  <button type="button" data-demo-target="home-department" className="startChoice department" onClick={()=>goToAssessmentContext('dashboard')}><Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span></button>
-                  <button type="button" data-demo-target="home-ai" className="startChoice ai" onClick={()=>goToAssessmentContext('ai')}><Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Clinical use or AI development</small></span><span aria-hidden="true">→</span></button>
+                  <button type="button" data-demo-target="home-department" className="startChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span></button>
+                  <button type="button" data-demo-target="home-ai" className="startChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Assess, compare, develop, or fine-tune AI</small></span><span aria-hidden="true">→</span></button>
                 </div>
               </div>
-              <div className="workflowCard"><div className="workflowCardKicker"><span className="workflowNumber">2</span><span>SEE RESULTS</span></div><div className="workflowCardBody">Footprint, main drivers, assessment boundary, and CEDARS Score.</div><span className="workflowCardSequenceHint">After profile</span></div>
-              <div className="workflowCard"><div className="workflowCardKicker"><span className="workflowNumber">3</span><span>IMPROVE</span></div><div className="workflowCardBody">Test practical changes without altering the current baseline.</div><span className="workflowCardSequenceHint">Then test changes</span></div>
-              <div className="workflowCard"><div className="workflowCardKicker"><span className="workflowNumber">4</span><span>REPORT &amp; SHARE</span></div><div className="workflowCardBody">Create an EcoLabel and export the result with its assumptions.</div><span className="workflowCardSequenceHint">Finish with disclosure</span></div>
+              <div className="workflowCard workflowStage results"><div className="workflowStageIcon"><BarChart3 size={19}/></div><div className="workflowCardKicker"><span className="workflowNumber">2</span><span>SEE RESULTS</span></div><div className="workflowCardBody">Footprint, main drivers, assessment boundary, and CEDARS Score.</div><span className="workflowCardSequenceHint">After profile</span></div>
+              <div className="workflowCard workflowStage improve"><div className="workflowStageIcon"><Lightbulb size={19}/></div><div className="workflowCardKicker"><span className="workflowNumber">3</span><span>IMPROVE</span></div><div className="workflowCardBody">Test practical changes without altering the current baseline.</div><span className="workflowCardSequenceHint">Then test changes</span></div>
+              <div className="workflowCard workflowStage report"><div className="workflowStageIcon"><FileText size={19}/></div><div className="workflowCardKicker"><span className="workflowNumber">4</span><span>REPORT &amp; SHARE</span></div><div className="workflowCardBody">Create an EcoLabel and export the result with its assumptions and evidence.</div><span className="workflowCardSequenceHint">Finish with disclosure</span></div>
             </div>
           </section>
 
@@ -3204,8 +3213,8 @@ function App() {
       {/* ── Input pathway chooser ── */}
       {page==='input' && (
         <main className="inputGatewayPage">
-          {/* Shared assessment context — set once before choosing either input pathway.
-              AI compute/deployment keeps its own region. */}
+          {/* Shared assessment context — used across either pathway.
+              Training and inference compute locations are set separately inside AI Model & Informatics. */}
           <section className="assessmentContext" data-demo-target="assessment-context" aria-labelledby="assessment-context-title">
             <div className="assessmentContextIntro">
               <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -3213,7 +3222,7 @@ function App() {
                 <h2 id="assessment-context-title" style={{margin:0,fontSize:18,color:'#1b5e20'}}>Assessment context</h2>
               </div>
               <p className="note" style={{margin:'5px 0 0',fontSize:12,lineHeight:1.5}}>
-                Sets the shared <strong>local grid, reporting period, and electricity-cost assumptions</strong> used across CEDARS. AI compute/deployment location remains separate on the AI Model &amp; Informatics page.
+                Sets the shared <strong>local grid, reporting period, and electricity-cost assumptions</strong> used across CEDARS. Training and inference compute locations are recorded separately inside AI Model &amp; Informatics.
               </p>
             </div>
             <div className="assessmentContextGrid">
@@ -3270,7 +3279,7 @@ function App() {
 
       {/* ── Dashboard ── */}
       {page==='dashboard' && (
-        <main>
+        <main className="departmentPage">
           <div style={{marginBottom:8}}><h1 style={{margin:0}}>Radiology Department</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('dashboard',true)}/></div>
           <div className="departmentSetup">
             <button type="button" className="departmentSetupSummary" onClick={()=>setDeptSetupOpen(v=>!v)} aria-expanded={deptSetupOpen}>
@@ -4815,10 +4824,10 @@ function App() {
 
       {/* ── Improve / intervention modelling ── */}
       {page==='scenario' && (
-        <main>
+        <main className="improvePage">
           <h1 style={{margin:'0 0 6px'}}>Improve</h1>
           <p className="note" style={{margin:'0 0 10px',fontSize:14}}>Choose Department or AI. Switching does not change either baseline.</p>
-          <AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} computeProvider={scen.inferenceProvider || scen.cloudProvider} computeRegion={scen.inferenceRegion || scen.cloudRegion} onEdit={()=>goToAssessmentContext('scenario',true)}/>
+          <AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext('scenario',true)}/>
           <div className="improveScopeSelector" role="tablist" aria-label="Improve workspace"><button type="button" className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department</strong><small>Equipment, utilization, storage and workflows.</small></span></button><button type="button" className={ecoLabelMode==='ai'?'active':''} onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}}><Brain size={19}/><span><strong>AI</strong><small>Development, deployment and monitoring.</small></span></button></div>
 
           {ecoLabelMode==='department' && (()=>{
@@ -4831,7 +4840,7 @@ function App() {
               return {name,data,result,totalCo2,meta:IMPROVE_INTERVENTION_META[name]||{description:data.note,category:'Other',status:data.guidanceOnly?'Planning guidance':'Scenario estimate',reason:'Uses the current CEDARS intervention assumptions.',links:[]}};
             });
             const individualByName = Object.fromEntries(individual.map(x=>[x.name,x]));
-            const ranked = individual.filter(x=>x.totalCo2>0).sort((x,y)=>y.totalCo2-x.totalCo2).slice(0,3);
+            const ranked = individual.filter(x=>x.totalCo2>0).sort((x,y)=>y.totalCo2-x.totalCo2);
             const selectedRows = scenarioInterventions.map(name=>individualByName[name]).filter(Boolean);
             const totalCarbonSaving = rnd((scenario.savings.co2||0)+(scenario.embodied.savedCo2eKg||0)+(scenario.contrast.savedCo2eKg||0),1);
             const periodCostSaving = scenario.savings.kwh * price;
@@ -4862,8 +4871,9 @@ function App() {
                 <div className="improveWorkspaceGrid">
                   <div className="improveChooser">
                     <section className="improveOpportunities">
-                      <h3>Opportunities for this assessment</h3>
-                      <p className="note">Ranked by modeled carbon reduction using the assessment you entered. Local feasibility and clinical appropriateness still need to be assessed.</p>
+                      <h3>Modeled opportunities for this assessment</h3>
+                      <div className="improveClinicalGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong><span>This ordering shows modeled environmental opportunity only. Exclude any option that is not clinically appropriate or operationally safe; CEDARS does not trade patient care against carbon or cost.</span></div>
+                      <p className="note">All quantified positive opportunities are shown, ordered by modeled carbon reduction using the assessment you entered. The number therefore varies with the current profile rather than being fixed.</p>
                       {ranked.length>0 ? <div className="improveOpportunityList">
                         {ranked.map((row,i)=>{
                           const active=scenarioInterventions.includes(row.name);
@@ -5008,8 +5018,8 @@ function App() {
 
       {/* ── Results / Report & Share ── */}
       {(page==='ecolabel' || page==='report') && (
-        <main>
-          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Results' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} computeProvider={scen.inferenceProvider || scen.cloudProvider} computeRegion={scen.inferenceRegion || scen.cloudRegion} onEdit={()=>goToAssessmentContext(page,true)}/></div>
+        <main className={page==='ecolabel'?'resultsPage':'reportPage'}>
+          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Results' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
           <div className="researchAssessmentNotice">
             <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
           </div>

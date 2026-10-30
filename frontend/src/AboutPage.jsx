@@ -77,7 +77,7 @@ export default function AboutPage() {
   const leads = PEOPLE.filter(p => p.lead);
   const collaborators = PEOPLE.filter(p => !p.lead);
   return (
-    <main>
+    <main className="aboutPage">
       <h1 style={{fontSize:42,lineHeight:1.08,margin:'0 0 12px'}}>About CEDARS</h1>
       <p className="note" style={{fontSize:16,maxWidth:880,lineHeight:1.65,marginBottom:18}}>
         CEDARS is an international collaborative effort advancing transparent, reproducible assessment of environmental sustainability in radiology, clinical AI, and medical imaging informatics.

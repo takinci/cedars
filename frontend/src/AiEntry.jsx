@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {Search, Columns3, Cpu} from 'lucide-react';
+import {Search, Columns3, Cpu, Scan, FileText, Bot} from 'lucide-react';
 import {Ref} from './Refs.jsx';
 import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 
@@ -71,10 +71,10 @@ const ENTRY_CHOICES = [
 ];
 
 function exampleKind(ex) {
-  if (ex.key.includes('cxr')) return ['cxr','CXR'];
-  if (ex.key.includes('maistro')) return ['agent','AGENT'];
-  if (ex.key.includes('roentgen')) return ['image','GEN'];
-  return ['llm','LLM'];
+  if (ex.key.includes('cxr')) return [Scan,'cxr','CXR'];
+  if (ex.key.includes('maistro')) return [Bot,'agent','Agentic'];
+  if (ex.key.includes('roentgen')) return [Scan,'image','Generative imaging'];
+  return [FileText,'llm','Language AI'];
 }
 
 function exampleUse(ex) {
@@ -139,8 +139,8 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           ))}
         </div>
         <div className="aiEntryContinueRow">
-          <span>{!systemType?'Choose an AI type to continue.':'You can enter a blank profile or load a worked example below.'}</span>
-          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue with a blank profile →</button>
+          <span>{!systemType?'Choose an AI type to continue.':'Continue to enter your model, or load a worked example below.'}</span>
+          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue →</button>
         </div>
       </div>}
 
@@ -151,9 +151,9 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
         </div>
         <div className="aiExampleChoiceGrid aiExampleChoiceGridExpanded">
           {filtered.map(ex=>{
-            const [kind,label]=exampleKind(ex);
+            const [Icon,kind,label]=exampleKind(ex);
             return <button key={ex.key} type="button" className="aiExampleChoice aiExampleChoiceVisual" onClick={()=>onExample(ex.key)}>
-              <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><b>{label}</b></span>
+              <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={27}/><small>{label}</small></span>
               <span className="aiExampleChoiceCopy"><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small><em>{ex.subtitle}</em></span>
               <b className="aiExampleLoad">Load example →</b>
             </button>;

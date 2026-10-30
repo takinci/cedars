@@ -1,0 +1,131 @@
+/* CEDARS global visual system — forest-led clinical/scientific identity.
+   Semantic color rules:
+   - forest green: CEDARS identity, primary action, selected/complete
+   - blue-gray: evidence, validation, results/information
+   - muted gold: needs review, uncertainty, caution
+   - neutral gray: inactive, optional, not assessed
+   Score/rating and chart colors remain data-driven and are not overridden here. */
+:root{
+  --cedars-forest:#2F6B57;
+  --cedars-forest-deep:#254C40;
+  --cedars-sage:#DDE8E1;
+  --cedars-sage-soft:#EEF4F0;
+  --cedars-ivory:#F7F5EF;
+  --cedars-card:#FFFFFF;
+  --cedars-ink:#25302D;
+  --cedars-muted:#66716D;
+  --cedars-border:#D8DEDA;
+  --cedars-border-strong:#BEC9C2;
+  --cedars-gold:#C2A45F;
+  --cedars-gold-soft:#F6F0DF;
+  --cedars-info:#708894;
+  --cedars-info-deep:#526B79;
+  --cedars-info-soft:#EEF3F5;
+  --cedars-shadow:0 6px 22px rgba(37,76,64,.055);
+}
+
+html,body,#root{background:var(--cedars-ivory);color:var(--cedars-ink)}
+body{color:var(--cedars-ink)}
+::selection{background:var(--cedars-sage);color:var(--cedars-forest-deep)}
+
+/* Global shell */
+.siteHeader{background:rgba(255,255,255,.97)!important;border-bottom:1px solid var(--cedars-border);box-shadow:0 4px 18px rgba(37,76,64,.055)!important;backdrop-filter:blur(8px)}
+.brand strong{color:var(--cedars-forest)!important}.brand span{color:var(--cedars-muted)!important}
+.utilityNav button{background:transparent!important;color:var(--cedars-ink)!important;border:1px solid transparent!important;box-shadow:none!important}
+.utilityNav button:hover{background:#F4F6F3!important;border-color:var(--cedars-border)!important}
+.utilityNav button.on{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important;border-color:#C9D9D0!important;box-shadow:none!important}
+.saveUtilityButton{background:#fff!important;color:var(--cedars-forest-deep)!important;border:1px solid var(--cedars-border)!important;box-shadow:none!important}
+.saveUtilityButton:hover{border-color:var(--cedars-forest)!important;background:var(--cedars-sage-soft)!important}
+.saveUtilityMenu{border-color:var(--cedars-border)!important;box-shadow:0 16px 42px rgba(37,48,45,.14)!important}
+.saveUtilityMenuTitle{color:var(--cedars-muted)!important}
+.saveUtilityMenu button{background:#fff!important;color:var(--cedars-ink)!important}
+.saveUtilityMenu button:hover{background:var(--cedars-sage-soft)!important}
+
+main{color:var(--cedars-ink)}
+main>h1,main h1{color:var(--cedars-ink)}
+main h2,main h3{color:var(--cedars-ink)}
+.eyebrow{color:var(--cedars-forest)!important;letter-spacing:.055em}
+.note{color:var(--cedars-muted)!important}
+label{color:var(--cedars-forest-deep)}
+input,select,textarea{border-color:var(--cedars-border)!important;color:var(--cedars-ink);background:#fff!important;box-shadow:none!important}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(47,107,87,.18);outline-offset:1px;border-color:var(--cedars-forest)!important}
+button{background:var(--cedars-forest);border-radius:10px}
+.download{background:#fff;color:var(--cedars-forest-deep);border:1px solid var(--cedars-border);box-shadow:none}
+.download:hover{border-color:var(--cedars-forest)!important;background:var(--cedars-sage-soft)!important}
+.inlineTextButton{background:transparent!important;color:var(--cedars-forest)!important;box-shadow:none!important}
+.on{background:var(--cedars-forest)!important;color:#fff!important;box-shadow:0 2px 8px rgba(47,107,87,.22)!important}
+.cardHead{color:var(--cedars-forest)!important}
+.badge{background:var(--cedars-sage)!important;color:var(--cedars-forest-deep)!important}
+.savings{background:var(--cedars-sage-soft)!important}
+
+/* Common surfaces */
+.inputSummary,.departmentSetup,.assessmentContext,.stickyControls,.primaryInputPanel,.reportStageCard,.reportShareSection,.ecoIntroBlock,.scoreResultPanel,.scoreEverydayPanel,.aiWorkloadExplorer{background:#fff!important;border-color:var(--cedars-border)!important;box-shadow:var(--cedars-shadow)!important}
+.card{background:#fff;border:1px solid var(--cedars-border);box-shadow:var(--cedars-shadow)!important}
+.accHead{border-color:var(--cedars-border)!important;box-shadow:none!important}.accHead:hover{border-color:var(--cedars-forest)!important}.accHead .accCaret{color:var(--cedars-forest)!important}
+.methodologyDetails,.reportDisclosureDetails{border-color:var(--cedars-border)!important}
+
+/* Home — one cohesive story, not competing lanes. */
+.landingPage{padding-top:42px}
+.homeHero{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);gap:32px;align-items:end;margin:0 0 28px;padding:0;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.homeHeroCopy{min-width:0}.homeHeroCopy .eyebrow{margin:0 0 9px;font-size:12px;font-weight:800}.homeHeroCopy h1{font-size:clamp(42px,6vw,68px);line-height:.98;letter-spacing:-.035em;margin:0;max-width:820px;color:var(--cedars-ink)!important}.homeHeroLead{font-size:16px;line-height:1.6;max-width:820px;color:var(--cedars-muted);margin:18px 0 0}
+.homeSciencePrinciple{border-left:4px solid var(--cedars-forest);padding:3px 0 3px 18px;align-self:stretch;display:flex;flex-direction:column;justify-content:center}.homeSciencePrinciple>span{font-size:9px;font-weight:900;letter-spacing:.09em;color:var(--cedars-forest)}.homeSciencePrinciple>strong{font-size:17px;line-height:1.3;color:var(--cedars-ink);margin:5px 0}.homeSciencePrinciple>p{font-size:11.5px;line-height:1.5;color:var(--cedars-muted);margin:0}
+.homeJourney{background:transparent!important;border:0!important;border-top:1px solid var(--cedars-border)!important;border-radius:0!important;box-shadow:none!important;padding:22px 0 0!important}
+.homeJourneyHeading{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}.homeJourneyHeading>span{font-size:9px;font-weight:900;letter-spacing:.09em;color:var(--cedars-muted)}.homeJourneyHeading h2{margin:0!important;font-size:23px!important;color:var(--cedars-ink)!important}
+.homeWorkflowGrid{grid-template-columns:minmax(320px,1.5fr) repeat(3,minmax(155px,.75fr))!important;gap:11px!important}
+.workflowCard{background:#fff!important;border:1px solid var(--cedars-border)!important;border-radius:13px!important;box-shadow:0 4px 16px rgba(37,76,64,.035)!important;padding:14px!important;min-height:168px!important}
+.workflowCardStart{border-top:4px solid var(--cedars-forest)!important;background:#fff!important;box-shadow:0 7px 22px rgba(37,76,64,.06)!important}
+.workflowCardKicker{color:var(--cedars-muted)!important}.workflowNumber{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:var(--cedars-sage-soft);color:var(--cedars-forest-deep);font-size:10px}.startHereBadge{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important;border-color:#C9D9D0!important}
+.workflowCardPrompt{color:var(--cedars-ink)!important}.workflowCardBody{color:var(--cedars-muted)!important}.workflowCardSequenceHint{color:#87908C!important}
+.startChoice{background:#fff!important;color:var(--cedars-ink)!important;border:1px solid var(--cedars-border)!important;box-shadow:none!important}.startChoice:hover{filter:none!important;background:var(--cedars-sage-soft)!important;border-color:var(--cedars-forest)!important}.startChoice svg{color:var(--cedars-forest)}.startChoice strong{color:var(--cedars-ink)}.startChoice small{color:var(--cedars-muted);opacity:1!important}.startChoice>span:last-child{color:var(--cedars-forest);font-weight:900}
+.workflowStage{position:relative;padding-top:48px!important}.workflowStageIcon{position:absolute;top:13px;left:14px;display:grid;place-items:center;width:27px;height:27px;border-radius:8px;background:#F1F4F2;color:var(--cedars-forest-deep)}.workflowStage.results .workflowStageIcon{background:var(--cedars-info-soft);color:var(--cedars-info-deep)}.workflowStage.improve .workflowStageIcon{background:var(--cedars-sage-soft);color:var(--cedars-forest)}.workflowStage.report .workflowStageIcon{background:#EEF0ED;color:#53625C}
+.guidedDemoLauncher{border:1px solid var(--cedars-border)!important;background:#fff!important;box-shadow:var(--cedars-shadow)!important}.guidedDemoLauncherHead span,.guidedDemoChoiceEyebrow{color:var(--cedars-muted)!important}.guidedDemoLauncher h2,.guidedDemoChoice strong{color:var(--cedars-ink)!important}.guidedDemoChoice{border-color:var(--cedars-border)!important;background:#fff!important}.guidedDemoChoiceIcon{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest)!important}.guidedDemoChoice button{background:var(--cedars-forest)!important}
+
+/* Shared assessment context */
+.inputGatewayPage .assessmentContext,.departmentPage .departmentContextBlock{border:1px solid var(--cedars-border)!important;background:#fff!important;box-shadow:var(--cedars-shadow)!important}.assessmentContextIntro h2,.departmentContextHeader h2{color:var(--cedars-ink)!important}.assessmentContextIntro svg{color:var(--cedars-forest)!important}.assessmentContextNote{background:#F5F6F3!important;border-color:var(--cedars-border)!important;color:var(--cedars-muted)!important}.inputGatewayMessage>span,.departmentContextHeader>div>span{color:var(--cedars-forest)!important}.inputGatewayMessage h1{color:var(--cedars-ink)!important}
+
+/* Department profile */
+.departmentPage .departmentSetup{border:1px solid var(--cedars-border)!important;background:#fff!important}.departmentSetupSummary{background:#fff!important;color:var(--cedars-ink)!important}.departmentSetupSummary:hover{background:#F7F8F6!important}.departmentSetupSummary>svg{color:var(--cedars-forest)!important}.departmentSetupScoreState.ready{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important}.departmentSetupScoreState.needs{background:var(--cedars-gold-soft)!important;color:#80662C!important}.quickStartNotice{background:var(--cedars-info-soft)!important;border-color:#D6E0E4!important;color:var(--cedars-ink)!important}.quickStartNotice>svg{color:var(--cedars-info-deep)!important}.scoreRequiredInputHint{background:var(--cedars-gold-soft)!important;border-color:#E0CD99!important;color:#6F5926!important}.scoreRequiredInputHint>svg{color:#8B6E2D!important}.primaryInputSummary{background:#F4F7F5!important;color:var(--cedars-forest-deep)!important;border-color:var(--cedars-border)!important}.primaryInputSummary>svg{color:var(--cedars-forest)!important}.footprintHero{background:#fff!important;border:1px solid var(--cedars-border)!important;box-shadow:var(--cedars-shadow)!important}.footprintHeroHeader h2,.footprintHeroPrimary strong{color:var(--cedars-ink)!important}.footprintMetricGrid>div,.footprintBoundaryGrid>div{background:#FAFBF9!important;border-color:var(--cedars-border)!important}.footprintBoundaryGrid .core{border-left-color:var(--cedars-forest)!important}.footprintBoundaryGrid .extended{border-left-color:var(--cedars-info)!important}.footprintBoundaryGrid .unassessed{border-left-color:#9AA39F!important}
+
+/* Workflow rail */
+.workflowRailWrap{background:rgba(247,245,239,.94)!important;border-color:var(--cedars-border)!important}.workflowRailStep{background:#fff!important;border-color:var(--cedars-border)!important;color:var(--cedars-muted)!important}.workflowRailStep.active,.workflowRailStep.current{background:var(--cedars-sage-soft)!important;border-color:#C8D8CF!important}.workflowRailStep.active strong,.workflowRailStep.current strong{color:var(--cedars-forest-deep)!important}
+
+/* AI additions not fully captured in 7I */
+.aiExampleThumb{display:flex!important;flex-direction:column;gap:4px;align-items:center;justify-content:center}.aiExampleThumb::before,.aiExampleThumb::after{display:none!important}.aiExampleThumb>svg{position:relative;z-index:1}.aiExampleThumb>small{position:relative;z-index:1;font-size:8.5px;font-weight:800;color:inherit;text-align:center;line-height:1.15}.aiExampleThumb.cxr,.aiExampleThumb.image{background:#E7ECE7!important;color:#405B4E!important}.aiExampleThumb.llm,.aiExampleThumb.agent{background:var(--cedars-info-soft)!important;color:var(--cedars-info-deep)!important}
+.aiPhaseContextBand{grid-template-columns:minmax(170px,.65fr) minmax(0,1.6fr) auto!important}.aiPhaseComputeSummary{display:grid!important;grid-template-columns:1fr 1fr;gap:10px}.aiPhaseComputeSummary>div{border-left:3px solid var(--cedars-border-strong);padding-left:10px;display:flex;flex-direction:column;gap:2px}.aiPhaseComputeSummary>div:first-child{border-left-color:var(--cedars-forest)}.aiPhaseComputeSummary>div:last-child{border-left-color:var(--cedars-info)}.aiComputePhaseGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}.aiComputePhaseCard{border:1px solid var(--cedars-border);border-radius:10px;padding:13px;background:#FAFBF9;min-width:0}.aiComputePhaseHeading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.aiComputePhaseHeading>span{font-size:9px;font-weight:900;letter-spacing:.07em;color:var(--cedars-muted)}.aiComputePhaseCard:first-child .aiComputePhaseHeading>span{color:var(--cedars-forest)}.aiComputePhaseCard:nth-child(2) .aiComputePhaseHeading>span{color:var(--cedars-info-deep)}.aiComputePhaseHeading>button{font-size:9px!important;padding:3px 5px!important}.aiComputePhaseCard>small{display:block;margin-top:9px;color:var(--cedars-muted);font-size:10px;line-height:1.4}.aiComputeFallback{margin-top:10px;border:1px solid var(--cedars-border);border-radius:8px;background:#fff}.aiComputeFallback>summary{padding:9px 10px;color:var(--cedars-muted);font-size:11px;font-weight:750;cursor:pointer}
+
+/* Improve — clinical gate first; environmental ranking is not a treatment recommendation. */
+.improvePage .improveScopeSelector>button{background:#fff!important;color:var(--cedars-ink)!important;border:1px solid var(--cedars-border)!important;box-shadow:none!important}.improvePage .improveScopeSelector>button.active{background:var(--cedars-sage-soft)!important;border-color:var(--cedars-forest)!important}.improveStateStrip,.improveWorkspace,.improveResultSection{border-color:var(--cedars-border)!important}.improveOpportunityRow,.improveChangeCard,.improveReceipt{border-color:var(--cedars-border)!important;background:#fff!important}.improveRank{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important}.improveEvidence{color:var(--cedars-muted)!important}.improveEvidence summary,.improveEvidenceLinks a{color:var(--cedars-info-deep)!important}.improveClinicalGuardrail{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;margin:8px 0 10px;padding:10px 12px;border-left:4px solid var(--cedars-forest);background:var(--cedars-sage-soft);border-radius:5px}.improveClinicalGuardrail strong{font-size:11.5px;color:var(--cedars-forest-deep)}.improveClinicalGuardrail span{font-size:11px;line-height:1.45;color:var(--cedars-muted)}
+.aiImprovePrinciple{border-left-color:var(--cedars-forest)!important;background:var(--cedars-sage-soft)!important}.aiImproveEvidenceDetails,.aiImproveEvidenceDetails li{color:var(--cedars-muted)!important}.aiImproveEvidenceDetails>summary{color:var(--cedars-info-deep)!important}.aiImprovePurpose.evidence{color:var(--cedars-info-deep)!important}.aiImprovePurpose.impact{color:var(--cedars-forest)!important}
+
+/* Results — blue-gray communicates evidence/results; score/rating colors remain untouched. */
+.resultsPage .researchAssessmentNotice,.reportPage .researchAssessmentNotice{background:var(--cedars-gold-soft)!important;border-color:#E0CD99!important;color:#6F5926!important}.researchAssessmentNotice>svg{color:#8B6E2D!important}.ecoChooserHeader>span,.ecoStepHeading>span,.reportStageHeading>span,.reportSubsectionHeading>span{color:var(--cedars-muted)!important}.ecoProductChoice{background:#fff!important;border-color:var(--cedars-border)!important;color:var(--cedars-ink)!important}.ecoProductChoice:hover{border-color:var(--cedars-info)!important}.ecoProductChoice.active,.ecoProductSelected{background:var(--cedars-info-soft)!important;border-color:#C8D7DE!important}.ecoProductIcon{background:var(--cedars-info-soft)!important;color:var(--cedars-info-deep)!important}.scoreReadinessGate{border-color:var(--cedars-border)!important;background:#fff!important}.scoreReadinessIssues,.reportNeedsReview,.reportCompletion.needsWork{background:var(--cedars-gold-soft)!important;border-color:#E0CD99!important}.scoreEverydayPanel{border-top:4px solid var(--cedars-info)!important}.scoreEverydayIcon{background:var(--cedars-info-soft)!important;color:var(--cedars-info-deep)!important}.scoreScopeToggle button{background:#fff!important;color:var(--cedars-muted)!important;border:1px solid var(--cedars-border)!important}.scoreScopeToggle button.active{background:var(--cedars-info-soft)!important;color:var(--cedars-info-deep)!important;border-color:var(--cedars-info)!important}
+
+/* Report — quiet neutral surfaces, green for ready/completed, gold for gaps. */
+.reportProductTabs button{background:#fff!important;color:var(--cedars-ink)!important;border-color:var(--cedars-border)!important}.reportProductTabs button.active{background:var(--cedars-sage-soft)!important;border-color:var(--cedars-forest)!important}.reportReadyChip{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important}.reportStageCard{border:1px solid var(--cedars-border)!important}.reportDisclosureDetails>summary{color:var(--cedars-ink)!important}.reportTextPreview{background:#FAFBF9!important;border-color:var(--cedars-border)!important;color:var(--cedars-ink)!important}.reportCompletion{background:var(--cedars-sage-soft)!important;border-color:#C8D8CF!important}.reportCompletion>div>span{background:var(--cedars-forest)!important}.reportCompletion strong{color:var(--cedars-forest-deep)!important}
+
+/* About + footer */
+.aboutPage .affiliationNotice{background:var(--cedars-gold-soft)!important;border-color:#E0CD99!important;color:#6F5926!important}.aboutPage .affiliationNotice>svg{color:#8B6E2D!important}.collaborativeSection{border-color:var(--cedars-border)!important;background:#fff!important}.collaborativeHeading>svg{color:var(--cedars-forest)!important}.collaboratorCard{border-color:var(--cedars-border)!important;background:#fff!important}.collaboratorCard.lead{border-top-color:var(--cedars-forest)!important}.personAffiliations span{background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important}
+footer{background:#23332E!important;border-top:1px solid #31443D}footer>div>span{color:#F3F5F2}footer a{color:#BFD6C8!important}footer div[style*="#90a4ae"]{color:#AAB8B2!important}
+
+/* Semantic status helpers across pages */
+.reportReadyChip,.departmentSetupScoreState.ready{border-color:#C8D8CF!important}.reportNeedsReview,.scoreRequiredInputHint,.departmentSetupScoreState.needs{box-shadow:none!important}
+
+/* Responsive hierarchy and overflow */
+main *{min-width:0}
+main input,main select,main textarea{max-width:100%;box-sizing:border-box}
+@media(max-width:1080px){
+  .homeWorkflowGrid{grid-template-columns:1fr 1fr!important}.workflowCardStart{grid-column:1/-1}
+  .aiPhaseContextBand{grid-template-columns:1fr!important}.aiPhaseComputeSummary{grid-template-columns:1fr 1fr}.aiPhaseContextBand>button{justify-self:start}
+  .aiComputePhaseGrid{grid-template-columns:1fr}
+}
+@media(max-width:820px){
+  .homeHero{grid-template-columns:1fr;gap:20px}.homeSciencePrinciple{min-height:0}
+  .homeWorkflowGrid{grid-template-columns:1fr!important}.workflowCardStart{grid-column:auto}
+  .aiPhaseComputeSummary{grid-template-columns:1fr}.aiPhaseComputeSummary>div:last-child{border-left-color:var(--cedars-info)}
+  .improveClinicalGuardrail{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .landingPage{padding-top:24px}.homeHeroCopy h1{font-size:42px}.homeHeroLead{font-size:14px}
+  .workflowStage{padding-top:46px!important}
+  .siteHeader{background:#fff!important}
+}

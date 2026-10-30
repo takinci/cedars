@@ -58,25 +58,30 @@ export default function AiImproveWorkspace({
   const options=mode==='develop'?DEVELOPMENT_OPTIONS:CLINICAL_OPTIONS;
   const currentModel=visibleAiModels.find(m=>m.id===scen.modelId) || visibleAiModels[0];
   const hasModel=visibleAiModels.length>0;
+  const clinicalReady=Boolean(String(scen.modelIntendedUse||'').trim() && String(scen.accuracyMetric||'').trim() && String(scen.performanceSource||'').trim());
 
   const topRecommendations=useMemo(()=>{
     if(!hasModel) return [];
     const ranked=[];
     const push=title=>{const item=options.find(x=>x.title===title);if(item&&!ranked.includes(item))ranked.push(item)};
-    if(!scen.accuracyMetric || !scen.performanceSource) push(mode==='develop'?'Document clinically meaningful performance evidence':'Confirm clinical acceptability before environmental ranking');
+    if(!clinicalReady) push(mode==='develop'?'Document clinically meaningful performance evidence':'Confirm clinical acceptability before environmental ranking');
     if(mode==='develop') {
       if(!ecoLabelData.trainingAvailable || ecoLabelData.trainProv!=='measured') push('Measure the full development footprint');
       if(!(Number(ecoLabelData.inferKwhPerStudy)>0)) push('Measure representative inference energy');
-      push('Right-size the model and experimentation strategy');
-      push('Review AI compute location');
+      if(clinicalReady) {
+        push('Right-size the model and experimentation strategy');
+        push('Review AI compute location');
+      }
     } else {
       if(!ecoLabelData.trainingAvailable) push('Request lifecycle disclosure from the vendor');
       push('Validate deployment assumptions locally');
-      push('Ask for efficient serving options');
-      push('Review AI compute location');
+      if(clinicalReady) {
+        push('Ask for efficient serving options');
+        push('Review AI compute location');
+      }
     }
-    return ranked.slice(0,4);
-  },[hasModel,mode,options,scen.accuracyMetric,scen.performanceSource,ecoLabelData.inferKwhPerStudy,ecoLabelData.trainingAvailable,ecoLabelData.trainProv]);
+    return ranked;
+  },[hasModel,mode,options,clinicalReady,ecoLabelData.inferKwhPerStudy,ecoLabelData.trainingAvailable,ecoLabelData.trainProv]);
 
   const scenario=useMemo(()=>{
     const months=Math.max(1,Number(scen.deployMonths)||36);
@@ -119,7 +124,7 @@ export default function AiImproveWorkspace({
     <div className="aiImprovePrinciple"><strong>Clinical acceptability comes first.</strong><span>Environmental efficiency helps differentiate options only after intended use, safety, performance, validation and workflow fit are acceptable for patient care.</span></div>
 
     <section className="aiImproveTopRecommendations">
-      <div className="aiImproveSectionHeading"><div><span>TOP RECOMMENDATIONS FOR THIS PROFILE</span><h3>{topRecommendations.length} priorities surfaced from the current record</h3></div><small>Other options remain available below.</small></div>
+      <div className="aiImproveSectionHeading"><div><span>PRIORITIES SURFACED FROM THIS PROFILE</span><h3>{topRecommendations.length} relevant priorit{topRecommendations.length===1?'y':'ies'} from the current record</h3></div><small>{clinicalReady?'The number varies with the record; clinical acceptability remains a prerequisite, not a weighted trade-off against footprint.':'Clinical gate incomplete: only clinical and assessment-strengthening priorities are surfaced until intended use, performance metric, and evidence source are documented.'}</small></div>
       <div className="aiImproveRecommendationList">{topRecommendations.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div>
     </section>
 
