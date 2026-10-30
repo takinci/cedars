@@ -11,6 +11,8 @@ import './styles.css';
 import './chunk7a.css';
 import './chunk7c.css';
 import './chunk7d.css';
+import './chunk7g.css';
+import './chunk7h.css';
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -18,6 +20,8 @@ import { REFS, refUrl } from './refs.js';
 import { labelFromScen, computeAiLabel, LABEL_TO_SCEN, migrateLegacyLabel, PROVENANCE } from './ailabel.js';
 import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AI_ENTRY_REFS } from './AiEntry.jsx';
 import { MeasureChooser } from './MeasureChooser.jsx';
+import AiProfileEditor from './AiProfileEditor.jsx';
+import AiImproveWorkspace from './AiImproveWorkspace.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
 import { GuidedDemo, GuidedDemoLauncher, GUIDED_DEMOS } from './GuidedDemo.jsx';
@@ -1690,15 +1694,14 @@ function App() {
     setPage('landing');
     if (typeof window !== 'undefined') window.scrollTo(0, 0);
   };
-  // Load a library entry as an editable starting point — seeds every model field.
+  // Reference presets initialize technical assumptions only. Clinical task, performance, and
+  // workflow effects remain user-supplied evidence.
   const setModel = key => {
+    if (key === 'custom') { setScen(s => ({...s, modelKey:'custom'})); return; }
     const m = AI_MODEL_BY_KEY[key] ?? AI_MODEL_LIBRARY[0];
     setScen(s => ({
-      ...s, modelKey: key, taskType: LIB_TASK[key] || 'Other', architecture: m.architecture,
-      paramsM: String(m.paramsM), dim: m.dim, resolution: String(m.resolution), slices: String(m.slices), inferSec: '', inferKwh: '',
-      whPer1kTokens: m.whPer1kTokens!=null?String(m.whPer1kTokens):'', callsPerTask: m.callsPerTask!=null?String(m.callsPerTask):'1', tokensPerCall: m.tokensPerCall!=null?String(m.tokensPerCall):'',
-      accuracyPct: String(m.accuracyPct), accuracyMetric: m.accuracyMetric,
-      clinicalEffectBasis:'none', scanTimeReductPct:'0', lowValueReductPct:'0',
+      ...s, modelKey:key, architecture:m.architecture,
+      paramsM:String(m.paramsM), dim:m.dim, resolution:String(m.resolution), slices:String(m.slices),
     }));
   };
   // Provider + region are shared between the AI lifecycle math and the Infrastructure tab.
@@ -1737,6 +1740,7 @@ function App() {
     setEcoLabelMode(mode);
   };
   const [aiOpen, setAiOpen] = useState({model:true});
+  const [aiProfileSection, setAiProfileSection] = useState(scen.ownMode==='spec' ? 'inference' : 'training');
   // Procurement comparison workload: source and numeric value are both persisted, so a shared
   // link reproduces not only 5,100 studies/mo but whether it was a published preset, the current
   // Radiology Department volume, or a user-entered value.
@@ -1757,6 +1761,7 @@ function App() {
     const ex = AI_EXAMPLES.find(e => e.key === key); if (!ex) return;
     const region = ex.scen.cloudRegion || Object.keys(CLOUD_REGIONS[ex.scen.cloudProvider]?.regions ?? {})[0] || '';
     setAiExampleLoaded(key);
+    setAiProfileSection(ex.scen.ownMode==='spec' ? 'inference' : 'training');
     setScen({...SCEN_DEFAULTS, ...ex.scen, modelId:`example-${key}`, projectName:ex.scen.projectName || ex.title, cloudRegion: region, comparePreset:ex.bench?`${key}-v1`:'', compareCandidateKeys:ex.bench?referenceCandidateSpec(ex.bench):''});
     if (ex.bench) {
       setBenchModels(ex.bench.map((b, i) => ({...benchCfgFromLib(b.modelKey), ...b, id: `ex-${key}-${i}`})));
@@ -1860,6 +1865,7 @@ function App() {
       aiRoute:'own', ownMode:'spec', comparePreset:'', compareCandidateKeys:'',
     }));
     setAiOpen(o => ({...o, benchmark:false, model:true}));
+    setAiProfileSection('inference');
     if (scrollToTop) window.setTimeout(() => window.scrollTo({top:0, behavior:'auto'}), 0);
     else scrollToAiWorkspace('#ai-profile-editor');
   };
@@ -1956,6 +1962,7 @@ function App() {
     const record = aiModels[modelId];
     if (!record) return;
     setScen({...modelScenFromRecord(record, SCEN_DEFAULTS), aiRoute:'own', ownMode:'spec'});
+    setAiProfileSection('inference');
     setDeptModelChoice(modelId);
     setPage('ai');
     if (scrollToTop) window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);
@@ -2844,29 +2851,26 @@ function App() {
   // "not disclosed" or "not assessed" completes the reporting field without pretending the
   // environmental boundary is complete or treating an unknown footprint as zero.
   const aiChecklist = [
-    ['Model & clinical context', !!String(scen.projectName || '').trim() && !!String(scen.taskType || '').trim(), 'model'],
+    ['Clinical task', !!String(scen.taskType || '').trim(), 'model'],
     ['Training status / provenance', ecoLabelData.trainingAvailable || ['not-disclosed','not-assessed'].includes(ecoLabelData.trainProv), 'training'],
     ['Training energy and how it was measured / estimated', !ecoLabelData.trainingAvailable || (ecoLabelData.trainProv === 'measured' ? !!ecoLabelData.trainTool : ecoLabelData.trainProv !== 'literature'), 'training'],
-    ['Inference compute location / grid source', !!(scen.inferenceRegion || scen.cloudRegion), 'inference'],
-    ['PUE / compute-region assumptions', parseFloat(scen.inferencePue || scen.customPue) > 0 || !!(scen.inferenceRegion || scen.cloudRegion), 'inference'],
+    ['Inference compute location / grid source', !!(scen.inferenceRegion || scen.cloudRegion), 'compute'],
+    ['PUE / compute-region assumptions', parseFloat(scen.inferencePue || scen.customPue) > 0 || !!(scen.inferenceRegion || scen.cloudRegion), 'compute'],
     ['Deployment workload / inference result', ecoLabelData.hasInference || ecoLabelData.perInferCo2g > 0, 'inference'],
-    ['Water inputs or explicitly mark water not assessed', ecoLabelData.waterProv !== 'screening', 'carbon'],
+    ['Water inputs or explicitly mark water not assessed', ecoLabelData.waterProv !== 'screening', 'water'],
     ['Assessment result and lifecycle coverage', ecoLabelData.graded || (ecoLabelData.perInferCo2g > 0 && ecoLabelData.scoreStatus === 'training-unavailable'), 'score'],
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const openAiChecklistItem = section => {
     if (section === 'score') { setEcoLabelMode('ai'); setPage('ecolabel'); return; }
+    if (['training','inference','compute','water'].includes(section)) setAiProfileSection(section);
     setPage('ai');
-    const target = {
-      model:'ai-model-record',
-      training:'ai-training-section',
-      inference:'ai-inference-section',
-      carbon:'ai-water-section',
-    }[section || 'training'] || 'ai-model-record';
+    const target = section === 'model' ? 'ai-model-record'
+      : ['training','inference','compute','water'].includes(section) ? `ai-${section}-section` : 'ai-model-record';
     window.setTimeout(()=>document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'}),60);
   };
-  const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023', 'doo-radiology-llm-2024'];
-  const AI_IMPROVE_REFS = ['doo-jacr-2024','doo-radiology-llm-2024','doo-jacr-cloud-2024','jia-eurradiol-2026','jegham-llm-2025','fernandez-llm-energy-2025','oviedo-inference-2025','kpodzro-haip-2026','strubell-nlp-2019','schwartz-green-ai-2020','henderson-reporting-2020','patterson-4ms-2022','hanafy-war-efficiencies-2023','wright-efficiency-not-enough-2023','dietrich-training-policy-2026','nghiem-doo-sustainable-ai-2026','owid-ci','codecarbon'];
+  const AI_PAGE_REFS = [...AI_ENTRY_REFS, 'mongan-claim-2020', 'li-thirsty-2023', 'doo-radiology-llm-2024', 'maierhein-metrics-reloaded-2024', 'klontzas-esr-metrics-2026', 'drukker-midrc-metrictree-2024'];
+  const AI_IMPROVE_REFS = ['doo-jacr-2024','doo-radiology-llm-2024','doo-jacr-cloud-2024','jia-eurradiol-2026','jegham-llm-2025','fernandez-llm-energy-2025','oviedo-inference-2025','kpodzro-haip-2026','strubell-nlp-2019','schwartz-green-ai-2020','henderson-reporting-2020','patterson-4ms-2022','hanafy-war-efficiencies-2023','wright-efficiency-not-enough-2023','dietrich-training-policy-2026','nghiem-doo-sustainable-ai-2026','owid-ci','codecarbon','maierhein-metrics-reloaded-2024','klontzas-esr-metrics-2026','drukker-midrc-metrictree-2024'];
   const DEPT_STORAGE_REFS = ['jia-eurradiol-2026', 'doo-jacr-cloud-2024'];
   const DEPT_WATER_REFS = ['heye-radiology-2020', 'li-thirsty-2023'];
   const DEPT_SUPPORT_REFS = ['heye-radiology-2020', 'doo-jacr-cloud-2024', 'jia-eurradiol-2026', 'li-thirsty-2023'];
@@ -3541,7 +3545,7 @@ function App() {
               {deptModelChoice?<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:10}}><span style={{fontSize:12}}>For <strong>{aiModels[deptModelChoice]?.name||deptModelChoice}</strong></span><button type="button" onClick={()=>addDeptDeployment(deptModelChoice)}><Plus size={13}/> Add a local use</button></div>:<div className="note" style={{fontSize:11,marginBottom:10}}>Choose a model above before adding a local use.</div>}
               <div className="note" style={{fontSize:10,marginBottom:(deptLabel.aiTools||[]).length?10:0}}>{(deptLabel.aiTools||[]).length===0?'0 local AI uses configured — this is valid if the department currently uses no Clinical AI.':`${(deptLabel.aiTools||[]).length} local AI use${(deptLabel.aiTools||[]).length===1?'':'s'} configured.`}</div>
 
-              {Object.entries((deptLabel.aiTools||[]).reduce((groups,t)=>{(groups[t.modelId]||=[]).push(t);return groups;},{})).map(([modelId,uses])=>{const record=aiModels[modelId];const modelName=record?.name||modelId||'Legacy AI model';const modelCfg=record&&!record.legacyDeploymentOnly?modelScenFromRecord(record,SCEN_DEFAULTS):null;const modelResult=modelCfg?aiResultFor(modelCfg,settings.region,settings.customCi,settings.equipment,settings.equipmentOverrides):null;const accountingUse=uses.find(u=>u.trainingBoundary==='allocated-local')||uses[0];const allocationRaw=parseFloat(accountingUse?.trainingAllocationPct);const allocationPct=Number.isFinite(allocationRaw)?Math.min(100,Math.max(0,allocationRaw)):100;const allocationMonths=Math.max(1,parseInt(accountingUse?.deployMonths)||36);const trainingTotalKwh=(modelResult?.training?.kwhTotal??parseFloat(accountingUse?.trainKwhTotal)??0)||0;const trainingMonthlyKwh=rnd(trainingTotalKwh*allocationPct/100/allocationMonths,2);const embodiedUse=uses.find(u=>u.embodiedBoundary==='allocated-local')||uses[0];const embAllocationRaw=parseFloat(embodiedUse?.embodiedAllocationPct);const embAllocationPct=Number.isFinite(embAllocationRaw)?Math.min(100,Math.max(0,embAllocationRaw)):100;const embodiedTotalKg=(modelResult?.embCo2KgTotal??parseFloat(embodiedUse?.embCo2Kg)??0)||0;const embodiedMonths=Math.max(1,parseInt(embodiedUse?.deployMonths)||36);const embodiedMonthlyKg=rnd(embodiedTotalKg*embAllocationPct/100/embodiedMonths,2);return <div key={modelId} style={{borderTop:'1px solid #dfe3d6',paddingTop:10,marginTop:8}}>
+              {Object.entries((deptLabel.aiTools||[]).reduce((groups,t)=>{(groups[t.modelId]||=[]).push(t);return groups;},{})).map(([modelId,uses])=>{const record=aiModels[modelId];const modelName=record?.name||modelId||'Imported AI model';const modelCfg=record&&!record.legacyDeploymentOnly?modelScenFromRecord(record,SCEN_DEFAULTS):null;const modelResult=modelCfg?aiResultFor(modelCfg,settings.region,settings.customCi,settings.equipment,settings.equipmentOverrides):null;const accountingUse=uses.find(u=>u.trainingBoundary==='allocated-local')||uses[0];const allocationRaw=parseFloat(accountingUse?.trainingAllocationPct);const allocationPct=Number.isFinite(allocationRaw)?Math.min(100,Math.max(0,allocationRaw)):100;const allocationMonths=Math.max(1,parseInt(accountingUse?.deployMonths)||36);const trainingTotalKwh=(modelResult?.training?.kwhTotal??parseFloat(accountingUse?.trainKwhTotal)??0)||0;const trainingMonthlyKwh=rnd(trainingTotalKwh*allocationPct/100/allocationMonths,2);const embodiedUse=uses.find(u=>u.embodiedBoundary==='allocated-local')||uses[0];const embAllocationRaw=parseFloat(embodiedUse?.embodiedAllocationPct);const embAllocationPct=Number.isFinite(embAllocationRaw)?Math.min(100,Math.max(0,embAllocationRaw)):100;const embodiedTotalKg=(modelResult?.embCo2KgTotal??parseFloat(embodiedUse?.embCo2Kg)??0)||0;const embodiedMonths=Math.max(1,parseInt(embodiedUse?.deployMonths)||36);const embodiedMonthlyKg=rnd(embodiedTotalKg*embAllocationPct/100/embodiedMonths,2);return <div key={modelId} style={{borderTop:'1px solid #dfe3d6',paddingTop:10,marginTop:8}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><div style={{flex:1,minWidth:220}}><strong style={{color:'#1b5e20'}}>{modelName}</strong><div className="note" style={{fontSize:10,marginTop:2}}>Shared energy, hardware, performance, and compute-location details feed every local use nested below.</div></div>{record&&<button type="button" className="download" onClick={()=>openAiModelWorkspaceFromDepartment(modelId)} style={{padding:'5px 8px',fontSize:11}}>Edit model details</button>}<button type="button" className="download" onClick={()=>{setDeptModelChoice(modelId);addDeptDeployment(modelId);}} style={{padding:'5px 8px',fontSize:11}}>+ Add another local use</button></div>
                 <div style={{display:'grid',gridTemplateColumns:'minmax(220px,auto) minmax(160px,220px) 1fr',gap:8,alignItems:'start',background:'#f4faf4',borderRadius:10,padding:'8px 10px',marginBottom:8}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Where should this model's training be counted?<select value={accountingUse?.trainingBoundary||'upstream'} onChange={e=>updateDeptModelUses(modelId,'trainingBoundary',e.target.value)} style={{display:'block',width:'100%',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}><option value="upstream">Upstream / outside this department</option><option value="allocated-local">Allocate a share to this department</option></select></label>{accountingUse?.trainingBoundary==='allocated-local'&&<label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Department share of training (%)<input type="number" min="0" max="100" step="1" value={accountingUse?.trainingAllocationPct??'100'} onChange={e=>updateDeptModelUses(modelId,'trainingAllocationPct',e.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/></label>}<div className="note" style={{fontSize:10,margin:0,paddingTop:3}}>{accountingUse?.trainingBoundary==='allocated-local'?(trainingTotalKwh>0?<>CEDARS allocates <strong>{allocationPct}%</strong> of this model's training to the department, approximately <strong>{trainingMonthlyKwh} kWh/month</strong> over {allocationMonths} months. It is counted once for this model, not once per local use.</>:<>This model has no training-energy value yet. Enter one in AI Model &amp; Informatics before this allocation can affect the Department footprint.</>):<>No training electricity is added to this Department footprint. Training remains in the model's upstream lifecycle disclosure; inference is still counted for each local use.</>}</div></div>
                 <div style={{display:'grid',gridTemplateColumns:'minmax(220px,auto) minmax(160px,220px) 1fr',gap:8,alignItems:'start',background:'#f8faf8',borderRadius:10,padding:'8px 10px',marginBottom:8}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Where should AI hardware manufacturing be counted?<select value={embodiedUse?.embodiedBoundary||'upstream'} onChange={e=>updateDeptModelUses(modelId,'embodiedBoundary',e.target.value)} style={{display:'block',width:'100%',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}><option value="upstream">Upstream / vendor or cloud service</option><option value="allocated-local">Allocate a share to this department</option></select></label>{embodiedUse?.embodiedBoundary==='allocated-local'&&<label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Department share of hardware (%)<input type="number" min="0" max="100" step="1" value={embodiedUse?.embodiedAllocationPct??'100'} onChange={e=>updateDeptModelUses(modelId,'embodiedAllocationPct',e.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/></label>}<div className="note" style={{fontSize:10,margin:0,paddingTop:3}}>{embodiedUse?.embodiedBoundary==='allocated-local'?(embodiedTotalKg>0?<>CEDARS allocates <strong>{embAllocationPct}%</strong> of this model's manufacturing footprint here, approximately <strong>{embodiedMonthlyKg} kgCO₂e/month</strong> over {embodiedMonths} months. It is counted once per model.</>:<>No model-hardware embodied value is available yet, so this allocation currently adds nothing.</>):<>Manufacturing remains upstream and is not added to the Department Scope 3 footprint.</>}</div></div>
@@ -3671,7 +3675,7 @@ function App() {
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={dash.scopes.scope3TravelAssessed?fmtCo2(dash.scopes.scope3TravelKg):'Not assessed'} sub={dash.scopes.scope3TravelAssessed?`${dash.scopes.imagingScans.toLocaleString()} scans × ${settings.patientTravelKm} km local avg round trip · passenger-car factor · Extended estimate.`:`Enter a local average round-trip distance to assess. A ${PATIENT_KM_RT} km screening reference (${fmtCo2(dash.scopes.scope3TravelScreeningKg)}) is not included in the reported subtotal.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
-              <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={staffCommuteAssessed?fmtCo2(staffCommuteCo2):'Not assessed'} sub={staffCommuteAssessed?`${staffCount} staff × ${staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo · passenger-car factor · Extended estimate.`:'Enter both local staff count and average commute distance. CEDARS no longer infers FTE from scanner counts.'}/>
+              <Card icon={<Car/>}        title="Scope 3 — Staff commute"   value={staffCommuteAssessed?fmtCo2(staffCommuteCo2):'Not assessed'} sub={staffCommuteAssessed?`${staffCount} staff × ${staffCommuteKm} km one-way × ${STAFF_DAYS_PER_MO} days/mo · passenger-car factor · Extended estimate.`:'Enter local staff count and average commute distance to assess staff commuting.'}/>
               <Card icon={<Wifi/>}       title="Scope 3 — Data transfer"   value={fmtCo2(networkTransferCo2)}         sub={`${networkTransfer.gb.toLocaleString()} GB from modality-specific study sizes × 0.001 kWh/GB. Fixed-line network segment only (Aslan et al. 2018).`}/>
               {dash.scopes.scope3CloudStorageKg>0&&<Card icon={<Database/>} title="Scope 3 — Cloud archive electricity" value={fmtCo2(dash.scopes.scope3CloudStorageKg)} sub={`Cloud archive carbon uses ${dash.storage.ci} kgCO₂e/kWh rather than the hospital grid.`}/>}
             </div>
@@ -3790,7 +3794,7 @@ function App() {
           {dashOpen['resources'] && (
           <section id="dash-resources" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>4. Resource footprint</h2>
-            <p className="note" style={{marginBottom:12}}>Water, paper, and generic hazardous waste are <strong>not assessed by default</strong>. Enter local annual totals from water bills, procurement records, or waste manifests to report them. Historical proxy calculations remain visible only as screening references.</p>
+            <p className="note" style={{marginBottom:12}}>Water, paper, and generic hazardous waste are <strong>not assessed by default</strong>. Enter local annual totals from water bills, procurement records, or waste manifests to report them. Screening estimates remain separate from reported results unless local data are entered.</p>
             <div className="grid" style={{marginBottom:12}}>
               <label>Annual department water (L)<input type="number" min="0" value={settings.waterLitresAnnual} onChange={e=>set('waterLitresAnnual',e.target.value)} placeholder="blank = not assessed"/></label>
               <label>Annual paper use (kg)<input type="number" min="0" value={settings.paperKgAnnual} onChange={e=>set('paperKgAnnual',e.target.value)} placeholder="blank = not assessed"/></label>
@@ -3805,7 +3809,7 @@ function App() {
             <details className="methodologyDetails" style={{marginTop:10}}>
               <summary>Why is the water screening reference not reported by default?</summary>
               <div className="note" style={{marginTop:8}}>
-                CEDARS can calculate a screening reference by multiplying department electricity by {WATER_PER_KWH} L/kWh, but that figure is a data-centre cooling proxy; no published study has measured water use per kWh for imaging equipment. It is therefore shown for orientation only and is not promoted into the reported Department result unless a local annual water value is entered. The best evidence available is for cooling <em>energy</em>: in a one-year instrumented study of three CT and four MRI scanners, dedicated cooling systems accounted for 44.5% of the combined scanner-plus-cooling consumption<Ref id="heye-radiology-2020" order={DEPT_WATER_REFS}/>. Whether that cooling consumes water depends on the plant: closed-loop air-cooled chillers reject heat to air and use essentially no water on site; water-cooled chillers fed by a cooling tower lose water to evaporation; once-through city-water cooling consumes the most; and many hospitals run scanners from a shared chilled-water loop, where the water sits at the central plant. Off-site, every kWh also carries the water used to generate it, which varies by grid<Ref id="li-thirsty-2023" order={DEPT_WATER_REFS}/>. CEDARS will replace the screening factor with a cooling-type model as evidence becomes available, and welcomes measured data from departments (see About).
+                CEDARS can calculate a screening reference by multiplying department electricity by {WATER_PER_KWH} L/kWh, but that figure is a data-centre cooling proxy; no published study has measured water use per kWh for imaging equipment. It is therefore shown for orientation only and is not promoted into the reported Department result unless a local annual water value is entered. The best evidence available is for cooling <em>energy</em>: in a one-year instrumented study of three CT and four MRI scanners, dedicated cooling systems accounted for 44.5% of the combined scanner-plus-cooling consumption<Ref id="heye-radiology-2020" order={DEPT_WATER_REFS}/>. Whether that cooling consumes water depends on the plant: closed-loop air-cooled chillers reject heat to air and use essentially no water on site; water-cooled chillers fed by a cooling tower lose water to evaporation; once-through city-water cooling consumes the most; and many hospitals run scanners from a shared chilled-water loop, where the water sits at the central plant. Off-site, every kWh also carries the water used to generate it, which varies by grid<Ref id="li-thirsty-2023" order={DEPT_WATER_REFS}/>. Because scanner water use depends on cooling infrastructure and the local grid, use local annual water data for a reported Department result; departments can contribute measured data via About.
                 <ReferenceList ids={DEPT_WATER_REFS} compact/>
               </div>
             </details>
@@ -3861,7 +3865,15 @@ function App() {
               systemType={scen.aiSystemType || ''}
               onSystemType={v => setS('aiSystemType', v)}
               onRoute={r => {
-                setS('aiRoute', r);
+                setScen(s => ({
+                  ...s,
+                  aiRoute:r,
+                  ...(r==='own' && s.modelId==='model-primary' && !s.projectName ? {
+                    modelKey:'custom', taskType:'', architecture:'', paramsM:'',
+                    accuracyPct:'', accuracyMetric:'', performanceValidationContext:'', performanceSource:'',
+                    clinicalEffectBasis:'none', scanTimeReductPct:'0', lowValueReductPct:'0',
+                  } : {}),
+                }));
                 if (r === 'compare') {
                   ensureBenchModels();
                   setAiOpen(o => ({...o, benchmark: true}));
@@ -3869,7 +3881,7 @@ function App() {
                 }
                 scrollToAiWorkspace();
               }}
-              onOwnMode={m => setS('ownMode', m)}
+              onOwnMode={m => {setS('ownMode', m);setAiProfileSection(m==='spec'?'inference':'training');}}
               examples={AI_EXAMPLES} onExample={loadAiExample} onReset={startBlankAiRecord}
             />
             </div>
@@ -3914,7 +3926,7 @@ function App() {
           )}
 
           {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && (
-            <div className="aiProfileStatus" data-ai-workspace-start data-demo-target="ai-profile-status">
+            <div className="aiProfileStatus aiProfileStatusLegacy" aria-hidden="true">
               <div><span>PROFILE STATUS</span><strong>{ecoLabelData.hasData ? 'Results available' : 'Complete the profile'}</strong><small>{ecoLabelData.lifecycleCoverage}</small></div>
               <button type="button" onClick={()=>goToScore('ai')}>View Results →</button>
             </div>
@@ -4755,25 +4767,33 @@ function App() {
           )}
 
           {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && (
-            <div id="ai-profile-editor" data-demo-target="ai-record-row" style={{display:'grid', gridTemplateColumns:'1fr 320px', gap:18, alignItems:'start', marginTop:18}} className="aiRecordGrid workflowAnchor">
+            <div id="ai-profile-editor" data-ai-workspace-start data-demo-target="ai-record-row" className="aiRecordGrid aiRecordGridSingle workflowAnchor">
               <div>
-                <div className="aiProfileEditorHeading">
+                <div className="aiProfileEditorHeading" data-demo-target="ai-profile-status">
                   <span>BUILD PROFILE</span>
                   <h2>AI Sustainability Profile</h2>
-                  <p>Enter each model, training, deployment, and boundary value once. Results are calculated from this profile.</p>
+                  <p>Record the clinical context and lifecycle evidence once, then use the same profile for Results, Improve, and Report.</p>
                 </div>
-                {renderAiRecordForm()}
+                <AiProfileEditor
+                  scen={scen} ecoLabel={ecoLabel} ecoLabelData={ecoLabelData}
+                  setS={setS} setEco={setEco} setModel={setModel} setCloudProvider={setCloudProvider}
+                  meta={META} modelLibrary={AI_MODEL_LIBRARY} cloudRegions={CLOUD_REGIONS} cloud={CLOUD}
+                  waterPerKwh={WATER_PER_KWH} volumeEstimates={VOLUME_ESTIMATES} provenance={PROVENANCE}
+                  refsOrder={AI_PAGE_REFS} onContribute={()=>setContributeOpen(true)}
+                  section={aiProfileSection} onSection={setAiProfileSection}
+                  localRegion={settings.region}
+                />
               </div>
-              <div style={{position:'sticky', top:16, display:'flex', flexDirection:'column', gap:12}}>
-                <div data-demo-target="ai-disclosure" style={{background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'16px 18px', display:'flex', flexDirection:'column', gap:8}}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline'}}><strong style={{fontSize:13}}>Disclosure completeness</strong><strong style={{fontSize:13, color:'#2E7D32'}}>{aiChecklistDone} of {aiChecklist.length}</strong></div>
-                  <div style={{height:8, background:'#e0efe2', borderRadius:4, overflow:'hidden'}}><div style={{width:`${Math.round(aiChecklistDone/aiChecklist.length*100)}%`, height:8, background:'#2E7D32'}}/></div>
-                  {aiChecklistDone < aiChecklist.length && (
-                    <div className="note" style={{margin:0}}>Still open: <strong>{aiChecklist.filter(([,ok])=>!ok).map(([n])=>n).join(' · ')}</strong></div>
-                  )}
-                  <div className="note" style={{margin:0}}>The full checklist, with each item explained, is on <button type="button" className="inlineTextButton" onClick={()=>{setEcoLabelMode('ai');setPage('report');}}>Report &amp; Share</button>, where the exports are generated.</div>
+              <div className="aiReportingBar" data-demo-target="ai-disclosure">
+                <div className="aiReportingBarMain">
+                  <div className="aiReportingBarLabel"><strong>Reporting completeness</strong><span>{aiChecklistDone} of {aiChecklist.length}</span></div>
+                  <div className="aiReportingTrack" role="progressbar" aria-label="Reporting completeness" aria-valuemin="0" aria-valuemax={aiChecklist.length} aria-valuenow={aiChecklistDone}><span style={{width:`${Math.round(aiChecklistDone/aiChecklist.length*100)}%`}}/></div>
+                  <div className="aiReportingActions">
+                    {aiChecklistDone < aiChecklist.length && <button type="button" className="download" onClick={()=>{const next=aiChecklist.find(([,ok])=>!ok);if(next)openAiChecklistItem(next[2]);}}>Review {aiChecklist.length-aiChecklistDone} gap{aiChecklist.length-aiChecklistDone===1?'':'s'}</button>}
+                    <button type="button" onClick={()=>goToScore('ai')}>View Results →</button>
+                  </div>
                 </div>
-                <div className="aiRecordNextActions"><button onClick={()=>goToScore('ai')}>View Results →</button><button className="download" onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.ownMode==='spec'?'procure':'develop');setPage('scenario');}}>Go to Improve</button></div>
+                {aiChecklistDone < aiChecklist.length && <div className="aiReportingGapText">Needs review: {aiChecklist.filter(([,ok])=>!ok).map(([name])=>name).join(' · ')}</div>}
               </div>
             </div>
           )}
@@ -4936,7 +4956,37 @@ function App() {
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
           })()}
-          {ecoLabelMode==='ai' && <section className="aiImproveWorkspace" data-demo-target="ai-improve-workspace">
+          {ecoLabelMode==='ai' && <>
+            <AiImproveWorkspace
+              mode={improveAiStage}
+              scen={scen}
+              ecoLabelData={ecoLabelData}
+              visibleAiModels={visibleAiModels}
+              modelDisplayName={modelDisplayName}
+              onSelectModel={id=>{const record=aiModels[id];if(record)setScen({...modelScenFromRecord(record,SCEN_DEFAULTS)});}}
+              onManageModels={openAiModelsFromImprove}
+              onEditProfile={section=>{
+                setPage('ai');
+                setS('aiRoute','own');
+                if(['training','inference','compute','water'].includes(section)) setAiProfileSection(section);
+                window.setTimeout(()=>{
+                  const id=section==='performance'?'ai-performance-section'
+                    :section==='technical'?'ai-technical-section'
+                    :section==='effects'?'ai-effects-section'
+                    :['training','inference','compute','water'].includes(section)?`ai-${section}-section`
+                    :'ai-model-record';
+                  const el=document.getElementById(id)||document.getElementById('ai-model-record');
+                  if(el?.tagName==='DETAILS') el.open=true;
+                  el?.scrollIntoView({behavior:'smooth',block:'start'});
+                },60);
+              }}
+              onOpenComparison={()=>{setPage('ai');setS('aiRoute','compare');ensureBenchModels();setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
+              onResults={()=>{setEcoLabelMode('ai');setPage('ecolabel');}}
+            />
+            <SystemEffectsCallout kind="ai" anchorId="ai-system-effects"/>
+            <ReferenceList ids={AI_IMPROVE_REFS}/>
+          </>}
+          {false && ecoLabelMode==='ai' && <section className="aiImproveWorkspace" data-demo-target="ai-improve-workspace">
             <div className="aiImproveHeader"><div><span>AI MODEL &amp; INFORMATICS</span><h2>Improve AI · {improveAiStage==='develop'?'Develop / fine-tune':'Procure / deploy'}</h2><p>Use the lifecycle map to move from definition through monitoring. Development and procurement use different actions, but both point back to the same canonical AI model record.</p></div><div className="aiImproveModelPicker">{visibleAiModels.length>0?<><label>AI model<select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:visibleAiModels[0].id} onChange={e=>{const record=aiModels[e.target.value];if(record)setScen({...modelScenFromRecord(record,SCEN_DEFAULTS)});}}>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></label><small>Shows AI models already added to this CEDARS assessment.</small><button type="button" className="inlineTextButton" onClick={openAiModelsFromImprove}>Add or manage AI models →</button></>:<><strong>No AI models added yet</strong><small>Add a model before reviewing model-specific improvement opportunities.</small><button type="button" onClick={openAiModelsFromImprove}>Add an AI model →</button></>}</div></div>
             <div className="aiImproveStageLabel">LIFECYCLE STAGE</div><div className="aiImproveStageGrid"><button type="button" aria-selected={improveAiStage==='develop'} className={improveAiStage==='develop'?'active':''} onClick={()=>{setImproveAiStage('develop');setImproveAiLifecycleStep('build');}}><span>DEVELOP · FINE-TUNE</span><strong>Internally developed, fine-tuned, or retrained AI</strong><small>Training, experimentation, precision, model design, data and compute.</small>{improveAiStage==='develop'&&<b>SELECTED</b>}</button><button type="button" aria-selected={improveAiStage==='procure'} className={improveAiStage==='procure'?'active':''} onClick={()=>{setImproveAiStage('procure');setImproveAiLifecycleStep('compare');}}><span>PROCURE · DEPLOY</span><strong>Vendor / externally developed AI</strong><small>Candidate comparison, vendor questions, deployment assumptions and monitoring.</small>{improveAiStage==='procure'&&<b>SELECTED</b>}</button></div><div className="aiLifecycleMap">{AI_IMPROVE_LIFECYCLE[improveAiStage].map((stage,i)=><React.Fragment key={stage.key}><button type="button" className={improveAiLifecycleStep===stage.key?'active':''} aria-selected={improveAiLifecycleStep===stage.key} onClick={()=>setImproveAiLifecycleStep(stage.key)}><span>{stage.step}</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></button>{i<4&&<ArrowRight size={17}/>}</React.Fragment>)}</div>
             {(()=>{const stage=AI_IMPROVE_LIFECYCLE[improveAiStage].find(s=>s.key===improveAiLifecycleStep) || AI_IMPROVE_LIFECYCLE[improveAiStage][0];const items=(improveAiStage==='develop'?AI_IMPROVE_DEVELOP:AI_IMPROVE_PROCURE).filter(item=>aiImproveLifecycleStage(item.title,improveAiStage)===stage.key);return <><div className="aiImproveStageIntro"><strong>{stage.step} · {stage.title}</strong><p>{improveAiStage==='develop'?(stage.key==='build'?'Measure development compute and use explicit stopping/checkpoint policies before specialized optimization.':stage.key==='define'?'Set the clinical objective and compute budget before expanding model size or experimentation.':stage.key==='validate'?'Confirm that efficient settings preserve the required clinical performance.':stage.key==='deploy'?'Translate model efficiency into the actual serving hardware, utilization, and compute region.':'Track retraining, storage/hardware overhead, and demand growth after deployment.'):(stage.key==='compare'?'Compare clinical fit first, then request the environmental information needed for a like-for-like decision.':stage.key==='define'?'Define intended use, acceptable performance, and local workflow requirements before optimizing for efficiency.':stage.key==='validate'?'Validate both clinical performance and the deployment assumptions used in the environmental comparison.':stage.key==='deploy'?'Ask which validated serving/hosting options can reduce compute without changing clinical behavior.':'Keep vendor updates, hosting changes, and demand growth from turning today’s assumptions into stale ones.')}</p></div><div className="aiImproveRecommendationList">{items.map((item,i)=><article className="aiImproveRecommendation" key={item.title}><div className="aiImproveRank">{i+1}</div><div className="aiImproveRecommendationBody"><div className="aiImproveRecommendationTitle"><strong>{item.title}</strong><span className={`aiImprovePriority ${item.priority.toLowerCase()}`}>{item.priority}</span><span className="aiImproveMode">{item.mode}</span></div><p>{item.body}</p>{item.inputs&&<div className="aiImproveInputs"><strong>{item.mode==='CEDARS input'?'Updates':'May change'}:</strong> {item.inputs}</div>}<div className="aiImproveMeta"><span>{item.applies}</span><div className="improveEvidenceChips"><span>Evidence</span>{item.refs.map(id=>{const r=REFS[id];const author=(r?.authors||id).split(',')[0].split(' ')[0];return <ExternalLink key={id} href={refUrl(r)} className="improveEvidenceChip">{author} · {r?.venue||'Source'} {r?.year||''}</ExternalLink>;})}</div></div></div></article>)}</div>{improveAiStage==='procure'&&stage.key==='compare'&&<div className="aiImproveVendorPrompt integrated"><div><span>VENDOR DISCLOSURE CHECKLIST</span><strong>What should I ask for?</strong></div><p>Ask for product/model version, intended use, validation basis, training hardware/energy when available, inference energy or throughput on the proposed hardware, hosting region/PUE, expected calls or token use for LLM/agentic systems, integration path, and how software/model updates change these assumptions.</p><div className="aiImproveVendorActions"><button type="button" onClick={()=>{setPage('ai');setS('aiRoute','compare');ensureBenchModels();setAiOpen(o=>({...o,benchmark:true}));}}>Open candidate comparison →</button><button type="button" className="download" onClick={openAiModelsFromImprove}>Review AI model records →</button></div></div>}</>;})()}

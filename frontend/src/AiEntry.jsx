@@ -153,13 +153,16 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
         </div>
       )}
 
-      <details id="ai-examples" className="aiExamplesDetails">
-        <summary>Examples <small>optional</small></summary>
-        <div>
-          <p>Load an example or start empty. Example values are illustrative or literature-derived.</p>
-          <div className="quickStartChoices"><button type="button" onClick={onReset}>Start empty</button>{examples.map(ex => <button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>{ex.title}</button>)}</div>
-        </div>
-      </details>
+      {(()=>{
+        const filtered = systemType ? examples.filter(ex => !ex.scen?.aiSystemType || ex.scen.aiSystemType===systemType) : examples;
+        const featured = filtered.slice(0,3), more = filtered.slice(3);
+        return <section id="ai-examples" className="aiExamplesGuide">
+          <div className="aiExamplesGuideHeader"><span>NEW TO CEDARS?</span><div><strong>Start from an example</strong><p>Load a worked example, then replace its values with your own. Examples are illustrative or literature-derived.</p></div></div>
+          <div className="aiExampleChoiceGrid">{featured.map(ex=><button key={ex.key} type="button" className="aiExampleChoice" onClick={()=>onExample(ex.key)}><strong>{ex.title}</strong><small>{ex.scen?.ownMode==='spec'?'Clinical evaluation example':'Development / measured example'}</small><b>Load example →</b></button>)}</div>
+          {more.length>0&&<details className="aiExamplesMore"><summary>More examples ({more.length})</summary><div className="quickStartChoices">{more.map(ex=><button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>{ex.title}</button>)}</div></details>}
+          <div className="aiExamplesStartBlank"><button type="button" className="download" onClick={onReset}>Start with a blank profile →</button></div>
+        </section>;
+      })()}
     </section>
   );
 }

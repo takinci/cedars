@@ -55,8 +55,8 @@ export const SCEN_DEFAULTS = {
   comparePreset: '', // versioned built-in worked comparison, e.g. maistro-agentic-v1
   // Stable record identity + typed performance semantics. accuracyPct/accuracyMetric remain the
   // legacy bridge so old links and calculations continue to load unchanged.
-  modelId: 'model-primary', performanceUnit: 'percent', performanceDirection: 'higher',
-  performanceValidationContext: '', performanceSource: '',
+  modelId: 'model-primary', modelIntendedUse: '', performanceUnit: 'percent', performanceDirection: 'higher',
+  performanceValidationContext: '', performanceSource: '', performanceSupporting: '', performanceUncertainty: '',
   // Training and inference may happen in different compute contexts. Blank values inherit the
   // legacy shared cloudProvider/cloudRegion/customPue/renewablePct fields.
   trainingProvider: '', trainingRegion: '', trainingPue: '', trainingRenewablePct: '',
@@ -65,7 +65,8 @@ export const SCEN_DEFAULTS = {
   // Shared comparison definition. Kept in the full assessment rather than the compact URL because
   // these are authoring/free-text fields, like projectName.
   compareClinicalTask: '', compareEndpoint: '', compareCohort: '',
-  // Not in the URL by design (free text, authoring detail): projectName.
+  // Not in the compact URL by design (free-text authoring detail): projectName, modelIntendedUse,
+  // performanceSupporting, and performanceUncertainty. These remain in saved CEDARS assessments.
   projectName: '',
 };
 

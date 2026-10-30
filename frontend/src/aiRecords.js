@@ -11,6 +11,8 @@ export function performanceMetricFromScen(scen = {}) {
     direction: scen.performanceDirection === 'lower' ? 'lower' : 'higher',
     validationContext: text(scen.performanceValidationContext),
     provenance: text(scen.performanceSource),
+    supporting: text(scen.performanceSupporting),
+    uncertainty: text(scen.performanceUncertainty),
     primary: true,
   };
 }
@@ -24,6 +26,7 @@ export function modelRecordFromScen(scen = {}) {
     id: text(scen.modelId || 'model-primary'),
     name: text(scen.projectName || 'Untitled model'),
     taskType: text(scen.taskType),
+    intendedUse: text(scen.modelIntendedUse),
     // Keep the complete calculator configuration with the canonical record. Department deployments
     // reference this record by id; they no longer copy model energy/hardware fields into each use.
     config: cloneJson(scen),
@@ -65,6 +68,7 @@ export function modelScenFromRecord(record = {}, defaults = {}) {
   return {
     ...defaults,
     modelId: text(record.id || defaults.modelId), projectName: text(record.name || defaults.projectName), taskType: text(record.taskType || defaults.taskType),
+    modelIntendedUse: text(record.intendedUse || defaults.modelIntendedUse),
     modelKey: text(spec.modelKey || defaults.modelKey), architecture: text(spec.architecture || defaults.architecture), precision: text(spec.precision || defaults.precision),
     paramsM: text(spec.parametersMillions || defaults.paramsM), dim: text(spec.dimensionality || defaults.dim), resolution: text(spec.resolution || defaults.resolution), slices: text(spec.slices || defaults.slices),
     trainGpu: text(train.gpu || defaults.trainGpu), trainNumGpus: text(train.gpuCount || defaults.trainNumGpus), trainHours: text(train.hours || defaults.trainHours),
@@ -72,6 +76,7 @@ export function modelScenFromRecord(record = {}, defaults = {}) {
     inferKwh: text(infer.measuredKwhPerStudy || defaults.inferKwh), whPer1kTokens: text(infer.whPer1kTokens || defaults.whPer1kTokens), callsPerTask: text(infer.callsPerTask || defaults.callsPerTask), tokensPerCall: text(infer.tokensPerCall || defaults.tokensPerCall),
     accuracyMetric: text(perf.metric || defaults.accuracyMetric), accuracyPct: text(perf.value || defaults.accuracyPct), performanceUnit: text(perf.unit || defaults.performanceUnit),
     performanceDirection: perf.direction === 'lower' ? 'lower' : (defaults.performanceDirection || 'higher'), performanceValidationContext: text(perf.validationContext || defaults.performanceValidationContext), performanceSource: text(perf.provenance || defaults.performanceSource),
+    performanceSupporting: text(perf.supporting || defaults.performanceSupporting), performanceUncertainty: text(perf.uncertainty || defaults.performanceUncertainty),
     cloudProvider: text(ic.provider || tc.provider || defaults.cloudProvider), cloudRegion: text(ic.region || tc.region || defaults.cloudRegion), customPue: text(ic.pue || tc.pue || defaults.customPue), renewablePct: text(ic.renewablePct || defaults.renewablePct),
     trainingProvider: text(tc.provider || defaults.trainingProvider), trainingRegion: text(tc.region || defaults.trainingRegion), trainingPue: text(tc.pue || defaults.trainingPue), trainingRenewablePct: text(tc.renewablePct || defaults.trainingRenewablePct),
     inferenceProvider: text(ic.provider || defaults.inferenceProvider), inferenceRegion: text(ic.region || defaults.inferenceRegion), inferencePue: text(ic.pue || defaults.inferencePue), inferenceRenewablePct: text(ic.renewablePct || defaults.inferenceRenewablePct),

@@ -98,7 +98,7 @@ export function ReferenceList({ids, compact = false}) {
             const linkText = r.doi ? `doi:${r.doi}` : url.replace(/^https?:\/\//,'').replace(/\/$/,'');
             return (
               <li key={id}>
-                {compact ? `${r.authors.split(',')[0]} et al. ` : `${r.authors}. ${r.title}. `}
+                {`${r.authors}. ${r.title}. `}
                 <em>{r.venue}</em> {r.cite}. <ExternalLink href={url}>{linkText}</ExternalLink>
               </li>
             );

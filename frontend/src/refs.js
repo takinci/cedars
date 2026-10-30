@@ -35,7 +35,7 @@ export const REFS = {
     doi: '10.1016/j.ejrai.2025.100044', verified: '2026-10-04',
   },
   'chambon-roentgen-2022': {
-    authors: 'Chambon P, Bluethgen C, Delbrouck J-B, et al.',
+    authors: 'Chambon P, Bluethgen C, Delbrouck J-B, Van der Sluijs R, Połacin M, Zambrano Chaves JM, Abraham TM, Purohit S, Langlotz CP, Chaudhari A',
     title: 'RoentGen: vision-language foundation model for chest X-ray generation',
     venue: 'arXiv', year: 2022, cite: '2022; arXiv:2211.12737',
     doi: '10.48550/arXiv.2211.12737', verified: '2026-10-04',
@@ -53,15 +53,15 @@ export const REFS = {
     doi: '10.48550/arXiv.2304.03271', verified: '2026-10-04',
   },
   'heye-radiology-2020': {
-    authors: 'Heye T, Knoerl R, Wehrle T, et al.',
+    authors: 'Heye T, Knoerl R, Wehrle T, Mangold D, Cerminara A, Loser M, Plumeyer M, Degen M, Lüthy R, Brodbeck D, Merkle EM',
     title: 'The energy consumption of radiology: energy- and cost-saving opportunities for CT and MRI operation',
     venue: 'Radiology', year: 2020, cite: '2020;295:593–605',
     doi: '10.1148/radiol.2020192084', verified: '2026-10-04',
   },
   'ecologits-joss': {
-    authors: 'Rincé S, et al. (GenAI Impact)',
+    authors: 'Rincé S, Banse A',
     title: 'EcoLogits: evaluating the environmental impacts of generative AI',
-    venue: 'J Open Source Softw', year: 2025, cite: 'JOSS 10(107):7471',
+    venue: 'J Open Source Softw', year: 2025, cite: '2025;10(111):7471',
     doi: '10.21105/joss.07471', verified: '2026-10-04',
   },
   'gsf-sci-iso': {
@@ -143,10 +143,10 @@ export const REFS = {
     doi: '10.48550/arXiv.2509.20241', verified: '2026-10-04',
   },
   'kpodzro-haip-2026': {
-    authors: 'Kpodzro S, Kim JY, Hasan A, Thomas C, et al.',
+    authors: 'Kpodzro S, Kim JY, Hasan A, Thomas C, Draugelis M, Jeffries SM, Beecy A, Stroum C, Valladares A, Eigen Z, Tobey D, Vidal DE, Lifson MA, Mulligan D, Balu S, Sendak M',
     title: 'A Collaborative Best Practice Guide for Promoting AI Vendor Transparency in Health Care — The HAIP AI Vendor Disclosure Framework',
-    venue: 'NEJM AI', year: 2026, cite: '2026;3(5)',
-    doi: '10.1056/AIp2500985', verified: '2026-10-04',
+    venue: 'NEJM AI', year: 2026, cite: '2026;3(5):AIp2500985 · PMID 42932684',
+    doi: '10.1056/AIp2500985', pmid: '42932684', verified: '2026-10-29',
   },
   'strubell-nlp-2019': {
     authors: 'Strubell E, Ganesh A, McCallum A',
@@ -167,7 +167,7 @@ export const REFS = {
     url: 'https://www.jmlr.org/papers/v21/20-312.html', verified: '2026-10-07',
   },
   'patterson-4ms-2022': {
-    authors: 'Patterson D, Gonzalez J, Hölzle U, et al.',
+    authors: 'Patterson D, Gonzalez J, Hölzle U, Le Q, Liang C, Munguia L-M, Rothchild D, So D, Texier M, Dean J',
     title: 'The Carbon Footprint of Machine Learning Training Will Plateau, Then Shrink',
     venue: 'Computer', year: 2022, cite: '2022;55(7):18–28',
     doi: '10.1109/MC.2022.3148714', verified: '2026-10-07',
@@ -201,6 +201,24 @@ export const REFS = {
     title: 'Alignment of Policy, Practice, and Patient Safety for Trustworthy AI in Radiology',
     venue: 'Radiol Artif Intell', year: 2026, cite: '2026 Jul;8(4):e250982 · PMID 42200797 · PMCID PMC13349408',
     doi: '10.1148/ryai.250982', pmid: '42200797', pmcid: 'PMC13349408', verified: '2026-10-07',
+  },
+  'maier-hein-metrics-reloaded-2024': {
+    authors: 'Maier-Hein L, Reinke A, Godau P, Tizabi MD, Buettner F, Christodoulou E, Glocker B, Isensee F, Kleesiek J, Kozubek M, Reyes M, Riegler MA, Wiesenfarth M, Kavur AE, Sudre CH, Baumgartner M, Eisenmann M, Heckmann-Nötzel D, Rädsch T, Acion L, Antonelli M, Arbel T, Bakas S, Benis A, Blaschko MB, Cardoso MJ, Cheplygina V, Cimini BA, Collins GS, Farahani K, Ferrer L, Galdran A, van Ginneken B, Haase R, Hashimoto DA, Hoffman MM, Huisman M, Jannin P, Kahn CE, Kainmueller D, Kainz B, Karargyris A, Karthikesalingam A, Kofler F, Kopp-Schneider A, Kreshuk A, Kurc T, Landman BA, Litjens G, Madani A, Maier-Hein K, Martel AL, Mattson P, Meijering E, Menze B, Moons KGM, Müller H, Nichyporuk B, Nickel F, Petersen J, Rajpoot N, Rieke N, Saez-Rodriguez J, Sánchez CI, Shetty S, van Smeden M, Summers RM, Taha AA, Tiulpin A, Tsaftaris SA, Van Calster B, Varoquaux G, Jäger PF',
+    title: 'Metrics reloaded: recommendations for image analysis validation',
+    venue: 'Nat Methods', year: 2024, cite: '2024;21(2):195–212 · PMID 38347141 · PMCID PMC11182665',
+    doi: '10.1038/s41592-023-02151-z', pmid: '38347141', pmcid: 'PMC11182665', verified: '2026-10-29',
+  },
+  'drukker-midrc-metrictree-2024': {
+    authors: 'Drukker K, Sahiner B, Hu T, Kim GH, Whitney HM, Baughan N, Myers KJ, Giger ML, McNitt-Gray M',
+    title: 'MIDRC-MetricTree: a decision tree-based tool for recommending performance metrics in artificial intelligence-assisted medical image analysis',
+    venue: 'J Med Imaging (Bellingham)', year: 2024, cite: '2024;11(2):024504 · PMID 38576536 · PMCID PMC10990563',
+    doi: '10.1117/1.JMI.11.2.024504', pmid: '38576536', pmcid: 'PMC10990563', verified: '2026-10-29',
+  },
+  'klontzas-esr-metrics-2026': {
+    authors: 'Klontzas ME, Groot Lipman KBW, Akinci D’Antonoli T, Andreychenko A, Cuocolo R, Dietzel M, Gitto S, Huisman H, Santinha J, Vernuccio F, Visser JJ, Huisman M',
+    title: 'ESR Essentials: common performance metrics in AI—practice recommendations by the European Society of Medical Imaging Informatics',
+    venue: 'Eur Radiol', year: 2026, cite: '2026;36(2):1528–1540 · PMID 40753524 · PMCID PMC12953274',
+    doi: '10.1007/s00330-025-11890-w', pmid: '40753524', pmcid: 'PMC12953274', verified: '2026-10-29',
   },
   'owid-ci': {
     authors: 'Our World in Data',

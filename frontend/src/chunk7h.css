@@ -1,0 +1,118 @@
+/* Chunk 7H — clearer scientific hierarchy for AI Profile + interactive Improve workspace. */
+.aiProfileDisclosure{border:1px solid #dfe7df;border-radius:10px;background:#fff;overflow:hidden}
+.aiProfileDisclosure>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:13px 14px}
+.aiProfileDisclosure>summary::-webkit-details-marker{display:none}
+.aiProfileDisclosure>summary span{display:flex;flex-direction:column;gap:2px}
+.aiProfileDisclosure>summary strong{font-size:13.5px;color:#263238}
+.aiProfileDisclosure>summary small{font-size:11.5px;color:#607d66;line-height:1.4;font-weight:500}
+.aiProfileDisclosure>summary b{font-size:11.5px;color:#607d66;font-weight:700;text-align:right}
+.aiProfileDisclosure[open]>summary{background:#f8fbf8;border-bottom:1px solid #e7ede7}
+.aiProfileDisclosureBody{padding:14px}
+.aiPerformanceDisclosure>summary{border-left:3px solid #78909c}
+.aiEffectsDisclosure>summary{border-left:3px solid #2E7D32}
+.aiTechnicalDisclosure>summary{border-left:3px solid #a5b6a5}
+.aiMetricBestPractice{background:#f7fafb;border:1px solid #dde6e9;border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.aiMetricBestPractice>strong{font-size:12px;color:#37474f}
+.aiMetricBestPractice>p{font-size:11.5px;color:#607d66;margin:3px 0 8px;line-height:1.45}
+.aiMetricExamples{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.aiMetricExamples>span{font-size:11px;font-weight:700;color:#607d66}
+.aiMetricExamples>em{font-style:normal;font-size:10.5px;padding:3px 6px;border:1px solid #dbe4de;border-radius:5px;background:#fff;color:#455a64}
+.aiMetricGuideLinks{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px}
+.aiContextBand{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(280px,1.3fr) auto;gap:16px;align-items:center;border-top:1px solid #dce6dc;border-bottom:1px solid #dce6dc;padding:12px 2px;margin:18px 0;background:#fbfcfb}
+.aiContextBand>div{display:flex;flex-direction:column;gap:2px}
+.aiContextBand span,.aiBoundarySummary span{font-size:9.5px;font-weight:850;letter-spacing:.06em;color:#607d66}
+.aiContextBand strong,.aiBoundarySummary strong{font-size:13px;color:#263238}
+.aiContextBand small,.aiBoundarySummary small{font-size:11px;color:#78909c;line-height:1.35}
+.aiContextEditor{margin-top:-8px}
+.aiLifecycleSequence{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);gap:8px;align-items:stretch;margin-bottom:12px}
+.aiLifecycleArrow{display:flex;align-items:center;justify-content:center;color:#90a4ae;font-size:18px}
+.aiBoundarySummary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;border-top:1px solid #dce6dc;border-bottom:1px solid #dce6dc;padding:12px 2px;margin:18px 0;background:#fbfcfb}
+.aiBoundarySummary>div{display:flex;flex-direction:column;gap:2px}
+
+.aiExamplesGuide{margin-top:14px;border:1px solid #dbe7dc;border-left:3px solid #2E7D32;border-radius:9px;background:#fbfdfb;padding:13px 14px}
+.aiExamplesGuideHeader{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:10px}
+.aiExamplesGuideHeader span{font-size:9.5px;font-weight:850;letter-spacing:.06em;color:#2E7D32}
+.aiExamplesGuideHeader strong{display:block;font-size:14px;color:#263238;margin-top:2px}
+.aiExamplesGuideHeader p{font-size:11.5px;color:#607d66;margin:3px 0 0;line-height:1.4}
+.aiExampleChoiceGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.aiExampleChoice{display:flex!important;flex-direction:column;align-items:flex-start!important;text-align:left;padding:9px 10px!important;background:#fff!important;color:#263238!important;border:1px solid #dce5dc!important;border-radius:8px!important;box-shadow:none!important;min-height:76px}
+.aiExampleChoice strong{font-size:11.5px}
+.aiExampleChoice small{font-size:10.5px;color:#78909c;line-height:1.3;margin-top:3px}
+.aiExamplesMore{margin-top:8px}
+.aiExamplesMore>summary{cursor:pointer;font-size:11px;font-weight:700;color:#2E7D32}
+.aiExamplesMore .quickStartChoices{margin-top:8px}
+.aiExamplesStartBlank{margin-top:9px;display:flex;justify-content:flex-end}
+
+.aiImproveRedesign{display:grid;gap:18px}
+.aiImproveTopline{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,320px);gap:18px;align-items:start;border-bottom:1px solid #dce6dc;padding-bottom:16px}
+.aiImproveKicker{font-size:9.5px;font-weight:850;letter-spacing:.06em;color:#2E7D32}
+.aiImproveTopline h2,.aiImproveEmpty h2{font-size:24px;margin:3px 0 5px;color:#1b5e20}
+.aiImproveTopline p,.aiImproveEmpty>p{font-size:12.5px;line-height:1.5;color:#607d66;margin:0;max-width:760px}
+.aiImproveModelPicker{border:0!important;background:transparent!important;padding:0!important;display:flex;flex-direction:column;gap:6px}
+.aiImproveModelPicker label{font-size:11px;color:#455a64}
+.aiImprovePrinciple{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 16px;align-items:baseline;border-left:3px solid #455a64;background:#f7f9f9;padding:10px 12px;border-radius:4px}
+.aiImprovePrinciple strong{font-size:12px;color:#263238}
+.aiImprovePrinciple span{font-size:11.5px;color:#607d66;line-height:1.45}
+.aiImproveSectionHeading{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+.aiImproveSectionHeading>div>span{font-size:9.5px;font-weight:850;letter-spacing:.06em;color:#607d66}
+.aiImproveSectionHeading h3{margin:2px 0 0;font-size:16px;color:#263238}
+.aiImproveSectionHeading>small{font-size:11px;color:#78909c;padding-top:4px}
+.aiImproveRecommendationList,.aiImproveAllList{display:grid;gap:8px}
+.aiImproveRec{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;border-top:1px solid #e0e6e0;padding:11px 2px 3px;background:transparent!important;border-radius:0!important}
+.aiImproveRecNumber{width:24px;height:24px;border-radius:50%;background:#eef4ee;color:#455a64;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.aiImproveRecBody h3{font-size:13.5px;margin:3px 0 4px;color:#263238}
+.aiImproveRecBody>p{font-size:11.5px;color:#607d66;line-height:1.45;margin:0 0 6px}
+.aiImprovePurpose{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.03em;color:#455a64}
+.aiImprovePurpose.impact{color:#2E7D32}
+.aiImprovePurpose.clinical{color:#37474f}
+.aiImprovePurpose.evidence{color:#607d66}
+.aiImproveClinicalRequirement{border-left:2px solid #90a4ae;padding-left:8px;color:#455a64!important}
+.aiImproveRecActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aiImproveRecActions>button{padding:5px 8px!important;font-size:11px!important}
+.aiImproveEvidenceDetails{font-size:10.5px;color:#607d66;flex:1;min-width:220px}
+.aiImproveEvidenceDetails>summary{cursor:pointer;font-weight:700;color:#607d66}
+.aiImproveEvidenceDetails ol{margin:8px 0 0;padding-left:18px;display:grid;gap:6px}
+.aiImproveEvidenceDetails li{font-size:10.5px;line-height:1.45;color:#607d66}
+.aiScenarioSandbox{border:1px solid #d8e4d8;border-radius:10px;padding:14px 15px;background:#fbfdfb;scroll-margin-top:110px}
+.aiScenarioCompare{display:grid;grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);gap:8px;align-items:center;margin:12px 0}
+.aiScenarioCompare>div:not(.aiScenarioArrow){display:flex;flex-direction:column;gap:2px;border-top:1px solid #dfe6df;padding-top:8px}
+.aiScenarioCompare span{font-size:9.5px;font-weight:850;letter-spacing:.05em;color:#607d66}
+.aiScenarioCompare strong{font-size:18px;color:#263238}
+.aiScenarioCompare small{font-size:10.5px;color:#78909c}
+.aiScenarioArrow{text-align:center;color:#90a4ae;font-size:18px}
+.aiScenarioControls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.aiScenarioControls label{border:1px solid #e0e6e0;border-radius:8px;padding:9px 10px;background:#fff;display:grid;grid-template-columns:1fr auto;gap:5px 8px}
+.aiScenarioControls label.active{border-color:#2E7D32;box-shadow:inset 0 0 0 1px #2E7D32}
+.aiScenarioControls label>span{font-size:11px;font-weight:750;color:#455a64}
+.aiScenarioControls label>strong{font-size:12px;color:#2E7D32}
+.aiScenarioControls input{grid-column:1/-1;width:100%;accent-color:#2E7D32}
+.aiScenarioControls small{grid-column:1/-1;font-size:10px;color:#78909c;line-height:1.35}
+.aiScenarioActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.aiImproveAll{border-top:1px solid #dce6dc;padding-top:12px}
+.aiImproveAll>summary{cursor:pointer;font-size:12px;font-weight:800;color:#1b5e20}
+.aiImproveAllGroups{display:grid;gap:18px;margin-top:14px}
+.aiImproveAllGroups>section>h3{font-size:13px;color:#455a64;margin:0 0 5px}
+.aiImproveEmpty{border:1px solid #dce6dc;border-radius:10px;padding:18px;background:#fff}
+.aiImproveEmpty>button{margin-top:12px}
+.aiImproveEmpty>details{margin-top:14px;border-top:1px solid #e1e7e1;padding-top:10px}
+.aiImproveEmpty>details>summary{cursor:pointer;font-size:11.5px;font-weight:750;color:#2E7D32}
+
+@media(max-width:900px){
+  .aiContextBand{grid-template-columns:1fr 1fr}.aiContextBand>button{grid-column:1/-1;justify-self:start}
+  .aiExampleChoiceGrid{grid-template-columns:1fr 1fr}
+  .aiImproveTopline{grid-template-columns:1fr}
+  .aiScenarioControls{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .aiProfileDisclosure>summary{grid-template-columns:1fr}.aiProfileDisclosure>summary b{text-align:left}
+  .aiContextBand{grid-template-columns:1fr}
+  .aiLifecycleSequence{grid-template-columns:1fr}.aiLifecycleArrow{transform:rotate(90deg);min-height:18px}
+  .aiBoundarySummary{grid-template-columns:1fr}.aiBoundarySummary>button{justify-self:start}
+  .aiExampleChoiceGrid{grid-template-columns:1fr}
+  .aiExamplesGuideHeader{flex-direction:column}
+  .aiImprovePrinciple{grid-template-columns:1fr}
+  .aiImproveSectionHeading{flex-direction:column}
+  .aiImproveRec{grid-template-columns:26px minmax(0,1fr)}
+  .aiScenarioCompare{grid-template-columns:1fr}.aiScenarioArrow{transform:rotate(90deg)}
+  .aiImproveRecActions{align-items:flex-start;flex-direction:column}.aiImproveEvidenceDetails{min-width:0;width:100%}
+}
