@@ -93,7 +93,7 @@ export default function AiProfileEditor({
 
       <details id="ai-performance-section" className="aiProfileDisclosure aiPerformanceDisclosure">
         <summary>
-          <span><strong>Clinical performance context</strong><small>Important for clinically informed comparison; it does not make the environmental footprint smaller.</small></span>
+          <span><strong>Performance &amp; validation</strong><small>Important for clinically informed comparison; it does not make the environmental footprint smaller.</small></span>
           <b>{performanceStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody">
@@ -118,7 +118,7 @@ export default function AiProfileEditor({
 
       <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure">
         <summary>
-          <span><strong>Clinical &amp; workflow sustainability effects</strong><small>Verified downstream changes in care or workflow that can alter resource use.</small></span>
+          <span><strong>Clinical &amp; workflow effects</strong><small>Verified downstream changes in care or workflow that can alter resource use.</small></span>
           <b>{clinicalEffectStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody">

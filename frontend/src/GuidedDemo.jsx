@@ -390,9 +390,9 @@ export const GUIDED_DEMOS = {
       {target:'[data-demo-target="home-department"]', kicker:'BUILD PROFILE', title:'Start with the radiology department', body:'Use the Department pathway when the question is about the care setting: equipment, imaging workload, storage, resources, and any Clinical AI used locally.', actionHint:'Next opens the Department setup with illustrative values; no typing is required.'},
       {target:'[data-demo-target="leader-regional-preset"]', kicker:'BUILD PROFILE', title:'Build the operational baseline', body:'Equipment and imaging workload establish the department baseline. This walkthrough uses the illustrative Regional hospital preset; a real assessment should verify or replace every value.', actionHint:'The preset loads automatically when you continue.'},
       {target:'[data-demo-target="leader-clinical-ai-example"]', kicker:'BUILD PROFILE · CLINICAL AI', title:'Add Clinical AI where it is actually used', body:'Clinical AI belongs inside the department when it changes local compute or imaging operations. The model record is shared, while local study share and supported workflow effects stay specific to the department.', actionHint:'Illustrative Clinical AI uses load automatically when you continue.'},
-      {target:'#department-overview', kicker:'SEE RESULTS · FOOTPRINT', title:'Read the result before the methods', body:'Start with operational energy, carbon, per-study intensity, and major drivers. Core quantified results stay separate from extended estimates and categories that were not assessed.'},
+      {target:'#department-overview', kicker:'PROFILE · CURRENT FOOTPRINT', title:'Read the result before the methods', body:'Start with operational energy, carbon, per-study intensity, and major drivers. Core quantified results stay separate from extended estimates and categories that were not assessed.'},
       {target:'[data-demo-target="department-improve-workspace"]', kicker:'IMPROVE', title:'Test changes without rewriting the baseline', body:'Improve models prospective changes separately from the current state. Quantified scenario estimates remain distinct from planning guidance and from changes that have actually been implemented.'},
-      {target:'#department-score-panel', kicker:'SEE RESULTS · SCORE', title:'Interpret the current operational result', body:'The Department Score summarizes operational carbon intensity per delivered study within the stated boundary. It is not a claim that the entire department has no other environmental impacts.'},
+      {target:'#department-score-panel', kicker:'SCORE & ECOLABEL', title:'Interpret the current operational result', body:'The Department Score summarizes operational carbon intensity per delivered study within the stated boundary. It is not a claim that the entire department has no other environmental impacts.'},
       {target:'[data-demo-target="department-report-materials"]', kicker:'REPORT & SHARE', title:'Prepare a reproducible department report', body:'Review disclosure gaps, generate the Department EcoLabel and reporting text, and preserve the assumptions with the result. The EcoLabel is a research reporting output, not external certification.'},
       {...SAVE_SHARE_STEP},
     ],
@@ -406,9 +406,9 @@ export const GUIDED_DEMOS = {
       {target:'[data-demo-target="home-ai"]', kicker:'BUILD PROFILE', title:'Start with AI Model & Informatics', body:'Use this pathway when the question is about an AI system itself rather than the whole radiology department.', actionHint:'Next opens the AI start screen.'},
       {target:'[data-demo-target="ai-compare-lane"]', kicker:'BUILD PROFILE · COMPARE CANDIDATES', title:'Choose the candidate-comparison task', body:'Use this task when two or more systems address the same clinical need. Hold clinical purpose and validation context constant before comparing environmental intensity.', actionHint:'The walkthrough then prepares two illustrative imaging-AI candidates.'},
       {target:'#ai-shared-comparison-definition', kicker:'BUILD PROFILE · COMPARE', title:'Define one clinical decision before comparing systems', body:'Hold intended use, endpoint, validation context, workload, and compute assumptions constant so candidate differences remain interpretable.'},
-      {target:'[data-demo-target="ai-candidate-results"]', kicker:'SEE RESULTS · COMPARE', title:'Compare performance and environmental intensity together', body:'The decision view puts reported performance and estimated environmental results on the same surface. Comparison is optional in CEDARS; use it only when more than one system addresses the same need.'},
+      {target:'[data-demo-target="ai-candidate-results"]', kicker:'BUILD PROFILE · COMPARE', title:'Compare performance and environmental intensity together', body:'The decision view puts reported performance and estimated environmental evidence on the same surface. Comparison is optional in CEDARS; use it only when more than one system addresses the same need.'},
       {target:'[data-demo-target="ai-profile-status"]', kicker:'BUILD PROFILE · SELECTED AI', title:'Carry the selected system into one AI profile', body:'After selection, review the lifecycle boundary, recurring inference, available training information, and disclosure gaps in the same profile.'},
-      {target:'#ai-score-panel', kicker:'SEE RESULTS · SCORE', title:'Interpret only the lifecycle data that are available', body:'CEDARS assigns an overall AI Score only when the required lifecycle inputs are present. Missing vendor information stays missing rather than being treated as zero.'},
+      {target:'#ai-score-panel', kicker:'SCORE & ECOLABEL', title:'Interpret only the lifecycle data that are available', body:'CEDARS assigns an overall AI Score only when the required lifecycle inputs are present. Missing vendor information stays missing rather than being treated as zero.'},
       {target:'[data-demo-target="ai-improve-workspace"]', kicker:'IMPROVE', title:'Focus on choices the clinical organization can influence', body:'For externally developed AI, improvement centers on serving and hosting choices, right-sizing, workload, vendor disclosure, deployment assumptions, and monitoring—not on pretending the organization controls undisclosed training.'},
       {target:'[data-demo-target="ai-report-materials"]', kicker:'REPORT & SHARE', title:'Preserve the model, assumptions, and disclosure limits', body:'The AI EcoLabel and reporting outputs travel with the model context, performance information, environmental assumptions, and explicit data gaps.'},
       {...SAVE_SHARE_STEP},
@@ -424,7 +424,7 @@ export const GUIDED_DEMOS = {
       {target:'[data-demo-target="ai-develop-lane"]', kicker:'BUILD PROFILE · DEVELOP / FINE-TUNE', title:'Choose the development pathway', body:'Use this task when your team is building, adapting, or materially retraining the model. Select the AI family, then record or measure lifecycle energy in the profile.', actionHint:'Next opens the measurement helper for an illustrative imaging model.'},
       {target:'[data-demo-target="measure-chooser"]', kicker:'BUILD PROFILE · MEASURE', title:'Measure rather than guess when you can', body:'CEDARS narrows measurement options based on where the model runs, whether you need training or inference numbers, and whether you can instrument the code.', actionHint:'A completed CodeCarbon-style illustrative example loads when you continue.'},
       {target:'[data-demo-target="ai-profile-status"]', kicker:'BUILD PROFILE · REVIEW', title:'Review the completed AI profile', body:'Training, inference, provenance, compute context, and lifecycle coverage are recorded once here before you interpret the result.'},
-      {target:'#ai-score-panel', kicker:'SEE RESULTS · SCORE', title:'Check lifecycle coverage before interpreting the score', body:'A complete overall score requires the lifecycle inputs needed for the calculation. Partial measurement remains useful, but missing phases are reported explicitly.'},
+      {target:'#ai-score-panel', kicker:'SCORE & ECOLABEL', title:'Check lifecycle coverage before interpreting the score', body:'A complete overall score requires the lifecycle inputs needed for the calculation. Partial measurement remains useful, but missing phases are reported explicitly.'},
       {target:'[data-demo-target="ai-improve-workspace"]', kicker:'IMPROVE', title:'Improve the model across its lifecycle', body:'Development recommendations span model design, experimentation, precision, validation, serving, and monitoring. They are options to test, not automatic savings.'},
       {target:'[data-demo-target="ai-report-reproducibility"]', kicker:'REPORT & SHARE', title:'Export assumptions and provenance with the result', body:'Use the structured record, Markdown table, and Methods-ready text for model cards, repositories, manuscripts, or technical reporting.', actionHint:'The reproducibility sections are opened automatically in this walkthrough.'},
       {...SAVE_SHARE_STEP},
@@ -442,34 +442,35 @@ function clampRect(rect, pad = 7) {
 
 export function GuidedDemoLauncher({onStart}) {
   const journeys = [
-    {key:'leader', icon:Activity, eyebrow:'DEPARTMENT / OPERATIONS', title:'Assess a radiology department', audience:'Radiology leaders, operations, sustainability, and clinical AI / informatics teams.', detail:'Sustainability Profile → Results → Improve → Report & Share.'},
-    {key:'procure', icon:Activity, eyebrow:'CLINICAL AI / OPERATIONAL', title:'Evaluate or use clinical AI', audience:'Clinicians, leaders, procurement, administrators, informatics/IT, governance, and sustainability teams.', detail:'AI Sustainability Profile → Results → Improve → Report & Share.'},
-    {key:'developer', icon:Brain, eyebrow:'AI DEVELOPMENT', title:'Develop or materially retrain AI', audience:'Researchers, ML engineers, and technical imaging-informatics teams.', detail:'AI Sustainability Profile → Results → Improve → Report & Share.'},
+    {key:'leader', icon:Activity, eyebrow:'DEPARTMENT', title:'Radiology department', audience:'Operations, equipment, resources, and locally deployed clinical AI.', detail:'Profile → Score & EcoLabel → Improve → Report & Share.'},
+    {key:'procure', icon:Brain, eyebrow:'CLINICAL AI', title:'Clinical AI evaluation', audience:'Candidate comparison, procurement, deployment, and use of externally developed AI.', detail:'AI profile → Score & EcoLabel → Improve → Report & Share.'},
+    {key:'developer', icon:Brain, eyebrow:'AI DEVELOPMENT', title:'AI development', audience:'Training, fine-tuning, measurement, validation, and lifecycle reporting.', detail:'AI profile → Score & EcoLabel → Improve → Report & Share.'},
   ];
   return (
-    <section className="guidedDemoLauncher" aria-labelledby="guided-demo-title">
-      <div className="guidedDemoLauncherHead"><div>
-        <span>GUIDED WALKTHROUGHS · ILLUSTRATIVE EXAMPLES</span>
-        <h2 id="guided-demo-title">Choose the journey closest to your work</h2>
-        <p>Three role-aligned walkthroughs cover the main CEDARS workflows. Values load automatically, no typing is required, and your current assessment is restored when you exit.</p>
-      </div></div>
-      <div className="guidedDemoLauncherGrid">
-        {journeys.map(journey => {
-          const Icon = journey.icon;
-          return <article key={journey.key} className="guidedDemoChoice">
-            <div className="guidedDemoChoiceIcon"><Icon size={22}/></div>
-            <div className="guidedDemoChoiceCopy">
-              <span className="guidedDemoChoiceEyebrow">{journey.eyebrow}</span>
-              <strong>{journey.title}</strong>
-              <p>{journey.audience}</p>
-              <small>{journey.detail}</small>
-              <button type="button" onClick={()=>onStart(journey.key)}>Start walkthrough →</button>
-            </div>
-          </article>;
-        })}
+    <details className="guidedDemoLauncher" aria-labelledby="guided-demo-title">
+      <summary>
+        <span className="guidedDemoLauncherSummaryCopy"><span>GUIDED EXAMPLES</span><strong id="guided-demo-title">New to CEDARS? Try a guided walkthrough</strong><small>Illustrative values load automatically; your current assessment is restored when you exit.</small></span>
+        <span className="guidedDemoLauncherSummaryAction">View walkthroughs ↓</span>
+      </summary>
+      <div className="guidedDemoLauncherBody">
+        <div className="guidedDemoLauncherGrid">
+          {journeys.map(journey => {
+            const Icon = journey.icon;
+            return <article key={journey.key} className="guidedDemoChoice">
+              <div className="guidedDemoChoiceIcon"><Icon size={20}/></div>
+              <div className="guidedDemoChoiceCopy">
+                <span className="guidedDemoChoiceEyebrow">{journey.eyebrow}</span>
+                <strong>{journey.title}</strong>
+                <p>{journey.audience}</p>
+                <small>{journey.detail}</small>
+                <button type="button" onClick={()=>onStart(journey.key)}>Start →</button>
+              </div>
+            </article>;
+          })}
+        </div>
+        <p className="guidedDemoExampleNote"><strong>Specific AI examples</strong> remain available inside <em>AI Model &amp; Informatics</em>; they are starting points, not separate workflows.</p>
       </div>
-      <p className="guidedDemoExampleNote"><strong>Looking for a specific model type?</strong> Published LLM, vendor-hosted LLM, agentic, synthetic-imaging, and measured classifier examples remain available under <em>AI Model &amp; Informatics → Examples &amp; quick start</em>; they are examples, not separate workflows.</p>
-    </section>
+    </details>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {Search, Columns3, Cpu, Scan, FileText, Bot} from 'lucide-react';
+import {Search, Columns3, Cpu, Scan, Brain, Bot} from 'lucide-react';
 import {Ref} from './Refs.jsx';
 import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
 
@@ -71,16 +71,16 @@ const ENTRY_CHOICES = [
 ];
 
 function exampleKind(ex) {
-  if (ex.key.includes('cxr')) return [Scan,'cxr','CXR'];
+  if (ex.key.includes('cxr')) return [Scan,'cxr','Imaging AI'];
   if (ex.key.includes('maistro')) return [Bot,'agent','Agentic'];
   if (ex.key.includes('roentgen')) return [Scan,'image','Generative imaging'];
-  return [FileText,'llm','Language AI'];
+  return [Brain,'llm','LLM'];
 }
 
 function exampleUse(ex) {
   if (ex.scen?.aiRoute==='compare') return 'Compare candidates';
   if (ex.scen?.ownMode==='spec') return 'Assess one model';
-  return 'Develop / measured';
+  return 'Develop / fine-tune';
 }
 
 export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, onOwnMode, examples, onExample, onReset}) {
@@ -176,7 +176,7 @@ export function AiRouteStrip({route, ownMode, systemType, onComparison, onBackTo
       <span className="aiIntentKicker">AI PATHWAY</span>
       <strong>{label}</strong>
       <span className="aiRouteActions">
-        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>View comparison results ↓</button>}
+        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>View candidate comparison ↓</button>}
         {route === 'own' && ownMode === 'spec' && onBackToComparison && <button type="button" className="inlineTextButton" onClick={onBackToComparison}>← Back to candidate comparison</button>}
         {route === 'own' && ownMode === 'spec' && !onBackToComparison && onStartComparison && <button type="button" className="inlineTextButton" onClick={onStartComparison}>Compare this model with candidates →</button>}
       </span>

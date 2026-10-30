@@ -6,7 +6,7 @@ import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Po
 const Bar      = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Bar})));
 const Doughnut = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Doughnut})));
 const Scatter  = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Scatter})));
-import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot, Save} from 'lucide-react';
+import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot, Save, DollarSign} from 'lucide-react';
 import './styles.css';
 import './chunk7a.css';
 import './chunk7c.css';
@@ -961,7 +961,7 @@ function Sel({label: lbl, value, options, onChange}) {
 }
 
 function inputTargetName(target) {
-  return ({dashboard:'Radiology Department', ai:'AI Model & Informatics', scenario:'Improve', ecolabel:'Results', report:'Report & Share'})[target] || 'your assessment';
+  return ({dashboard:'Radiology Department', ai:'AI Model & Informatics', scenario:'Improve', ecolabel:'Score & EcoLabel', report:'Report & Share'})[target] || 'your assessment';
 }
 function AssessmentContextStrip({settings, onEdit, ai = false, computeProvider = '', computeRegion = ''}) {
   const computeLocation = computeRegion
@@ -1306,13 +1306,13 @@ function drawLabelCard({title, name, contextLine, scoreDisplay, leaves, ratingCo
   ctx.beginPath(); ctx.roundRect(0, 0, W, H, 14); ctx.fill();
   ctx.strokeStyle = ratingColor; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(1, 1, W-2, H-2, 13); ctx.stroke();
-  ctx.fillStyle = '#1b5e20';
+  ctx.fillStyle = '#254C40';
   ctx.beginPath(); ctx.roundRect(1, 1, W-2, HEADER_H, [13,13,0,0]); ctx.fill();
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 15px sans-serif';
   ctx.fillText(title, 16, 26);
-  ctx.font = '13px sans-serif'; ctx.fillStyle = '#A5D6A7';
+  ctx.font = '13px sans-serif'; ctx.fillStyle = '#DDE8E1';
   ctx.fillText(name, 16, 48);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#81C784';
+  ctx.font = '10px sans-serif'; ctx.fillStyle = '#BEC9C2';
   ctx.fillText(contextLine, 16, 66);
   ctx.fillStyle = ratingBg;
   ctx.fillRect(2, HEADER_H, W-4, BAND_H);
@@ -1323,25 +1323,25 @@ function drawLabelCard({title, name, contextLine, scoreDisplay, leaves, ratingCo
   ctx.font = 'bold 9px sans-serif';
   ctx.fillText('CEDARS SCORE', 46, HEADER_H + 64);
   ctx.textAlign = 'left';
-  for (let i = 0; i < 5; i++) drawLeaf(ctx, 100 + i*18, HEADER_H + 15, 16, i < leaves, i < leaves ? ratingColor : '#cfd8dc');
+  for (let i = 0; i < 5; i++) drawLeaf(ctx, 100 + i*18, HEADER_H + 15, 16, i < leaves, i < leaves ? ratingColor : '#D8DEDA');
   ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = ratingColor;
   ctx.fillText(ratingLabel, 100, HEADER_H + 53);
-  ctx.font = '11px sans-serif'; ctx.fillStyle = '#263238';
+  ctx.font = '11px sans-serif'; ctx.fillStyle = '#25302D';
   ctx.fillText(subtext, 100, HEADER_H + 70);
   const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
   rows.forEach(([k, v], i) => {
     const y = HEADER_H + BAND_H + 4 + i * ROW_H;
-    ctx.fillStyle = i%2===0 ? '#f1f8f1' : '#ffffff';
+    ctx.fillStyle = i%2===0 ? '#F7F5EF' : '#ffffff';
     ctx.fillRect(2, y, W-4, ROW_H);
-    ctx.fillStyle = '#607d66'; ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#66716D'; ctx.font = '11px sans-serif';
     ctx.fillText(k, 14, y+rowTextY);
-    ctx.fillStyle = '#263238'; ctx.font = 'bold 11px sans-serif';
+    ctx.fillStyle = '#25302D'; ctx.font = 'bold 11px sans-serif';
     ctx.fillText(String(v), 210, y+rowTextY);
   });
   const footerY = HEADER_H + BAND_H + 4 + rows.length * ROW_H + 6;
-  ctx.fillStyle = '#e8f5e9';
+  ctx.fillStyle = '#EEF4F0';
   ctx.beginPath(); ctx.roundRect(2, footerY, W-4, FOOTER_H, [0,0,11,11]); ctx.fill();
-  ctx.fillStyle = '#2E7D32'; ctx.font = '10px sans-serif';
+  ctx.fillStyle = '#2F6B57'; ctx.font = '10px sans-serif';
   ctx.fillText(footerText, 14, footerY+18);
   return canvas;
 }
@@ -1473,7 +1473,7 @@ function downloadEcoPNG(d) {
   downloadCanvasPNG(canvas, `cedars_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
 }
 
-const CHART_COLORS = ['#2E7D32','#26A69A','#66BB6A','#4DB6AC','#A5D6A7','#80CBC4'];
+const CHART_COLORS = ['#2F6B57','#4F7D95','#B58B45','#6F7782','#4F8A83','#956F5C'];
 
 // Smart unit formatters — switch unit at sensible thresholds
 const fmtCo2 = kg  => kg  >= 1000 ? `${rnd(kg/1000, 2)} tCO₂e`  : `${Math.round(kg).toLocaleString()} kgCO₂e`;
@@ -1516,12 +1516,12 @@ const SEO_PAGES = {
     canonical: SEO_BASE + '?page=ai',
   },
   ecolabel: {
-    title: 'CEDARS Results | Radiology Sustainability Assessment',
+    title: 'CEDARS Score & EcoLabel | Radiology Sustainability Assessment',
     description: 'Review the Radiology Department footprint, drivers, CEDARS Score, assessment boundary, and documented sustainability practices before reporting.',
     canonical: SEO_BASE + '?page=ecolabel',
   },
   ecolabelAi: {
-    title: 'CEDARS AI Results | AI Environmental Assessment',
+    title: 'CEDARS AI Score & EcoLabel | AI Environmental Assessment',
     description: 'Review AI training, inference, deployment context, lifecycle coverage, and the current CEDARS Score before reproducible reporting.',
     canonical: SEO_BASE + '?page=ecolabel&label=ai',
   },
@@ -1553,8 +1553,8 @@ const SEO_PAGES = {
 // SCEN_DEFAULTS are the single source of truth for the initial `settings` / `scen` state below.
 
 function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, onAi, onFootprint, onImprove, onReport}) {
-  const stage = page === 'input' || page === 'ai' || setupActive ? 1
-    : page === 'dashboard' || page === 'ecolabel' ? 2
+  const stage = page === 'input' || page === 'dashboard' || page === 'ai' || setupActive ? 1
+    : page === 'ecolabel' ? 2
       : page === 'scenario' ? 3
         : page === 'report' ? 4 : 0;
   const selectedInput = activeProduct === 'ai' ? 'ai' : 'dashboard';
@@ -1569,16 +1569,16 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
           </div>
         </div>
         <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onFootprint}>
-          <div className="workflowRailLabel"><span>2</span><strong>RESULTS</strong></div>
-          <small>Footprint + drivers + score</small>
+          <div className="workflowRailLabel"><span>2</span><strong>SCORE &amp; ECOLABEL</strong></div>
+          <small>Current footprint + boundary + score</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onImprove}>
           <div className="workflowRailLabel"><span>3</span><strong>IMPROVE</strong></div>
           <small>Test changes</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===4?'active':''}`} onClick={onReport}>
-          <div className="workflowRailLabel"><span>4</span><strong>REPORT</strong></div>
-          <small>EcoLabel + assumptions + export</small>
+          <div className="workflowRailLabel"><span>4</span><strong>REPORT &amp; SHARE</strong></div>
+          <small>Assumptions + provenance + export</small>
         </button>
       </div>
     </div>
@@ -2823,8 +2823,8 @@ function App() {
   const chartScenario = {
     labels: ['Baseline', 'After interventions'],
     datasets: [
-      {label:`Energy kWh${dash.totals.label}`, data:[scenario.baseline.kwh, scenario.projected.kwh], backgroundColor:['#A5D6A7','#2E7D32']},
-      {label:'Carbon kgCO₂e', data:[scenario.baseline.co2, scenario.projected.co2], backgroundColor:['#80CBC4','#26A69A']},
+      {label:`Energy kWh${dash.totals.label}`, data:[scenario.baseline.kwh, scenario.projected.kwh], backgroundColor:['#BFC8C3','#2F6B57']},
+      {label:'Carbon kgCO₂e', data:[scenario.baseline.co2, scenario.projected.co2], backgroundColor:['#C3CDD2','#708894']},
     ],
   };
   // Scope 1/2/3 stacked horizontal bar — shown as % of total so all scopes are visible
@@ -2834,15 +2834,15 @@ function App() {
   const chartScopes = {
     labels: ['% of total emissions' + dash.totals.label],
     datasets: [
-      {label:`Scope 1 — Direct (${scopePct(dash.scopes.scope1Kg)}%)`,              data:[scopePct(dash.scopes.scope1Kg)],       backgroundColor:'#81C784'},
-      {label:`Scope 2 — Electricity (${scopePct(dash.scopes.scope2Kg)}%)`,          data:[scopePct(dash.scopes.scope2Kg)],       backgroundColor:'#2E7D32'},
-      {label:`Scope 3 — Embodied (${scopePct(dash.scopes.scope3EmbKg)}%)`,          data:[scopePct(dash.scopes.scope3EmbKg)],    backgroundColor:'#4DB6AC'},
-      {label:dash.scopes.scope3TravelAssessed?`Scope 3 — Patient travel (${scopePct(dash.scopes.scope3TravelKg)}%)`:'Scope 3 — Patient travel (not assessed)', data:[scopePct(dash.scopes.scope3TravelKg)], backgroundColor:'#A5D6A7'},
-      {label:`Scope 3 — Contrast supply chain (${scopePct(dash.scopes.scope3ContrastKg)}%)`, data:[scopePct(dash.scopes.scope3ContrastKg)], backgroundColor:'#66BB6A'},
-      {label:`Scope 3 — Cloud AI (${scopePct(dash.scopes.scope3CloudAiKg)}%)`, data:[scopePct(dash.scopes.scope3CloudAiKg)], backgroundColor:'#29B6F6'},
-      {label:`Scope 3 — Cloud archive (${scopePct(dash.scopes.scope3CloudStorageKg)}%)`, data:[scopePct(dash.scopes.scope3CloudStorageKg)], backgroundColor:'#26A69A'},
-      {label:staffCommuteAssessed?`Scope 3 — Staff commute (${scopePct(staffCommuteCo2)}%)`:'Scope 3 — Staff commute (not assessed)', data:[scopePct(staffCommuteCo2)], backgroundColor:'#FFB74D'},
-      {label:`Scope 3 — Data transfer (${scopePct(networkTransferCo2)}%)`,          data:[scopePct(networkTransferCo2)],         backgroundColor:'#90A4AE'},
+      {label:`Scope 1 — Direct (${scopePct(dash.scopes.scope1Kg)}%)`,              data:[scopePct(dash.scopes.scope1Kg)],       backgroundColor:'#956F5C'},
+      {label:`Scope 2 — Electricity (${scopePct(dash.scopes.scope2Kg)}%)`,          data:[scopePct(dash.scopes.scope2Kg)],       backgroundColor:'#2F6B57'},
+      {label:`Scope 3 — Embodied (${scopePct(dash.scopes.scope3EmbKg)}%)`,          data:[scopePct(dash.scopes.scope3EmbKg)],    backgroundColor:'#708894'},
+      {label:dash.scopes.scope3TravelAssessed?`Scope 3 — Patient travel (${scopePct(dash.scopes.scope3TravelKg)}%)`:'Scope 3 — Patient travel (not assessed)', data:[scopePct(dash.scopes.scope3TravelKg)], backgroundColor:'#B58B45'},
+      {label:`Scope 3 — Contrast supply chain (${scopePct(dash.scopes.scope3ContrastKg)}%)`, data:[scopePct(dash.scopes.scope3ContrastKg)], backgroundColor:'#7D8B72'},
+      {label:`Scope 3 — Cloud AI (${scopePct(dash.scopes.scope3CloudAiKg)}%)`, data:[scopePct(dash.scopes.scope3CloudAiKg)], backgroundColor:'#4F7D95'},
+      {label:`Scope 3 — Cloud archive (${scopePct(dash.scopes.scope3CloudStorageKg)}%)`, data:[scopePct(dash.scopes.scope3CloudStorageKg)], backgroundColor:'#4F8A83'},
+      {label:staffCommuteAssessed?`Scope 3 — Staff commute (${scopePct(staffCommuteCo2)}%)`:'Scope 3 — Staff commute (not assessed)', data:[scopePct(staffCommuteCo2)], backgroundColor:'#8B6F61'},
+      {label:`Scope 3 — Data transfer (${scopePct(networkTransferCo2)}%)`,          data:[scopePct(networkTransferCo2)],         backgroundColor:'#9AA39F'},
     ],
   };
   const scopeBarOpts = {
@@ -3123,14 +3123,14 @@ function App() {
             demoOpen={!!GUIDED_DEMOS[guidedDemo?.kind]?.steps?.[guidedDemo?.step]?.openSaveMenu}
           />
           {/* Ambient CEDARS Score follows the active product; EcoLabel generation lives in Report & Share. */}
-          {(() => { const aiProduct=page==='ai'||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai'); const b=aiProduct?ecoLabelData:deptLabelData; const bHas=aiProduct?b.graded:b.hasData; return (
-          <button onClick={()=>goToScore(aiProduct?'ai':'department')} title={aiProduct ? 'Current AI model score — open Results' : 'Current Department score — open Results'}
+          {(() => { const aiProduct=page==='ai'||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai'); const b=aiProduct?ecoLabelData:deptLabelData; const bHas=aiProduct?b.graded:b.hasData; if(!bHas) return null; return (
+          <button onClick={()=>goToScore(aiProduct?'ai':'department')} title={aiProduct ? 'Current AI model score — open Score & EcoLabel' : 'Current Department score — open Score & EcoLabel'}
             style={{display:'inline-flex',alignItems:'center',gap:7,background:b.ratingBg,border:`1.5px solid ${b.ratingColor}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:'pointer',boxShadow:'none',flexShrink:0}}>
             <Leaf size={17}  fill={b.ratingColor}/>
-            <span style={{fontSize:18,fontWeight:900,color:b.ratingColor,lineHeight:1}}>{bHas ? b.score : '—'}</span>
+            <span style={{fontSize:18,fontWeight:900,color:b.ratingColor,lineHeight:1}}>{b.score}</span>
             <span style={{display:'flex',flexDirection:'column',lineHeight:1.1,textAlign:'left'}}>
               <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:b.ratingColor}}>{aiProduct ? 'AI SCORE' : 'CEDARS SCORE'}</span>
-              <span style={{fontSize:10,color:'#37474f'}}>{bHas ? `${b.leaves}/5 leaves` : '— / 5 leaves'}</span>
+              <span style={{fontSize:10,color:'#37474f'}}>{`${b.leaves}/5 leaves`}</span>
             </span>
           </button>
           ); })()}
@@ -3152,11 +3152,7 @@ function App() {
           onAi={()=>{setEcoLabelMode('ai');setPage('ai');scrollToAiWorkspace();}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
-            if (aiProduct) goToScore('ai');
-            else {
-              setPage('dashboard'); setDeptSetupOpen(false);
-              window.setTimeout(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
-            }
+            goToScore(aiProduct?'ai':'department');
           }}
           onImprove={()=>{if(page==='ai'){setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}else if(page==='dashboard')setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onReport={()=>{if(page==='ai')setEcoLabelMode('ai');else if(page==='dashboard')setEcoLabelMode('department');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
@@ -3169,36 +3165,24 @@ function App() {
           <section className="homeHero">
             <div className="homeHeroCopy">
               <p className="eyebrow">Radiology + AI + Planetary Health</p>
-              <h1>Turn environmental impact into decisions.</h1>
-              <p className="homeHeroLead">Measure the environmental impact of radiology operations and AI, test practical improvements, and create transparent reports. CEDARS keeps the assumptions and evidence behind each result.</p>
+              <h1>Environmental assessment for radiology and medical AI.</h1>
+              <p className="homeHeroLead">Quantify energy, carbon, resource use, and lifecycle impacts with transparent, editable assumptions. Compare alternatives, test prospective changes, and preserve the evidence behind each result.</p>
+              <p className="homeGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong> Environmental efficiency is considered only within clinically appropriate care and clinically acceptable AI.</p>
             </div>
-            <aside className="homeSciencePrinciple" aria-label="CEDARS scientific principle">
-              <span>CEDARS PRINCIPLE</span>
-              <strong>Clinical fit first. Environmental efficiency comes next.</strong>
-              <p>Clinical purpose, performance, validation, and workflow fit are prerequisites. CEDARS then quantifies lifecycle impact and tests efficiency changes without rewarding missing data or clinically inappropriate care.</p>
-            </aside>
           </section>
 
-          {/* One CEDARS story: profile, results, improvement, reporting. */}
-          <section className="homeJourney" aria-labelledby="cedars-workflow-title" style={{marginBottom:22}}>
-            <div className="homeJourneyHeading">
-              <span>ONE ASSESSMENT · FOUR STEPS</span>
-              <h2 id="cedars-workflow-title">From profile to transparent reporting</h2>
+          <section className="homeStart" aria-labelledby="cedars-start-title">
+            <div className="homeStartHeading">
+              <span>START AN ASSESSMENT</span>
+              <h2 id="cedars-start-title">Start with the care environment or the AI system</h2>
+              <p>Choose Radiology Department for site operations and local deployment. Choose AI Model &amp; Informatics for the model itself, including comparison, development, training, and inference.</p>
             </div>
-            <p className="note" style={{margin:'0 0 14px',fontSize:13,maxWidth:920,lineHeight:1.55}}>Build the profile once, then carry the same assumptions through Results, Improve, and Report &amp; Share.</p>
-
-            <div className="homeWorkflowGrid">
-              <div className="workflowCard workflowCardStart">
-                <div className="workflowCardKicker"><span className="workflowNumber">1</span><span>BUILD PROFILE</span><span className="startHereBadge">START HERE</span></div>
-                <div className="workflowCardPrompt">What are you assessing?</div>
-                <div className="startChoiceGrid">
-                  <button type="button" data-demo-target="home-department" className="startChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={18}/><span><strong>Radiology Department</strong><small>Operations, equipment, resources &amp; clinical AI</small></span><span aria-hidden="true">→</span></button>
-                  <button type="button" data-demo-target="home-ai" className="startChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Cpu size={18}/><span><strong>AI Model &amp; Informatics</strong><small>Assess, compare, develop, or fine-tune AI</small></span><span aria-hidden="true">→</span></button>
-                </div>
-              </div>
-              <div className="workflowCard workflowStage results"><div className="workflowStageIcon"><BarChart3 size={19}/></div><div className="workflowCardKicker"><span className="workflowNumber">2</span><span>SEE RESULTS</span></div><div className="workflowCardBody">Footprint, main drivers, assessment boundary, and CEDARS Score.</div><span className="workflowCardSequenceHint">After profile</span></div>
-              <div className="workflowCard workflowStage improve"><div className="workflowStageIcon"><Lightbulb size={19}/></div><div className="workflowCardKicker"><span className="workflowNumber">3</span><span>IMPROVE</span></div><div className="workflowCardBody">Test practical changes without altering the current baseline.</div><span className="workflowCardSequenceHint">Then test changes</span></div>
-              <div className="workflowCard workflowStage report"><div className="workflowStageIcon"><FileText size={19}/></div><div className="workflowCardKicker"><span className="workflowNumber">4</span><span>REPORT &amp; SHARE</span></div><div className="workflowCardBody">Create an EcoLabel and export the result with its assumptions and evidence.</div><span className="workflowCardSequenceHint">Finish with disclosure</span></div>
+            <div className="homeStartGrid">
+              <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
+              <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Clinical purpose, validation, candidate comparison, training, inference, and deployment.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
+            </div>
+            <div className="homeFlow" aria-label="CEDARS assessment workflow">
+              <span><b>Profile</b><small>Define the current state</small></span><ArrowRight size={14}/><span><b>Score &amp; EcoLabel</b><small>Interpret result + boundary</small></span><ArrowRight size={14}/><span><b>Improve</b><small>Test prospective changes</small></span><ArrowRight size={14}/><span><b>Report &amp; Share</b><small>Preserve assumptions + evidence</small></span>
             </div>
           </section>
 
@@ -3321,7 +3305,7 @@ function App() {
                     )}
                   </div>
                 </section>
-                <p className="note" style={{fontSize:12,margin:'14px 0 12px'}}>These inputs define the Department profile and its Results.</p>
+                <p className="note" style={{fontSize:12,margin:'14px 0 12px'}}>These inputs define the Department profile and its current footprint.</p>
             {/* Equipment card grid */}
             <div id="department-equipment" className={scoreAttention==='equipment'?'scoreInputAttention':''} style={{marginBottom:16,scrollMarginTop:90}}>
               <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment</div>
@@ -3482,7 +3466,7 @@ function App() {
             </div>
             <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>For an AI system's own training and inference footprint, use <button onClick={()=>setPage('ai')} className="inlineTextButton">AI Model &amp; Informatics →</button>.</p>
             <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
-              <button onClick={()=>{setDeptSetupOpen(false);requestAnimationFrame(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}));}} style={{padding:'8px 13px',fontSize:12}}>Done — view Results ↓</button>
+              <button onClick={()=>{setDeptSetupOpen(false);requestAnimationFrame(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}));}} style={{padding:'8px 13px',fontSize:12}}>Done — review current footprint ↓</button>
             </div>
 
               </div>
@@ -3492,7 +3476,7 @@ function App() {
           {/* ── Headline footprint: result first, methods second ── */}
           <section id="department-overview" className="footprintHero departmentFootprintHero workflowAnchor" aria-labelledby="department-footprint-title">
             <div className="footprintHeroHeader">
-              <div><span>STEP 2 · SEE RESULTS</span><h2 id="department-footprint-title">Department operational footprint</h2><p>Headline operational energy and carbon from the current setup. Extended estimates stay separate from the CEDARS Score boundary.</p></div>
+              <div><span>PROFILE · CURRENT FOOTPRINT</span><h2 id="department-footprint-title">Department operational footprint</h2><p>Headline operational energy and carbon from the current setup. Extended estimates stay separate from the CEDARS Score boundary.</p></div>
               <div className="footprintHeroPrimary"><small>Operational carbon {dash.totals.label}</small><strong>{fmtCo2(dash.totals.co2Kg)}</strong></div>
             </div>
             <div className="footprintMetricGrid">
@@ -3514,7 +3498,7 @@ function App() {
               <Brain size={19}/>
               <span className="primaryInputSummaryText">
                 <strong>Clinical AI</strong>
-                <small>{(deptLabel.aiTools||[]).length} deployed · included in Results when used locally</small>
+                <small>{(deptLabel.aiTools||[]).length} deployed · included in the current Department footprint when used locally</small>
               </span>
               <span>{dashOpen['clinicalai'] ? 'Hide input ▴' : 'Add / edit input ▾'}</span>
             </button>
@@ -3682,7 +3666,7 @@ function App() {
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}><label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Direct emissions / Scope 1 (kgCO₂e/year) <input type="number" min="0" step="1" value={settings.scope1AnnualKg} onChange={e=>set('scope1AnnualKg',e.target.value)} placeholder="leave blank if not assessed" style={{width:150,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8}}/></label><span className="note" style={{fontSize:10}}>Optional. Enter fuel/generator/medical-gas emissions when known; blank is reported as not assessed.</span></div>
             <div className="cards">
               <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={dash.scopes.scope1Assessed?fmtCo2(dash.scopes.scope1Kg):'Not assessed'}       sub={dash.scopes.scope1Assessed?'User-entered annual direct emissions, scaled to this reporting period.':'No automatic percentage proxy is applied.'}/>
-              <Card icon={<Gauge/>}      title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Local Clinical AI compute is included here; outsourced cloud AI is reported in Scope 3.`}/>
+              <Card icon={<Zap/>}        title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Local Clinical AI compute is included here; outsourced cloud AI is reported in Scope 3.`}/>
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={dash.scopes.scope3TravelAssessed?fmtCo2(dash.scopes.scope3TravelKg):'Not assessed'} sub={dash.scopes.scope3TravelAssessed?`${dash.scopes.imagingScans.toLocaleString()} scans × ${settings.patientTravelKm} km local avg round trip · passenger-car factor · Extended estimate.`:`Enter a local average round-trip distance to assess. A ${PATIENT_KM_RT} km screening reference (${fmtCo2(dash.scopes.scope3TravelScreeningKg)}) is not included in the reported subtotal.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
@@ -3725,8 +3709,8 @@ function App() {
             <h2 style={{marginBottom:12}}>3. Infrastructure and hardware</h2>
             <div className="cards">
               <Card icon={<Cpu/>}          title="Top idle waster"    value={dash.topOpportunities[0]?.equipment ?? '—'}          sub={`${fmtKwh(dash.topOpportunities[0]?.idleWasteKwh ?? 0)} avoidable idle${dash.totals.label}. Highest single-unit saving.`}/>
-              <Card icon={<Activity/>}     title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="Radiography 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
-              <Card icon={<TrendingDown/>} title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
+              <Card icon={<Cpu/>}          title="Hardware lifespans" value="MRI 15 yr / CT 12 yr"                                sub="Radiography 10 yr, Ultrasound 7 yr. Extend to reduce Scope 3 embodied carbon."/>
+              <Card icon={<Globe/>}        title="Carbon intensity"   value={`${dash.ci} kgCO₂e/kWh`}                            sub={`${settings.region} grid. Move to renewable tariff or lower-carbon region to cut Scope 2.`}/>
               <Card icon={<Gauge/>}        title="Modeled Scope 3 subtotal" value={fmtCo2(dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2)} sub="Includes only categories currently assessed/estimated in CEDARS; unassessed patient travel or staff commute are omitted rather than assumed."/>
             </div>
 
@@ -3762,7 +3746,7 @@ function App() {
                 <Card icon={<HardDrive/>}    title="Data generated / year" value={`${dash.storage.annualDataTB} TB`} sub="Σ studies/yr × per-modality file size (Doo 2024)."/>
                 <Card icon={<Database/>}     title="Archive held"          value={`${dash.storage.storedTB} TB`}   sub={`${dash.storage.retentionYears}-yr retention · ${dash.storage.cloud?`cloud${dash.storage.provider?` (${dash.storage.provider}${dash.storage.region?` · ${dash.storage.region}`:''})`:''}`:'on-premises'} · ${dash.storage.intensity} kWh/TB/yr · ${dash.storage.ci} kgCO₂e/kWh.`}/>
                 <Card icon={<Zap/>}          title={`Storage energy ${dash.totals.label}`} value={fmtKwh(dash.storage.kwh)} sub={`Included in the department total. ${fmtCo2(dash.storage.co2)}.`}/>
-                <Card icon={<Droplets/>}     title={`Storage cost ${dash.totals.label}`}   value={fmtMoney(dash.storage.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub="Electricity cost at your tariff; cloud service fees billed separately."/>
+                <Card icon={<DollarSign/>}   title={`Storage cost ${dash.totals.label}`}   value={fmtMoney(dash.storage.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub="Electricity cost at your tariff; cloud service fees billed separately."/>
               </div>
               <p className="note" style={{marginTop:8,fontSize:11}}>
                 These toggles set your <strong>current</strong> storage practice. The same three strategies also appear as prospective actions in <strong>Improve</strong>, where savings are modeled as a <em>change from</em> this baseline so they never double-count. Levers: <strong>axial-only</strong> avoids non-essential CT/PET reformats (up to ~69% less CT storage, Jia 2026); <strong>cloud</strong> archives run ~40% lower energy; <strong>shorter retention</strong> shrinks the held archive. Excludes backups and embodied storage-hardware carbon (so this undercounts).
@@ -3938,8 +3922,8 @@ function App() {
 
           {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && (
             <div className="aiProfileStatus aiProfileStatusLegacy" aria-hidden="true">
-              <div><span>PROFILE STATUS</span><strong>{ecoLabelData.hasData ? 'Results available' : 'Complete the profile'}</strong><small>{ecoLabelData.lifecycleCoverage}</small></div>
-              <button type="button" onClick={()=>goToScore('ai')}>View Results →</button>
+              <div><span>PROFILE STATUS</span><strong>{ecoLabelData.hasData ? 'Score available' : 'Complete the profile'}</strong><small>{ecoLabelData.lifecycleCoverage}</small></div>
+              <button type="button" onClick={()=>goToScore('ai')}>View Score &amp; EcoLabel →</button>
             </div>
           )}
 
@@ -4044,8 +4028,8 @@ function App() {
                 </div>
               </details>
               <div className="comparisonSetupActions">
-                <button type="button" disabled={benchResults.rows.length<2} onClick={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Review side-by-side results ↓</button>
-                <small>{benchResults.rows.length<2?'Add at least two candidates to compare.':'Performance and environmental results appear together below.'}</small>
+                <button type="button" disabled={benchResults.rows.length<2} onClick={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Compare candidates ↓</button>
+                <small>{benchResults.rows.length<2?'Add at least two candidates to compare.':'Performance and environmental evidence appear together below.'}</small>
               </div>
             </div>
           )}
@@ -4281,7 +4265,7 @@ function App() {
                   ? `Your training: ${ai.training.kwhTotal.toLocaleString()} kWh vs. ${ai.training.kwhReference.toLocaleString()} kWh typical for a ${scen.architecture} model this size (est.). <1× = more efficient than typical; >1× = less. (GreenAI-2020)`
                   : `Enter measured Training GPU + Hours below to compare your actual training run against the literature-typical footprint for a ${scen.architecture} model this size.`}/>
               <Card icon={<Activity/>}   title="Amortised / month"        value={`${ai.training.kwhAmortised} kWh/mo`}           sub="Training cost spread over 36-month deployment lifespan for lifecycle comparison."/>
-              <Card icon={<Droplets/>}   title="Training electricity cost" value={fmtMoney(ai.training.kwhTotal * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`One-time, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh. Editable under Home → Assessment context.`}/>
+              <Card icon={<DollarSign/>} title="Training electricity cost" value={fmtMoney(ai.training.kwhTotal * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`One-time, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh. Editable under Home → Assessment context.`}/>
             </div>
           </section>
 
@@ -4301,7 +4285,7 @@ function App() {
               <Card icon={<Zap/>}        title="Test set energy"          value={`${ai.testing.kwhTotal} kWh`}                   sub={ai.inferKwhMeasured ? `${ai.testing.studies} studies × your measured kWh/study.` : `${ai.testing.studies} studies. One-time cost; small fraction of training energy.`}/>
               <Card icon={<Leaf/>}       title="Test set CO₂e"            value={`${ai.testing.kgCo2e} kgCO₂e`}                 sub={`At ${ai.cloudCi} kgCO₂e/kWh. Include in model carbon disclosure.`}/>
               <Card icon={<Target/>}     title="Test set size"            value={`${ai.testing.studies} studies`}               sub="Default hold-out set. Larger sets improve accuracy estimates but increase energy cost."/>
-              <Card icon={<BarChart3/>}  title="Precision mode"           value={scen.precision}                                 sub={`AMP (float16) saves ${ai.ampSavingPct}% inference energy with minimal accuracy loss. Apply to both test and inference.`}/>
+              <Card icon={<Cpu/>}        title="Precision mode"           value={scen.precision}                                 sub={`AMP (float16) saves ${ai.ampSavingPct}% inference energy with minimal accuracy loss. Apply to both test and inference.`}/>
             </div>
           </section>
 
@@ -4318,11 +4302,11 @@ function App() {
             <h2 style={{marginBottom:12}}>Phase 3 — Inference and deployment</h2>
             <p className="note" style={{marginBottom:12}}>Inference scales with every study — this dominates the AI lifecycle energy cost. MRI cooling adds +45% to scanner energy during active acquisition (Heye/Vosshenrich). (Implementation Guide §4 · Metric 2)</p>
             <div className="cards">
-              <Card icon={<Activity/>}   title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub={ai.inferKwhMeasured ? "Your measured kWh/study, entered directly — not derived from time × GPU power." : "Per-inference energy including PUE and AMP factor. Scales with every request."}/>
+              <Card icon={<Zap/>}        title="Energy per study"         value={`${ai.inference.kwhPerStudy} kWh`}              sub={ai.inferKwhMeasured ? "Your measured kWh/study, entered directly — not derived from time × GPU power." : "Per-inference energy including PUE and AMP factor. Scales with every request."}/>
               <Card icon={<Zap/>}        title="Monthly inference energy" value={`${ai.inference.kwhMonthly} kWh`}               sub={`Across ${ai.inference.studies.toLocaleString()} studies/month at ${scen.cloudProvider}.`}/>
               <Card icon={<Gauge/>}      title="Lifetime inference total" value={`${ai.inference.kwhLifetime.toLocaleString()} kWh`} sub="36-month deployment. Inference typically exceeds training energy within 1–3 months."/>
               <Card icon={<Droplets/>}   title="Monthly water footprint"  value={`${ai.waterLitres} L`}                          sub={`${WATER_PER_KWH} L/kWh screening factor. Water intensity is location-dependent; see methodology.`}/>
-              <Card icon={<Gauge/>}      title="Monthly electricity cost" value={fmtMoney(ai.monthly.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`Inference + amortised training, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh.`}/>
+              <Card icon={<DollarSign/>} title="Monthly electricity cost" value={fmtMoney(ai.monthly.kwh * getPrice(settings.region, settings.electricityPrice), currencySym(settings.region))} sub={`Inference + amortised training, at ${currencySym(settings.region)}${getPrice(settings.region, settings.electricityPrice)}/kWh.`}/>
             </div>
           </section>
 
@@ -4365,7 +4349,7 @@ function App() {
             <p className="note" style={{marginBottom:12}}>Entered workflow effects are shown separately from the AI footprint. CEDARS credits them to the current footprint only when supported by local observed or locally validated evidence; external published values and scenarios remain disclosure/planning inputs.</p>
             <div className="cards">
               <Card icon={<TrendingDown/>} title="Entered scan-time reduction" value={`${ai.scanTimeReductPct}%`} sub={`Potentially ${ai.scanTimeEnergySaved} kWh/month of active scanner energy after any avoided studies.`}/>
-              <Card icon={<Leaf/>} title="Entered low-value imaging avoided" value={`${ai.lowValueReductPct}%`} sub={`~${ai.scansAvoided} studies/month in this scenario; ${ai.avoidedEnergySaved} kWh/month of active scanner energy before scan-time effects.`}/>
+              <Card icon={<TrendingDown/>} title="Entered low-value imaging avoided" value={`${ai.lowValueReductPct}%`} sub={`~${ai.scansAvoided} studies/month in this scenario; ${ai.avoidedEnergySaved} kWh/month of active scanner energy before scan-time effects.`}/>
               <Card icon={<Zap/>} title="Potential scanner-energy change" value={`${ai.scanEnergySaved} kWh/mo`} sub={ai.clinicalEffectCredited ? `${ai.creditedScanEnergySaved} kWh/month is eligible for current-footprint credit (${ai.clinicalEffectBasisLabel}).` : `Not credited to the current footprint (${ai.clinicalEffectBasisLabel}).`}/>
               <Card icon={<AlertTriangle/>} title="System effects / rebound" value={ai.systemEffectsStatus} sub="CEDARS does not infer a Low/Moderate/High rebound-risk category from scan-time reduction. Monitor post-deployment workload, downstream imaging, and workflow expansion when relevant."/>
             </div>
@@ -4603,12 +4587,12 @@ function App() {
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection comparisonDecisionPanel workflowAnchor" style={{background:'none',boxShadow:'none',padding:0,marginTop:18}} data-demo-target="ai-candidate-results">
-            <div className="comparisonDecisionHeader"><div><span>STEP 2 · SEE RESULTS</span><h2>Compare and select a candidate</h2><p>Review performance and environmental intensity in one decision surface. Select a candidate here to carry its data into the AI Sustainability Profile.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
+            <div className="comparisonDecisionHeader"><div><span>PROFILE · COMPARE CANDIDATES</span><h2>Compare and select a candidate</h2><p>Hold the clinical question constant, compare performance and environmental intensity on the same basis, then carry one selected candidate into the AI Sustainability Profile.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
             <div className="comparisonProgress" aria-label="Candidate comparison workflow">
               <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Define clinical comparison</span>
               <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Add candidate details</span>
               <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchModels.length>=2?'active':''}><b>3</b> Set workload &amp; compute</span>
-              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>4</b> Compare results</span>
+              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>4</b> Compare candidates</span>
               <span className={benchResults.rows.length>=2?'active':''}><b>5</b> Select &amp; assess</span>
             </div>
             <p className="note" style={{marginBottom:8}}>
@@ -4771,7 +4755,7 @@ function App() {
               <div>
                 <span style={{fontSize:10,fontWeight:800,color:'#2E7D32',letterSpacing:'0.05em'}}>SELECTED FROM CANDIDATE COMPARISON</span>
                 <strong style={{display:'block',fontSize:15,color:'#1b5e20',marginTop:2}}>{comparisonSelection.label}</strong>
-                <p className="note" style={{margin:'3px 0 0',fontSize:11}}>This candidate now populates the AI Sustainability Profile. Review the carried-forward information, complete any missing lifecycle fields, then review Results.</p>
+                <p className="note" style={{margin:'3px 0 0',fontSize:11}}>This candidate now populates the AI Sustainability Profile. Review the carried-forward information, complete any missing lifecycle fields, then review Score &amp; EcoLabel.</p>
               </div>
               <button type="button" className="download" onClick={returnToComparison}>Return to comparison</button>
             </div>
@@ -4783,7 +4767,7 @@ function App() {
                 <div className="aiProfileEditorHeading" data-demo-target="ai-profile-status">
                   <span>BUILD PROFILE</span>
                   <h2>AI Sustainability Profile</h2>
-                  <p>Record the clinical context and lifecycle evidence once, then use the same profile for Results, Improve, and Report.</p>
+                  <p>Record the clinical context and lifecycle evidence once, then use the same profile for Score &amp; EcoLabel, Improve, and Report &amp; Share.</p>
                 </div>
                 <AiProfileWorkspace
                   scen={scen} ecoLabel={ecoLabel} ecoLabelData={ecoLabelData}
@@ -4808,7 +4792,7 @@ function App() {
                   <div className="aiReportingTrack" role="progressbar" aria-label="Reporting completeness" aria-valuemin="0" aria-valuemax={aiChecklist.length} aria-valuenow={aiChecklistDone}><span style={{width:`${Math.round(aiChecklistDone/aiChecklist.length*100)}%`}}/></div>
                   <div className="aiReportingActions">
                     {aiChecklistDone < aiChecklist.length && <button type="button" className="download" onClick={()=>{const next=aiChecklist.find(([,ok])=>!ok);if(next)openAiChecklistItem(next[2]);}}>Review {aiChecklist.length-aiChecklistDone} gap{aiChecklist.length-aiChecklistDone===1?'':'s'}</button>}
-                    <button type="button" onClick={()=>goToScore('ai')}>View Results →</button>
+                    <button type="button" onClick={()=>goToScore('ai')}>View Score &amp; EcoLabel →</button>
                   </div>
                 </div>
                 {aiChecklistDone < aiChecklist.length && <div className="aiReportingGapText">Needs review: {aiChecklist.filter(([,ok])=>!ok).map(([name])=>name).join(' · ')}</div>}
@@ -4969,8 +4953,8 @@ function App() {
               </section>
 
               <div className="workflowNextStep">
-                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current baseline in Results</strong><small>Your scenario remains prospective. Results continues to show the current Sustainability Profile until an implemented change is reflected in the underlying inputs.</small></div>
-                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Results <ArrowRight size={17}/></button><button className="download" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Report current profile</button></div>
+                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Score &amp; EcoLabel</strong><small>Your scenario remains prospective. Score &amp; EcoLabel continues to show the current Sustainability Profile until an implemented change is reflected in the underlying inputs.</small></div>
+                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Score &amp; EcoLabel <ArrowRight size={17}/></button><button className="download" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Report current profile</button></div>
               </div>
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
@@ -5019,24 +5003,24 @@ function App() {
       {/* ── Results / Report & Share ── */}
       {(page==='ecolabel' || page==='report') && (
         <main className={page==='ecolabel'?'resultsPage':'reportPage'}>
-          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Results' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
+          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Score & EcoLabel' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
           <div className="researchAssessmentNotice">
             <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
           </div>
 
           {page==='ecolabel' ? <>
             <div className="ecoChooserHeader prominent">
-              <span>RESULTS</span>
-              <h2>Choose a result</h2>
-              <p>Switch between Department and AI.</p>
+              <span>ASSESSMENT VIEW</span>
+              <h2>Choose which profile to review</h2>
+              <p>Department and AI use different score boundaries but the same reporting principles.</p>
             </div>
-            <div className="ecoProductChooser prominent" role="tablist" aria-label="CEDARS result view">
+            <div className="ecoProductChooser prominent" role="tablist" aria-label="CEDARS Score & EcoLabel view">
               <button type="button" className={`ecoProductChoice ${ecoLabelMode==='department'?'active':''}`} onClick={()=>selectEcoScore('department')} role="tab" aria-selected={ecoLabelMode==='department'}>
                 <span className="ecoProductIcon"><Activity size={20}/></span>
                 <span className="ecoProductText">
                   <span className="ecoProductTitle">Radiology Department</span>
                   <span className="ecoProductDesc">Footprint, drivers, boundary, and CEDARS Score.</span>
-                  <span className="ecoProductAction">Department results →</span>
+                  <span className="ecoProductAction">Department Score &amp; EcoLabel →</span>
                 </span>
                 {ecoLabelMode==='department' && <span className="ecoProductSelected">DEPARTMENT SELECTED</span>}
               </button>
@@ -5045,7 +5029,7 @@ function App() {
                 <span className="ecoProductText">
                   <span className="ecoProductTitle">AI Model &amp; Informatics</span>
                   <span className="ecoProductDesc">Training, inference, deployment, coverage, and CEDARS Score.</span>
-                  <span className="ecoProductAction">AI results →</span>
+                  <span className="ecoProductAction">AI Score &amp; EcoLabel →</span>
                 </span>
                 {ecoLabelMode==='ai' && <span className="ecoProductSelected">AI SELECTED</span>}
               </button>

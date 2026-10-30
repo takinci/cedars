@@ -30,24 +30,24 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
 
   return <div className="aiProfileWorkspace">
     <aside className="aiProfileSidebar" aria-label="AI Sustainability Profile sections">
-      <div className="aiProfileSidebarIntro"><span>PROFILE</span><strong>Scientific record</strong><small>Clinical meaning first, then lifecycle accounting.</small></div>
+      <div className="aiProfileSidebarIntro"><span>PROFILE</span><strong>AI Sustainability Profile</strong><small>Clinical context → lifecycle → boundary.</small></div>
       <nav className="aiProfileNav">
         <div className="aiProfileNavGroup">
           <span>MODEL &amp; CLINICAL CONTEXT</span>
-          <NavButton label="Model & clinical purpose" meta={purposeDone?'Documented':'Define intended use'} done={purposeDone} onClick={()=>openAndScroll('ai-model-record')} tone="clinical"/>
-          <NavButton label="Performance & validation" meta={performanceDone?'Primary metric entered':'Clinical evidence needed'} done={performanceDone} onClick={()=>openAndScroll('ai-performance-section')} tone="evidence"/>
-          <NavButton label="Clinical & workflow effects" meta={scen.clinicalEffectBasis==='none'?'No effect credited':'Evidence basis recorded'} done={effectsDone} onClick={()=>openAndScroll('ai-effects-section')} tone="clinical"/>
-          <NavButton label="Technical model profile" meta={technicalDone?'Model configuration entered':'Architecture not specified'} done={technicalDone} onClick={()=>openAndScroll('ai-technical-section')} tone="technical"/>
+          <NavButton label="Model & clinical purpose" meta={purposeDone?null:'Define intended use'} done={purposeDone} onClick={()=>openAndScroll('ai-model-record')} tone="clinical"/>
+          <NavButton label="Performance & validation" meta={performanceDone?null:'Clinical evidence needed'} done={performanceDone} onClick={()=>openAndScroll('ai-performance-section')} tone="evidence"/>
+          <NavButton label="Clinical & workflow effects" meta={scen.clinicalEffectBasis==='none'?'No effect credited':null} done={effectsDone} onClick={()=>openAndScroll('ai-effects-section')} tone="clinical"/>
+          <NavButton label="Technical model profile" meta={technicalDone?null:'Architecture not specified'} done={technicalDone} onClick={()=>openAndScroll('ai-technical-section')} tone="technical"/>
         </div>
         <div className="aiProfileNavGroup">
           <span>LIFECYCLE</span>
-          <NavButton label="1 · Training / development" meta={trainingDone?'Status documented':'Needs training status'} done={trainingDone} active={section==='training'} onClick={()=>lifecycle('training','ai-training-section')} tone="lifecycle"/>
-          <NavButton label="2 · Inference & deployment" meta={inferenceDone?'Energy + workload entered':'Needs deployment inputs'} done={inferenceDone} active={section==='inference'} onClick={()=>lifecycle('inference','ai-inference-section')} tone="lifecycle"/>
+          <NavButton label="1 · Training / development" meta={trainingDone?null:'Needs training status'} done={trainingDone} active={section==='training'} onClick={()=>lifecycle('training','ai-training-section')} tone="lifecycle"/>
+          <NavButton label="2 · Inference & deployment" meta={inferenceDone?null:'Needs deployment inputs'} done={inferenceDone} active={section==='inference'} onClick={()=>lifecycle('inference','ai-inference-section')} tone="lifecycle"/>
         </div>
         <div className="aiProfileNavGroup">
           <span>BOUNDARY &amp; REVIEW</span>
-          <NavButton label="Environmental boundary" meta={boundaryDone?'Water status explicit':'Review water boundary'} done={boundaryDone} active={section==='water'} onClick={()=>lifecycle('water','ai-water-section')} tone="boundary"/>
-          <NavButton label="Review & completeness" meta={`${checklistDone} of ${checklistTotal} reporting items`} done={reviewDone} onClick={reviewReporting} tone="review"/>
+          <NavButton label="Environmental boundary" meta={boundaryDone?null:'Review water boundary'} done={boundaryDone} active={section==='water'} onClick={()=>lifecycle('water','ai-water-section')} tone="boundary"/>
+          <NavButton label="Review & completeness" meta={reviewDone?null:`${checklistDone} of ${checklistTotal} complete`} done={reviewDone} onClick={reviewReporting} tone="review"/>
         </div>
       </nav>
       <div className="aiProfileSidebarLegend"><span><i className="complete"/> documented</span><span><i className="attention"/> needs review</span></div>
