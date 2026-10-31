@@ -1,6 +1,5 @@
 import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {Activity, Brain, RotateCcw, X} from 'lucide-react';
-import './guided-demo.css';
 
 const SAVE_SHARE_STEP = {
   target: '[data-demo-target="global-save-button"]',

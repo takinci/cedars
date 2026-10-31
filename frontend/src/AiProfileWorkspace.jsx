@@ -1,5 +1,4 @@
 import React from 'react';
-import './chunk7n.css';
 
 function statusClass(done, attention=true) {
   return done ? 'complete' : attention ? 'attention' : 'neutral';

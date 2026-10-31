@@ -1,0 +1,25 @@
+/* CEDARS design tokens — canonical visual vocabulary. */
+:root{
+  --cedars-forest:#2F6B57;
+  --cedars-forest-deep:#254C40;
+  --cedars-sage:#DDE8E1;
+  --cedars-sage-soft:#EEF4F0;
+  --cedars-ivory:#F7F5EF;
+  --cedars-card:#FFFFFF;
+  --cedars-ink:#25302D;
+  --cedars-muted:#66716D;
+  --cedars-border:#D8DEDA;
+  --cedars-border-strong:#BEC9C2;
+  --cedars-gold:#C2A45F;
+  --cedars-gold-soft:#F6F0DF;
+  --cedars-info:#708894;
+  --cedars-info-deep:#526B79;
+  --cedars-info-soft:#EEF3F5;
+  --cedars-example:#F6F2E9;
+  --cedars-example-border:#E3DDD0;
+  --cedars-danger:#A33A32;
+  --cedars-font-sans:"Aptos","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  --cedars-radius-control:6px;
+  --cedars-radius-panel:10px;
+  --cedars-page-max:1200px;
+}
