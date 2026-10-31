@@ -82,14 +82,15 @@ Outputs include EcoLabels, reporting text, structured methods/reproducibility fi
 
 ## Evidence and methodology
 
-CEDARS is **literature-informed**, but not every model parameter has equally strong evidence. Some values are published measurements; others are transparent estimates, proxies, or illustrative defaults where direct evidence is limited.
+CEDARS is **literature-informed**, but not every model parameter has equally strong evidence. Some values are published measurements; others are transparent estimates, proxies, or illustrative defaults where direct evidence is limited. The repository separates methodological decisions from the evidence used to support them:
 
-- The authoritative assumptions, parameter provenance, evidence limitations, and full bibliography are maintained in **[`sources.md`](./sources.md)**.
-- Relevant references are also linked directly from the public interface where they affect interpretation or guidance.
-- Local measurements should replace defaults for reporting of record whenever available.
-- Model performance is user-supplied and is not predicted by CEDARS.
+- **[`METHODS.md`](./METHODS.md)** — scientific and methodological framework: assessment objects, boundaries, lifecycle logic, evidence treatment, comparison rules, prospective scenarios, Score/EcoLabel interpretation, and reporting principles.
+- **[`sources.md`](./sources.md)** — authoritative evidence and assumption registry: source roles, parameter provenance, default-setting rationale, benchmark limitations, verification notes, and bibliography.
+- **[`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md)** — interface and interaction system used to present the methods consistently without changing their scientific meaning.
 
-Keeping the detailed bibliography in `sources.md` avoids duplicating partial reference lists that can drift out of date.
+Relevant references are also linked directly from the public interface where they affect interpretation or guidance. Local measurements should replace defaults for reporting of record whenever available, and model performance is user-supplied rather than predicted by CEDARS.
+
+The detailed bibliography remains centralized in `sources.md`; `METHODS.md` should reference source IDs rather than reproduce a parallel bibliography that can drift out of date.
 
 ---
 
@@ -150,7 +151,9 @@ Current frontend stack includes React 18, Vite 8, Chart.js, Lucide React, and Vi
 
 ## Repository guide
 
-- [`sources.md`](./sources.md) — scientific assumptions, provenance, evidence limitations, and references
+- [`METHODS.md`](./METHODS.md) — scientific and methodological framework
+- [`sources.md`](./sources.md) — evidence, assumptions, provenance, limitations, and references
+- [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md) — visual and interaction system
 - [`CHANGELOG.md`](./CHANGELOG.md) — user-facing changes
 - [`ROADMAP.md`](./ROADMAP.md) — active/planned work
 - [`CITATION.cff`](./CITATION.cff) — software citation metadata
@@ -185,7 +188,7 @@ The names **CEDARS**, the leaf mark, and **CEDARS Score / Rating** identify this
 
 CEDARS is a **research and estimation tool**. Outputs may include literature-based estimates, modeled values, proxies, and user-entered data. They are not medical, clinical, financial, regulatory, or certification advice and are provided as-is without warranty.
 
-For scientific or operational reporting of record, review the assumptions in [`sources.md`](./sources.md) and replace defaults with appropriate local measured data where available.
+For scientific or operational reporting of record, review the methodological boundary in [`METHODS.md`](./METHODS.md), the evidence and assumptions in [`sources.md`](./sources.md), and replace defaults with appropriate local measured data where available.
 
 ---
 

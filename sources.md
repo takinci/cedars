@@ -2,6 +2,54 @@
 
 CEDARS stores uncertain literature values as transparent, editable defaults with citation fields. Local measured data — procurement records, utility bills, scanner logs, PACS/cloud invoices, and country-specific carbon factors — should replace defaults wherever available.
 
+This file is the authoritative evidence and assumption registry for CEDARS. The scientific framework is defined in [`METHODS.md`](./METHODS.md); interface and presentation rules are defined in [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md). A methodological statement in `METHODS.md` should point here for its evidence basis rather than duplicating a second bibliography.
+
+## Evidence-governance rules
+
+1. **Every scientific default, benchmark, or methodological claim that changes interpretation must have an identifiable evidence basis.** If evidence is absent or inadequate, record that limitation explicitly rather than substituting a nearby value.
+2. **A published value does not automatically become a CEDARS default.** Its role must be stated: primary default source, corroborating evidence, validation/benchmark only, contextual evidence, methodological framework, planning guidance, or illustrative only.
+3. **Source scope must be preserved.** Do not generalize beyond the population, equipment, site, workflow, measurement method, or system boundary supported by the source.
+4. **Conflicting evidence remains visible.** Do not silently average incompatible studies or select a preferred value without documenting the rationale.
+5. **Changing a scientific default requires an update to this file in the same commit.** Record what changed, why, which code variable/output is affected, and the evidence role of the source.
+6. **Local measured data take precedence for reporting of record when they are appropriate to the modeled boundary.** Literature defaults remain editable fallbacks, not claims about a specific institution.
+7. **Missing is not zero.** Unavailable training, workflow-effect, water, Scope 3, or other data must remain unavailable/not assessed unless a supported estimate is explicitly introduced and labeled.
+8. **Public-facing references and source governance must remain synchronized.** A source cited in the interface should have a stable entry in `frontend/src/refs.js` and an evidence/governance entry here when it supports a CEDARS method, default, benchmark, or recommendation.
+9. **Verification dates matter.** Material references, datasets, standards, and software/tool claims should record or retain a verification date where the current state can change.
+
+### Evidence-role vocabulary
+
+Use these labels consistently when adding or materially revising evidence:
+
+| Role | Meaning in CEDARS |
+|---|---|
+| **Primary default source** | Direct basis for a shipped numerical default or calculation assumption |
+| **Corroborating evidence** | Supports plausibility/direction but does not independently set the default |
+| **Validation / benchmark only** | Used to compare or sanity-check CEDARS outputs; must not silently calibrate defaults or Score bands |
+| **Methodological framework** | Supports definitions, boundaries, reporting structure, or decision logic |
+| **Contextual evidence** | Informs interpretation without entering the calculation |
+| **Planning guidance** | Supports a prospective action/check; does not establish a quantified saving by itself |
+| **Illustrative only** | Example/template value that must not be presented as validated or representative |
+
+### Source identifiers and synchronization
+
+Source IDs should be **stable, lowercase kebab-case** for all new entries (for example, `doo-jacr-2024`, `woolen-radiology-2023`). The UI registry in `frontend/src/refs.js` already follows this convention. This document contains historical mixed-case/short-form IDs that predate that registry; treat those as legacy aliases until they are normalized in a dedicated migration. Do not rename an ID opportunistically in an unrelated patch because JSX, code comments, saved documentation, or external references may depend on it.
+
+When a legacy source is next materially revised, either preserve its existing ID or normalize it deliberately with a repository-wide search and an explicit compatibility/crosswalk note. New sources should not introduce additional mixed-case aliases.
+
+### Preferred record for complex evidence
+
+Short sources can remain in tables. For evidence that sets or materially changes a default, boundary, or interpretation, prefer a structured record with:
+
+- **Citation / persistent identifier**
+- **Evidence type and setting** (for example, direct power metering; number of scanners/sites; study duration)
+- **CEDARS role** (from the vocabulary above)
+- **Supports** — the specific assumption, variable, output, or interpretation supported
+- **Does not support** — important limits that prevent overgeneralization
+- **Affected code/fields** — when practical
+- **Last verified** — when the claim or source can change
+
+This structure is intentionally machine-readable in plain Markdown so future human or AI-assisted maintenance can distinguish *what a paper reports* from *how CEDARS uses it*.
+
 ---
 
 ## General datasets

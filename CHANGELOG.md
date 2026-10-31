@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- Repository-level **`METHODS.md`** and **`docs/DESIGN_SYSTEM.md`**, with explicit scientific/evidence/design ownership; `sources.md` now includes evidence-role, identifier, synchronization, and maintenance rules for future updates.
 - **AI Model & Informatics entry step**: *Compare candidate models* (procure/deploy) vs *Assess my own model* (develop), with three ways in for developers (measured numbers · Help me measure · estimate from specification) and a *See an example* band.
 - **Help me measure** tool chooser: three questions about the compute setup recommend an open-source energy-measurement tool and name the CEDARS field it fills; tool list verified October 2026, with a feedback notice.
 - Provenance tags (*Measured / Estimated / Literature*) on the AI model record; optional water inputs (site WUE, grid water intensity) with a screening fallback that is stated on the label.

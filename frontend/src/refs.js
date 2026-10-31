@@ -1,8 +1,11 @@
 // References cited inline in the interface. Each entry carries the DOI (preferred) or canonical
-// URL and the date it was verified. `sources.md` remains the methods document for the defaults;
-// this registry exists so that every citation shown to a visitor links straight to the source.
+// URL and the date it was verified. `METHODS.md` defines the scientific framework; `sources.md`
+// is the authoritative evidence/assumption registry. This file is the UI bibliography registry so
+// every citation shown to a visitor links directly to its source.
 //
 // Keep ids stable — they are referenced from JSX via <Ref id="..."/> and <ReferenceList ids={[...]}/>.
+// New ids use lowercase kebab-case and should match the identifier used in `sources.md`. Historical
+// mixed-case/short-form source ids in `sources.md` are legacy aliases until a dedicated migration.
 export const REFS = {
   'doo-jacr-2024': {
     authors: 'Doo FX, Parekh VS, Kanhere A, Savani D, Tejani AS, Sapkota A, Yi PH',
