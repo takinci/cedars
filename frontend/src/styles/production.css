@@ -766,3 +766,89 @@ footer>div:last-child a{font-size:11.5px!important}
   .stageCarouselCard{flex-basis:min(82vw,270px)}
   .walkthroughDockCoach{width:min(250px,calc(100vw - 32px))}
 }
+
+/* 8G — continuity, scientific hierarchy, and report/result cleanup. */
+/* Home uses the same segmented visual grammar as the persistent workflow rail. */
+.homeFlowHeading{margin:24px 0 6px!important;font-size:10.5px!important;font-weight:850!important;letter-spacing:.07em!important;color:#6B7D73!important}
+.homeFlow{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;margin-top:0!important;padding:0!important;border-top:1px solid #E0E6E2!important;border-bottom:1px solid #E0E6E2!important;background:transparent!important;overflow:visible!important}
+.homeFlow::before{display:none!important}
+.homeFlowStep{display:grid!important;grid-template-columns:20px minmax(0,1fr)!important;gap:8px!important;align-items:start!important;padding:11px 14px 12px!important;border-right:1px solid #E5E9E6!important;background:transparent!important}
+.homeFlowStep:last-of-type{border-right:0!important}
+.homeFlowStep>b{display:block!important;width:auto!important;height:auto!important;min-width:0!important;margin:1px 0 0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#66786E!important;font-size:10.5px!important;font-weight:750!important;line-height:1.3!important}
+.homeFlowCopy strong{font-size:12.5px!important;font-weight:700!important;letter-spacing:.025em!important;text-transform:uppercase!important;color:var(--cedars-ink)!important}
+.homeFlowCopy small{margin-top:2px;font-size:11.5px!important;line-height:1.35!important;color:var(--cedars-muted)!important}
+
+/* Stage cards: lifecycle stages are primary; supporting/optional context stays visibly secondary. */
+.stageCarouselTrack{gap:9px!important;padding-bottom:7px!important}
+.stageCarouselCard{flex-basis:220px!important;min-width:220px!important;padding:13px 14px!important}
+.stageCarouselCard.supporting{background:#FAFBFA!important;border-style:dashed!important;border-color:#C9D5CE!important}
+.stageCarouselCard.supporting .stageCarouselNumber{background:#fff!important;color:#6F8278!important;border-color:#C9D5CE!important}
+.stageCarouselCard.supporting.active{background:#F3F8F5!important;border-style:solid!important;border-color:var(--cedars-forest)!important}
+.stageCarouselOptional{position:static!important;grid-column:2!important;justify-self:start!important;margin-top:2px!important;font-size:8.5px!important;line-height:1!important}
+.stageCarouselControls{display:grid!important;grid-template-columns:minmax(130px,auto) minmax(160px,auto)!important;justify-content:space-between!important;gap:12px!important;margin-top:1px!important;padding:5px 0 0!important;border-top:0!important}
+.stageCarouselPrevious{justify-self:start!important}.stageCarouselNext{justify-self:end!important}
+.stageCarouselCurrent{display:none!important}
+
+/* Reduce rule fatigue: whitespace and grouping replace repeated horizontal separators. */
+.departmentPage .stageCarousel,.aiProfileWorkspaceCarousel>.stageCarousel{margin-bottom:22px!important}
+.departmentPage .footprintExplore{border-top:0!important;border-bottom:0!important;padding-top:8px!important;margin-top:18px!important}
+.departmentPage .footprintExplore>p{display:none!important}
+.departmentPage .detailToolbar{border-top:0!important;border-bottom:0!important;background:transparent!important;padding-left:0!important;padding-right:0!important;margin-top:16px!important}
+.departmentPage .detailToolbarHint{display:none!important}
+.departmentPage[data-dept-stage="review"]>.detailToolbar+div{display:none!important}
+.departmentPage .accHead{border-left:0!important;border-right:0!important;border-radius:0!important;background:transparent!important;padding-left:2px!important;padding-right:2px!important}
+.departmentPage .accHead+.aiSection{margin-top:18px!important}
+.reportStageCard,.reportShareSection{border-top:0!important;border-bottom:0!important}
+.reportStageCard+.reportStageCard{margin-top:30px!important}
+.reportSteps{border-top:0!important;border-bottom:0!important;margin-bottom:30px!important}
+
+/* Candidate comparison: one decision workspace, with the lower progress rail matching Profile navigation. */
+.comparisonWorkspaceSetup{background:transparent!important;border:0!important;padding-left:0!important;padding-right:0!important}
+.comparisonWorkspaceSetup>.inputSummary,.comparisonWorkspaceSetup .inputSummary{border-radius:8px!important;box-shadow:none!important;border-color:#DCE5DF!important}
+.comparisonResultsHead{margin-top:18px!important;background:transparent!important;border-left:0!important;border-right:0!important;border-radius:0!important}
+.comparisonDecisionPanel{padding-top:6px!important;border-top:0!important}
+.comparisonDecisionHeader{padding-bottom:8px!important}
+.comparisonDecisionHeader h2{margin-top:3px!important;font-size:22px!important}
+.comparisonDecisionHeader p{max-width:760px!important;font-size:12.5px!important;line-height:1.45!important}
+.comparisonProgress{display:grid!important;grid-template-columns:repeat(5,minmax(135px,1fr))!important;gap:8px!important;margin:10px 0 18px!important;padding:0!important;border:0!important;overflow-x:auto!important}
+.comparisonProgress>span{display:flex!important;align-items:center!important;min-height:46px!important;margin:0!important;padding:9px 10px!important;border:1px solid #D6E1DA!important;border-radius:8px!important;background:#fff!important;color:var(--cedars-muted)!important;font-size:10.5px!important;line-height:1.3!important;white-space:normal!important}
+.comparisonProgress>span b{flex:0 0 19px!important;width:19px!important;height:19px!important;margin-right:7px!important}
+.comparisonProgress>span.done{background:#F5F9F6!important;border-color:#C6D7CC!important;color:var(--cedars-forest-deep)!important}
+.comparisonProgress>span.active{border:2px solid var(--cedars-forest)!important;background:#EEF6F1!important;color:var(--cedars-ink)!important}
+.comparisonSetupActions{border-top:0!important;padding-top:8px!important}
+
+/* Report: one research-output hierarchy, methods text first, no repeated heading stack. */
+.reportMaterialsStage>.reportStageHeading{margin-bottom:8px!important}
+.reportMethodsOptions{display:flex!important;flex-direction:column!important;margin-top:0!important;border-radius:8px!important}
+.reportMethodsHeading>span,.reportMethodsHeading>h2{display:none!important}
+.reportMethodsHeading{padding-bottom:6px!important}
+.reportMethodsHeading>p{margin:0!important;max-width:760px!important;font-size:12.5px!important;line-height:1.45!important;color:var(--cedars-muted)!important}
+.reportMethodsOptions>[data-demo-target="ai-report-reproducibility"]{display:flex!important;flex-direction:column!important}
+.reportMethodsOptions>[data-demo-target="ai-report-reproducibility"]>.reportDisclosureDetails:last-child{order:-1!important}
+.reportMethodsOptions>[data-demo-target="ai-report-reproducibility"]>.reportDisclosureDetails:last-child>summary{font-size:13px!important;font-weight:800!important;color:var(--cedars-forest-deep)!important}
+.reportMethodsOptions>[data-demo-target="ai-report-reproducibility"]>.reportDisclosureDetails:last-child .download{background:var(--cedars-forest-deep)!important;color:#fff!important;border-color:var(--cedars-forest-deep)!important;font-weight:750!important}
+.reportMethodsOptions>[data-demo-target="ai-report-reproducibility"]>.reportDisclosureDetails:last-child .download:hover{background:var(--cedars-forest)!important}
+.reportMethodsOptions>.reportDisclosureDetails:first-of-type{order:3!important}
+.reportOptionalVisualHeading{margin-top:20px!important;padding-top:16px!important;border-top:0!important}
+.reportExportWorkspace{margin-bottom:22px!important}
+
+@media(max-width:900px){
+  .homeFlow{display:flex!important;overflow-x:auto!important;scroll-snap-type:x mandatory!important}
+  .homeFlowStep{flex:0 0 min(72vw,260px)!important;scroll-snap-align:center!important}
+  .comparisonProgress{grid-template-columns:repeat(5,minmax(150px,1fr))!important}
+  .stageCarouselCard{flex-basis:min(74vw,280px)!important}
+}
+@media(max-width:700px){
+  .stageCarouselControls{grid-template-columns:1fr 1fr!important}
+  .stageCarouselPrevious,.stageCarouselNext{width:100%!important}
+  .comparisonProgress{display:flex!important;overflow-x:auto!important;scroll-snap-type:x mandatory!important}
+  .comparisonProgress>span{flex:0 0 min(68vw,230px)!important;scroll-snap-align:center!important}
+}
+
+/* Keep the persistent workflow rail visually continuous with Home without turning it into another card row. */
+.workflowRail{border-top:1px solid #E0E6E2!important;border-bottom:1px solid #E0E6E2!important}
+.workflowRailStep{border-top:0!important;border-right:0!important;border-bottom:0!important;background:transparent!important}
+.workflowRailStep+.workflowRailStep{border-left:1px solid #E5E9E6!important}
+.workflowRailStep.active{background:#F7FAF8!important;box-shadow:inset 0 -2px 0 var(--cedars-forest)!important}
+.workflowRailStep.action small{font-size:10.5px!important;color:#7A8A82!important;line-height:1.25!important}
+.stageCarouselCopy strong,.stageCarouselCopy small{overflow-wrap:anywhere}

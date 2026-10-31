@@ -18,7 +18,13 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
   const inferenceDone=Boolean(Number(ecoLabelData.inferKwhPerStudy)>0 && ecoLabelData.hasInference);
   const boundaryDone=ecoLabelData.waterProv==='not-assessed' || (ecoLabelData.waterProv && ecoLabelData.waterProv!=='screening');
   const reviewDone=checklistTotal>0 && checklistDone===checklistTotal;
-  const [profileStage,setProfileStage]=React.useState('context');
+  const [profileStage,setProfileStage]=React.useState(developMode?'training':'context');
+
+  React.useEffect(()=>{
+    const nextStage=developMode?'training':'context';
+    setProfileStage(nextStage);
+    if(developMode) onSection('training');
+  },[developMode,compareMode]);
 
   React.useEffect(()=>{
     if(section==='training') setProfileStage('training');
@@ -33,7 +39,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     else if(key==='boundary') onSection('water');
   };
   const contextGroupLabel=developMode?'MODEL & WORKLOAD CONTEXT':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
-  const contextFlow=developMode?'Task/workload → training → inference/deployment → boundary.':'Clinical context → training → deployment → boundary.';
+  const contextFlow=developMode?'Training → inference/deployment; evaluation context and environmental boundary remain supporting disclosures.':'Clinical context → training disclosure → inference/deployment → environmental boundary.';
 
   const openAndScroll=id=>{
     const node=document.getElementById(id);
@@ -49,11 +55,17 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     <span className="aiProfileNavCopy"><strong>{label}</strong>{meta&&<small>{meta}</small>}</span>
   </button>;
 
-  const stageSteps=[
-    {key:'context',title:developMode?'Task / context':'Clinical context',detail:developMode?'Workload, evaluation, optional metadata':'Purpose, evidence and workflow context'},
-    {key:'training',title:'Training',detail:trainingDone?'Documented':'Add status or measurement'},
+  const stageSteps=developMode ? [
+    {key:'training',title:'Training & development',detail:trainingDone?'Documented':'Add status or measurement'},
     {key:'inference',title:'Inference & deployment',detail:inferenceDone?'Documented':'Add energy and expected use'},
-    {key:'boundary',title:'Boundary',detail:boundaryDone?'Reviewed':'Review water and boundary'},
+    {key:'context',title:'Context & evaluation',detail:performanceStarted?'Supporting evidence added':'Optional task / clinical context',optional:true,supporting:true},
+    {key:'boundary',title:'Environmental boundary',detail:boundaryDone?'Reviewed':'Optional water disclosure',optional:true,supporting:true},
+    {key:'review',title:'Review',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`},
+  ] : [
+    {key:'context',title:'Clinical context',detail:'Purpose, evidence and workflow context'},
+    {key:'training',title:'Training disclosure',detail:trainingDone?'Documented':'Add status or mark unavailable'},
+    {key:'inference',title:'Inference & deployment',detail:inferenceDone?'Documented':'Add energy and expected use'},
+    {key:'boundary',title:'Environmental boundary',detail:boundaryDone?'Reviewed':'Optional water disclosure',optional:true,supporting:true},
     {key:'review',title:'Review',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`},
   ];
 

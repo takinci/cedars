@@ -270,15 +270,15 @@ export default function AiProfileEditor({
     </section>}
 
     <section className="aiBoundarySummary">
-      <div><span>ENVIRONMENTAL BOUNDARY</span><strong>Water: {ecoLabelData.waterProv==='not-assessed'?'not assessed':ecoLabelData.waterProv==='screening'?'screening estimate':'inputs entered'}</strong><small>Water is reported separately from the carbon-and-energy Score. Unknown does not mean zero.</small></div>
-      <button type="button" className="download" onClick={()=>onSection('water')}>Review boundary →</button>
+      <div><span>ENVIRONMENTAL BOUNDARY · OPTIONAL DISCLOSURE</span><strong>Water: {ecoLabelData.waterProv==='not-assessed'?'not assessed':ecoLabelData.waterProv==='screening'?'screening estimate':'inputs entered'}</strong><small>Water is reported separately from the carbon-and-energy Score. Review it when relevant; unknown is never treated as zero.</small></div>
+      <button type="button" className="download" onClick={()=>onSection('water')}>Review water disclosure →</button>
     </section>
 
     {section==='water'&&<section id="ai-water-section" className="aiLifecycleEditor" data-demo-target="ai-water-section">
-      <h2>Water &amp; environmental boundary</h2><p className="note">Enter site/grid water values when known, use the screening estimate, or explicitly report water as not assessed.</p>
-      <div className="grid grid3"><label>Cooling water at compute site (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label><label>Water from electricity generation (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label><label>If unknown<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use the {waterPerKwh} L/kWh screening factor (Estimated)</option><option value="notassessed">Report water as not assessed</option></select></label></div>
+      <h2>Environmental boundary</h2><p className="note">Water is a separate optional disclosure. Enter site/grid values when known; otherwise use the screening estimate or mark water as not assessed.</p>
+      <div className="grid grid3"><label>On-site cooling water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label><label>Electricity-generation water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label><label>Water reporting<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use screening estimate ({waterPerKwh} L/kWh)</option><option value="notassessed">Mark water as not assessed</option></select></label></div>
       <p className="note">Water is reported separately and does not currently affect the carbon-and-energy CEDARS Score.<Ref id="li-thirsty-2023" order={refsOrder}/></p>
-      <button type="button" className="download" onClick={onContribute}>Contribute water data or methodology →</button>
+      <button type="button" className="download" onClick={onContribute}>Contribute water evidence →</button>
       <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('inference')}>← Inference &amp; deployment</button><button type="button" onClick={()=>document.querySelector('[data-demo-target="ai-disclosure"]')?.scrollIntoView({behavior:'smooth',block:'center'})}>Review reporting completeness →</button></div>
     </section>}
   </>;

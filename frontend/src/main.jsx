@@ -1569,15 +1569,15 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
         </div>
         <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onFootprint}>
           <div className="workflowRailLabel"><span>2</span><strong>RESULTS</strong></div>
-          <small>Current footprint + boundary + score</small>
+          <small>Interpret footprint + boundary</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onImprove}>
           <div className="workflowRailLabel"><span>3</span><strong>IMPROVE</strong></div>
-          <small>Test changes</small>
+          <small>Test prospective changes</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===4?'active':''}`} onClick={onReport}>
           <div className="workflowRailLabel"><span>4</span><strong>REPORT &amp; SHARE</strong></div>
-          <small>Assumptions + provenance + export</small>
+          <small>Preserve assumptions + evidence</small>
         </button>
       </div>
     </div>
@@ -3181,7 +3181,7 @@ function App() {
               <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
               <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Clinical purpose, validation, candidate comparison, training, inference, and deployment.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
             </div>
-            <div className="homeFlowHeading">WHAT YOU'LL DO</div>
+            <div className="homeFlowHeading">CEDARS WORKFLOW</div>
             <div className="homeFlow" aria-label="CEDARS assessment overview">
               <span className="homeFlowStep"><b>1</b><span className="homeFlowCopy"><strong>Profile</strong><small>Define the current state</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
@@ -4608,7 +4608,7 @@ function App() {
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection comparisonDecisionPanel workflowAnchor" style={{background:'none',boxShadow:'none',padding:0,marginTop:18}} data-demo-target="ai-candidate-results">
-            <div className="comparisonDecisionHeader"><div><span>COMPARISON RESULTS</span><h2>Review results and select a candidate</h2><p>This is the result of the shared definition, candidate inputs, workload, and compute context above—not a second comparison workflow.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
+            <div className="comparisonDecisionHeader"><div><span>COMPARISON RESULTS</span><h2>Results &amp; selection</h2><p>Each candidate uses the same clinical definition, workload, and compute context. Select one to continue into the AI Sustainability Profile.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
             <div className="comparisonProgress" aria-label="Candidate comparison workflow">
               <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Clinical definition</span>
               <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Candidate inputs</span>
@@ -5103,7 +5103,7 @@ function App() {
             </div>
             <div className="reportSteps" aria-label="Report and share workflow">
               <div><span>1</span><strong>Review &amp; finalize</strong><small>Check the information used in your CEDARS result</small></div>
-              <div><span>2</span><strong>Prepare your CEDARS materials</strong><small>Methods, provenance, reporting text &amp; optional visual summary</small></div>
+              <div><span>2</span><strong>Research-ready outputs</strong><small>Methods text, provenance, complete record &amp; optional visual summary</small></div>
               <div><span>3</span><strong>Preserve or share</strong><small>Save, transfer, link, or optionally contribute</small></div>
             </div>
           </>}
@@ -5525,9 +5525,9 @@ function App() {
           <section className="reportStageCard reportMaterialsStage" data-demo-target="ai-report-materials">
             <div className="reportStageHeading compact">
               <div>
-                <span>PREPARE YOUR CEDARS MATERIALS</span>
-                <h2>Methods, provenance &amp; reproducibility</h2>
-                <p>Prepare manuscript-, model-card-, repository-, or technical-report-ready environmental reporting. The visual Research Label remains an optional experimental summary below.</p>
+                <span>RESEARCH OUTPUTS</span>
+                <h2>Research-ready outputs</h2>
+                <p>Copy manuscript-ready methods text, export assumptions and provenance, or download the optional visual summary below.</p>
               </div>
             </div>
             <div className="reportOptionalVisualHeading"><span>OPTIONAL VISUAL SUMMARY · EXPERIMENTAL</span><strong>CEDARS AI Research Label</strong><small>A compact communication aid for posters, slides, model documentation, or exploratory reporting; not an external certification.</small></div>
@@ -5673,7 +5673,7 @@ function App() {
             </details>
 
             <details className="reportDisclosureDetails" open>
-              <summary>Methods-ready environmental impact text</summary>
+              <summary>Methods text</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section. For transparent reporting, retain the accompanying CEDARS assumptions and provenance table when feasible.</p>
                 <button className="download" onClick={()=>{navigator.clipboard.writeText(generateAiMethodsText(ecoLabelData));setAiParagraphCopied(true);setTimeout(()=>setAiParagraphCopied(false),2000);}} style={aiParagraphCopied?{background:'#26A69A'}:undefined}><FileText/> {aiParagraphCopied?'Copied!':'Copy methods / impact paragraph'}</button>
@@ -5754,7 +5754,7 @@ function App() {
         <div style={{flex:1,minWidth:240}}>
           <span>Open research platform for transparent environmental assessment of radiology and medical AI.</span>
           <div style={{fontSize:11,color:'#90a4ae',marginTop:10,lineHeight:1.6,maxWidth:640}}>
-            © 2026 CEDARS · code <a href="https://github.com/takinci/cedars/blob/main/LICENSE" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">Apache-2.0</a>, content <a href="https://creativecommons.org/licenses/by/4.0/" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">CC BY 4.0</a>.
+            © 2026 CEDARS · code <a href="https://github.com/takinci/cedars/blob/main/LICENSE" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">Apache-2.0</a>, project-authored content <a href="https://creativecommons.org/licenses/by/4.0/" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">CC BY 4.0</a>.
             {' '}Research/estimation tool — literature-based estimates, not measured values or medical/regulatory advice; provided as-is, no warranty.
             {' '}Assessment data stays in your browser by default. Data is transmitted only if you explicitly choose to contribute an assessment to CEDARS research; local saves, portable-file import/export, and normal calculations remain browser-side.
           </div>

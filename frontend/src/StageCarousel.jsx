@@ -4,7 +4,6 @@ export default function StageCarousel({label='STAGES', steps=[], activeKey, onCh
   const trackRef=useRef(null);
   const cardRefs=useRef({});
   const activeIndex=Math.max(0,steps.findIndex(step=>step.key===activeKey));
-  const active=steps[activeIndex] || steps[0];
   const previous=activeIndex>0 ? steps[activeIndex-1] : null;
   const next=activeIndex<steps.length-1 ? steps[activeIndex+1] : null;
 
@@ -26,7 +25,7 @@ export default function StageCarousel({label='STAGES', steps=[], activeKey, onCh
         type="button"
         role="tab"
         aria-selected={step.key===activeKey}
-        className={`stageCarouselCard ${step.key===activeKey?'active':''} ${step.optional?'optional':''}`}
+        className={`stageCarouselCard ${step.key===activeKey?'active':''} ${step.optional?'optional':''} ${step.supporting?'supporting':''}`}
         onClick={()=>onChange?.(step.key)}
       >
         <span className="stageCarouselNumber">{String(index+1).padStart(2,'0')}</span>
@@ -36,7 +35,6 @@ export default function StageCarousel({label='STAGES', steps=[], activeKey, onCh
     </div>
     <div className="stageCarouselControls">
       <button type="button" className="stageCarouselPrevious" disabled={!previous} onClick={()=>previous&&onChange?.(previous.key)}>{previous?`← ${previous.title}`:'← Previous'}</button>
-      <div className="stageCarouselCurrent"><span>{active?.title}</span>{active?.detail&&<small>{active.detail}</small>}</div>
       <button type="button" className="stageCarouselNext" disabled={!next} onClick={()=>next&&onChange?.(next.key)}>{next?`Next: ${next.title} →`:'Complete'}</button>
     </div>
   </nav>;

@@ -6,11 +6,18 @@ This product includes software developed by the CEDARS authors
 
 ── Licensing summary ─────────────────────────────────────────────────────────
 • Software / source code   → Apache License, Version 2.0 (see LICENSE).
-• Content, methodology, documentation, and generated labels/badges
+• Project-authored methodology, documentation, and explanatory content
                            → Creative Commons Attribution 4.0 International
-                             (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/).
+                             (CC BY 4.0, https://creativecommons.org/licenses/by/4.0/),
+                             unless otherwise noted.
+• Generated assessment outputs may incorporate user-supplied data or
+  third-party material. CEDARS does not claim rights in those underlying inputs;
+  users remain responsible for rights and attribution that apply to them.
+• Third-party software, data, publications, logos, and other materials retain
+  their own licences, terms, and attribution requirements.
 
-Attribution for reuse of content: "CEDARS (cedarsleaf.com), CC BY 4.0."
+Suggested attribution for reuse of CEDARS-authored content:
+"CEDARS (cedarsleaf.com), CC BY 4.0."
 The names "CEDARS", the CEDARS leaf mark, and "CEDARS Score / Rating" are
 identifiers of this project; the Apache-2.0 licence does not grant rights to
 use them (see LICENSE, section 6 — Trademarks).
@@ -23,10 +30,14 @@ kind (see LICENSE, sections 7–8). Replace defaults with your own measured data
 for any reporting of record.
 
 ── Privacy ───────────────────────────────────────────────────────────────────
-CEDARS runs entirely in your browser. It has no backend, collects no personal
-data, sets no cookies, and sends nothing you enter off your device.
+CEDARS calculations, local saves, and portable-file import/export run in the
+browser. Assessment data are transmitted only when a user explicitly chooses a
+configured research-contribution workflow and completes the associated review
+and consent steps. Shareable links are created only on user request and are not
+published or sent automatically. See the application privacy/disclosure text
+for the current deployment configuration.
 
 ── Third-party ───────────────────────────────────────────────────────────────
 Built with React, Vite, Chart.js / react-chartjs-2, and Lucide icons, each
-under their own open-source licences. All scientific defaults are attributed in
-sources.md.
+under their own open-source licences. Scientific sources and assumptions are
+attributed in sources.md.
