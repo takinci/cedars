@@ -108,6 +108,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
     onRoute('own');
   };
   const filtered = examples.filter(ex => (!systemType || !ex.scen?.aiSystemType || ex.scen.aiSystemType===systemType) && (!lane || exampleLane(ex)===lane));
+  const laneTitle=ENTRY_CHOICES.find(choice=>choice.key===lane)?.title || 'selected pathway';
   const renderChoice=choice=>{
     const Icon=choice.icon;
     const active=lane===choice.key;
@@ -122,7 +123,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
   return (
     <section className="aiIntentStart aiEntryRedesign" aria-labelledby="ai-intent-title">
       <div className="aiIntentHeader aiEntryHero">
-        <span className="aiIntentKicker">START HERE</span>
+        <span className="aiIntentKicker">STEP 1 · PATHWAY</span>
         <div>
           <h2 id="ai-intent-title">What would you like to do?</h2>
           <p>Choose the task first. CEDARS will then ask only for the model and lifecycle information needed for that workflow.</p>
@@ -158,27 +159,34 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           ))}
         </div>
         <div className="aiEntryContinueRow">
-          <span>{!systemType?'Choose an AI type to continue.':'Continue to enter your model, or load a worked example below.'}</span>
-          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue →</button>
+          <span><strong>STEP 3 · CONTINUE</strong>{!systemType?'Choose an AI type above.':`Continue into ${laneTitle}.`}</span>
+          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue to {laneTitle} →</button>
         </div>
       </div>}
 
-      <section id="ai-examples" className="aiExamplesGuide aiExamplesExpanded">
-        <div className="aiExamplesGuideHeader">
-          <span>OPTIONAL STARTING POINTS</span>
-          <div><strong>Worked examples</strong><p>Load a complete example and replace its values with your own. After you choose a role, examples are filtered to that workflow. They never become evidence for a different model automatically.</p></div>
+      <details id="ai-examples" className="aiExamplesGuide aiExamplesExpanded aiExamplesAlternative">
+        <summary>
+          <span>OR</span>
+          <span><strong>Explore with sample data instead</strong><small>Optional worked examples load illustrative or literature-derived values; they are not another required step.</small></span>
+          <b>Browse samples ↓</b>
+        </summary>
+        <div className="aiExamplesAlternativeBody">
+          <div className="aiExamplesGuideHeader">
+            <span>OPTIONAL SAMPLE DATA</span>
+            <div><strong>Worked examples</strong><p>{lane?`Showing examples that fit ${laneTitle.toLowerCase()}${systemType?' and the selected AI type':''}.`:'Choose a pathway above to narrow these examples, or browse all samples.'} Replace example values with your own before interpreting a result.</p></div>
+          </div>
+          <div className="aiExampleChoiceGrid aiExampleChoiceGridExpanded">
+            {filtered.map(ex=>{
+              const [Icon,kind]=exampleKind(ex);
+              return <button key={ex.key} type="button" className="aiExampleChoice aiExampleChoiceVisual" onClick={()=>onExample(ex.key)}>
+                <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={25}/></span>
+                <span className="aiExampleChoiceCopy"><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small><em>{ex.subtitle}</em></span>
+                <b className="aiExampleLoad">Load sample data →</b>
+              </button>;
+            })}
+          </div>
         </div>
-        <div className="aiExampleChoiceGrid aiExampleChoiceGridExpanded">
-          {filtered.map(ex=>{
-            const [Icon,kind]=exampleKind(ex);
-            return <button key={ex.key} type="button" className="aiExampleChoice aiExampleChoiceVisual" onClick={()=>onExample(ex.key)}>
-              <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={25}/></span>
-              <span className="aiExampleChoiceCopy"><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small><em>{ex.subtitle}</em></span>
-              <b className="aiExampleLoad">Load example →</b>
-            </button>;
-          })}
-        </div>
-      </section>
+      </details>
     </section>
   );
 }
@@ -195,7 +203,7 @@ export function AiRouteStrip({route, ownMode, systemType, onComparison, onBackTo
       <span className="aiIntentKicker">AI PATHWAY</span>
       <strong>{label}</strong>
       <span className="aiRouteActions">
-        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>View candidate comparison ↓</button>}
+        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>Open comparison results ↓</button>}
         {route === 'own' && ownMode === 'spec' && onBackToComparison && <button type="button" className="inlineTextButton" onClick={onBackToComparison}>← Back to candidate comparison</button>}
         {route === 'own' && ownMode === 'spec' && !onBackToComparison && onStartComparison && <button type="button" className="inlineTextButton" onClick={onStartComparison}>Compare this model with candidates →</button>}
       </span>

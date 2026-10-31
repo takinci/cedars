@@ -33,9 +33,8 @@ function FullCitation({id}) {
   return <li>{r.authors}. {r.title}. <em>{r.venue}</em> {r.cite}. <ExternalLink href={refUrl(r)}>{r.doi?`doi:${r.doi}`:'Source'}</ExternalLink></li>;
 }
 
-function Recommendation({item,index,onAction}) {
+function Recommendation({item,onAction}) {
   return <article className="aiImproveRec">
-    <div className="aiImproveRecNumber">{index+1}</div>
     <div className="aiImproveRecBody">
       <span className={`aiImprovePurpose ${PURPOSE_CLASS[item.purpose]||''}`}>{item.purpose}</span>
       <h3>{item.title}</h3>
@@ -47,6 +46,12 @@ function Recommendation({item,index,onAction}) {
       </div>
     </div>
   </article>;
+}
+
+function recommendationStage(item) {
+  if (item.purpose==='Reduce environmental impact') return 'environment';
+  if (item.action==='profile-training' || item.action==='profile-inference' || item.action==='profile-compute') return 'footprint';
+  return 'clinical';
 }
 
 export default function AiImproveWorkspace({
@@ -82,6 +87,15 @@ export default function AiImproveWorkspace({
     return ranked;
   },[hasModel,mode,options,clinicalReady,scen.clinicalEffectBasis,ecoLabelData.inferKwhPerStudy,ecoLabelData.trainingAvailable,ecoLabelData.trainProv]);
 
+  const topRecommendationGroups=useMemo(()=>{
+    const groups=[
+      {key:'clinical',label:'Clinical & evidence readiness',detail:'Resolve intended-use, performance, validation, and local workflow evidence before an environmental choice is allowed to drive implementation.'},
+      {key:'footprint',label:'Complete the footprint',detail:'Replace missing or generic lifecycle assumptions with measured or deployment-specific values where feasible.'},
+      {key:'environment',label:'Environmental opportunities',detail:'Test environmental changes only after the relevant clinical requirements remain satisfied.'},
+    ];
+    return groups.map(group=>({...group,items:topRecommendations.filter(item=>recommendationStage(item)===group.key)})).filter(group=>group.items.length);
+  },[topRecommendations]);
+
   const scenario=useMemo(()=>{
     const months=Math.max(1,Number(scen.deployMonths)||36);
     const trainingTotal=ecoLabelData.trainingAvailable?Math.max(0,Number(ecoLabelData.trainCo2)||0):0;
@@ -109,9 +123,14 @@ export default function AiImproveWorkspace({
   if(!hasModel) return <section className="aiImproveWorkspace aiImproveEmpty" data-demo-target="ai-improve-workspace">
     <span className="aiImproveKicker">AI MODEL &amp; INFORMATICS</span>
     <h2>Improve this AI</h2>
-    <p>Add or select an AI profile to receive recommendations based on its clinical context, lifecycle, deployment and current evidence.</p>
-    <button type="button" onClick={onManageModels}>Add an AI profile →</button>
-    <details><summary>Browse general sustainable-AI guidance</summary><div className="aiImproveAllList">{options.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div></details>
+    <p>Add or select an AI profile to receive recommendations tied to the actual clinical context, lifecycle, deployment, and evidence.</p>
+    <div className="aiImproveEmptyBenefits" aria-label="What an AI profile enables">
+      <span><strong>Clinical & evidence readiness</strong><small>Check whether clinical context is sufficient for implementation or comparison.</small></span>
+      <span><strong>Lifecycle footprint</strong><small>Identify missing training, inference, compute, or deployment assumptions.</small></span>
+      <span><strong>Prospective scenarios</strong><small>Test environmental changes without rewriting the current baseline.</small></span>
+    </div>
+    <button type="button" onClick={onManageModels}>Add or select an AI profile →</button>
+    <details><summary>Browse general sustainable-AI guidance</summary><div className="aiImproveAllList">{options.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></details>
   </section>;
 
   return <section className="aiImproveWorkspace aiImproveRedesign" data-demo-target="ai-improve-workspace">
@@ -123,8 +142,8 @@ export default function AiImproveWorkspace({
     <div className="aiImprovePrinciple"><strong>Clinical acceptability comes first.</strong><span>Environmental efficiency helps differentiate options only after intended use, safety, performance, validation and workflow fit are acceptable for patient care.</span></div>
 
     <section className="aiImproveTopRecommendations">
-      <div className="aiImproveSectionHeading"><div><span>PRIORITIES SURFACED FROM THIS PROFILE</span><h3>{topRecommendations.length} relevant priorit{topRecommendations.length===1?'y':'ies'} from the current record</h3></div><small>{clinicalReady?'The number varies with the record; clinical acceptability remains a prerequisite, not a weighted trade-off against footprint.':'Clinical evidence is not fully documented. Environmental accounting and improvement review can still proceed, but implementation remains conditional on clinical suitability; candidate ranking requires adequate clinical evidence first.'}</small></div>
-      <div className="aiImproveRecommendationList">{topRecommendations.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div>
+      <div className="aiImproveSectionHeading"><div><span>PRIORITIES FROM THIS PROFILE</span><h3>What to resolve before and after environmental optimization</h3></div><small>{clinicalReady?'Clinical acceptability remains a prerequisite, not a weighted trade-off against footprint.':'Clinical evidence is not fully documented. Accounting can proceed, but implementation and candidate ranking remain conditional on adequate clinical evidence.'}</small></div>
+      <div className="aiImprovePriorityGroups">{topRecommendationGroups.map(group=><section key={group.key} className={`aiImprovePriorityGroup ${group.key}`}><div className="aiImprovePriorityGroupHeading"><strong>{group.label}</strong><small>{group.detail}</small></div><div className="aiImproveRecommendationList">{group.items.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></section>)}</div>
     </section>
 
     <section id="ai-scenario-sandbox" className={`aiScenarioSandbox ${scenarioFocus?'focus-'+scenarioFocus:''}`}>

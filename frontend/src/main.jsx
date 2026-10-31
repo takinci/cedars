@@ -3169,9 +3169,8 @@ function App() {
 
           <section className="homeStart" aria-labelledby="cedars-start-title">
             <div className="homeStartHeading">
-              <span>START AN ASSESSMENT</span>
-              <h2 id="cedars-start-title">Start with the care environment or the AI system</h2>
-              <p>Choose Radiology Department for site operations and local deployment. Choose AI Model &amp; Informatics for the model itself, including comparison, development, training, and inference.</p>
+              <h2 id="cedars-start-title">Choose where to begin</h2>
+              <p>Assess a Radiology Department or an AI system. Both follow the same CEDARS workflow from Profile through reporting.</p>
             </div>
             <div className="homeStartGrid">
               <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
@@ -3844,15 +3843,15 @@ function App() {
       {/* ── AI ── */}
       {page==='ai' && (
         <main className="aiPage">
-          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
+          <div className="aiPageHeaderRow" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" onClick={returnToAiImprove} style={{padding:'8px 14px',fontSize:13,background:'#1b5e20',color:'#fff',fontWeight:800}}>← Return to AI Improve</button>}{scen.aiRoute&&<button type="button" className="download aiBackOptionsButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Change AI pathway</button>}</div>
+            <div className="aiPageActions">{aiEntryOrigin==='department'&&<button type="button" className="download aiContextBackButton" onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>Change pathway</button>}</div>
           </div>
 
           {aiEntryOrigin === 'department' && !aiExampleLoaded && (
             <div className="quickStartNotice" style={{marginBottom:14,border:'2px solid #2E7D32',boxShadow:'0 4px 14px rgba(46,125,50,0.12)'}}><Brain size={17}/><div style={{width:'100%'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><strong>Linked to Department Clinical AI</strong><button type="button" onClick={returnToClinicalAi} style={{background:'#1b5e20',color:'#fff',fontWeight:800,padding:'7px 12px'}}>← Return to Clinical AI</button></div><p style={{marginBottom:0}}>Changes here update the shared AI profile used by the Department.</p></div></div>
           )}
-          {aiExampleLoaded && (()=>{const ex=AI_EXAMPLES.find(e=>e.key===aiExampleLoaded);return <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Example loaded{ex?.title?`: ${ex.title}`:''}</strong><p>Example values are illustrative or literature-derived. Review them before using this as your starting point.</p><div className="quickStartChoices"><button type="button" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Back to AI start</button><button type="button" onClick={useLoadedExampleAsStartingPoint}>Use as my starting point</button>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi}>Return to Clinical AI</button>}</div></div></div>;})()}
+          {aiExampleLoaded && (()=>{const ex=AI_EXAMPLES.find(e=>e.key===aiExampleLoaded);return <div className="quickStartNotice aiExampleLoadedNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Example loaded{ex?.title?`: ${ex.title}`:''}</strong><p>Example values are illustrative or literature-derived. Review them before using this as your starting point.</p><div className="quickStartChoices"><button type="button" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Back to AI start</button><button type="button" onClick={useLoadedExampleAsStartingPoint}>Use as my starting point</button>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi}>Return to Clinical AI</button>}</div></div></div>;})()}
 
           {/* ── Entry step: development vs clinical selection/deployment ── */}
           {!scen.aiRoute ? (
@@ -4584,18 +4583,18 @@ function App() {
           {scen.aiRoute === 'compare' && (<>
           <button type="button" className="accHead comparisonResultsHead" onClick={()=>toggleAi('benchmark')} aria-expanded={!!aiOpen['benchmark']}>
             <span className="accCaret">{aiOpen['benchmark']?'▾':'▸'}</span>
-            <span className="accTitle">Decision view — performance + environmental intensity</span>
+            <span className="accTitle">Comparison results — performance + environmental intensity</span>
             <span className="accVal">{benchResults.rows.length} candidates</span>
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection comparisonDecisionPanel workflowAnchor" style={{background:'none',boxShadow:'none',padding:0,marginTop:18}} data-demo-target="ai-candidate-results">
-            <div className="comparisonDecisionHeader"><div><span>PROFILE · COMPARE CANDIDATES</span><h2>Compare and select a candidate</h2><p>Hold the clinical question constant, compare performance and environmental intensity on the same basis, then carry one selected candidate into the AI Sustainability Profile.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
+            <div className="comparisonDecisionHeader"><div><span>COMPARISON RESULTS</span><h2>Review results and select a candidate</h2><p>This is the result of the shared definition, candidate inputs, workload, and compute context above—not a second comparison workflow.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
             <div className="comparisonProgress" aria-label="Candidate comparison workflow">
-              <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Define clinical comparison</span>
-              <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Add candidate details</span>
-              <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchModels.length>=2?'active':''}><b>3</b> Set workload &amp; compute</span>
-              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>4</b> Compare candidates</span>
-              <span className={benchResults.rows.length>=2?'active':''}><b>5</b> Select &amp; assess</span>
+              <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Clinical definition</span>
+              <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Candidate inputs</span>
+              <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchModels.length>=2?'active':''}><b>3</b> Workload &amp; compute</span>
+              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>4</b> Results</span>
+              <span className={benchResults.rows.length>=2?'active':''}><b>5</b> Select candidate</span>
             </div>
             <p className="note" style={{marginBottom:8}}>
               Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
@@ -5167,7 +5166,7 @@ function App() {
               <details className="methodologyDetails">
                 <summary>Methodology &amp; scoring</summary>
                 <div>
-                  The CEDARS Score (0–100) and Rating (1–5 leaves) are based on <strong>operational energy-related kgCO₂e per imaging study</strong> — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department can score well even at a high absolute footprint while an under-used fleet does not. Operational cloud compute/archive is included when configured. Extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score. The scale is benchmarked against published radiology carbon-intensity data; see the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">full source list</a>. Its visual reporting logic draws on consumer ecolabels such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer">EU Energy Label</a>.
+                  The CEDARS Score (0–100) and Rating (1–5 leaves) are based on <strong>operational energy-related kgCO₂e per imaging study</strong> — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department can score well even at a high absolute footprint while an under-used fleet does not. Operational cloud compute/archive is included when configured. Extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score. The current score anchors are transparent heuristic thresholds informed by published radiology carbon-intensity literature; they are <strong>not</strong> an empirically calibrated distribution of real departments. See the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">full source list and assumptions</a>. The visual reporting concept draws on familiar ecolabel conventions such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer">EU Energy Label</a>.
                 </div>
               </details>
             </div>
@@ -5511,7 +5510,7 @@ function App() {
                 <p>Download the label or copy concise Methods / Environmental Impact text. Expand the structured options only when your venue or technical audience needs them.</p>
               </div>
             </div>
-          <div style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
+          <div className="reportExportWorkspace" style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Visual card */}
             <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
               <div style={{background:'#1b5e20', padding:'14px 18px'}}>
@@ -5746,7 +5745,7 @@ function App() {
       <footer style={{flexWrap:'wrap',gap:16}}>
         <Logo dark/>
         <div style={{flex:1,minWidth:240}}>
-          <span>ESG-ready sustainability intelligence for academic hospitals, enterprise healthcare systems, radiology AI teams, and scientific reporting.</span>
+          <span>Open research platform for transparent environmental assessment of radiology and medical AI.</span>
           <div style={{fontSize:11,color:'#90a4ae',marginTop:10,lineHeight:1.6,maxWidth:640}}>
             © 2026 CEDARS · code <a href="https://github.com/takinci/cedars/blob/main/LICENSE" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">Apache-2.0</a>, content <a href="https://creativecommons.org/licenses/by/4.0/" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">CC BY 4.0</a>.
             {' '}Research/estimation tool — literature-based estimates, not measured values or medical/regulatory advice; provided as-is, no warranty.
