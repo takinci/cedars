@@ -454,3 +454,101 @@ footer>div:last-child a{font-size:11.5px!important}
   .aiImproveDriverSequence{grid-template-columns:1fr}
   .reportOptionalVisualHeading{grid-template-columns:1fr}.reportOptionalVisualHeading>span{grid-row:auto}
 }
+
+/* 8D — clearer onboarding, shared illustrative language, and report/share finishing pass. */
+/* Home: the four-stage method is a primary concept, not micro-navigation. */
+.homeFlow{
+  margin-top:24px!important;padding:16px 18px!important;
+  border:1px solid var(--cedars-border)!important;border-radius:8px!important;
+  background:#fff!important;box-shadow:none!important;
+}
+.homeFlowStep{padding:4px 2px!important;align-items:center!important}
+.homeFlowStep>b{width:30px!important;height:30px!important;min-width:30px!important;font-size:12px!important;border-color:#AFC6B8!important;background:var(--cedars-sage-soft)!important;color:var(--cedars-forest-deep)!important}
+.homeFlowCopy strong{font-size:14px!important;font-weight:700!important;color:var(--cedars-ink)!important}
+.homeFlowCopy small{font-size:12px!important;color:var(--cedars-muted)!important}
+.homeFlowArrow{color:#8AA596!important}
+
+/* One warm-neutral signal for illustrative material: walkthroughs, Department quick starts, AI examples. */
+.guidedDemoLauncher,
+.departmentPage .quickStartNotice,
+.aiExamplesUtility{
+  --illustrative-bg:var(--cedars-example);
+  --illustrative-border:var(--cedars-example-border);
+}
+.guidedDemoLauncher>summary,
+.departmentPage .quickStartNotice,
+.aiExamplesUtility>summary{
+  background:var(--illustrative-bg)!important;
+  border-color:var(--illustrative-border)!important;
+}
+.departmentPage .quickStartNotice{
+  border:1px solid var(--illustrative-border)!important;
+  border-radius:7px!important;padding:12px 14px!important;box-shadow:none!important;
+}
+.departmentPage .quickStartNotice>svg{color:#9A7A37!important}
+
+/* AI examples: visible and persistent, but outside the decision sequence. */
+.aiPage>.aiExamplesUtility{margin:10px 0 16px}
+.aiExamplesUtility>summary{
+  display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:10px 14px!important;
+  align-items:center!important;width:100%!important;box-sizing:border-box!important;
+  min-height:54px!important;padding:10px 13px!important;border:1px solid var(--cedars-example-border)!important;
+  background:var(--cedars-example)!important;
+}
+.aiExamplesUtilitySignal{font-size:10px;font-weight:800;letter-spacing:.045em;color:#8A6F43;white-space:nowrap}
+.aiExamplesUtilityCopy{display:flex;flex-direction:column;gap:1px;min-width:0}
+.aiExamplesUtilityCopy strong{font-size:13.5px;color:var(--cedars-ink)}
+.aiExamplesUtilityCopy small{font-size:11.5px!important;color:var(--cedars-muted);line-height:1.4}
+.aiExamplesUtility>summary>b{font-size:11.5px;color:var(--cedars-forest-deep);white-space:nowrap}
+.aiExamplesUtility[open]>summary{border-bottom-left-radius:0!important;border-bottom-right-radius:0!important}
+.aiExamplesUtilityPanel{
+  position:static!important;right:auto!important;top:auto!important;width:100%!important;box-sizing:border-box!important;
+  border-top:0!important;border-top-left-radius:0!important;border-top-right-radius:0!important;
+  box-shadow:none!important;margin:0!important;
+}
+
+/* Department: primary action contrast must remain legible. */
+.departmentPage .clinicalAiSetupPrompt>button{
+  background:var(--cedars-forest-deep)!important;color:#fff!important;border-color:var(--cedars-forest-deep)!important;
+}
+.departmentPage .clinicalAiSetupPrompt>button:hover{background:var(--cedars-forest)!important;color:#fff!important}
+
+/* Improve: workflow navigation is the primary scenario builder; ranking is a secondary shortcut. */
+.improveChooser{display:flex!important;flex-direction:column!important}
+.improveAllChanges{order:1!important}
+.improveOpportunities{order:2!important;margin-top:18px!important;padding-top:16px!important;border-top:1px solid var(--cedars-border)!important}
+.improveAllChanges>.improveSectionHeading{padding:10px 0 12px!important;border-bottom:1px solid var(--cedars-border)!important;margin-bottom:12px!important}
+.improveAllChanges>.improveSectionHeading h3{font-size:19px!important}
+.improveAllChanges>.improveSectionHeading p{font-size:12.5px!important;max-width:680px}
+.improveWorkflowMap{margin-top:4px!important}
+.improveOpportunities>h3{font-size:14px!important}
+.improveOpportunities>.note{font-size:11.5px!important}
+
+/* Report: make research text immediately available, keep the visual label compact, and surface sharing globally. */
+.saveUtilityButton.reportMode{
+  background:var(--cedars-sage-soft)!important;border-color:#9FC2AD!important;color:var(--cedars-forest-deep)!important;
+  box-shadow:0 0 0 2px rgba(47,107,87,.05)!important;
+}
+.saveUtilityButton.reportMode:hover{background:#E7F1EB!important;border-color:var(--cedars-forest)!important}
+.reportVisualCard{
+  display:grid!important;grid-template-columns:minmax(170px,.72fr) minmax(250px,1.28fr)!important;
+  max-width:none!important;width:100%!important;min-width:0!important;align-items:stretch!important;
+}
+.reportVisualCard>div:first-child{grid-column:1/-1!important}
+.reportVisualCard>div:nth-child(2){grid-column:1!important;border-right:1px solid #E2ECE5!important;border-bottom:0!important}
+.reportVisualCard>div:nth-child(3){grid-column:2!important;border-bottom:0!important}
+.reportVisualCard>div:nth-child(n+4):not(:last-child){display:none!important}
+.reportVisualCard>div:last-child{grid-column:1/-1!important}
+.reportExportWorkspace{grid-template-columns:minmax(0,1fr) minmax(230px,280px)!important;gap:18px!important}
+.reportExportWorkspace>div:last-child{align-self:start}
+.reportMethodsOptions .reportDisclosureDetails:last-child>summary{font-weight:750;color:var(--cedars-forest-deep)}
+
+@media(max-width:900px){
+  .homeFlow{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.homeFlowArrow{display:none!important}
+  .reportVisualCard{grid-template-columns:1fr!important}.reportVisualCard>div:nth-child(2),.reportVisualCard>div:nth-child(3){grid-column:1!important;border-right:0!important;border-bottom:1px solid #E2ECE5!important}
+  .reportExportWorkspace{grid-template-columns:1fr!important}
+}
+@media(max-width:700px){
+  .aiExamplesUtility>summary{grid-template-columns:1fr auto!important}.aiExamplesUtilitySignal{grid-column:1/-1}.aiExamplesUtilityCopy small{display:block!important}.aiExamplesUtilityPanel{position:static!important;max-height:none!important}
+  .homeFlow{grid-template-columns:1fr!important}
+}

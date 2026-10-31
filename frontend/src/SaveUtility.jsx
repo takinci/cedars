@@ -11,7 +11,9 @@ export default function SaveUtility({
   onContribute,
   contributionConfigured,
   demoOpen = false,
+  reportMode = null,
 }) {
+  const isReportMode = reportMode ?? (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('page') === 'report');
   const [open, setOpen] = useState(false);
   const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
   const inputRef = useRef(null);
@@ -27,21 +29,24 @@ export default function SaveUtility({
     <div className="saveUtility">
       <button
         type="button"
-        className="saveUtilityButton"
+        className={`saveUtilityButton ${isReportMode?'reportMode':''}`}
         data-demo-target="global-save-button"
         onClick={()=>setOpen(v=>!v)}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        title="Save, reopen, or share your CEDARS assessment"
+        title={isReportMode ? 'Preserve or share this CEDARS assessment' : 'Save, reopen, or share your CEDARS assessment'}
       >
-        {localSavedAt ? <CheckCircle2 size={16}/> : <Save size={16}/>}
-        <span>{localSavedAt ? 'Saved' : 'Save'}</span>
+        {isReportMode ? <Share2 size={16}/> : localSavedAt ? <CheckCircle2 size={16}/> : <Save size={16}/>}
+        <span>{isReportMode ? 'Save / Share' : localSavedAt ? 'Saved' : 'Save'}</span>
         <span className="saveUtilityCaret">▾</span>
       </button>
 
       {menuOpen && (
         <div className="saveUtilityMenu" role="menu" data-demo-target="global-save-menu">
-          <div className="saveUtilityMenuTitle">Save your work</div>
+          <div className="saveUtilityMenuTitle">{isReportMode ? 'Preserve or share' : 'Save your work'}</div>
+          {isReportMode && <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
+            <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Copy shareable CEDARS assessment link'}</strong><small>Reopens the supported assessment configuration. Complete multi-model details still require a downloaded CEDARS file.</small></span>
+          </button>}
           <button type="button" onClick={()=>{onSaveLocal?.(); setOpen(false);}} role="menuitem">
             <Save size={15}/><span><strong>Save on this device only</strong><small>Browser-local; may be lost if browser data are cleared.</small></span>
           </button>
@@ -52,9 +57,9 @@ export default function SaveUtility({
             <Upload size={15}/><span><strong>Open CEDARS file</strong><small>Read locally; the file is not uploaded.</small></span>
           </button>
           <div className="saveUtilityMenuTitle separated">Share / contribute</div>
-          <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
+          {!isReportMode && <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
             <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Copy shareable CEDARS assessment link'}</strong><small>Reopens core calculator settings and supported CEDARS reference candidates. Custom candidate details and free-text comparison notes require a downloaded CEDARS file.</small></span>
-          </button>
+          </button>}
           <button type="button" onClick={()=>{onContribute?.(); setOpen(false);}} role="menuitem" disabled={!contributionConfigured}>
             <Database size={15}/><span><strong>Contribute this assessment</strong><small>{contributionConfigured ? 'Optional research contribution after explicit consent.' : 'Research submission is not configured on this deployment.'}</small></span>
           </button>

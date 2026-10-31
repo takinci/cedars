@@ -94,10 +94,12 @@ function exampleUse(ex) {
 export function AiExamplesUtility({examples, onExample}) {
   return <details className="aiExamplesUtility">
     <summary title="Load illustrative or literature-derived sample data">
-      <span>Examples</span><small>sample data</small>
+      <span className="aiExamplesUtilitySignal">ILLUSTRATIVE QUICK STARTS</span>
+      <span className="aiExamplesUtilityCopy"><strong>Quick starts &amp; worked examples</strong><small>New to this workflow? Load sample data without treating it as evidence.</small></span>
+      <b>Browse examples ↓</b>
     </summary>
     <div className="aiExamplesUtilityPanel">
-      <div className="aiExamplesUtilityHeader"><strong>Worked examples</strong><p>Explore CEDARS with illustrative or literature-derived data. Loading an example chooses its matching pathway; replace its values with your own before interpreting a result.</p></div>
+      <div className="aiExamplesUtilityHeader"><strong>Worked examples</strong><p>Loading an example chooses its matching pathway and fills an editable starting record. Replace illustrative or literature-derived values with your own before interpreting or reporting a result.</p></div>
       <div className="aiExamplesUtilityList">
         {examples.map(ex=>{
           const [Icon,kind]=exampleKind(ex);

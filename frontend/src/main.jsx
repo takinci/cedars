@@ -3118,6 +3118,7 @@ function App() {
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
             demoOpen={!!GUIDED_DEMOS[guidedDemo?.kind]?.steps?.[guidedDemo?.step]?.openSaveMenu}
+            reportMode={page==='report'}
           />
           {/* Ambient CEDARS Score follows the active product; EcoLabel generation lives in Report & Share. */}
           {(() => { const aiProduct=page==='ai'||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai'); const b=aiProduct?ecoLabelData:deptLabelData; const bHas=aiProduct?b.graded:b.hasData; if(!bHas) return null; return (
@@ -3316,8 +3317,8 @@ function App() {
               <div className="quickStartNotice">
                 <AlertTriangle size={17}/>
                 <div>
-                  <strong>Quick start or enter your own fleet</strong>
-                  <p>These templates are illustrative starting points, not measured local data. Choose one and then verify or edit every device count below — or skip them and enter your own counts directly.</p>
+                  <strong>Quick-start templates · illustrative data</strong>
+                  <p>Use a template to populate an editable starting fleet, then verify or replace every device count below. Or skip the templates and enter your own equipment directly.</p>
                   <div className="quickStartChoices">
                     {DEPARTMENT_PRESETS.map(p=>(
                       <button key={p.key} title={p.desc} data-demo-target={p.key==='regional'?'leader-regional-preset':undefined}
@@ -3845,8 +3846,9 @@ function App() {
         <main className="aiPage">
           <div className="aiPageHeaderRow" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
-            <div className="aiPageActions"><AiExamplesUtility examples={AI_EXAMPLES} onExample={loadAiExample}/>{aiEntryOrigin==='department'&&<button type="button" className="download aiContextBackButton" onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>Change pathway</button>}</div>
+            <div className="aiPageActions">{aiEntryOrigin==='department'&&<button type="button" className="download aiContextBackButton" onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>Change pathway</button>}</div>
           </div>
+          <AiExamplesUtility examples={AI_EXAMPLES} onExample={loadAiExample}/>
 
           {aiEntryOrigin === 'department' && !aiExampleLoaded && (
             <div className="quickStartNotice" style={{marginBottom:14,border:'2px solid #2E7D32',boxShadow:'0 4px 14px rgba(46,125,50,0.12)'}}><Brain size={17}/><div style={{width:'100%'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><strong>Linked to Department Clinical AI</strong><button type="button" onClick={returnToClinicalAi} style={{background:'#1b5e20',color:'#fff',fontWeight:800,padding:'7px 12px'}}>← Return to Clinical AI</button></div><p style={{marginBottom:0}}>Changes here update the shared AI profile used by the Department.</p></div></div>
@@ -4859,21 +4861,21 @@ function App() {
 
               <section className="inputSummary improveWorkspace" data-demo-target="department-improve-workspace" style={{marginBottom:20}}>
                 <div className="improveWorkspaceHeading">
-                  <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Use the radiology workflow as the main way to browse changes. The largest quantified opportunities are summarized first so you can see where the current assessment has the most modeled leverage.</p></div>
+                  <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Start with where a change acts in the radiology workflow. CEDARS keeps that process view primary; modeled opportunities are shown as a secondary shortcut, not as a clinical ranking.</p></div>
                   <div className="improveWorkspaceCount">{scenario.count} selected</div>
                 </div>
 
                 <div className="improveWorkspaceGrid">
                   <div className="improveChooser">
                     <section className="improveOpportunities">
-                      <h3>Largest modeled opportunities</h3>
+                      <h3>Shortcut: largest modeled opportunities</h3>
                       <div className="improveClinicalGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong><span>This ordering shows modeled environmental opportunity only. Exclude any option that is not clinically appropriate or operationally safe; CEDARS does not trade patient care against carbon or cost.</span></div>
-                      <p className="note">This preview is ordered by modeled carbon reduction from the current assessment; it is not a clinical recommendation. Browse the workflow below to see every change by where it acts.</p>
+                      <p className="note">This shortcut is ordered by modeled carbon reduction from the current assessment; it is not a clinical recommendation. Use the workflow navigator to understand where each change acts.</p>
                       {ranked.length>0 ? <><div className="improveOpportunityList improveOpportunityPreview">{rankedPreview.map(renderOpportunityRow)}</div>{rankedMore.length>0&&<details className="improveOpportunityMore"><summary>Show {rankedMore.length} more modeled {rankedMore.length===1?'opportunity':'opportunities'}</summary><div className="improveOpportunityList">{rankedMore.map((row,i)=>renderOpportunityRow(row,i+rankedPreview.length))}</div></details>}</> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
                     </section>
 
                     <section className="improveAllChanges">
-                      <div className="improveSectionHeading"><div><h3>Follow the radiology workflow</h3><p>Browse every change by where it acts in care delivery. The quantified preview above is only a shortcut; this workflow is the primary scenario-building view.</p></div><button type="button" className="inlineTextButton" onClick={()=>setImproveDeptStage('order')}>Start at ordering →</button></div>
+                      <div className="improveSectionHeading"><div><h3>Choose where change happens</h3><p>Select a care-delivery stage to reveal the relevant interventions, assumptions, and evidence. This workflow is the primary scenario-building view.</p></div><button type="button" className="inlineTextButton" onClick={()=>setImproveDeptStage('order')}>Reset to Order / need →</button></div>
                       <div className="improveWorkflowMap" role="tablist" aria-label="Radiology sustainability workflow">
                         {IMPROVE_WORKFLOW_STAGES.slice(0,5).map((stage,i)=><React.Fragment key={stage.key}><button type="button" role="tab" aria-selected={improveDeptStage===stage.key} className={improveDeptStage===stage.key?'active':''} onClick={()=>setImproveDeptStage(stage.key)}><span>{stage.step}</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></button>{i<4&&<ArrowRight size={18}/>}</React.Fragment>)}
                       </div>
@@ -4955,8 +4957,8 @@ function App() {
               </section>
 
               <div className="workflowNextStep">
-                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Score &amp; EcoLabel</strong><small>Your scenario remains prospective. Score &amp; EcoLabel continues to show the current Sustainability Profile until an implemented change is reflected in the underlying inputs.</small></div>
-                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Score &amp; EcoLabel <ArrowRight size={17}/></button><button className="download" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Report current profile</button></div>
+                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Results</strong><small>Your scenario remains prospective. Results continues to show the current Sustainability Profile until an implemented change is reflected in the underlying inputs.</small></div>
+                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Results <ArrowRight size={17}/></button><button className="download" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Report current profile</button></div>
               </div>
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
@@ -5510,10 +5512,10 @@ function App() {
                 <p>Prepare manuscript-, model-card-, repository-, or technical-report-ready environmental reporting. The visual Research Label remains an optional experimental summary below.</p>
               </div>
             </div>
-            <div className="reportOptionalVisualHeading"><span>OPTIONAL VISUAL SUMMARY · EXPERIMENTAL</span><strong>CEDARS AI Research Label</strong><small>A communication aid for posters, slides, model documentation, or exploratory reporting; not an external certification.</small></div>
+            <div className="reportOptionalVisualHeading"><span>OPTIONAL VISUAL SUMMARY · EXPERIMENTAL</span><strong>CEDARS AI Research Label</strong><small>A compact communication aid for posters, slides, model documentation, or exploratory reporting; not an external certification.</small></div>
           <div className="reportExportWorkspace" style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
-            {/* Visual card */}
-            <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
+            {/* Compact on-page visual summary; reproducible detail remains in Methods / provenance above. */}
+            <div className="reportVisualCard" style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
               <div style={{background:'#1b5e20', padding:'14px 18px'}}>
                 <div style={{color:'white', fontWeight:700, fontSize:16, display:'flex', alignItems:'center', gap:8}}>
                   <Leaf style={{width:16,height:16}}/> CEDARS AI Research Label
@@ -5652,7 +5654,7 @@ function App() {
               </div>
             </details>
 
-            <details className="reportDisclosureDetails" open={(guidedDemo?.kind==='developer' && guidedDemo.step===6) || undefined}>
+            <details className="reportDisclosureDetails" open>
               <summary>Methods-ready environmental impact text</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section. For transparent reporting, retain the accompanying CEDARS assumptions and provenance table when feasible.</p>
