@@ -388,3 +388,69 @@ footer>div:last-child a{font-size:11.5px!important}
   .reportSteps{grid-template-columns:1fr!important}.reportSteps>div+div{border-left:0!important;border-top:1px solid var(--cedars-border)!important}
   footer{padding-top:20px!important;padding-bottom:20px!important}
 }
+
+/* 8C — workflow architecture: examples are a utility, not a competing pathway. */
+.aiPageActions{position:relative}
+.aiExamplesUtility{position:relative}
+.aiExamplesUtility>summary{list-style:none;display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 10px;border:1px solid var(--cedars-border-strong);border-radius:6px;background:#fff;color:var(--cedars-forest-deep);cursor:pointer;font-size:12px;font-weight:700}
+.aiExamplesUtility>summary::-webkit-details-marker{display:none}
+.aiExamplesUtility>summary small{font-size:10.5px!important;color:var(--cedars-muted);font-weight:500}
+.aiExamplesUtility[open]>summary{background:var(--cedars-example);border-color:var(--cedars-example-border)}
+.aiExamplesUtilityPanel{position:absolute;right:0;top:calc(100% + 8px);z-index:120;width:min(560px,calc(100vw - 32px));padding:14px;background:var(--cedars-example);border:1px solid var(--cedars-example-border);border-radius:8px;box-shadow:0 16px 44px rgba(31,52,43,.14)}
+.aiExamplesUtilityHeader{padding-bottom:10px;border-bottom:1px solid var(--cedars-example-border)}
+.aiExamplesUtilityHeader strong{font-size:14px;color:var(--cedars-ink)}
+.aiExamplesUtilityHeader p{margin:3px 0 0;font-size:11.5px;line-height:1.45;color:var(--cedars-muted)}
+.aiExamplesUtilityList{display:grid;gap:5px;margin-top:9px}
+.aiExamplesUtilityList>button{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:9px;align-items:center;width:100%;padding:8px 9px;background:rgba(255,255,255,.72)!important;border:1px solid rgba(190,177,145,.55)!important;border-radius:6px!important;color:var(--cedars-ink)!important;text-align:left;box-shadow:none!important}
+.aiExamplesUtilityList>button>span:nth-child(2){display:flex;flex-direction:column;gap:1px;min-width:0}
+.aiExamplesUtilityList>button strong{font-size:12px}.aiExamplesUtilityList>button small{font-size:10.5px!important;color:var(--cedars-muted)}
+.aiExamplesUtilityList>button>b{font-size:11px;color:var(--cedars-forest-deep);white-space:nowrap}
+.aiExamplesUtilityList .aiExampleThumb{width:30px!important;height:30px!important}
+
+/* Development profile: lifecycle accounting first; reporting metadata and presets are secondary. */
+.aiReportingMetadataDisclosure{margin-top:10px!important;background:#FAFBFA!important}
+.aiReportingMetadataDisclosure>summary{padding-top:9px!important;padding-bottom:9px!important}
+.aiProfileIdentity .aiProfilePrimaryGrid>label:only-child{max-width:520px}
+.aiProfileIdentity .aiFieldHelp{font-size:11px!important;line-height:1.4;color:var(--cedars-muted);margin-top:4px}
+.aiTechnicalDisclosure .aiFieldHelp{grid-column:auto}
+
+/* Improve: make the lifecycle/driver model primary; prose guidance is progressive disclosure. */
+.aiImproveDriverMap{margin:20px 0 18px;padding-top:4px}
+.aiImproveDriverSequence{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr) 22px minmax(0,1fr) 22px minmax(0,1fr);gap:6px;align-items:stretch;margin-top:12px}
+.aiImproveDriverArrow{display:grid;place-items:center;color:#9AAEA2;font-size:18px}
+.aiImproveDriverCard{display:flex;flex-direction:column;gap:6px;min-width:0;padding:13px 12px;border:1px solid var(--cedars-border);border-top:3px solid #B7C7CE;border-radius:7px;background:#fff}
+.aiImproveDriverCard>span{font-size:10px;font-weight:750;letter-spacing:.045em;color:var(--cedars-muted)}
+.aiImproveDriverCard>strong{font-size:13px;line-height:1.35;color:var(--cedars-ink)}
+.aiImproveDriverCard>small{font-size:11px!important;line-height:1.45;color:var(--cedars-muted);flex:1}
+.aiImproveDriverCard>div{display:flex;flex-wrap:wrap;gap:8px}
+.aiImproveDriverCard .inlineTextButton{font-size:11px!important;padding:0!important;text-align:left}
+.aiImproveDriverCard.complete{border-top-color:var(--cedars-forest)}
+.aiImproveDriverCard.needs{border-top-color:#C6A44B;background:#FFFDF6}
+.aiImproveDriverCard.workflow{border-top-color:#8FA7B1}
+.aiImproveGuidanceCompact{margin-top:12px;border-top:1px solid var(--cedars-border);border-bottom:1px solid var(--cedars-border);padding:8px 0}
+.aiImproveGuidanceCompact>summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--cedars-forest-deep)}
+.aiImproveGuidanceCompact[open]>summary{margin-bottom:12px}
+.aiImproveGuidanceCompact .aiImprovePriorityGroups{padding:0 4px 8px}
+.aiImproveComparisonGate>button{margin-right:8px}
+
+/* Results interprets the current state; Report packages it for its audience. */
+.reportMaterialsStage{display:flex;flex-direction:column}
+.reportMaterialsStage>.reportStageHeading{order:0}
+.reportMaterialsStage>.reportMethodsOptions{order:1;margin-top:6px!important;margin-bottom:20px!important}
+.reportMaterialsStage>.reportOptionalVisualHeading{order:2}
+.reportMaterialsStage>.reportExportWorkspace{order:3}
+.reportOptionalVisualHeading{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:baseline;margin:4px 0 10px;padding-top:14px;border-top:1px solid var(--cedars-border)}
+.reportOptionalVisualHeading>span{grid-row:1/3;font-size:10px;font-weight:750;letter-spacing:.045em;color:#8A6F43}
+.reportOptionalVisualHeading>strong{font-size:15px;color:var(--cedars-ink)}
+.reportOptionalVisualHeading>small{font-size:11.5px!important;color:var(--cedars-muted);line-height:1.4}
+.reportVisualSummaryNote{max-width:520px!important;font-size:11.5px!important;line-height:1.5!important}
+
+@media(max-width:1000px){
+  .aiImproveDriverSequence{grid-template-columns:1fr 1fr;gap:10px}.aiImproveDriverArrow{display:none}
+}
+@media(max-width:700px){
+  .aiExamplesUtilityPanel{position:fixed;left:12px;right:12px;top:128px;width:auto;max-height:calc(100vh - 150px);overflow:auto}
+  .aiExamplesUtility>summary small{display:none}
+  .aiImproveDriverSequence{grid-template-columns:1fr}
+  .reportOptionalVisualHeading{grid-template-columns:1fr}.reportOptionalVisualHeading>span{grid-row:auto}
+}

@@ -61,9 +61,9 @@ export default function AiProfileEditor({
   const profilePath=scen.aiRoute==='compare'?'compare':scen.ownMode==='spec'?'assess':'develop';
   const developing=profilePath==='develop';
   const comparing=profilePath==='compare';
-  const contextTitle=developing?'Purpose & evaluation context':comparing?'Clinical comparison context':'Clinical use context';
+  const contextTitle=developing?'Model & workload context':comparing?'Clinical comparison context':'Clinical use context';
   const contextNote=developing
-    ? 'Define what you are building and how it will be evaluated. Clinical-use evidence is not required to estimate development or training footprint; if the model is intended for care, document the intended use and available validation. Workflow effects belong to deployment and can remain unassessed until a local use is defined.'
+    ? 'Start with the workload CEDARS needs to characterize the model lifecycle. Project naming, research-objective prose, and technical presets are optional metadata or helpers; they are not required to estimate the footprint.'
     : comparing
       ? 'Define the shared clinical need and a comparable validation basis before environmental ranking. Clinical suitability is a gate, not a weighted offset against environmental performance.'
       : 'Document the clinical purpose, available validation, and local workflow context for the selected or deployed model. These fields travel with the environmental result; they do not reduce the footprint.';
@@ -81,32 +81,33 @@ export default function AiProfileEditor({
         <p className="note">{contextNote}</p>
       </div>
 
-      <div className="aiContextStepHeader"><span>{developing?'1 · PURPOSE':comparing?'1 · SHARED CLINICAL PURPOSE':'1 · CLINICAL PURPOSE'}</span><strong>{developing?'What are you building it to do?':comparing?'What clinical need must every candidate address?':'What is this AI intended to do?'}</strong></div>
+      <div className="aiContextStepHeader"><span>{developing?'1 · TASK / WORKLOAD':comparing?'1 · SHARED CLINICAL PURPOSE':'1 · CLINICAL PURPOSE'}</span><strong>{developing?'What kind of workload are you assessing?':comparing?'What clinical need must every candidate address?':'What is this AI intended to do?'}</strong></div>
 
-      <label className="aiIdentityName">
-        <span className="aiFieldLabelLine"><span>Model / project name</span><span className="aiOptionalTag">optional</span></span>
-        <input type="text" value={ecoLabel.projectName} onChange={e=>setEco('projectName',e.target.value)} placeholder="e.g. CXR-Net lung nodule detector"/>
-      </label>
+      {!developing&&<label className="aiIdentityName">
+        <span className="aiFieldLabelLine"><span>Model name</span><span className="aiOptionalTag">optional identifier</span></span>
+        <input type="text" value={ecoLabel.projectName} onChange={e=>setEco('projectName',e.target.value)} placeholder="e.g. PE triage model"/>
+      </label>}
 
       <div className="aiProfilePrimaryGrid">
-        <label>{developing?'Intended task':comparing?'Shared clinical task':'Clinical task'}
+        <label>{developing?'Task / workload type':comparing?'Shared clinical task':'Clinical task'}
           <select value={ecoLabel.taskType||''} onChange={e=>setEco('taskType',e.target.value)}>
-            <option value="">{developing?'— Choose intended task —':'— Choose clinical task —'}</option>
+            <option value="">{developing?'— Choose workload type —':'— Choose clinical task —'}</option>
             {meta.taskTypes.map(v=><option key={v} value={v}>{v}</option>)}
           </select>
+          {developing&&<span className="aiFieldHelp">Sets the workload-specific fields and metric guidance CEDARS shows; it does not determine the footprint by itself.</span>}
         </label>
-        <label>{developing?'Intended use / research objective':comparing?'Shared intended clinical use':'Intended clinical use'}
-          <input type="text" value={scen.modelIntendedUse||''} onChange={e=>setS('modelIntendedUse',e.target.value)} placeholder={developing?'e.g. detect pulmonary embolism on CTPA or benchmark model efficiency':'e.g. triage suspected PE on CTPA'}/>
-        </label>
-        <label>
-          <span className="aiFieldLabelLine"><span>Reference preset</span><span className="aiOptionalTag">optional helper</span></span>
-          <select value={scen.modelKey||'custom'} onChange={e=>setModel(e.target.value)}>
-            <option value="custom">No preset / enter my own details</option>
-            {modelLibrary.filter(m=>m.key!=='custom').map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
-          </select>
-          <span className="aiFieldHelp">Prefills editable technical assumptions only.</span>
-        </label>
+        {!developing&&<label>{comparing?'Shared intended clinical use':'Intended clinical use'}
+          <input type="text" value={scen.modelIntendedUse||''} onChange={e=>setS('modelIntendedUse',e.target.value)} placeholder="e.g. triage suspected PE on CTPA"/>
+        </label>}
       </div>
+
+      {developing&&<details className="aiProfileDisclosure aiReportingMetadataDisclosure">
+        <summary><span><strong>Reporting metadata</strong><small>Optional identifiers for manuscripts, model cards, or internal records; not required for lifecycle accounting.</small></span><b>{ecoLabel.projectName||scen.modelIntendedUse?'Added':'Optional'}</b></summary>
+        <div className="aiProfileDisclosureBody grid grid2">
+          <label>Model / project name<input type="text" value={ecoLabel.projectName} onChange={e=>setEco('projectName',e.target.value)} placeholder="optional"/></label>
+          <label>Research objective / intended future use<input type="text" value={scen.modelIntendedUse||''} onChange={e=>setS('modelIntendedUse',e.target.value)} placeholder="optional reporting context"/></label>
+        </div>
+      </details>}
 
       <details id="ai-performance-section" className="aiProfileDisclosure aiPerformanceDisclosure">
         <summary>
@@ -159,6 +160,13 @@ export default function AiProfileEditor({
           <b>{technicalStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody grid grid3">
+          <label>Technical preset <span className="aiOptionalTag">optional starting values</span>
+            <select value={scen.modelKey||'custom'} onChange={e=>setModel(e.target.value)}>
+              <option value="custom">No preset / enter my own details</option>
+              {modelLibrary.filter(m=>m.key!=='custom').map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+            <span className="aiFieldHelp">Prefills editable technical assumptions only; it is not evidence and is never required.</span>
+          </label>
           <label>Architecture / model family
             <select value={ecoLabel.architecture||''} onChange={e=>setEco('architecture',e.target.value)}>
               <option value="">— Not specified —</option>

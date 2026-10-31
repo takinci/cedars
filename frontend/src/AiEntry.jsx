@@ -90,7 +90,29 @@ function exampleUse(ex) {
   return 'Develop / train / fine-tune';
 }
 
-export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, onOwnMode, examples, onExample, onReset}) {
+
+export function AiExamplesUtility({examples, onExample}) {
+  return <details className="aiExamplesUtility">
+    <summary title="Load illustrative or literature-derived sample data">
+      <span>Examples</span><small>sample data</small>
+    </summary>
+    <div className="aiExamplesUtilityPanel">
+      <div className="aiExamplesUtilityHeader"><strong>Worked examples</strong><p>Explore CEDARS with illustrative or literature-derived data. Loading an example chooses its matching pathway; replace its values with your own before interpreting a result.</p></div>
+      <div className="aiExamplesUtilityList">
+        {examples.map(ex=>{
+          const [Icon,kind]=exampleKind(ex);
+          return <button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>
+            <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={20}/></span>
+            <span><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small></span>
+            <b>Load →</b>
+          </button>;
+        })}
+      </div>
+    </div>
+  </details>;
+}
+
+export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, onOwnMode}) {
   const [lane, setLane] = useState('');
   const continueWithSelection = () => {
     if (!lane || !systemType) return;
@@ -107,7 +129,6 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
     onOwnMode('measured');
     onRoute('own');
   };
-  const filtered = examples.filter(ex => (!systemType || !ex.scen?.aiSystemType || ex.scen.aiSystemType===systemType) && (!lane || exampleLane(ex)===lane));
   const laneTitle=ENTRY_CHOICES.find(choice=>choice.key===lane)?.title || 'selected pathway';
   const renderChoice=choice=>{
     const Icon=choice.icon;
@@ -164,29 +185,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
         </div>
       </div>}
 
-      <details id="ai-examples" className="aiExamplesGuide aiExamplesExpanded aiExamplesAlternative">
-        <summary>
-          <span>OR</span>
-          <span><strong>Explore with sample data instead</strong><small>Optional worked examples load illustrative or literature-derived values; they are not another required step.</small></span>
-          <b>Browse samples ↓</b>
-        </summary>
-        <div className="aiExamplesAlternativeBody">
-          <div className="aiExamplesGuideHeader">
-            <span>OPTIONAL SAMPLE DATA</span>
-            <div><strong>Worked examples</strong><p>{lane?`Showing examples that fit ${laneTitle.toLowerCase()}${systemType?' and the selected AI type':''}.`:'Choose a pathway above to narrow these examples, or browse all samples.'} Replace example values with your own before interpreting a result.</p></div>
-          </div>
-          <div className="aiExampleChoiceGrid aiExampleChoiceGridExpanded">
-            {filtered.map(ex=>{
-              const [Icon,kind]=exampleKind(ex);
-              return <button key={ex.key} type="button" className="aiExampleChoice aiExampleChoiceVisual" onClick={()=>onExample(ex.key)}>
-                <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={25}/></span>
-                <span className="aiExampleChoiceCopy"><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small><em>{ex.subtitle}</em></span>
-                <b className="aiExampleLoad">Load sample data →</b>
-              </button>;
-            })}
-          </div>
-        </div>
-      </details>
+
     </section>
   );
 }

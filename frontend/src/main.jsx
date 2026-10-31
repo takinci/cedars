@@ -17,7 +17,7 @@ import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
 import { REFS, refUrl } from './refs.js';
 import { labelFromScen, computeAiLabel, LABEL_TO_SCEN, migrateLegacyLabel, PROVENANCE } from './ailabel.js';
-import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AI_ENTRY_REFS } from './AiEntry.jsx';
+import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AiExamplesUtility, AI_ENTRY_REFS } from './AiEntry.jsx';
 import { MeasureChooser } from './MeasureChooser.jsx';
 import AiProfileEditor from './AiProfileEditor.jsx';
 import AiProfileWorkspace from './AiProfileWorkspace.jsx';
@@ -1566,7 +1566,7 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
           </div>
         </div>
         <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onFootprint}>
-          <div className="workflowRailLabel"><span>2</span><strong>SCORE &amp; ECOLABEL</strong></div>
+          <div className="workflowRailLabel"><span>2</span><strong>RESULTS</strong></div>
           <small>Current footprint + boundary + score</small>
         </button>
         <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onImprove}>
@@ -3142,11 +3142,11 @@ function App() {
           activeProduct={page==='ai'||(page==='input'&&inputTarget==='ai')||(!['dashboard','input'].includes(page)&&ecoLabelMode==='ai')?'ai':'dashboard'}
           onInput={()=>{
             const aiProduct = page==='ai' || (page==='input'&&inputTarget==='ai') || (!['dashboard','input'].includes(page)&&ecoLabelMode==='ai');
-            if (aiProduct) { setEcoLabelMode('ai'); setPage('ai'); scrollToAiWorkspace(); }
+            if (aiProduct) { setEcoLabelMode('ai'); setAiExampleLoaded(''); setS('aiRoute',''); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
             else { setEcoLabelMode('department'); setPage('dashboard'); setDeptSetupOpen(true); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
           }}
           onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
-          onAi={()=>{setEcoLabelMode('ai');setPage('ai');scrollToAiWorkspace();}}
+          onAi={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
             goToScore(aiProduct?'ai':'department');
@@ -3179,7 +3179,7 @@ function App() {
             <div className="homeFlow" aria-label="CEDARS assessment workflow">
               <span className="homeFlowStep"><b>1</b><span className="homeFlowCopy"><strong>Profile</strong><small>Define the current state</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
-              <span className="homeFlowStep"><b>2</b><span className="homeFlowCopy"><strong>Score &amp; EcoLabel</strong><small>Interpret result + boundary</small></span></span>
+              <span className="homeFlowStep"><b>2</b><span className="homeFlowCopy"><strong>Results</strong><small>Interpret footprint + boundary</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
               <span className="homeFlowStep"><b>3</b><span className="homeFlowCopy"><strong>Improve</strong><small>Test prospective changes</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
@@ -3845,7 +3845,7 @@ function App() {
         <main className="aiPage">
           <div className="aiPageHeaderRow" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
             <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
-            <div className="aiPageActions">{aiEntryOrigin==='department'&&<button type="button" className="download aiContextBackButton" onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>Change pathway</button>}</div>
+            <div className="aiPageActions"><AiExamplesUtility examples={AI_EXAMPLES} onExample={loadAiExample}/>{aiEntryOrigin==='department'&&<button type="button" className="download aiContextBackButton" onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>Change pathway</button>}</div>
           </div>
 
           {aiEntryOrigin === 'department' && !aiExampleLoaded && (
@@ -5005,7 +5005,7 @@ function App() {
       {/* ── Results / Report & Share ── */}
       {(page==='ecolabel' || page==='report') && (
         <main className={page==='ecolabel'?'resultsPage':'reportPage'}>
-          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Score & EcoLabel' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
+          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Results' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
           <div className="researchAssessmentNotice">
             <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
           </div>
@@ -5013,16 +5013,16 @@ function App() {
           {page==='ecolabel' ? <>
             <div className="ecoChooserHeader prominent">
               <span>ASSESSMENT VIEW</span>
-              <h2>Choose which profile to review</h2>
+              <h2>Choose which result to review</h2>
               <p>Department and AI use different score boundaries but the same reporting principles.</p>
             </div>
-            <div className="ecoProductChooser prominent" role="tablist" aria-label="CEDARS Score & EcoLabel view">
+            <div className="ecoProductChooser prominent" role="tablist" aria-label="CEDARS Results view">
               <button type="button" className={`ecoProductChoice ${ecoLabelMode==='department'?'active':''}`} onClick={()=>selectEcoScore('department')} role="tab" aria-selected={ecoLabelMode==='department'}>
                 <span className="ecoProductIcon"><Activity size={20}/></span>
                 <span className="ecoProductText">
                   <span className="ecoProductTitle">Radiology Department</span>
                   <span className="ecoProductDesc">Footprint, drivers, boundary, and CEDARS Score.</span>
-                  <span className="ecoProductAction">Department Score &amp; EcoLabel →</span>
+                  <span className="ecoProductAction">Department results →</span>
                 </span>
                 {ecoLabelMode==='department' && <span className="ecoProductSelected">DEPARTMENT SELECTED</span>}
               </button>
@@ -5031,7 +5031,7 @@ function App() {
                 <span className="ecoProductText">
                   <span className="ecoProductTitle">AI Model &amp; Informatics</span>
                   <span className="ecoProductDesc">Training, inference, deployment, coverage, and CEDARS Score.</span>
-                  <span className="ecoProductAction">AI Score &amp; EcoLabel →</span>
+                  <span className="ecoProductAction">AI results →</span>
                 </span>
                 {ecoLabelMode==='ai' && <span className="ecoProductSelected">AI SELECTED</span>}
               </button>
@@ -5076,14 +5076,14 @@ function App() {
                 </button>
                 <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}>
                   <Brain size={19}/>
-                  <span><strong>AI Research EcoLabel</strong><small>AI model &amp; informatics assessment</small></span>
+                  <span><strong>AI research report</strong><small>Methods, provenance &amp; optional Research Label</small></span>
                   {ecoLabelMode==='ai' && <b>Selected</b>}
                 </button>
               </div>
             </div>
             <div className="reportSteps" aria-label="Report and share workflow">
               <div><span>1</span><strong>Review &amp; finalize</strong><small>Check the information used in your CEDARS result</small></div>
-              <div><span>2</span><strong>Prepare your CEDARS materials</strong><small>EcoLabel, reporting text, methods &amp; reproducibility</small></div>
+              <div><span>2</span><strong>Prepare your CEDARS materials</strong><small>Methods, provenance, reporting text &amp; optional visual summary</small></div>
               <div><span>3</span><strong>Preserve or share</strong><small>Save, transfer, link, or optionally contribute</small></div>
             </div>
           </>}
@@ -5506,19 +5506,20 @@ function App() {
             <div className="reportStageHeading compact">
               <div>
                 <span>PREPARE YOUR CEDARS MATERIALS</span>
-                <h2>AI Research EcoLabel &amp; exports</h2>
-                <p>Download the label or copy concise Methods / Environmental Impact text. Expand the structured options only when your venue or technical audience needs them.</p>
+                <h2>Methods, provenance &amp; reproducibility</h2>
+                <p>Prepare manuscript-, model-card-, repository-, or technical-report-ready environmental reporting. The visual Research Label remains an optional experimental summary below.</p>
               </div>
             </div>
+            <div className="reportOptionalVisualHeading"><span>OPTIONAL VISUAL SUMMARY · EXPERIMENTAL</span><strong>CEDARS AI Research Label</strong><small>A communication aid for posters, slides, model documentation, or exploratory reporting; not an external certification.</small></div>
           <div className="reportExportWorkspace" style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Visual card */}
             <div style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
               <div style={{background:'#1b5e20', padding:'14px 18px'}}>
                 <div style={{color:'white', fontWeight:700, fontSize:16, display:'flex', alignItems:'center', gap:8}}>
-                  <Leaf style={{width:16,height:16}}/> CEDARS AI Research EcoLabel
+                  <Leaf style={{width:16,height:16}}/> CEDARS AI Research Label
                 </div>
                 <div style={{color:'#A5D6A7', fontSize:13, marginTop:4}}>{ecoLabelData.projectName}</div>
-                <div style={{color:'#81C784', fontSize:11, marginTop:2}}>AI model footprint disclosure · {ecoLabelData.date}</div>
+                <div style={{color:'#81C784', fontSize:11, marginTop:2}}>Experimental visual summary · {ecoLabelData.date}</div>
               </div>
               <div style={{background:ecoLabelData.ratingBg, padding:'16px 18px', display:'flex', alignItems:'center', gap:18}}>
                 <div style={{textAlign:'center', flexShrink:0}}>
@@ -5589,23 +5590,9 @@ function App() {
             {/* Actions */}
             <div style={{display:'flex', flexDirection:'column', gap:12, paddingTop:8}}>
               <button className="download" onClick={()=>downloadEcoPNG(ecoLabelData)}>
-                <Download/> Download PNG badge
+                <Download/> Download visual summary (PNG)
               </button>
-              <button
-                className="download"
-                onClick={()=>{
-                  navigator.clipboard.writeText(generateAiMethodsText(ecoLabelData));
-                  setAiParagraphCopied(true);
-                  setTimeout(()=>setAiParagraphCopied(false), 2000);
-                }}
-                style={aiParagraphCopied ? {background:'#26A69A'} : undefined}
-              >
-                <FileText/> {aiParagraphCopied ? 'Copied!' : 'Copy methods / impact paragraph'}
-              </button>
-              <p className="note" style={{maxWidth:240, fontSize:12, margin:0}}>
-                PNG badge: use in presentations, posters, reports, or model documentation.<br/><br/>
-                Methods / impact paragraph: a concise starting point for the main Methods or Environmental Impact text when appropriate; adapt it to the venue.
-              </p>
+              <p className="note reportVisualSummaryNote">Use this optional visual summary in presentations, posters, model documentation, or exploratory reporting. The reproducible methods and provenance record above remain the primary research output.</p>
               <div style={{marginTop:8}}>
                 <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
                 {CEDARS_RATINGS.map(r=>(

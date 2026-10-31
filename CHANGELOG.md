@@ -20,6 +20,7 @@
 - `ROADMAP.md` for shared implementation planning.
 
 ### Changed
+- Workflow architecture now separates AI examples from the primary pathway, returns Profile → AI model to the AI start screen without deleting saved data, renames stage 2 to **Results**, simplifies development-profile requirements to workload/lifecycle inputs, makes AI Improve lifecycle-driver-first, gates model-specific Improve until a comparison candidate is selected, and makes methods/provenance the primary AI research-report output while keeping the AI Research Label as an optional experimental visual summary.
 - Production UI pass clarifies pathway progression and escape routes, separates optional worked examples from required AI steps, simplifies candidate-comparison status, improves Score selected-state contrast, groups AI Improve recommendations by clinical/evidence readiness, footprint completeness, and environmental opportunities, compacts repeated system-effects messaging, and restructures Report & Share for publication-oriented export and preservation workflows.
 - Navigation now follows **Build profile → See results → Improve → Report & Share**. The **Sustainability Profile** is the shared object for Department and AI; CEDARS Score is interpreted with Results, while EcoLabel generation and export live in Report & Share.
 - AI Model & Informatics opens directly from Home rather than routing through a separate location-only page; shared local context remains editable, while AI compute/deployment context is handled inside the AI workflow.

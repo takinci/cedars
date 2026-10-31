@@ -7,7 +7,7 @@ function statusClass(done, attention=true) {
 export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, section, onSection, checklistDone=0, checklistTotal=0, children}) {
   const compareMode=scen.aiRoute==='compare';
   const developMode=scen.aiRoute!=='compare' && scen.ownMode!=='spec';
-  const purposeDone=Boolean(String(ecoLabel.taskType||'').trim() && String(scen.modelIntendedUse||'').trim());
+  const purposeDone=developMode ? Boolean(String(ecoLabel.taskType||'').trim()) : Boolean(String(ecoLabel.taskType||'').trim() && String(scen.modelIntendedUse||'').trim());
   const performanceStarted=Boolean(String(scen.performanceSource||'').trim() || String(scen.performanceValidationContext||'').trim() || String(scen.performanceSupporting||'').trim() || String(scen.performanceUncertainty||'').trim());
   const performanceDone=Boolean(String(scen.accuracyMetric||'').trim() && scen.accuracyPct!=='' && scen.accuracyPct!=null && String(scen.performanceSource||'').trim());
   const performanceAttention=compareMode || performanceStarted;
@@ -17,8 +17,8 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
   const inferenceDone=Boolean(Number(ecoLabelData.inferKwhPerStudy)>0 && ecoLabelData.hasInference);
   const boundaryDone=ecoLabelData.waterProv==='not-assessed' || (ecoLabelData.waterProv && ecoLabelData.waterProv!=='screening');
   const reviewDone=checklistTotal>0 && checklistDone===checklistTotal;
-  const contextGroupLabel=developMode?'PURPOSE & EVALUATION':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
-  const contextFlow=developMode?'Purpose/evaluation → training → inference/deployment → boundary.':'Clinical context → training → deployment → boundary.';
+  const contextGroupLabel=developMode?'MODEL & WORKLOAD CONTEXT':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
+  const contextFlow=developMode?'Task/workload → training → inference/deployment → boundary.':'Clinical context → training → deployment → boundary.';
 
   const openAndScroll=id=>{
     const node=document.getElementById(id);
@@ -40,7 +40,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
       <nav className="aiProfileNav">
         <div className="aiProfileNavGroup">
           <span>{contextGroupLabel}</span>
-          <NavButton label={developMode?'1 · Purpose':'1 · Clinical purpose'} meta={purposeDone?null:developMode?'Define task and objective':'Define task and intended use'} done={purposeDone} onClick={()=>openAndScroll('ai-model-record')} tone="clinical"/>
+          <NavButton label={developMode?'1 · Task / workload':'1 · Clinical purpose'} meta={purposeDone?null:developMode?'Choose workload type':'Define task and intended use'} done={purposeDone} onClick={()=>openAndScroll('ai-model-record')} tone="clinical"/>
           <NavButton label={developMode?'2 · Evaluation & validation':'2 · Performance & validation'} meta={performanceDone?null:compareMode?'Needed before candidate ranking':performanceStarted?'Finish evidence context':developMode?'Optional for development accounting':'Optional unless needed clinically'} done={performanceDone} attention={performanceAttention} onClick={()=>openAndScroll('ai-performance-section')} tone="evidence"/>
           {!developMode&&<NavButton label="3 · Workflow effects" meta={effectsBasis==='none'?'Optional · no current effect credit':effectsBasis==='published'?'External evidence · report only':effectsBasis==='scenario'?'Scenario · Improve only':null} done={effectsDone} attention={false} onClick={()=>openAndScroll('ai-effects-section')} tone="clinical"/>}
         </div>

@@ -120,6 +120,15 @@ export default function AiImproveWorkspace({
     }
   };
 
+  if(scen.aiRoute==='compare') return <section className="aiImproveWorkspace aiImproveEmpty aiImproveComparisonGate" data-demo-target="ai-improve-workspace">
+    <span className="aiImproveKicker">AI MODEL &amp; INFORMATICS · COMPARISON</span>
+    <h2>Select a candidate before model-specific Improve</h2>
+    <p>Your candidate comparison is preserved. Select the working candidate first so CEDARS can connect improvement scenarios to one actual lifecycle profile rather than mixing assumptions across models.</p>
+    <div className="aiImproveEmptyBenefits"><span><strong>Clinical comparison</strong><small>Keep intended use, endpoint, validation context, workload, and compute basis aligned.</small></span><span><strong>Select candidate</strong><small>Carry one candidate into the canonical AI Sustainability Profile.</small></span><span><strong>Then improve</strong><small>Test training, inference, compute, and demand changes for that selected profile.</small></span></div>
+    <button type="button" onClick={onOpenComparison}>← Return to candidate comparison</button>
+    <details><summary>Browse procurement &amp; deployment guidance</summary><div className="aiImproveAllList">{options.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></details>
+  </section>;
+
   if(!hasModel) return <section className="aiImproveWorkspace aiImproveEmpty" data-demo-target="ai-improve-workspace">
     <span className="aiImproveKicker">AI MODEL &amp; INFORMATICS</span>
     <h2>Improve this AI</h2>
@@ -141,9 +150,41 @@ export default function AiImproveWorkspace({
 
     <div className="aiImprovePrinciple"><strong>Clinical acceptability comes first.</strong><span>Environmental efficiency helps differentiate options only after intended use, safety, performance, validation and workflow fit are acceptable for patient care.</span></div>
 
-    <section className="aiImproveTopRecommendations">
-      <div className="aiImproveSectionHeading"><div><span>PRIORITIES FROM THIS PROFILE</span><h3>What to resolve before and after environmental optimization</h3></div><small>{clinicalReady?'Clinical acceptability remains a prerequisite, not a weighted trade-off against footprint.':'Clinical evidence is not fully documented. Accounting can proceed, but implementation and candidate ranking remain conditional on adequate clinical evidence.'}</small></div>
-      <div className="aiImprovePriorityGroups">{topRecommendationGroups.map(group=><section key={group.key} className={`aiImprovePriorityGroup ${group.key}`}><div className="aiImprovePriorityGroupHeading"><strong>{group.label}</strong><small>{group.detail}</small></div><div className="aiImproveRecommendationList">{group.items.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></section>)}</div>
+    <section className="aiImproveDriverMap" aria-labelledby="ai-driver-map-title">
+      <div className="aiImproveSectionHeading"><div><span>WHAT DRIVES THIS RESULT?</span><h3 id="ai-driver-map-title">Follow the AI lifecycle and change the inputs that matter</h3></div><small>Start with the current state. Scenario controls below remain prospective until you update the underlying profile.</small></div>
+      <div className="aiImproveDriverSequence">
+        <article className={`aiImproveDriverCard clinical ${clinicalReady?'complete':'needs'}`}>
+          <span>{mode==='develop'?'PURPOSE & EVALUATION':'CLINICAL & EVIDENCE'}</span>
+          <strong>{clinicalReady?'Evidence context documented':'Needs review before clinical implementation'}</strong>
+          <small>{mode==='develop'?'Evaluation evidence does not change the footprint, but it defines whether an efficient model is still fit for purpose.':'Environmental performance differentiates only clinically acceptable options.'}</small>
+          <button type="button" className="inlineTextButton" onClick={()=>onEditProfile('performance')}>{clinicalReady?'Review evidence':'Add / review evidence'} →</button>
+        </article>
+        <span className="aiImproveDriverArrow" aria-hidden="true">→</span>
+        <article className={`aiImproveDriverCard training ${ecoLabelData.trainingAvailable?'complete':'needs'}`}>
+          <span>DEVELOPMENT</span>
+          <strong>{ecoLabelData.trainingAvailable?`${ecoLabelData.totalEnergyKwh} kWh training`:'Training footprint not quantified'}</strong>
+          <small>{ecoLabelData.trainingAvailable?`${ecoLabelData.numRuns||1} run${Number(ecoLabelData.numRuns||1)===1?'':'s'} · ${ecoLabelData.trainProv||'provenance not set'}`:'Measure or disclose training status; experiments and repeats matter.'}</small>
+          <div><button type="button" className="inlineTextButton" onClick={()=>onEditProfile('training')}>Edit training</button>{mode==='develop'&&<button type="button" className="inlineTextButton" onClick={()=>{setScenarioFocus('training');window.setTimeout(()=>document.getElementById('ai-scenario-sandbox')?.scrollIntoView({behavior:'smooth',block:'start'}),40);}}>Test change</button>}</div>
+        </article>
+        <span className="aiImproveDriverArrow" aria-hidden="true">→</span>
+        <article className={`aiImproveDriverCard inference ${Number(ecoLabelData.inferKwhPerStudy)>0?'complete':'needs'}`}>
+          <span>INFERENCE &amp; DEPLOYMENT</span>
+          <strong>{Number(ecoLabelData.inferKwhPerStudy)>0?`${ecoLabelData.inferKwhPerStudy} kWh / study`:'Inference energy not quantified'}</strong>
+          <small>{ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} uses / month`:'Deployment workload not entered'} · compute location can differ from training.</small>
+          <div><button type="button" className="inlineTextButton" onClick={()=>onEditProfile('inference')}>Edit deployment</button><button type="button" className="inlineTextButton" onClick={()=>onEditProfile('compute')}>Compute context</button></div>
+        </article>
+        <span className="aiImproveDriverArrow" aria-hidden="true">→</span>
+        <article className="aiImproveDriverCard workflow">
+          <span>WORKFLOW &amp; SCALE</span>
+          <strong>{(scen.clinicalEffectBasis||'none')==='none'?'No local workflow effect credited':'Workflow-effect evidence recorded'}</strong>
+          <small>Demand growth can raise total emissions even when per-use energy falls. Local workflow effects require local evidence for current-footprint credit.</small>
+          <button type="button" className="inlineTextButton" onClick={()=>mode==='develop'?onEditProfile('inference'):onEditProfile('effects')}>{mode==='develop'?'Review deployment assumptions':'Review workflow effects'} →</button>
+        </article>
+      </div>
+      <details className="aiImproveGuidanceCompact">
+        <summary>Evidence-informed guidance · {topRecommendations.length} relevant item{topRecommendations.length===1?'':'s'}</summary>
+        <div className="aiImprovePriorityGroups">{topRecommendationGroups.map(group=><section key={group.key} className={`aiImprovePriorityGroup ${group.key}`}><div className="aiImprovePriorityGroupHeading"><strong>{group.label}</strong><small>{group.detail}</small></div><div className="aiImproveRecommendationList">{group.items.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></section>)}</div>
+      </details>
     </section>
 
     <section id="ai-scenario-sandbox" className={`aiScenarioSandbox ${scenarioFocus?'focus-'+scenarioFocus:''}`}>
@@ -163,10 +204,10 @@ export default function AiImproveWorkspace({
     </section>
 
     <details className="aiImproveAll">
-      <summary>View all {options.length} improvement options</summary>
+      <summary>View all {options.length} guidance options</summary>
       <div className="aiImproveAllGroups">{['Clinical purpose & evidence','Training & development','Inference & deployment','Monitoring & lifecycle'].map(group=>{const groupItems=options.filter(x=>x.group===group);if(!groupItems.length)return null;return <section key={group}><h3>{group}</h3><div className="aiImproveAllList">{groupItems.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div></section>})}</div>
     </details>
 
-    <div className="workflowNextStep"><div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Score &amp; EcoLabel</strong><small>Scenario values above are prospective. Score &amp; EcoLabel continues to show the baseline until implemented values are entered into the profile.</small></div><div className="workflowNextActions"><button type="button" className="workflowNextPrimary" onClick={onResults}>Continue to Score &amp; EcoLabel →</button><button type="button" className="download" onClick={()=>onEditProfile('inference')}>Edit AI profile</button></div></div>
+    <div className="workflowNextStep"><div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Results</strong><small>Scenario values above are prospective. Results continues to show the baseline until implemented values are entered into the profile.</small></div><div className="workflowNextActions"><button type="button" className="workflowNextPrimary" onClick={onResults}>Continue to Results →</button><button type="button" className="download" onClick={()=>onEditProfile('inference')}>Edit AI profile</button></div></div>
   </section>;
 }
