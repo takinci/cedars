@@ -161,7 +161,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           </div>
         </section>
         <section className="aiRoleGroup aiTechnicalRoleGroup">
-          <div className="aiRoleGroupHeader"><span>TECHNICAL DEVELOPMENT</span><small>For research and engineering teams building or materially retraining AI.</small></div>
+          <div className="aiRoleGroupHeader"><span>TECHNICAL DEVELOPMENT</span><small>For research and engineering teams building AI.</small></div>
           <div className="aiIntentGrid aiTaskLaneGrid aiTechnicalTaskGrid" role="group" aria-label="Technical development">
             {ENTRY_CHOICES.filter(choice=>choice.key==='develop').map(renderChoice)}
           </div>

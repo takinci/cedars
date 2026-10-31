@@ -22,6 +22,8 @@ import { MeasureChooser } from './MeasureChooser.jsx';
 import AiProfileEditor from './AiProfileEditor.jsx';
 import AiProfileWorkspace from './AiProfileWorkspace.jsx';
 import AiImproveWorkspace from './AiImproveWorkspace.jsx';
+import SectionStageDeck from './SectionStageDeck.jsx';
+import WalkthroughDock, {FirstVisitWalkthroughPrompt} from './WalkthroughDock.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
 import { GuidedDemo, GuidedDemoLauncher, GUIDED_DEMOS } from './GuidedDemo.jsx';
@@ -3157,6 +3159,30 @@ function App() {
         />
       )}
 
+      {page!=='landing' && page!=='about' && !guidedDemo && <WalkthroughDock onStart={startGuidedDemo}/>}
+      {page==='dashboard' && <SectionStageDeck label="DEPARTMENT PROFILE" steps={[
+        {key:'context',title:'Context',detail:'Region, period, electricity',selector:'#department-context-input',onBefore:()=>setDeptSetupOpen(true),delay:60},
+        {key:'equipment',title:'Equipment',detail:'Fleet and energy baseline',selector:'#department-equipment',onBefore:()=>setDeptSetupOpen(true),delay:60},
+        {key:'clinical-ai',title:'Clinical AI',detail:'Optional local deployment',selector:'#department-clinical-ai-input',onBefore:()=>setDashOpen(o=>({...o,clinicalai:true})),delay:60},
+        {key:'review',title:'Review footprint',detail:'Current state and drivers',selector:'#department-overview'},
+      ]}/>}
+      {page==='ecolabel' && <SectionStageDeck label="RESULTS" steps={[
+        {key:'summary',title:'Summary',detail:'Current result and coverage',selector:'#department-score-panel, #ai-score-panel'},
+        {key:'assumptions',title:'Assumptions',detail:'Calculation and boundary',selector:'.aiCalculationDetails, .methodologyDetails, .calculationDetails'},
+        {key:'next',title:'Next step',detail:'Improve or report',selector:'.workflowNextStep'},
+      ]}/>}
+      {page==='scenario' && <SectionStageDeck label="IMPROVE" steps={[
+        {key:'scope',title:'Scope',detail:'Department or AI',selector:'.improveScopeSelector'},
+        {key:'build',title:'Build scenario',detail:'Choose and test changes',selector:'[data-demo-target=\"department-improve-workspace\"], [data-demo-target=\"ai-improve-workspace\"]'},
+        {key:'compare',title:'Compare',detail:'Projected effect',selector:'#improve-before-after, .aiScenarioSandbox, .aiImproveScenarioSandbox'},
+        {key:'next',title:'Next step',detail:'Review current result',selector:'.workflowNextStep'},
+      ]}/>}
+      {page==='report' && <SectionStageDeck label="REPORT & SHARE" steps={[
+        {key:'review',title:'Review',detail:'Check the assessment',selector:'.reportStageCard'},
+        {key:'outputs',title:'Outputs',detail:'Methods and visual summary',selector:'.reportMaterialsStage'},
+        {key:'share',title:'Preserve / share',detail:'Save, download, or link',selector:'.reportShareSection'},
+      ]}/>}
+
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
         <main className="landingPage">
@@ -3171,7 +3197,6 @@ function App() {
           <section className="homeStart" aria-labelledby="cedars-start-title">
             <div className="homeStartHeading">
               <h2 id="cedars-start-title">Choose where to begin</h2>
-              <p>Assess a Radiology Department or an AI system. Both follow the same CEDARS workflow from Profile through reporting.</p>
             </div>
             <div className="homeStartGrid">
               <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
@@ -3188,6 +3213,7 @@ function App() {
             </div>
           </section>
 
+          <FirstVisitWalkthroughPrompt onStart={startGuidedDemo}/>
           <GuidedDemoLauncher onStart={startGuidedDemo}/>
 
 

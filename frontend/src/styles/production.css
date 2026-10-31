@@ -552,3 +552,108 @@ footer>div:last-child a{font-size:11.5px!important}
   .aiExamplesUtility>summary{grid-template-columns:1fr auto!important}.aiExamplesUtilitySignal{grid-column:1/-1}.aiExamplesUtilityCopy small{display:block!important}.aiExamplesUtilityPanel{position:static!important;max-height:none!important}
   .homeFlow{grid-template-columns:1fr!important}
 }
+
+/* 8E — guided onboarding + horizontal stage-card navigation. */
+/* Home: make the two assessment choices unmistakably interactive. */
+.homeStartGrid{gap:0!important;border-top:1px solid var(--cedars-border)!important;border-bottom:1px solid var(--cedars-border)!important}
+.homeStartChoice{min-height:116px!important;padding:20px 22px!important;border:0!important;border-radius:0!important;background:#fff!important;transition:background .16s ease,transform .16s ease,box-shadow .16s ease!important}
+.homeStartChoice+ .homeStartChoice{border-left:1px solid var(--cedars-border)!important}
+.homeStartChoice:hover{background:#F5FAF7!important;transform:translateY(-2px);box-shadow:0 8px 22px rgba(31,78,61,.07)!important}
+.homeStartChoice strong{font-size:18px!important}
+.homeStartChoice small{font-size:13px!important;line-height:1.45!important;max-width:430px}
+.homeStartArrow{font-size:20px!important;color:var(--cedars-forest)!important}
+
+/* Home method timeline is informational, not another set of controls. */
+.homeFlow{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;padding:0!important;overflow:hidden!important}
+.homeFlowArrow{display:none!important}
+.homeFlowStep{display:grid!important;grid-template-columns:34px minmax(0,1fr)!important;gap:10px!important;min-width:0!important;padding:15px 16px!important;border-right:1px solid var(--cedars-border)!important}
+.homeFlowStep:last-of-type{border-right:0!important}
+.homeFlowStep>b{margin:0!important;align-self:start!important}
+.homeFlowCopy{min-width:0!important;display:flex!important;flex-direction:column!important;gap:2px!important}
+.homeFlowCopy strong{white-space:normal!important;line-height:1.2!important}
+.homeFlowCopy small{white-space:normal!important;line-height:1.35!important}
+
+/* Persistent page-local stage cards: horizontal, scroll-snap, with the active section unmistakable. */
+.sectionStageDeck{width:min(1180px,calc(100% - 40px));margin:14px auto 18px;position:relative}
+.sectionStageDeckLabel{font-size:10px;font-weight:800;letter-spacing:.055em;color:#6E8177;margin:0 0 7px 2px}
+.sectionStageDeckScroller{display:flex;gap:9px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px;scrollbar-width:thin;scrollbar-color:#B7C9BE transparent}
+.sectionStageCard{scroll-snap-align:center;flex:1 0 190px;min-width:190px;display:grid;grid-template-columns:34px minmax(0,1fr) 18px;gap:9px;align-items:center;text-align:left;padding:11px 12px;border:1px solid #D8E3DC!important;border-radius:8px!important;background:#fff!important;color:var(--cedars-ink)!important;box-shadow:none!important;transition:border-color .16s ease,background .16s ease,transform .16s ease!important}
+.sectionStageCard:hover{border-color:#9FB9AA!important;background:#F8FBF9!important;transform:translateY(-1px)}
+.sectionStageCard.active{border:2px solid var(--cedars-forest)!important;background:#EDF6F0!important;padding:10px 11px;box-shadow:0 6px 18px rgba(31,78,61,.08)!important}
+.sectionStageNumber{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid #B7CABF;background:#F5F9F6;color:var(--cedars-forest-deep);font-size:10px;font-weight:800}
+.sectionStageCard.active .sectionStageNumber{background:var(--cedars-forest-deep);color:#fff;border-color:var(--cedars-forest-deep)}
+.sectionStageCopy{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sectionStageCopy strong{font-size:13px;line-height:1.2;color:inherit}
+.sectionStageCopy small{font-size:10.5px!important;line-height:1.3;color:var(--cedars-muted)!important;white-space:normal}
+.sectionStageArrow{font-size:15px;color:#7A9485}
+.sectionStageCard.active .sectionStageArrow{color:var(--cedars-forest-deep)}
+.reportPage .reportSteps{display:none!important}
+
+/* AI profile uses the same horizontal stage grammar rather than competing sidebar navigation. */
+.aiProfileWorkspaceDecked{display:block!important}
+.aiProfileWorkspaceDecked>.sectionStageDeck{width:100%;margin:0 0 14px!important}
+.aiProfileWorkspaceDecked>.aiProfileSidebar{display:none!important}
+.aiProfileWorkspaceDecked>.aiProfileWorkspaceMain{width:100%!important;min-width:0!important}
+
+/* Illustrative content gets one strong visual family, distinct from the real assessment. */
+.guidedDemoLauncher,
+.departmentPage .quickStartNotice,
+.aiExamplesUtility>summary{
+  background:#173F34!important;
+  border:2px solid #9FE0BD!important;
+  color:#fff!important;
+}
+.guidedDemoLauncher{border:2px solid #9FE0BD!important;background:#173F34!important}
+.guidedDemoLauncher>summary{background:#173F34!important;border:0!important}
+.guidedDemoLauncherSummaryCopy>span,.guidedDemoLauncherSummaryCopy>strong{color:#fff!important}
+.guidedDemoLauncherSummaryCopy>small{color:#D7E9DF!important}
+.guidedDemoLauncherSummaryAction{background:#F6ECD7!important;color:#173F34!important;border:1px solid #E7CF9F!important;font-weight:750!important}
+.departmentPage .quickStartNotice>svg{color:#F0C66A!important}
+.departmentPage .quickStartNotice strong{color:#fff!important}
+.departmentPage .quickStartNotice p{color:#D7E9DF!important}
+.departmentPage .quickStartChoices button{background:#F8F0DE!important;color:#173F34!important;border-color:#E4C98E!important;font-weight:700!important}
+.aiExamplesUtility>summary .aiExamplesUtilitySignal,.aiExamplesUtility>summary .aiExamplesUtilityCopy strong,.aiExamplesUtility>summary>b{color:#fff!important}
+.aiExamplesUtility>summary .aiExamplesUtilityCopy small{color:#D7E9DF!important}
+.aiExamplesUtilityPanel{background:#F7F0E3!important;border:1px solid #D7B978!important;border-top:0!important}
+
+/* First-visit walkthrough prompt. */
+.firstVisitWalkthroughBackdrop{position:fixed;inset:0;z-index:1500;background:rgba(18,31,26,.56);display:grid;place-items:center;padding:20px}
+.firstVisitWalkthrough{position:relative;width:min(680px,100%);background:#173F34;color:#fff;border:3px solid #9FE0BD;border-radius:12px;padding:24px;box-shadow:0 28px 90px rgba(0,0,0,.34)}
+.firstVisitWalkthroughClose{position:absolute;right:12px;top:12px;background:transparent!important;color:#DDEBE3!important;border:1px solid rgba(255,255,255,.24)!important;padding:6px!important}
+.firstVisitWalkthroughKicker{font-size:10px;font-weight:850;letter-spacing:.08em;color:#F0C66A}
+.firstVisitWalkthrough h2{margin:7px 42px 7px 0;color:#fff;font-size:28px;line-height:1.08}
+.firstVisitWalkthrough>p{margin:0 0 18px;color:#D7E9DF;font-size:13.5px;line-height:1.55;max-width:600px}
+.walkthroughJourneyList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.walkthroughJourneyList>button{display:grid;grid-template-columns:20px minmax(0,1fr) 14px;gap:8px;align-items:start;text-align:left;background:#214E41!important;border:1px solid #6FAE8E!important;color:#fff!important;padding:12px!important;border-radius:8px!important}
+.walkthroughJourneyList>button:hover{background:#285C4C!important;border-color:#9FE0BD!important}
+.walkthroughJourneyList strong{display:block;color:#fff;font-size:13px;line-height:1.25}
+.walkthroughJourneyList small{display:block;color:#CFE1D7!important;font-size:10.5px!important;line-height:1.4;margin-top:3px}
+.walkthroughJourneyList b{color:#F0C66A;font-size:14px}
+.firstVisitWalkthroughSkip{margin-top:15px;background:transparent!important;color:#E5EFE9!important;border:1px solid rgba(255,255,255,.28)!important;font-weight:650!important}
+
+/* Persistent walkthrough launcher on non-home pages. */
+.walkthroughDock{position:fixed;left:18px;bottom:18px;z-index:500;width:230px}
+.walkthroughDockToggle{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 18px;text-align:left;background:#173F34!important;color:#fff!important;border:2px solid #9FE0BD!important;border-radius:9px!important;padding:9px 11px!important;box-shadow:0 12px 28px rgba(18,45,37,.18)!important}
+.walkthroughDockToggle>span{grid-column:1;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#F0C66A}
+.walkthroughDockToggle>strong{grid-column:1;font-size:12.5px;color:#fff}
+.walkthroughDockToggle>b{grid-column:2;grid-row:1/3;align-self:center;color:#F0C66A;font-size:16px}
+.walkthroughDockPanel{margin-top:6px;padding:9px;background:#173F34;border:2px solid #9FE0BD;border-radius:9px;box-shadow:0 16px 34px rgba(18,45,37,.22)}
+.walkthroughDockPanel>p{margin:0 0 7px;color:#D7E9DF;font-size:10px}
+.walkthroughJourneyList.compact{grid-template-columns:1fr;gap:5px}
+.walkthroughJourneyList.compact>button{padding:8px 9px!important;align-items:center}
+.walkthroughJourneyList.compact strong{font-size:11px}
+
+@media(max-width:900px){
+  .homeFlow{display:flex!important;overflow-x:auto!important;scroll-snap-type:x mandatory!important}
+  .homeFlowStep{flex:0 0 min(78vw,280px);scroll-snap-align:center;border-right:1px solid var(--cedars-border)!important}
+  .sectionStageDeck{width:calc(100% - 24px)}
+  .sectionStageCard{flex-basis:min(72vw,260px)}
+  .walkthroughJourneyList{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .homeStartChoice{min-height:96px!important;padding:16px!important}
+  .homeStartChoice+ .homeStartChoice{border-left:0!important;border-top:1px solid var(--cedars-border)!important}
+  .sectionStageDeck{margin-top:9px}
+  .walkthroughDock{left:10px;right:10px;bottom:10px;width:auto}
+  .firstVisitWalkthrough{padding:20px 16px}.firstVisitWalkthrough h2{font-size:24px}
+}

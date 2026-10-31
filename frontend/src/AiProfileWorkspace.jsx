@@ -1,4 +1,5 @@
 import React from 'react';
+import SectionStageDeck from './SectionStageDeck.jsx';
 
 function statusClass(done, attention=true) {
   return done ? 'complete' : attention ? 'attention' : 'neutral';
@@ -34,7 +35,16 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     <span className="aiProfileNavCopy"><strong>{label}</strong>{meta&&<small>{meta}</small>}</span>
   </button>;
 
-  return <div className="aiProfileWorkspace">
+  const stageSteps=[
+    {key:'context',title:developMode?'Task / workload':'Context',detail:developMode?'What is being built':'Purpose, evidence, workflow',selector:'#ai-model-record'},
+    {key:'training',title:'Training',detail:trainingDone?'Documented':'Needs status',selector:'#ai-training-section',onBefore:()=>onSection('training')},
+    {key:'inference',title:'Inference & deployment',detail:inferenceDone?'Documented':'Needs inputs',selector:'#ai-inference-section',onBefore:()=>onSection('inference')},
+    {key:'boundary',title:'Boundary',detail:boundaryDone?'Reviewed':'Needs review',selector:'#ai-water-section',onBefore:()=>onSection('water')},
+    {key:'review',title:'Review',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`,selector:'[data-demo-target=\"ai-disclosure\"]'},
+  ];
+
+  return <div className="aiProfileWorkspace aiProfileWorkspaceDecked">
+    <SectionStageDeck label="AI PROFILE" steps={stageSteps}/>
     <aside className="aiProfileSidebar" aria-label="AI Sustainability Profile sections">
       <div className="aiProfileSidebarIntro"><span>PROFILE</span><strong>AI Sustainability Profile</strong><small>{contextFlow}</small></div>
       <nav className="aiProfileNav">
