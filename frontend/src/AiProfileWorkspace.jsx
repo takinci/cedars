@@ -1,5 +1,5 @@
 import React from 'react';
-import SectionStageDeck from './SectionStageDeck.jsx';
+import StageCarousel from './StageCarousel.jsx';
 
 function statusClass(done, attention=true) {
   return done ? 'complete' : attention ? 'attention' : 'neutral';
@@ -18,6 +18,20 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
   const inferenceDone=Boolean(Number(ecoLabelData.inferKwhPerStudy)>0 && ecoLabelData.hasInference);
   const boundaryDone=ecoLabelData.waterProv==='not-assessed' || (ecoLabelData.waterProv && ecoLabelData.waterProv!=='screening');
   const reviewDone=checklistTotal>0 && checklistDone===checklistTotal;
+  const [profileStage,setProfileStage]=React.useState('context');
+
+  React.useEffect(()=>{
+    if(section==='training') setProfileStage('training');
+    else if(section==='inference') setProfileStage('inference');
+    else if(section==='water') setProfileStage('boundary');
+  },[section]);
+
+  const changeStage=key=>{
+    setProfileStage(key);
+    if(key==='training') onSection('training');
+    else if(key==='inference') onSection('inference');
+    else if(key==='boundary') onSection('water');
+  };
   const contextGroupLabel=developMode?'MODEL & WORKLOAD CONTEXT':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
   const contextFlow=developMode?'Task/workload → training → inference/deployment → boundary.':'Clinical context → training → deployment → boundary.';
 
@@ -36,15 +50,16 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
   </button>;
 
   const stageSteps=[
-    {key:'context',title:developMode?'Task / workload':'Context',detail:developMode?'What is being built':'Purpose, evidence, workflow',selector:'#ai-model-record'},
-    {key:'training',title:'Training',detail:trainingDone?'Documented':'Needs status',selector:'#ai-training-section',onBefore:()=>onSection('training')},
-    {key:'inference',title:'Inference & deployment',detail:inferenceDone?'Documented':'Needs inputs',selector:'#ai-inference-section',onBefore:()=>onSection('inference')},
-    {key:'boundary',title:'Boundary',detail:boundaryDone?'Reviewed':'Needs review',selector:'#ai-water-section',onBefore:()=>onSection('water')},
-    {key:'review',title:'Review',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`,selector:'[data-demo-target=\"ai-disclosure\"]'},
+    {key:'context',title:developMode?'Task / context':'Clinical context',detail:developMode?'Workload, evaluation, optional metadata':'Purpose, evidence and workflow context'},
+    {key:'training',title:'Training',detail:trainingDone?'Documented':'Add status or measurement'},
+    {key:'inference',title:'Inference & deployment',detail:inferenceDone?'Documented':'Add energy and expected use'},
+    {key:'boundary',title:'Boundary',detail:boundaryDone?'Reviewed':'Review water and boundary'},
+    {key:'review',title:'Review',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`},
   ];
 
-  return <div className="aiProfileWorkspace aiProfileWorkspaceDecked">
-    <SectionStageDeck label="AI PROFILE" steps={stageSteps}/>
+
+  return <div className="aiProfileWorkspace aiProfileWorkspaceCarousel" data-ai-stage={profileStage}>
+    <StageCarousel label="AI PROFILE" steps={stageSteps} activeKey={profileStage} onChange={changeStage}/>
     <aside className="aiProfileSidebar" aria-label="AI Sustainability Profile sections">
       <div className="aiProfileSidebarIntro"><span>PROFILE</span><strong>AI Sustainability Profile</strong><small>{contextFlow}</small></div>
       <nav className="aiProfileNav">
@@ -69,6 +84,15 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
       </button>
       <div className="aiProfileSidebarLegend"><span><i className="complete"/> documented</span><span><i className="neutral"/> optional / not assessed</span><span><i className="attention"/> needs review</span></div>
     </aside>
-    <div className="aiProfileWorkspaceMain">{children}</div>
+    <div className={`aiProfileWorkspaceMain aiStageSurface aiStage-${profileStage}`} key={profileStage}>
+      {profileStage==='review'
+        ? <section className="aiProfileReviewPanel">
+            <span>PROFILE REVIEW</span>
+            <h2>{reviewDone?'Profile ready for Results':'Review reporting completeness'}</h2>
+            <p>{checklistDone} of {checklistTotal} reporting inputs are documented. Missing phases remain explicit rather than being treated as zero.</p>
+            <div className="aiProfileReviewProgress" role="progressbar" aria-valuemin="0" aria-valuemax={checklistTotal||1} aria-valuenow={checklistDone}><span style={{width:`${checklistTotal?Math.round(checklistDone/checklistTotal*100):0}%`}}/></div>
+          </section>
+        : children}
+    </div>
   </div>;
 }

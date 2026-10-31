@@ -18,7 +18,7 @@ function JourneyButtons({onStart, compact=false}) {
   </div>;
 }
 
-export function FirstVisitWalkthroughPrompt({onStart}) {
+export function FirstVisitWalkthroughPrompt({onStart,onSkip}) {
   const [open,setOpen]=useState(false);
   useEffect(()=>{
     try {
@@ -33,24 +33,31 @@ export function FirstVisitWalkthroughPrompt({onStart}) {
     return undefined;
   },[]);
   const markSeen=()=>{try{window.localStorage.setItem('cedars_walkthrough_prompt_seen_v1','1');}catch(_){} setOpen(false);};
+  const skip=()=>{markSeen();onSkip?.();};
   const start=kind=>{markSeen();onStart?.(kind);};
   if(!open) return null;
-  return <div className="firstVisitWalkthroughBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)markSeen();}}>
+  return <div className="firstVisitWalkthroughBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)skip();}}>
     <section className="firstVisitWalkthrough" role="dialog" aria-modal="true" aria-labelledby="first-visit-walkthrough-title">
-      <button type="button" className="firstVisitWalkthroughClose" onClick={markSeen} aria-label="Skip walkthrough"><X size={18}/></button>
+      <button type="button" className="firstVisitWalkthroughClose" onClick={skip} aria-label="Skip walkthrough"><X size={18}/></button>
       <span className="firstVisitWalkthroughKicker">FIRST VISIT · GUIDED WALKTHROUGH</span>
       <h2 id="first-visit-walkthrough-title">See how CEDARS works before you start</h2>
       <p>Follow an illustrative assessment step by step. The walkthrough is read-only until you choose to keep an example.</p>
       <JourneyButtons onStart={start}/>
-      <button type="button" className="firstVisitWalkthroughSkip" onClick={markSeen}>Skip for now</button>
+      <button type="button" className="firstVisitWalkthroughSkip" onClick={skip}>Skip for now</button>
     </section>
   </div>;
 }
 
-export default function WalkthroughDock({onStart}) {
+export default function WalkthroughDock({onStart,showHint=false,onDismissHint}) {
   const [open,setOpen]=useState(false);
-  return <aside className={`walkthroughDock ${open?'open':''}`} aria-label="Guided walkthroughs">
-    <button type="button" className="walkthroughDockToggle" onClick={()=>setOpen(v=>!v)} aria-expanded={open}>
+  return <aside className={`walkthroughDock ${open?'open':''} ${showHint?'showHint':''}`} aria-label="Guided walkthroughs">
+    {showHint&&<div className="walkthroughDockCoach" role="status">
+      <strong>Thanks — walkthroughs stay here.</strong>
+      <span>You can reopen them at any time.</span>
+      <i aria-hidden="true">↓</i>
+      <button type="button" onClick={onDismissHint}>Got it</button>
+    </div>}
+    <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)onDismissHint?.();}} aria-expanded={open}>
       <span>GUIDED WALKTHROUGH</span><strong>Explore CEDARS</strong><b aria-hidden="true">{open?'×':'→'}</b>
     </button>
     {open&&<div className="walkthroughDockPanel"><p>Illustrative, read-only walkthroughs.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}

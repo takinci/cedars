@@ -22,11 +22,11 @@ import { MeasureChooser } from './MeasureChooser.jsx';
 import AiProfileEditor from './AiProfileEditor.jsx';
 import AiProfileWorkspace from './AiProfileWorkspace.jsx';
 import AiImproveWorkspace from './AiImproveWorkspace.jsx';
-import SectionStageDeck from './SectionStageDeck.jsx';
+import StageCarousel from './StageCarousel.jsx';
 import WalkthroughDock, {FirstVisitWalkthroughPrompt} from './WalkthroughDock.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
-import { GuidedDemo, GuidedDemoLauncher, GUIDED_DEMOS } from './GuidedDemo.jsx';
+import { GuidedDemo, GUIDED_DEMOS } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
@@ -1608,6 +1608,8 @@ function App() {
   // When Score finds a missing prerequisite, remember the exact source field so the return
   // action can open, scroll to, and visibly highlight it instead of dropping the user at a page top.
   const [scoreAttention, setScoreAttention] = useState('');
+  const [deptProfileStage, setDeptProfileStage] = useState('context');
+  const [walkthroughHint, setWalkthroughHint] = useState(false);
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
   // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
@@ -1986,8 +1988,7 @@ function App() {
   };
   const returnToClinicalAi = () => {
     if (aiEntryOriginModelId && aiModels[aiEntryOriginModelId]) setDeptModelChoice(aiEntryOriginModelId);
-    setAiEntryOrigin(''); setAiEntryOriginModelId(''); setAiExampleLoaded(''); setPage('dashboard'); setDeptSetupOpen(false); setDashOpen(o=>({...o,clinicalai:true}));
-    window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+    setAiEntryOrigin(''); setAiEntryOriginModelId(''); setAiExampleLoaded(''); setDeptProfileStage('clinical-ai'); setPage('dashboard'); setDeptSetupOpen(false); setDashOpen(o=>({...o,clinicalai:true}));
   };
   const openAiModelsFromImprove = () => { setAiEntryOrigin('improve'); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0); };
   const returnToAiImprove = () => { setAiEntryOrigin(''); setPage('scenario'); setEcoLabelMode('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),0); };
@@ -3146,9 +3147,9 @@ function App() {
           onInput={()=>{
             const aiProduct = page==='ai' || (page==='input'&&inputTarget==='ai') || (!['dashboard','input'].includes(page)&&ecoLabelMode==='ai');
             if (aiProduct) { setEcoLabelMode('ai'); setAiExampleLoaded(''); setS('aiRoute',''); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
-            else { setEcoLabelMode('department'); setPage('dashboard'); setDeptSetupOpen(true); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
+            else { setEcoLabelMode('department'); setDeptProfileStage('context'); setPage('dashboard'); setDeptSetupOpen(true); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
           }}
-          onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
+          onDepartment={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onAi={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
@@ -3159,29 +3160,7 @@ function App() {
         />
       )}
 
-      {page!=='landing' && page!=='about' && !guidedDemo && <WalkthroughDock onStart={startGuidedDemo}/>}
-      {page==='dashboard' && <SectionStageDeck label="DEPARTMENT PROFILE" steps={[
-        {key:'context',title:'Context',detail:'Region, period, electricity',selector:'#department-context-input',onBefore:()=>setDeptSetupOpen(true),delay:60},
-        {key:'equipment',title:'Equipment',detail:'Fleet and energy baseline',selector:'#department-equipment',onBefore:()=>setDeptSetupOpen(true),delay:60},
-        {key:'clinical-ai',title:'Clinical AI',detail:'Optional local deployment',selector:'#department-clinical-ai-input',onBefore:()=>setDashOpen(o=>({...o,clinicalai:true})),delay:60},
-        {key:'review',title:'Review footprint',detail:'Current state and drivers',selector:'#department-overview'},
-      ]}/>}
-      {page==='ecolabel' && <SectionStageDeck label="RESULTS" steps={[
-        {key:'summary',title:'Summary',detail:'Current result and coverage',selector:'#department-score-panel, #ai-score-panel'},
-        {key:'assumptions',title:'Assumptions',detail:'Calculation and boundary',selector:'.aiCalculationDetails, .methodologyDetails, .calculationDetails'},
-        {key:'next',title:'Next step',detail:'Improve or report',selector:'.workflowNextStep'},
-      ]}/>}
-      {page==='scenario' && <SectionStageDeck label="IMPROVE" steps={[
-        {key:'scope',title:'Scope',detail:'Department or AI',selector:'.improveScopeSelector'},
-        {key:'build',title:'Build scenario',detail:'Choose and test changes',selector:'[data-demo-target=\"department-improve-workspace\"], [data-demo-target=\"ai-improve-workspace\"]'},
-        {key:'compare',title:'Compare',detail:'Projected effect',selector:'#improve-before-after, .aiScenarioSandbox, .aiImproveScenarioSandbox'},
-        {key:'next',title:'Next step',detail:'Review current result',selector:'.workflowNextStep'},
-      ]}/>}
-      {page==='report' && <SectionStageDeck label="REPORT & SHARE" steps={[
-        {key:'review',title:'Review',detail:'Check the assessment',selector:'.reportStageCard'},
-        {key:'outputs',title:'Outputs',detail:'Methods and visual summary',selector:'.reportMaterialsStage'},
-        {key:'share',title:'Preserve / share',detail:'Save, download, or link',selector:'.reportShareSection'},
-      ]}/>}
+      {page!=='about' && !guidedDemo && <><FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/><WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/></>}
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
@@ -3199,10 +3178,11 @@ function App() {
               <h2 id="cedars-start-title">Choose where to begin</h2>
             </div>
             <div className="homeStartGrid">
-              <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
+              <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
               <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Clinical purpose, validation, candidate comparison, training, inference, and deployment.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
             </div>
-            <div className="homeFlow" aria-label="CEDARS assessment workflow">
+            <div className="homeFlowHeading">WHAT YOU'LL DO</div>
+            <div className="homeFlow" aria-label="CEDARS assessment overview">
               <span className="homeFlowStep"><b>1</b><span className="homeFlowCopy"><strong>Profile</strong><small>Define the current state</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
               <span className="homeFlowStep"><b>2</b><span className="homeFlowCopy"><strong>Results</strong><small>Interpret footprint + boundary</small></span></span>
@@ -3213,8 +3193,6 @@ function App() {
             </div>
           </section>
 
-          <FirstVisitWalkthroughPrompt onStart={startGuidedDemo}/>
-          <GuidedDemoLauncher onStart={startGuidedDemo}/>
 
 
 
@@ -3291,8 +3269,23 @@ function App() {
 
       {/* ── Dashboard ── */}
       {page==='dashboard' && (
-        <main className="departmentPage">
+        <main className="departmentPage" data-dept-stage={deptProfileStage}>
           <div style={{marginBottom:8}}><h1 style={{margin:0}}>Radiology Department</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('dashboard',true)}/></div>
+          <StageCarousel
+            label="DEPARTMENT PROFILE"
+            activeKey={deptProfileStage}
+            onChange={key=>{
+              setDeptProfileStage(key);
+              if(key==='context'||key==='equipment') setDeptSetupOpen(true);
+              if(key==='clinical-ai') setDashOpen(o=>({...o,clinicalai:true}));
+            }}
+            steps={[
+              {key:'context',title:'Context',detail:'Region, period, electricity'},
+              {key:'equipment',title:'Equipment',detail:'Fleet and energy baseline'},
+              {key:'clinical-ai',title:'Clinical AI',detail:'Local deployment',optional:true},
+              {key:'review',title:'Review',detail:'Current footprint and readiness'},
+            ]}
+          />
           <div className="departmentSetup">
             <button type="button" className="departmentSetupSummary" onClick={()=>setDeptSetupOpen(v=>!v)} aria-expanded={deptSetupOpen}>
               <Activity size={18} style={{color:'#2E7D32',flexShrink:0}}/>
@@ -3303,7 +3296,7 @@ function App() {
               </span>
               <span style={{fontSize:12,color:'#607d66',fontWeight:700}}>{deptSetupOpen ? 'Hide setup ▴' : 'Edit setup ▾'}</span>
             </button>
-            {deptSetupOpen && (
+            {['context','equipment'].includes(deptProfileStage) && (
               <div className="departmentSetupBody">
                 <section id="department-context-input" className={`departmentContextBlock ${scoreAttention==='context'?'scoreInputAttention':''}`} aria-labelledby="department-context-title">
                   <div className="departmentContextHeader">
@@ -3488,13 +3481,12 @@ function App() {
               </div>
               <button type="button" onClick={()=>{
                 setDashOpen(o=>({...o,clinicalai:true}));
-                setDeptSetupOpen(false);
-                requestAnimationFrame(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}));
+                setDeptProfileStage('clinical-ai');
               }}>{(deptLabel.aiTools||[]).length ? 'Edit Clinical AI →' : 'Add Clinical AI →'}</button>
             </div>
             <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>For an AI system's own training and inference footprint, use <button onClick={()=>setPage('ai')} className="inlineTextButton">AI Model &amp; Informatics →</button>.</p>
             <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
-              <button onClick={()=>{setDeptSetupOpen(false);requestAnimationFrame(()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'}));}} style={{padding:'8px 13px',fontSize:12}}>Done — review current footprint ↓</button>
+              <button onClick={()=>setDeptProfileStage('review')} style={{padding:'8px 13px',fontSize:12}}>Done — review current footprint →</button>
             </div>
 
               </div>
@@ -3581,7 +3573,7 @@ function App() {
             <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',border:'1.5px solid #c8e6c9',borderRadius:12,padding:'11px 14px',marginTop:12,background:'#fff'}}>
               <div style={{flex:'1 1 300px'}}><strong style={{fontSize:12,color:'#1b5e20'}}>Continue when you're ready</strong><div className="note" style={{fontSize:10,marginTop:3}}>{(deptLabel.aiTools||[]).length>0?<>{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size} model{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size===1?'':'s'} · {(deptLabel.aiTools||[]).length} local use{(deptLabel.aiTools||[]).length===1?'':'s'} configured. You can return here and add more later.</>:<>Clinical AI is optional. If this department currently uses none, continue with zero local AI uses.</>}</div></div>
               {(deptLabel.aiTools||[]).length>0&&<button type="button" className="download" onClick={()=>document.getElementById('clinical-ai-model-picker')?.scrollIntoView({behavior:'smooth',block:'center'})}>+ Add another model or use</button>}
-              <button type="button" onClick={()=>document.getElementById('department-overview')?.scrollIntoView({behavior:'smooth',block:'start'})}>Done — review footprint ↑</button>
+              <button type="button" onClick={()=>setDeptProfileStage('review')}>Done — review footprint →</button>
             </div>
           </section>
             )}

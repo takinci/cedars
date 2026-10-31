@@ -1,4 +1,5 @@
 # Changelog
+- Replaced observer/anchor-based stage navigation with controlled horizontal stage carousels for Department and AI Profile, preventing page-jump feedback loops while preserving back/forward stage navigation. Added a one-time post-skip walkthrough coach mark, simplified the Home workflow into an informational “What you’ll do” overview, and made Profile stages discrete rather than vertically stacked.
 
 ## Unreleased
 

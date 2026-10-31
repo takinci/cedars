@@ -657,3 +657,112 @@ footer>div:last-child a{font-size:11.5px!important}
   .walkthroughDock{left:10px;right:10px;bottom:10px;width:auto}
   .firstVisitWalkthrough{padding:20px 16px}.firstVisitWalkthrough h2{font-size:24px}
 }
+
+/* 8F — true stage carousels: controlled state, no observer/anchor bounce. */
+.sectionStageDeck{display:none!important}
+
+/* Home: choices are actions; the workflow underneath is an informational overview. */
+.homeFlowHeading{margin:24px 0 8px;font-size:11px;font-weight:850;letter-spacing:.07em;color:var(--cedars-forest-deep)}
+.homeFlow{margin-top:0!important;background:transparent!important;border:0!important;border-radius:0!important;overflow:visible!important;position:relative}
+.homeFlow::before{content:"";position:absolute;left:4%;right:4%;top:30px;height:1px;background:#C8D7CF;z-index:0}
+.homeFlowStep{position:relative;z-index:1;background:transparent!important;border-right:0!important;padding:10px 12px 12px!important}
+.homeFlowStep>b{background:var(--cedars-ivory)!important}
+
+/* Controlled stage carousel. The track may scroll horizontally; the document never does. */
+.stageCarousel{width:100%;margin:14px 0 20px}
+.stageCarouselHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 7px}
+.stageCarouselHeading>span{font-size:10px;font-weight:850;letter-spacing:.065em;color:#6E8177}
+.stageCarouselHeading>small{font-size:10.5px!important;color:#8A9A91}
+.stageCarouselTrack{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:3px 2px 9px;scrollbar-width:thin;scrollbar-color:#B7C9BE transparent;overscroll-behavior-x:contain}
+.stageCarouselCard{scroll-snap-align:center;flex:1 0 205px;min-width:205px;position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start;text-align:left;padding:13px 14px;border:1px solid #D6E1DA!important;border-radius:10px!important;background:#fff!important;color:var(--cedars-ink)!important;box-shadow:none!important;transition:background .16s ease,border-color .16s ease,transform .16s ease,box-shadow .16s ease!important}
+.stageCarouselCard:hover{border-color:#9FB9AA!important;background:#F8FBF9!important;transform:translateY(-1px)}
+.stageCarouselCard.active{border:2px solid var(--cedars-forest)!important;background:#EEF6F1!important;padding:12px 13px;box-shadow:0 8px 20px rgba(31,78,61,.08)!important}
+.stageCarouselNumber{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid #B8C9BF;background:#F6F9F7;color:var(--cedars-forest-deep);font-size:10px;font-weight:850}
+.stageCarouselCard.active .stageCarouselNumber{background:var(--cedars-forest-deep);border-color:var(--cedars-forest-deep);color:#fff}
+.stageCarouselCopy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.stageCarouselCopy strong{font-size:13.5px;line-height:1.2;color:inherit}
+.stageCarouselCopy small{font-size:11px!important;line-height:1.35;color:var(--cedars-muted)!important}
+.stageCarouselOptional{position:absolute;right:9px;top:8px;font-size:8px;font-weight:850;letter-spacing:.065em;color:#8A6F43}
+.stageCarouselControls{display:grid;grid-template-columns:minmax(130px,auto) 1fr minmax(160px,auto);gap:10px;align-items:center;margin-top:5px;padding:9px 10px;border-top:1px solid var(--cedars-border)}
+.stageCarouselPrevious,.stageCarouselNext{font-size:11.5px!important;box-shadow:none!important}
+.stageCarouselPrevious{justify-self:start;background:#fff!important;color:var(--cedars-forest-deep)!important;border-color:#CAD8CF!important}
+.stageCarouselNext{justify-self:end;background:var(--cedars-forest-deep)!important;color:#fff!important;border-color:var(--cedars-forest-deep)!important}
+.stageCarouselPrevious:disabled,.stageCarouselNext:disabled{opacity:.35!important;cursor:default!important}
+.stageCarouselCurrent{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.stageCarouselCurrent>span{font-size:11.5px;font-weight:750;color:var(--cedars-ink)}
+.stageCarouselCurrent>small{font-size:10.5px!important;color:var(--cedars-muted)}
+
+/* Sideways panel transition for actual content, not the document. */
+@keyframes cedarsStageIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+.aiStageSurface,
+.departmentPage[data-dept-stage="context"] #department-context-input,
+.departmentPage[data-dept-stage="equipment"] #department-equipment,
+.departmentPage[data-dept-stage="clinical-ai"] #department-clinical-ai-input,
+.departmentPage[data-dept-stage="review"] #department-overview{animation:cedarsStageIn .2s ease both}
+
+/* Department Profile becomes one active stage at a time. */
+.departmentPage>.stageCarousel{margin-top:10px}
+.departmentPage>.departmentSetup>.departmentSetupSummary{display:none!important}
+.departmentPage[data-dept-stage="context"] .departmentSetupBody>*{display:none!important}
+.departmentPage[data-dept-stage="context"] .departmentSetupBody>#department-context-input{display:block!important}
+.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>*{display:none!important}
+.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>#department-equipment{display:block!important}
+.departmentPage[data-dept-stage="clinical-ai"]>.departmentSetup,
+.departmentPage[data-dept-stage="review"]>.departmentSetup{display:none!important}
+.departmentPage:not([data-dept-stage="clinical-ai"])>#department-clinical-ai-input{display:none!important}
+.departmentPage:not([data-dept-stage="review"])>#department-overview,
+.departmentPage:not([data-dept-stage="review"])>.footprintExplore,
+.departmentPage:not([data-dept-stage="review"])>.detailToolbar,
+.departmentPage:not([data-dept-stage="review"])>.detailToolbar+div,
+.departmentPage:not([data-dept-stage="review"])>.accHead,
+.departmentPage:not([data-dept-stage="review"])>.aiSection,
+.departmentPage:not([data-dept-stage="review"])>.charts{display:none!important}
+.departmentPage[data-dept-stage="review"]>#department-clinical-ai-input{display:none!important}
+.departmentPage[data-dept-stage="clinical-ai"]>#department-clinical-ai-input{display:block!important}
+.departmentPage[data-dept-stage="review"]>#department-overview{display:block!important}
+
+/* AI Profile: the selected stage is the content card. Hide the old stacked lifecycle chrome. */
+.aiProfileWorkspaceCarousel{display:block!important}
+.aiProfileWorkspaceCarousel>.stageCarousel{margin:0 0 16px!important}
+.aiProfileWorkspaceCarousel .aiProfileSidebar{display:none!important}
+.aiProfileWorkspaceCarousel .aiProfileWorkspaceMain{width:100%!important;min-width:0!important}
+.aiProfileWorkspaceCarousel .aiLifecycleIntro,
+.aiProfileWorkspaceCarousel .aiLifecycleSequence{display:none!important}
+.aiProfileWorkspaceCarousel[data-ai-stage="context"] .aiLifecycleEditor,
+.aiProfileWorkspaceCarousel[data-ai-stage="context"] .aiBoundarySummary{display:none!important}
+.aiProfileWorkspaceCarousel[data-ai-stage="training"] #ai-model-record,
+.aiProfileWorkspaceCarousel[data-ai-stage="training"] .aiBoundarySummary{display:none!important}
+.aiProfileWorkspaceCarousel[data-ai-stage="inference"] #ai-model-record,
+.aiProfileWorkspaceCarousel[data-ai-stage="inference"] .aiBoundarySummary{display:none!important}
+.aiProfileWorkspaceCarousel[data-ai-stage="boundary"] #ai-model-record,
+.aiProfileWorkspaceCarousel[data-ai-stage="boundary"] .aiBoundarySummary{display:none!important}
+.aiProfileWorkspaceCarousel[data-ai-stage="training"] #ai-inference-section,
+.aiProfileWorkspaceCarousel[data-ai-stage="training"] #ai-water-section,
+.aiProfileWorkspaceCarousel[data-ai-stage="inference"] #ai-training-section,
+.aiProfileWorkspaceCarousel[data-ai-stage="inference"] #ai-water-section,
+.aiProfileWorkspaceCarousel[data-ai-stage="boundary"] #ai-training-section,
+.aiProfileWorkspaceCarousel[data-ai-stage="boundary"] #ai-inference-section{display:none!important}
+.aiProfileWorkspaceCarousel .aiProfileStepNav{display:none!important}
+.aiProfileReviewPanel{padding:24px;border:1px solid var(--cedars-border);border-left:3px solid var(--cedars-forest);border-radius:9px;background:#fff}
+.aiProfileReviewPanel>span{font-size:10px;font-weight:850;letter-spacing:.055em;color:var(--cedars-forest)}
+.aiProfileReviewPanel h2{margin:5px 0 6px;font-size:24px}
+.aiProfileReviewPanel p{font-size:13px;color:var(--cedars-muted);line-height:1.55;max-width:700px}
+.aiProfileReviewProgress{height:7px;border-radius:999px;background:#E4ECE7;overflow:hidden;margin-top:14px}
+.aiProfileReviewProgress>span{display:block;height:100%;background:var(--cedars-forest);border-radius:inherit}
+
+/* Walkthrough skip handoff: one coach mark, then it stays out of the way. */
+.walkthroughDock.showHint .walkthroughDockToggle{box-shadow:0 0 0 4px rgba(159,224,189,.24),0 14px 30px rgba(18,45,37,.22)!important}
+.walkthroughDockCoach{position:absolute;left:0;bottom:calc(100% + 10px);width:250px;padding:12px 13px 10px;background:#FFF9EC;color:#173F34;border:2px solid #E2BF6D;border-radius:9px;box-shadow:0 14px 34px rgba(18,45,37,.2)}
+.walkthroughDockCoach strong{display:block;font-size:12.5px}.walkthroughDockCoach span{display:block;font-size:11px;line-height:1.4;color:#5E6F66;margin-top:2px}.walkthroughDockCoach i{position:absolute;left:24px;bottom:-18px;font-style:normal;font-size:22px;color:#E2BF6D}.walkthroughDockCoach button{margin-top:8px;padding:5px 8px!important;background:#173F34!important;color:#fff!important;font-size:10.5px!important}
+
+@media(max-width:900px){
+  .homeFlow::before{display:none}
+  .stageCarouselCard{flex-basis:min(76vw,280px)}
+  .stageCarouselControls{grid-template-columns:1fr 1fr}.stageCarouselCurrent{grid-column:1/-1;grid-row:1}.stageCarouselPrevious{grid-column:1;grid-row:2}.stageCarouselNext{grid-column:2;grid-row:2}
+}
+@media(max-width:700px){
+  .homeFlowHeading{margin-top:20px}
+  .stageCarousel{margin-top:10px}
+  .stageCarouselCard{flex-basis:min(82vw,270px)}
+  .walkthroughDockCoach{width:min(250px,calc(100vw - 32px))}
+}
