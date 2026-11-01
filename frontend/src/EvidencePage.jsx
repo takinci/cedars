@@ -1,5 +1,5 @@
 import React from 'react';
-import {ArrowLeft, ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
+import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
 
 const GROUPS = [
   {
@@ -59,6 +59,7 @@ const GROUPS = [
       {type:'ML REPORTING FRAMEWORK',year:'2020',authors:['Henderson P','Hu J','Romoff J','Brunskill E','Jurafsky D','Pineau J'],venue:'J Mach Learn Res',title:'Towards the Systematic Reporting of the Energy and Carbon Footprints of Machine Learning',href:'https://jmlr.org/papers/v21/20-312.html',why:'Argues for transparent reporting of energy, carbon, infrastructure, and location rather than isolated performance alone.',used:'AI reporting completeness and provenance principles.'},
       {type:'COMPUTE EFFICIENCY FRAMEWORK',year:'2020',authors:['Schwartz R','Dodge J','Smith NA','Etzioni O'],venue:'Commun ACM',title:'Green AI',href:'https://doi.org/10.1145/3381831',why:'Makes computational efficiency an explicit evaluation dimension alongside model quality.',used:'Compute-efficiency framing and input-size scaling context.'},
       {type:'EVALUATION METHODOLOGY',year:'2024',authors:['Maier-Hein L','Reinke A','Godau P','Tizabi MD','Buettner F','Christodoulou E','Glocker B','Isensee F','Kleesiek J','Kozubek M','Reyes M','Riegler MA','Wiesenfarth M','Kavur AE','Sudre CH','Baumgartner M','Eisenmann M','Heckmann-Nötzel D','Rädsch T','Acion L','Antonelli M','Arbel T','Bakas S','Benis A','Blaschko MB','Cardoso MJ','Cheplygina V','Cimini BA','Collins GS','Farahani K','Ferrer L','Galdran A','van Ginneken B','Haase R','Hashimoto DA','Hoffman MM','Huisman M','Jannin P','Kahn CE','Kainmueller D','Kainz B','Karargyris A','Karthikesalingam A','Kofler F','Kopp-Schneider A','Kreshuk A','Kurc T','Landman BA','Litjens G','Madani A','Maier-Hein K','Martel AL','Mattson P','Meijering E','Menze B','Moons KGM','Müller H','Nichyporuk B','Nickel F','Petersen J','Rajpoot N','Rieke N','Saez-Rodriguez J','Sánchez CI','Shetty S','van Smeden M','Summers RM','Taha AA','Tiulpin A','Tsaftaris SA','Van Calster B','Varoquaux G','Jäger PF'],venue:'Nature Methods',title:'Metrics reloaded: recommendations for image analysis validation',href:'https://doi.org/10.1038/s41592-023-02151-z',why:'Shows how metric choice should follow the actual scientific question rather than convenience.',used:'Conceptual precedent for transparent, task-aligned metric selection.'},
+      {type:'PRACTICE RECOMMENDATIONS',year:'2026',authors:['Klontzas ME','Groot Lipman KBW','Akinci D’Antonoli T','Andreychenko A','Cuocolo R','Dietzel M','Gitto S','Huisman H','Santinha J','Vernuccio F','Visser JJ','Huisman M'],venue:'European Radiology',title:'ESR Essentials: common performance metrics in AI—practice recommendations by the European Society of Medical Imaging Informatics',href:'https://doi.org/10.1007/s00330-025-11890-w',why:'Provides practical guidance for selecting and interpreting AI performance metrics in radiology, including task fit, prevalence, thresholds, local validation, and deployment context.',used:'Clinical-quality gate and task-aligned metric selection when evaluating medical AI; not an environmental Score input.'},
     ],
   },
 ];
@@ -75,146 +76,76 @@ const JOURNAL_MARKS = {
   'arXiv': {src:'/journal-arxiv.png', alt:'arXiv'},
   'Digital Healthcare and Artificial Intelligence': {src:'/source-digital-healthcare-ai-book.png', alt:'Digital Healthcare and Artificial Intelligence'},
   'JAMA Network Open': {src:'/journal-jama-network-open.png', alt:'JAMA Network Open'},
+  'Nature Methods': {src:'/journal-nature-methods-cedars-v2.png?v=8x', alt:'Nature Methods'},
+  'Commun ACM': {src:'/journal-communications-acm-cedars-v2.png?v=8x', alt:'Communications of the ACM'},
+  'J Mach Learn Res': {src:'/journal-jmlr-cedars-v2.png?v=8x', alt:'Journal of Machine Learning Research'},
 };
 
-function AuthorList({authors=[]}) {
+function AuthorList({authors=[], duplicate=false}) {
   if (authors.length <= 9) return <div className="evidenceAuthorsFull">{authors.join(', ')}</div>;
   const preview=authors.slice(0,4).join(', ');
   return (
     <details className="evidenceAuthorsDisclosure">
-      <summary>{preview} <span>+ {authors.length-4} more · All authors</span></summary>
+      <summary tabIndex={duplicate?-1:undefined}>{preview} <span>+ {authors.length-4} more · All authors</span></summary>
       <div>{authors.join(', ')}</div>
     </details>
   );
 }
 
-function EvidenceCard({card, index, active}) {
+function EvidenceCard({card, index, duplicate=false}) {
   const mark=JOURNAL_MARKS[card.venue];
   return (
-    <article className={`evidenceCard ${active?'active':''}`} data-card-index={index} aria-current={active?'true':undefined}>
+    <article className="evidenceCard" data-card-index={index}>
       <div className="evidenceCardTopline">
         <div className="evidenceCardMeta"><span>{card.type}</span><b>{card.year}</b></div>
         <div className={`evidenceJournalMark ${mark?'has-logo':'text-only'}`} aria-label={`Source: ${card.venue}`}>
           {mark ? <img src={mark.src} alt={mark.alt}/> : <span>{card.venue}</span>}
         </div>
       </div>
-      <div className="evidenceCardCitation"><AuthorList authors={card.authors}/><small>{card.venue}</small></div>
+      <div className="evidenceCardCitation"><AuthorList authors={card.authors} duplicate={duplicate}/><small>{card.venue}</small></div>
       <h3>{card.title}</h3>
       <div className="evidenceCardWhy"><span>WHY IT MATTERS</span><p>{card.why}</p></div>
       <div className="evidenceCardUse"><span>USED IN CEDARS</span><p>{card.used}</p></div>
-      <a href={card.href} target="_blank" rel="noreferrer">Read source <ExternalLink size={14}/></a>
+      <a href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>Read source <ExternalLink size={14}/></a>
     </article>
   );
 }
 
 function EvidenceShelf({group, groupIndex, motionEnabled}) {
-  const trackRef = React.useRef(null);
-  const shelfRef = React.useRef(null);
-  const frameRef = React.useRef(null);
-  const lastFrameRef = React.useRef(0);
-  const scrollFrameRef = React.useRef(null);
-  const directionRef = React.useRef(1);
-  const [active, setActive] = React.useState(0);
-  const [paused, setPaused] = React.useState(false);
-  const [inView, setInView] = React.useState(false);
+  const [manualPaused, setManualPaused] = React.useState(false);
   const Icon = group.icon;
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  const updateActive = React.useCallback(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const cards=[...track.querySelectorAll('[data-card-index]')];
-    if (!cards.length) return;
-    const viewportCenter=track.scrollLeft + track.clientWidth/2;
-    let best=0, distance=Infinity;
-    cards.forEach((card,i)=>{
-      const center=card.offsetLeft + card.offsetWidth/2;
-      const d=Math.abs(center-viewportCenter);
-      if (d<distance) { distance=d; best=i; }
-    });
-    setActive(current=>current===best?current:best);
-  },[]);
-
-  const goTo = React.useCallback((index, behavior='smooth') => {
-    const next = (index + group.cards.length) % group.cards.length;
-    const track = trackRef.current;
-    const card = track?.querySelector(`[data-card-index="${next}"]`);
-    if (track && card) {
-      const maxLeft=Math.max(0,track.scrollWidth-track.clientWidth);
-      const centered=card.offsetLeft - (track.clientWidth-card.offsetWidth)/2;
-      track.scrollTo({left:Math.min(maxLeft,Math.max(0,centered)),behavior});
-    }
-    setActive(next);
-  },[group.cards.length]);
-
-  React.useEffect(()=>{
-    const node=shelfRef.current;
-    if (!node || typeof IntersectionObserver==='undefined') { setInView(true); return undefined; }
-    const observer=new IntersectionObserver(([entry])=>setInView(entry.isIntersecting),{threshold:0,rootMargin:'80px 0px 80px 0px'});
-    observer.observe(node);
-    return ()=>observer.disconnect();
-  },[]);
-
-  React.useEffect(()=>{
-    if (!motionEnabled || reducedMotion || paused || !inView || group.cards.length<2) return undefined;
-    const speed=11 + (groupIndex%2)*1.5;
-    lastFrameRef.current=0;
-    const step=(time)=>{
-      const track=trackRef.current;
-      if (!track) return;
-      if (!lastFrameRef.current) lastFrameRef.current=time;
-      const elapsed=Math.min(40,time-lastFrameRef.current)/1000;
-      lastFrameRef.current=time;
-      const maxLeft=Math.max(0,track.scrollWidth-track.clientWidth);
-      if (maxLeft>1) {
-        let next=track.scrollLeft + directionRef.current*speed*elapsed;
-        if (next>=maxLeft) { next=maxLeft; directionRef.current=-1; }
-        else if (next<=0) { next=0; directionRef.current=1; }
-        track.scrollLeft=next;
-      }
-      frameRef.current=window.requestAnimationFrame(step);
-    };
-    frameRef.current=window.requestAnimationFrame(step);
-    return ()=>{
-      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
-      frameRef.current=null;
-      lastFrameRef.current=0;
-    };
-  },[motionEnabled,reducedMotion,paused,inView,group.cards.length,groupIndex]);
-
-  const onScroll = React.useCallback(() => {
-    if (scrollFrameRef.current) return;
-    scrollFrameRef.current=window.requestAnimationFrame(()=>{
-      scrollFrameRef.current=null;
-      updateActive();
-    });
-  },[updateActive]);
-
-  React.useEffect(()=>()=>{
-    if (scrollFrameRef.current) window.cancelAnimationFrame(scrollFrameRef.current);
-  },[]);
-
-  const leaveFocus = React.useCallback((event)=>{
-    if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
-  },[]);
+  const paused = !motionEnabled || reducedMotion || manualPaused;
+  const direction = groupIndex % 2 === 0 ? 'left' : 'right';
+  const duration = Math.max(30, group.cards.length * 9);
+  const delay = -(groupIndex * 4.5);
 
   return (
-    <section ref={shelfRef} className={`evidenceShelf contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`} onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} onFocusCapture={()=>setPaused(true)} onBlurCapture={leaveFocus}>
+    <section className={`evidenceShelf contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
       <div className="evidenceShelfHeading">
         <div className="evidenceShelfNumber">{String(groupIndex+1).padStart(2,'0')}</div>
         <div><span><Icon size={16}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
-        <div className="evidenceShelfControls">
-          <span aria-live="polite">{String(active+1).padStart(2,'0')} / {String(group.cards.length).padStart(2,'0')}</span>
-          <button type="button" onClick={()=>goTo(active-1)} aria-label={`Previous ${group.title} source`}><ArrowLeft size={17}/></button>
-          <button type="button" onClick={()=>goTo(active+1)} aria-label={`Next ${group.title} source`}><ArrowRight size={17}/></button>
+      </div>
+      <div className="evidenceTrack" aria-label={`${group.title} continuously moving reading cards`}>
+        <div
+          className={`evidenceMarqueeRail direction-${direction} ${paused?'is-paused':''}`}
+          style={{'--evidence-marquee-duration':`${duration}s`,'--evidence-marquee-delay':`${delay}s`}}
+        >
+          <div className="evidenceMarqueeGroup">
+            {group.cards.map((card,index)=><EvidenceCard key={`${card.title}-${index}`} card={card} index={index}/>) }
+          </div>
+          <div className="evidenceMarqueeGroup" aria-hidden="true">
+            {group.cards.map((card,index)=><EvidenceCard key={`duplicate-${card.title}-${index}`} card={card} index={index} duplicate/>) }
+          </div>
         </div>
       </div>
-      <div className="evidenceTrack" ref={trackRef} onScroll={onScroll} tabIndex="0" aria-label={`${group.title} reading cards`}>
-        {group.cards.map((card,index)=><EvidenceCard key={`${card.title}-${index}`} card={card} index={index} active={active===index}/>) }
-        <div className="evidenceTrackEnd" aria-hidden="true"/>
-      </div>
-      <div className="evidenceDots" role="group" aria-label={`${group.title} card navigation`}>
-        {group.cards.map((card,index)=><button type="button" key={`${card.title}-dot`} className={active===index?'active':''} aria-label={`Show source ${index+1} of ${group.cards.length}: ${card.title}`} aria-pressed={active===index} onClick={()=>goTo(index)}/>) }
+      <div className="evidenceShelfFooter">
+        <div className="evidenceDots" aria-hidden="true">
+          {group.cards.map((card,index)=><span className="evidenceDot" key={`${card.title}-dot-${index}`}/>) }
+        </div>
+        <button type="button" className="evidenceRowMotionToggle" disabled={!motionEnabled || reducedMotion} aria-label={manualPaused?'Resume this evidence row':'Pause this evidence row'} aria-pressed={manualPaused} onClick={()=>setManualPaused(v=>!v)} title={!motionEnabled?'Page-level motion is paused':reducedMotion?'Motion is disabled by your reduced-motion preference':undefined}>
+          {manualPaused?<Play size={12}/>:<Pause size={12}/>} 
+        </button>
       </div>
     </section>
   );

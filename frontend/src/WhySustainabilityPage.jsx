@@ -1,5 +1,5 @@
 import React from 'react';
-import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car} from 'lucide-react';
+import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car, Globe2} from 'lucide-react';
 
 
 export function DecisionWorkspaceSwitch({mode='results', kind='department', summary, onResults, onImprove, onReport}) {
@@ -76,9 +76,9 @@ const STORY_STEPS = [
     short:'People', icon:Car,
   },
   {
-    key:'resolve', kicker:'THE CEDARS QUESTION', title:'The whole pathway matters.',
-    body:'Some impacts are included in the Score, some are shown separately, and some may not yet be assessed. Keep those differences visible, then use the result to make better decisions.',
-    short:'Decisions', icon:Leaf,
+    key:'resolve', kicker:'PLANETARY HEALTH', title:'From patient care to planetary health, better decisions matter.',
+    body:'CEDARS makes environmental impact visible, without losing sight of clinical care.',
+    short:'Planetary health', icon:Globe2,
   },
 ];
 
@@ -145,6 +145,11 @@ function SustainabilityStory() {
             </video>
             <svg className={`whyStoryOverlay target-${activeStep.key}`} viewBox="0 0 1682 934" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
               <ellipse className="whyStoryTargetHalo" cx={target.cx} cy={target.cy} rx={target.rx} ry={target.ry}/>
+              {activeStep.key==='resolve' && <g className="whyStoryPlanet">
+                <circle cx="842" cy="465" r="270"/>
+                <ellipse cx="842" cy="465" rx="112" ry="270"/>
+                <ellipse cx="842" cy="465" rx="270" ry="108"/>
+              </g>}
               <path className="whyStoryLeader" d={`M ${target.cx+target.rx} ${target.lineY} C ${Math.min(target.cx+target.rx+120,1540)} ${target.lineY}, 1560 ${target.lineY}, 1644 ${target.lineY}`}/>
               <circle className="whyStoryLeaderDot" cx="1644" cy={target.lineY} r="6"/>
             </svg>
@@ -174,7 +179,6 @@ function SustainabilityStory() {
         </aside>
       </div>
 
-      <p className="whyFigureNote">Original CEDARS visual story. The illustration is explanatory, not a quantitative allocation of radiology emissions; scientific claims remain defined by the cited evidence and the explicit assessment boundary.</p>
     </section>
   );
 }
