@@ -26,6 +26,7 @@ import StageCarousel from './StageCarousel.jsx';
 import WalkthroughDock, {FirstVisitWalkthroughPrompt} from './WalkthroughDock.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
+import WhySustainabilityPage, {ResultsNextActions} from './WhySustainabilityPage.jsx';
 import { GuidedDemo, GUIDED_DEMOS } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
@@ -1589,7 +1590,7 @@ function App() {
   const [page, setPage] = useState(() => {
     if (typeof window === 'undefined') return 'landing';
     const requested = new URLSearchParams(window.location.search).get('page');
-    return ['landing','input','dashboard','ai','ecolabel','scenario','report','about'].includes(requested) ? requested : 'landing';
+    return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','about'].includes(requested) ? requested : 'landing';
   });
   const [guidedDemo, setGuidedDemo] = useState(null);
   const [guidedDemoSaved, setGuidedDemoSaved] = useState(null);
@@ -3109,6 +3110,7 @@ function App() {
         <div className="headerUtilities">
           <nav className="utilityNav" aria-label="Site navigation">
             <button className={page==='landing'?'on':''} onClick={()=>setPage('landing')}>Home</button>
+            <button className={page==='why'?'on':''} onClick={()=>setPage('why')}>Why sustainability?</button>
             <button className={page==='about'?'on':''} onClick={()=>setPage('about')}>About</button>
           </nav>
           <SaveUtility
@@ -3139,7 +3141,7 @@ function App() {
       </header>
 
       {rejectedSharedFields.length>0&&<div style={{maxWidth:1200,margin:'8px auto',padding:'9px 12px',background:'#fff3e0',border:'1px solid #ffcc80',borderRadius:10,color:'#8d4b00',fontSize:12}}><strong>Some settings in this shared link were invalid and were ignored.</strong> Review the assessment before using its results. Ignored fields: {rejectedSharedFields.join(', ')}.</div>}
-      {!['landing','about'].includes(page) && (
+      {!['landing','why','about'].includes(page) && (
         <WorkflowRail
           page={page}
           setupActive={(page==='dashboard'&&deptSetupOpen)||(page==='ai'&&!scen.aiRoute)}
@@ -3160,7 +3162,7 @@ function App() {
         />
       )}
 
-      {page!=='about' && !guidedDemo && <><FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/><WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/></>}
+      {!['why','about'].includes(page) && !guidedDemo && <><FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/><WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/></>}
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
@@ -5136,7 +5138,7 @@ function App() {
               <div className="scoreEverydayHeader">
                 <div>
                   <span>INTERPRET THE RESULT</span>
-                  <h2 id="score-everyday-title">What it means in everyday terms</h2>
+                  <h2 id="score-everyday-title">What this means in everyday terms</h2>
                   <p>{resultPeriodPhrase}, this footprint is approximately equivalent to:</p>
                 </div>
                 <div>
@@ -5181,6 +5183,12 @@ function App() {
               </div>
             </section>
 
+            <ResultsNextActions
+              kind="department"
+              onImprove={()=>{setEcoLabelMode('department');setPage('scenario');}}
+              onReport={()=>{setEcoLabelMode('department');setPage('report');}}
+            />
+
             <div className="ecoIntroBlock">
               <p><strong>Department result.</strong> The CEDARS Score summarizes operational carbon intensity within the stated boundary. Details and methodology are below.</p>
               <details className="methodologyDetails">
@@ -5191,17 +5199,6 @@ function App() {
               </details>
             </div>
 
-            <div className="workflowNextStep">
-              <div className="workflowNextCopy">
-                <span>NEXT STEP</span>
-                <strong>Prepare and preserve your CEDARS results</strong>
-                <small>Continue to Report &amp; Share, or return to Improve first.</small>
-              </div>
-              <div className="workflowNextActions">
-                <button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
-                <button className="download" onClick={()=>{setEcoLabelMode('department');setPage('scenario');}}>Improve first</button>
-              </div>
-            </div>
             </>}
             {page==='report' && <>
             <section className="reportStageCard">
@@ -5478,17 +5475,11 @@ function App() {
               </details>
             </div>
 
-            <div className="workflowNextStep">
-              <div className="workflowNextCopy">
-                <span>NEXT STEP</span>
-                <strong>Prepare and preserve your CEDARS results</strong>
-                <small>Continue to Report &amp; Share, or return to Improve first.</small>
-              </div>
-              <div className="workflowNextActions">
-                <button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('ai');setPage('report');}}>Continue to Report &amp; Share <ArrowRight size={17}/></button>
-                <button className="download" onClick={()=>{setEcoLabelMode('ai');setPage('scenario');}}>Improve first</button>
-              </div>
-            </div>
+            <ResultsNextActions
+              kind="ai"
+              onImprove={()=>{setEcoLabelMode('ai');setPage('scenario');}}
+              onReport={()=>{setEcoLabelMode('ai');setPage('report');}}
+            />
             </>}
             {page==='report' && <>
             <section className="reportStageCard">
@@ -5725,6 +5716,8 @@ function App() {
           </>}
         </main>
       )}
+
+      {page==='why' && <WhySustainabilityPage/>}
 
       {page==='about' && <AboutPage/>}
 
