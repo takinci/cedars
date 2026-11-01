@@ -1,6 +1,5 @@
 import React from 'react';
 import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car} from 'lucide-react';
-import './styles/why-sustainability.css';
 
 
 export function DecisionWorkspaceSwitch({mode='results', kind='department', summary, onResults, onImprove, onReport}) {

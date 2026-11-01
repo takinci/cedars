@@ -1,6 +1,5 @@
 import React from 'react';
 import {ArrowLeft, ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
-import './styles/evidence.css';
 
 const GROUPS = [
   {
@@ -111,21 +110,39 @@ function EvidenceCard({card, index, active}) {
 function EvidenceShelf({group, groupIndex, motionEnabled}) {
   const trackRef = React.useRef(null);
   const shelfRef = React.useRef(null);
+  const frameRef = React.useRef(null);
+  const lastFrameRef = React.useRef(0);
+  const scrollFrameRef = React.useRef(null);
+  const directionRef = React.useRef(1);
   const [active, setActive] = React.useState(0);
   const [paused, setPaused] = React.useState(false);
   const [inView, setInView] = React.useState(false);
   const Icon = group.icon;
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+  const updateActive = React.useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const cards=[...track.querySelectorAll('[data-card-index]')];
+    if (!cards.length) return;
+    const viewportCenter=track.scrollLeft + track.clientWidth/2;
+    let best=0, distance=Infinity;
+    cards.forEach((card,i)=>{
+      const center=card.offsetLeft + card.offsetWidth/2;
+      const d=Math.abs(center-viewportCenter);
+      if (d<distance) { distance=d; best=i; }
+    });
+    setActive(current=>current===best?current:best);
+  },[]);
+
   const goTo = React.useCallback((index, behavior='smooth') => {
     const next = (index + group.cards.length) % group.cards.length;
     const track = trackRef.current;
     const card = track?.querySelector(`[data-card-index="${next}"]`);
     if (track && card) {
-      const trackRect = track.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-      const targetLeft = track.scrollLeft + cardRect.left - trackRect.left;
-      track.scrollTo({left:Math.max(0,targetLeft),behavior});
+      const maxLeft=Math.max(0,track.scrollWidth-track.clientWidth);
+      const centered=card.offsetLeft - (track.clientWidth-card.offsetWidth)/2;
+      track.scrollTo({left:Math.min(maxLeft,Math.max(0,centered)),behavior});
     }
     setActive(next);
   },[group.cards.length]);
@@ -133,27 +150,48 @@ function EvidenceShelf({group, groupIndex, motionEnabled}) {
   React.useEffect(()=>{
     const node=shelfRef.current;
     if (!node || typeof IntersectionObserver==='undefined') { setInView(true); return undefined; }
-    const observer=new IntersectionObserver(([entry])=>setInView(entry.isIntersecting),{threshold:[0,.05,.25],rootMargin:'80px 0px 80px 0px'});
+    const observer=new IntersectionObserver(([entry])=>setInView(entry.isIntersecting),{threshold:0,rootMargin:'80px 0px 80px 0px'});
     observer.observe(node);
     return ()=>observer.disconnect();
   },[]);
 
   React.useEffect(()=>{
     if (!motionEnabled || reducedMotion || paused || !inView || group.cards.length<2) return undefined;
-    const delay=5200 + (groupIndex%3)*500;
-    const timer=window.setTimeout(()=>goTo(active+1),delay);
-    return ()=>window.clearTimeout(timer);
-  },[motionEnabled,reducedMotion,paused,inView,group.cards.length,groupIndex,active,goTo]);
+    const speed=11 + (groupIndex%2)*1.5;
+    lastFrameRef.current=0;
+    const step=(time)=>{
+      const track=trackRef.current;
+      if (!track) return;
+      if (!lastFrameRef.current) lastFrameRef.current=time;
+      const elapsed=Math.min(40,time-lastFrameRef.current)/1000;
+      lastFrameRef.current=time;
+      const maxLeft=Math.max(0,track.scrollWidth-track.clientWidth);
+      if (maxLeft>1) {
+        let next=track.scrollLeft + directionRef.current*speed*elapsed;
+        if (next>=maxLeft) { next=maxLeft; directionRef.current=-1; }
+        else if (next<=0) { next=0; directionRef.current=1; }
+        track.scrollLeft=next;
+      }
+      frameRef.current=window.requestAnimationFrame(step);
+    };
+    frameRef.current=window.requestAnimationFrame(step);
+    return ()=>{
+      if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
+      frameRef.current=null;
+      lastFrameRef.current=0;
+    };
+  },[motionEnabled,reducedMotion,paused,inView,group.cards.length,groupIndex]);
 
   const onScroll = React.useCallback(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const cards=[...track.querySelectorAll('[data-card-index]')];
-    if (!cards.length) return;
-    const left=track.scrollLeft;
-    let best=0, distance=Infinity;
-    cards.forEach((card,i)=>{const d=Math.abs((card.offsetLeft-track.offsetLeft)-left);if(d<distance){distance=d;best=i;}});
-    setActive(best);
+    if (scrollFrameRef.current) return;
+    scrollFrameRef.current=window.requestAnimationFrame(()=>{
+      scrollFrameRef.current=null;
+      updateActive();
+    });
+  },[updateActive]);
+
+  React.useEffect(()=>()=>{
+    if (scrollFrameRef.current) window.cancelAnimationFrame(scrollFrameRef.current);
   },[]);
 
   const leaveFocus = React.useCallback((event)=>{
@@ -161,7 +199,7 @@ function EvidenceShelf({group, groupIndex, motionEnabled}) {
   },[]);
 
   return (
-    <section ref={shelfRef} className={`evidenceShelf contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
+    <section ref={shelfRef} className={`evidenceShelf contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`} onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} onFocusCapture={()=>setPaused(true)} onBlurCapture={leaveFocus}>
       <div className="evidenceShelfHeading">
         <div className="evidenceShelfNumber">{String(groupIndex+1).padStart(2,'0')}</div>
         <div><span><Icon size={16}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
@@ -171,9 +209,12 @@ function EvidenceShelf({group, groupIndex, motionEnabled}) {
           <button type="button" onClick={()=>goTo(active+1)} aria-label={`Next ${group.title} source`}><ArrowRight size={17}/></button>
         </div>
       </div>
-      <div className="evidenceTrack" ref={trackRef} onScroll={onScroll} onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)} onFocusCapture={()=>setPaused(true)} onBlurCapture={leaveFocus} tabIndex="0" aria-label={`${group.title} reading cards`}>
+      <div className="evidenceTrack" ref={trackRef} onScroll={onScroll} tabIndex="0" aria-label={`${group.title} reading cards`}>
         {group.cards.map((card,index)=><EvidenceCard key={`${card.title}-${index}`} card={card} index={index} active={active===index}/>) }
         <div className="evidenceTrackEnd" aria-hidden="true"/>
+      </div>
+      <div className="evidenceDots" role="group" aria-label={`${group.title} card navigation`}>
+        {group.cards.map((card,index)=><button type="button" key={`${card.title}-dot`} className={active===index?'active':''} aria-label={`Show source ${index+1} of ${group.cards.length}: ${card.title}`} aria-pressed={active===index} onClick={()=>goTo(index)}/>) }
       </div>
     </section>
   );
