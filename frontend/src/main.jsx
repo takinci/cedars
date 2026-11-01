@@ -26,7 +26,8 @@ import StageCarousel from './StageCarousel.jsx';
 import WalkthroughDock, {FirstVisitWalkthroughPrompt} from './WalkthroughDock.jsx';
 import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
-import WhySustainabilityPage, {ResultsNextActions} from './WhySustainabilityPage.jsx';
+import WhySustainabilityPage, {DecisionWorkspaceSwitch, ReportStudioTabs} from './WhySustainabilityPage.jsx';
+import EvidencePage from './EvidencePage.jsx';
 import { GuidedDemo, GUIDED_DEMOS } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
@@ -1590,8 +1591,10 @@ function App() {
   const [page, setPage] = useState(() => {
     if (typeof window === 'undefined') return 'landing';
     const requested = new URLSearchParams(window.location.search).get('page');
-    return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','about'].includes(requested) ? requested : 'landing';
+    return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','evidence','about'].includes(requested) ? requested : 'landing';
   });
+  const [reportStudioTab, setReportStudioTab] = useState('methods');
+  useEffect(()=>{ if(page!=='report') setReportStudioTab('methods'); },[page]);
   const [guidedDemo, setGuidedDemo] = useState(null);
   const [guidedDemoSaved, setGuidedDemoSaved] = useState(null);
   const [guidedDemoReturnView, setGuidedDemoReturnView] = useState(null);
@@ -3111,6 +3114,7 @@ function App() {
           <nav className="utilityNav" aria-label="Site navigation">
             <button className={page==='landing'?'on':''} onClick={()=>setPage('landing')}>Home</button>
             <button className={page==='why'?'on':''} onClick={()=>setPage('why')}>Why sustainability?</button>
+            <button className={page==='evidence'?'on':''} onClick={()=>setPage('evidence')}>Evidence</button>
             <button className={page==='about'?'on':''} onClick={()=>setPage('about')}>About</button>
           </nav>
           <SaveUtility
@@ -3141,7 +3145,7 @@ function App() {
       </header>
 
       {rejectedSharedFields.length>0&&<div style={{maxWidth:1200,margin:'8px auto',padding:'9px 12px',background:'#fff3e0',border:'1px solid #ffcc80',borderRadius:10,color:'#8d4b00',fontSize:12}}><strong>Some settings in this shared link were invalid and were ignored.</strong> Review the assessment before using its results. Ignored fields: {rejectedSharedFields.join(', ')}.</div>}
-      {!['landing','why','about'].includes(page) && (
+      {!['landing','why','evidence','about'].includes(page) && (
         <WorkflowRail
           page={page}
           setupActive={(page==='dashboard'&&deptSetupOpen)||(page==='ai'&&!scen.aiRoute)}
@@ -3162,7 +3166,7 @@ function App() {
         />
       )}
 
-      {!['why','about'].includes(page) && !guidedDemo && <><FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/><WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/></>}
+      {!['why','evidence','about'].includes(page) && !guidedDemo && <><FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/><WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/></>}
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
@@ -4837,6 +4841,17 @@ function App() {
           <AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext('scenario',true)}/>
           <div className="improveScopeSelector" role="tablist" aria-label="Improve workspace"><button type="button" className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department</strong><small>Equipment, utilization, storage and workflows.</small></span></button><button type="button" className={ecoLabelMode==='ai'?'active':''} onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}}><Brain size={19}/><span><strong>AI</strong><small>Development, deployment and monitoring.</small></span></button></div>
 
+          <DecisionWorkspaceSwitch
+            mode="improve"
+            kind={ecoLabelMode}
+            summary={ecoLabelMode==='ai'
+              ? {title:ecoLabelData.graded?`Score ${ecoLabelData.score} · ${ecoLabelData.effectivePerStudyG} gCO₂e/study`:ecoLabelData.lifecycleCoverage,detail:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study inference · current profile retained`:'Current AI profile retained as baseline'}
+              : {title:deptLabelData.hasData?`Score ${deptLabelData.score} · ${deptLabelData.co2PerStudy} kgCO₂e/study`:'Department result incomplete',detail:deptLabelData.hasData?`${deptLabelData.annualKwh.toLocaleString()} kWh/year · ${deptLabelData.annualStudies.toLocaleString()} studies/year`:'Current Department profile retained as baseline'}}
+            onResults={()=>{setPage('ecolabel');window.setTimeout(()=>document.getElementById('decision-workspace')?.scrollIntoView({behavior:'auto',block:'start'}),0);}}
+            onImprove={()=>window.setTimeout(()=>document.querySelector(ecoLabelMode==='ai'?'[data-demo-target="ai-improve-workspace"]':'[data-demo-target="department-improve-workspace"]')?.scrollIntoView({behavior:'smooth',block:'start'}),0)}
+            onReport={()=>{setReportStudioTab('methods');setPage('report');}}
+          />
+
           {ecoLabelMode==='department' && (()=>{
             const price = getPrice(settings.region, settings.electricityPrice);
             const sym = currencySym(settings.region);
@@ -5026,7 +5041,7 @@ function App() {
 
       {/* ── Results / Report & Share ── */}
       {(page==='ecolabel' || page==='report') && (
-        <main className={page==='ecolabel'?'resultsPage':'reportPage'}>
+        <main className={page==='ecolabel'?'resultsPage':`reportPage reportStudio${reportStudioTab.charAt(0).toUpperCase()}${reportStudioTab.slice(1)}`}>
           <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Results' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
           <div className="researchAssessmentNotice">
             <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
@@ -5084,6 +5099,16 @@ function App() {
                 </div>
               </div>
             )}
+            <DecisionWorkspaceSwitch
+              mode="results"
+              kind={ecoLabelMode}
+              summary={ecoLabelMode==='ai'
+                ? {title:ecoLabelData.graded?`Score ${ecoLabelData.score} · ${ecoLabelData.effectivePerStudyG} gCO₂e/study`:ecoLabelData.lifecycleCoverage,detail:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study inference · current profile`:ecoLabelData.trainingStatusLabel}
+                : {title:deptLabelData.hasData?`Score ${deptLabelData.score} · ${deptLabelData.co2PerStudy} kgCO₂e/study`:'Department result incomplete',detail:deptLabelData.hasData?`${deptLabelData.annualKwh.toLocaleString()} kWh/year · ${deptLabelData.annualStudies.toLocaleString()} studies/year`:'Complete the current Department profile'}}
+              onResults={()=>window.scrollTo({top:0,behavior:'smooth'})}
+              onImprove={()=>{setPage('scenario');window.setTimeout(()=>document.getElementById('decision-workspace')?.scrollIntoView({behavior:'auto',block:'start'}),0);}}
+              onReport={()=>{setReportStudioTab('methods');setPage('report');}}
+            />
           </> : <>
             <div className="reportProductTabsWrap">
               <div className="reportProductTabsHeading">
@@ -5103,11 +5128,13 @@ function App() {
                 </button>
               </div>
             </div>
-            <div className="reportSteps" aria-label="Report and share workflow">
-              <div><span>1</span><strong>Review &amp; finalize</strong><small>Check the information used in your CEDARS result</small></div>
-              <div><span>2</span><strong>Research-ready outputs</strong><small>Methods text, provenance, complete record &amp; optional visual summary</small></div>
-              <div><span>3</span><strong>Preserve or share</strong><small>Save, transfer, link, or optionally contribute</small></div>
-            </div>
+            <ReportStudioTabs
+              active={reportStudioTab}
+              onChange={setReportStudioTab}
+              kind={ecoLabelMode}
+              summary={ecoLabelMode==='ai'?{title:ecoLabelData.projectName||'AI assessment',detail:ecoLabelData.lifecycleCoverage}:{title:deptLabelData.deptName||'Radiology Department',detail:deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e/study · Score ${deptLabelData.score}`:'Assessment incomplete'}}
+              onResults={()=>setPage('ecolabel')}
+            />
           </>}
           <div style={{display:ecoLabelMode==='department'?'block':'none'}}>
             {page==='ecolabel' && <>
@@ -5183,12 +5210,6 @@ function App() {
               </div>
             </section>
 
-            <ResultsNextActions
-              kind="department"
-              onImprove={()=>{setEcoLabelMode('department');setPage('scenario');}}
-              onReport={()=>{setEcoLabelMode('department');setPage('report');}}
-            />
-
             <div className="ecoIntroBlock">
               <p><strong>Department result.</strong> The CEDARS Score summarizes operational carbon intensity within the stated boundary. Details and methodology are below.</p>
               <details className="methodologyDetails">
@@ -5201,7 +5222,9 @@ function App() {
 
             </>}
             {page==='report' && <>
-            <section className="reportStageCard">
+            <details className="reportStageCard reportReviewCompact">
+              <summary>{deptLabelData.hasData?'Ready to report · Review/edit Department inputs':'Department inputs need review'}</summary>
+              <div className="reportReviewCompactBody">
               <div className="reportStageHeading">
                 <div>
                   <span>REVIEW &amp; FINALIZE</span>
@@ -5282,7 +5305,8 @@ function App() {
                 </div>
               </details>
             </div>
-            </section>
+              </div>
+            </details>
 
             <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
               <div className="reportStageHeading compact">
@@ -5293,7 +5317,7 @@ function App() {
                 </div>
               </div>
 
-            <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
+            <div className="reportLabelWorkspace" style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
               <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
                 <div style={{background:'#1b5e20',padding:'14px 18px'}}>
                   <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
@@ -5475,14 +5499,11 @@ function App() {
               </details>
             </div>
 
-            <ResultsNextActions
-              kind="ai"
-              onImprove={()=>{setEcoLabelMode('ai');setPage('scenario');}}
-              onReport={()=>{setEcoLabelMode('ai');setPage('report');}}
-            />
             </>}
             {page==='report' && <>
-            <section className="reportStageCard">
+            <details className="reportStageCard reportReviewCompact">
+              <summary>{ecoLabelData.hasData?'Ready to report · Review/edit AI inputs':'AI report needs assessment data'}</summary>
+              <div className="reportReviewCompactBody">
               <div className="reportStageHeading">
                 <div>
                   <span>REVIEW &amp; FINALIZE</span>
@@ -5511,7 +5532,8 @@ function App() {
               <button type="button" onClick={()=>setPage('ai')}>Edit full model details →</button>
             </div>
           </div>
-            </section>
+              </div>
+            </details>
 
           <section className="reportStageCard reportMaterialsStage" data-demo-target="ai-report-materials">
             <div className="reportStageHeading compact">
@@ -5677,7 +5699,7 @@ function App() {
             </>}
           </section>
 
-          {page==='report' && <>
+          {page==='report' && reportStudioTab==='share' && <>
           <SaveSharePanel
             localSavedAt={localSavedAt}
             status={saveShareStatus}
@@ -5717,7 +5739,9 @@ function App() {
         </main>
       )}
 
-      {page==='why' && <WhySustainabilityPage/>}
+      {page==='why' && <WhySustainabilityPage onStart={()=>setPage('landing')} onEvidence={()=>setPage('evidence')}/>}
+
+      {page==='evidence' && <EvidencePage onStart={()=>setPage('landing')}/>}
 
       {page==='about' && <AboutPage/>}
 

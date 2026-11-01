@@ -690,6 +690,9 @@ button:disabled{opacity:.46;cursor:not-allowed}
 
 /* Fewer visual layers: borders + spacing instead of cards + shadows. */
 main section{box-shadow:none!important;border-radius:12px}
+/* Shared horizontal inset for rounded content surfaces. Page CSS owns layout; the design system owns the gutter. */
+.contentSurfaceInset{box-sizing:border-box;padding-inline:20px!important}
+@media (max-width:760px){.contentSurfaceInset{padding-inline:14px!important}}
 .inputSummary,.departmentSetup,.assessmentContext,.stickyControls,.primaryInputPanel,.reportStageCard,.reportShareSection,.ecoIntroBlock,.scoreResultPanel,.scoreEverydayPanel,.aiWorkloadExplorer,.card{background:#fff!important;border-color:var(--cedars-border)!important;box-shadow:none!important;border-radius:12px!important}
 .card{border:1px solid var(--cedars-border)}
 .accHead{border-color:var(--cedars-border)!important;box-shadow:none!important}.accHead:hover{border-color:var(--cedars-border-strong)!important}.accHead .accCaret{color:var(--cedars-muted)!important}
