@@ -1,27 +1,20 @@
+// CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
+// CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION
+// CEDARS_CHUNK_9G_PROFILE_RESULT_CONSOLIDATION
 import React from 'react';
-import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car, Globe2} from 'lucide-react';
+import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car, Globe2, Share2, ChevronLeft, ChevronRight} from 'lucide-react';
 
 
-export function DecisionWorkspaceSwitch({mode='results', kind='department', summary, onResults, onImprove, onReport}) {
+export function DecisionWorkspaceSwitch({kind='department', summary}) {
   const ai = kind === 'ai';
   return (
-    <section id="decision-workspace" className="decisionWorkspace" aria-label="Results and Improve decision workspace">
-      <div className="decisionWorkspaceCurrent">
-        <span>CURRENT RESULT</span>
+    <section id="decision-workspace" className="decisionWorkspaceBaselineSummary" aria-label="Baseline for prospective improvement">
+      <div className="decisionBaselineLabel"><span>BASELINE FROM PROFILE</span><b>{ai?'AI':'DEPARTMENT'}</b></div>
+      <div className="decisionBaselineResult">
         <strong>{summary?.title || (ai ? 'AI Sustainability Profile' : 'Radiology Department')}</strong>
-        <small>{summary?.detail || 'Current profile retained as the baseline.'}</small>
+        <small>{summary?.detail || 'Current assessed Profile retained as the baseline.'}</small>
       </div>
-      <div className="decisionWorkspaceModes" role="tablist" aria-label="Decision workspace view">
-        <button type="button" role="tab" aria-selected={mode==='results'} className={mode==='results'?'active':''} onClick={onResults}>
-          <span>2</span><div><strong>Results</strong><small>Interpret current state</small></div>
-        </button>
-        <button type="button" role="tab" aria-selected={mode==='improve'} className={mode==='improve'?'active':''} onClick={onImprove}>
-          <span>3</span><div><strong>Improve</strong><small>Test a prospective change</small></div>
-        </button>
-      </div>
-      <button type="button" className="decisionWorkspaceReport" onClick={onReport}>
-        <FileText size={17}/><span><strong>Report current result</strong><small>Methods · provenance · outputs</small></span><ArrowRight size={16}/>
-      </button>
+      <p>Test prospective changes below. Scenario outputs do <strong>not</strong> rewrite the current Profile; implemented changes only become current after you update the Profile inputs.</p>
     </section>
   );
 }
@@ -29,25 +22,49 @@ export function DecisionWorkspaceSwitch({mode='results', kind='department', summ
 export function ReportStudioTabs({active='methods', onChange, kind='department', summary, onResults}) {
   const ai = kind === 'ai';
   const tabs = [
-    ['methods','Methods & evidence','Reporting text, assumptions and readiness'],
-    ['label',ai?'Research Label':'EcoLabel',ai?'Optional experimental visual summary':'Visual summary and badge'],
-    ['share','Save & share','Preserve, transfer or contribute'],
+    {key:'methods',label:'Methods & evidence',headline:'Make the result reproducible',detail:'Assumptions, provenance, reporting text, and evidence.',icon:FileText, bullets:['Assumptions and calculation boundary','Data provenance and disclosure gaps','Copy-ready reporting text']},
+    {key:'label',label:ai?'AI EcoLabel':'Department EcoLabel',headline:'Create the visual summary',detail:'Score, assessment boundary, and a presentation-ready visual.',icon:Leaf, bullets:['CEDARS Score and rating','Included / separate / not assessed boundary','Visual summary for communication']},
+    {key:'share',label:'Save & share',headline:'Take the assessment with you',detail:'Preserve, export, share, or optionally contribute the assessment.',icon:Share2, bullets:['Browser-local working copy','Portable CEDARS file','Shareable link and optional research contribution']},
   ];
+  const activeIndex = Math.max(0,tabs.findIndex(tab=>tab.key===active));
+  const selected = tabs[activeIndex] || tabs[0];
+  const Icon = selected.icon;
+  const move = delta => onChange(tabs[(activeIndex+delta+tabs.length)%tabs.length].key);
   return <>
     <section className="reportContextBar" aria-label="Current result being reported">
       <div><span>CURRENT RESULT</span><strong>{summary?.title || (ai?'AI assessment':'Department assessment')}</strong><small>{summary?.detail || 'Current assessment state'}</small></div>
-      <button type="button" onClick={onResults}>View Results →</button>
+      <button type="button" onClick={onResults}>View current result →</button>
     </section>
-    <nav className="reportStudioTabs" aria-label="Report and Share workspace">
-      {tabs.map(([key,label,detail])=><button type="button" key={key} className={active===key?'active':''} aria-current={active===key?'page':undefined} onClick={()=>onChange(key)}><span>{label}</span><small>{detail}</small></button>)}
-    </nav>
+    <section className="reportSplitWorkspace" aria-label="Report and Share options">
+      <aside className="reportSplitMenu">
+        <span>REPORT &amp; SHARE</span><h2>Choose what to prepare</h2><p>Pick one output. Its preview appears beside the menu and the working controls open directly below.</p>
+        <div role="tablist" aria-label="Report and Share workspace">
+          {tabs.map((tab,index)=>{const TabIcon=tab.icon;return <button type="button" role="tab" aria-selected={active===tab.key} key={tab.key} className={active===tab.key?'active':''} onClick={()=>onChange(tab.key)}><b>0{index+1}</b><TabIcon size={18}/><span><strong>{tab.label}</strong><small>{tab.detail}</small></span><ArrowRight size={16}/></button>;})}
+        </div>
+      </aside>
+      <div className="reportSplitPreviewWrap">
+        <button type="button" className="reportSplitArrow previous" onClick={()=>move(-1)} aria-label="Previous Report and Share option"><ChevronLeft size={20}/></button>
+        <div key={selected.key} className="reportSplitPreview">
+          <div className="reportPreviewGhost ghost-left" aria-hidden="true"/><div className="reportPreviewGhost ghost-right" aria-hidden="true"/>
+          <article className="reportPreviewSheet">
+            <div className="reportPreviewSheetHead"><span>{ai?'AI ASSESSMENT':'DEPARTMENT ASSESSMENT'}</span><Icon size={23}/></div>
+            <small>{selected.label}</small><h3>{selected.headline}</h3><p>{selected.detail}</p>
+            <div className="reportPreviewAssessment"><strong>{summary?.title || (ai?'AI assessment':'Radiology Department')}</strong><span>{summary?.detail || 'Current assessment'}</span></div>
+            <div className="reportPreviewBullets">{selected.bullets.map(item=><span key={item}>✓ {item}</span>)}</div>
+            <button type="button" onClick={()=>onChange(selected.key)}>Selected · controls below ↓</button>
+          </article>
+          <div className="reportSplitDots" role="group" aria-label="Report and Share position">{tabs.map((tab,index)=><button type="button" key={tab.key} className={active===tab.key?'active':''} aria-label={`Open ${tab.label}`} onClick={()=>onChange(tab.key)}>{index+1}</button>)}</div>
+        </div>
+        <button type="button" className="reportSplitArrow next" onClick={()=>move(1)} aria-label="Next Report and Share option"><ChevronRight size={20}/></button>
+      </div>
+    </section>
   </>;
 }
 
 const STORY_STEPS = [
   {
-    key:'system', kicker:'THE WHOLE SYSTEM', title:'Medical imaging has a footprint across its full care pathway.',
-    body:'The scanner is only one part of the story. Energy, equipment, data, materials, and travel can all matter.',
+    key:'system', kicker:'THE WHOLE SYSTEM', title:'The environmental impact of imaging extends beyond the scanner.',
+    body:'Imaging relies on more than the scanner itself. Electricity, equipment and supplies, data systems, and patient and staff travel all contribute to the footprint of care.',
     short:'Whole system', icon:Leaf,
   },
   {
@@ -94,16 +111,15 @@ const STORY_TARGETS = {
 
 function SustainabilityStory() {
   const [active, setActive] = React.useState(0);
-  const [playing, setPlaying] = React.useState(false);
+  const [playing, setPlaying] = React.useState(()=>!(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches));
   const videoRef = React.useRef(null);
   const activeStep = STORY_STEPS[active] || STORY_STEPS[0];
   const StepIcon = activeStep.icon;
   const target = STORY_TARGETS[activeStep.key];
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  const selectStep = React.useCallback((index, pause=true) => {
+  const selectStep = React.useCallback(index => {
     setActive(Math.max(0, Math.min(STORY_STEPS.length-1, index)));
-    if (pause) setPlaying(false);
   }, []);
 
   React.useEffect(()=>{
@@ -140,7 +156,7 @@ function SustainabilityStory() {
         <div className="whyStoryStage">
           <div className={`whyStoryMedia target-${activeStep.key} ${playing?'is-playing':''}`}>
             <img src="/why-sustainability-radiology.jpg" alt="Illustration of a medical imaging scanner connected to energy infrastructure, equipment and materials, data and cloud computing, and patient and workforce travel."/>
-            <video ref={videoRef} muted loop playsInline preload="metadata" poster="/why-sustainability-radiology.jpg" aria-hidden="true">
+            <video ref={videoRef} muted loop playsInline autoPlay={!reducedMotion} preload="metadata" poster="/why-sustainability-radiology.jpg" aria-hidden="true">
               <source src="/radiology_sustainability_hero_loop.mp4" type="video/mp4"/>
             </video>
             <svg className={`whyStoryOverlay target-${activeStep.key}`} viewBox="0 0 1682 934" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -171,7 +187,7 @@ function SustainabilityStory() {
             <div><small>{String(active+1).padStart(2,'0')} / {String(STORY_STEPS.length).padStart(2,'0')} · {activeStep.kicker}</small><h2>{activeStep.title}</h2></div>
           </div>
           <p>{activeStep.body}</p>
-          {activeStep.key==='resolve' && <div className="whyStoryResolution"><strong>Turn environmental impact into decisions.</strong><span>Profile → Results ↔ Improve → Report</span><div className="whyStoryBoundaryChips"><b>Included in Score</b><b>Shown separately</b><b>Not assessed</b></div></div>}
+          {activeStep.key==='resolve' && <div className="whyStoryResolution"><strong>Turn environmental impact into decisions.</strong><span>Profile → Decision Workspace → Report &amp; Share</span><div className="whyStoryBoundaryChips"><b>Included in Score</b><b>Shown separately</b><b>Not assessed</b></div></div>}
           <div className="whyStoryCardNav">
             <button type="button" onClick={previous}>← Previous</button>
             <button type="button" className="primary" onClick={next}>{active===STORY_STEPS.length-1?'Restart':'Next'} →</button>

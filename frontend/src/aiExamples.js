@@ -62,6 +62,7 @@ export const AI_EXAMPLES = [
     scen: {
       aiRoute: 'compare', aiSystemType: 'foundation', compareVolumeSource: 'custom', projectName: 'mAIstro multi-agent workflow (example)',
       modelKey: 'agentic', architecture: 'LLM / Agent (transformer)', taskType: 'Agentic workflow',
+      compareClinicalTask: 'mAIstro multi-agent workflow', compareEndpoint: 'Task success (%)', compareCohort: 'Published mAIstro evaluation',
       trainDisclosed: 'no', callsPerTask: '9', tokensPerCall: '4000', whPer1kTokens: '0.4',
       inferStudiesMonth: '2500', deployMonths: '36',
       cloudProvider: 'AWS', cloudRegion: 'us-east-1 (N. Virginia, US)',
@@ -86,7 +87,7 @@ export const AI_EXAMPLES = [
       modelKey: 'synth', architecture: 'Diffusion / Generative AI', taskType: 'Image synthesis', resolution: '512',
       trainGpu: 'NVIDIA A100 (80GB SXM4)', trainNumGpus: '8', trainHours: '60', numRuns: '1',
       inferStudiesMonth: '1000', deployMonths: '24',
-      cloudProvider: 'Google Cloud', cloudRegion: '',
+      cloudProvider: 'Google Cloud', cloudRegion: '', waterMode: 'notassessed',
       accuracyPct: '0', accuracyMetric: 'Expert-rated realism',
     },
   },

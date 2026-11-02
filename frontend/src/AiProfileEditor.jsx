@@ -246,7 +246,7 @@ export default function AiProfileEditor({
         <div><span>TRAINING COMPUTE CONTEXT</span><strong>{trainingCompute}</strong><small>Where training runs belongs to this phase and may differ from deployment.</small></div>
         <button type="button" className="download" onClick={()=>onSection('compute')}>Edit training compute →</button>
       </div>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>openContext('ai-model-record')}>← Clinical context</button><button type="button" onClick={()=>onSection('inference')}>Next: inference &amp; deployment →</button></div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>{onSection('context');openContext('ai-model-record');}}>← Clinical context</button><button type="button" onClick={()=>onSection('inference')}>Next: inference &amp; deployment →</button></div>
     </section>}
 
     {section==='inference'&&<section id="ai-inference-section" className="aiLifecycleEditor" data-demo-target="ai-inference-section">

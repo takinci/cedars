@@ -81,15 +81,11 @@ const JOURNAL_MARKS = {
   'J Mach Learn Res': {src:'/journal-jmlr-cedars-v2.png?v=8x', alt:'Journal of Machine Learning Research'},
 };
 
-function AuthorList({authors=[], duplicate=false}) {
-  if (authors.length <= 9) return <div className="evidenceAuthorsFull">{authors.join(', ')}</div>;
-  const preview=authors.slice(0,4).join(', ');
-  return (
-    <details className="evidenceAuthorsDisclosure">
-      <summary tabIndex={duplicate?-1:undefined}>{preview} <span>+ {authors.length-4} more · All authors</span></summary>
-      <div>{authors.join(', ')}</div>
-    </details>
-  );
+function AuthorList({authors=[]}) {
+  const shown = authors.length > 12
+    ? [...authors.slice(0,5), '…', authors[authors.length-1]]
+    : authors;
+  return <div className="evidenceAuthorsFull" title={authors.length>12?authors.join(', '):undefined}>{shown.join(', ')}</div>;
 }
 
 function EvidenceCard({card, index, duplicate=false}) {
@@ -111,42 +107,55 @@ function EvidenceCard({card, index, duplicate=false}) {
   );
 }
 
-function EvidenceShelf({group, groupIndex, motionEnabled}) {
+function EvidenceCategory({group, groupIndex, motionEnabled, advanceTick}) {
+  const [active, setActive] = React.useState(0);
   const [manualPaused, setManualPaused] = React.useState(false);
+  const [hoverPaused, setHoverPaused] = React.useState(false);
+  const [direction, setDirection] = React.useState(groupIndex % 2 === 0 ? 'next' : 'previous');
   const Icon = group.icon;
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const paused = !motionEnabled || reducedMotion || manualPaused;
-  const direction = groupIndex % 2 === 0 ? 'left' : 'right';
-  const duration = Math.max(30, group.cards.length * 9);
-  const delay = -(groupIndex * 4.5);
+  const paused = !motionEnabled || reducedMotion || manualPaused || hoverPaused;
+
+  React.useEffect(()=>{
+    if (paused || advanceTick < 1 || group.cards.length < 2) return;
+    if ((advanceTick - 1) % GROUPS.length !== groupIndex) return;
+    setDirection(groupIndex % 2 === 0 ? 'next' : 'previous');
+    setActive(value => groupIndex % 2 === 0 ? (value + 1) % group.cards.length : (value - 1 + group.cards.length) % group.cards.length);
+  },[advanceTick, paused, group.cards.length, groupIndex]);
+
+  const show = index => {
+    setDirection(index >= active ? 'next' : 'previous');
+    setActive((index + group.cards.length) % group.cards.length);
+    setManualPaused(true);
+  };
+  const card = group.cards[active] || group.cards[0];
 
   return (
-    <section className={`evidenceShelf contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
-      <div className="evidenceShelfHeading">
-        <div className="evidenceShelfNumber">{String(groupIndex+1).padStart(2,'0')}</div>
-        <div><span><Icon size={16}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
-      </div>
-      <div className="evidenceTrack" aria-label={`${group.title} continuously moving reading cards`}>
-        <div
-          className={`evidenceMarqueeRail direction-${direction} ${paused?'is-paused':''}`}
-          style={{'--evidence-marquee-duration':`${duration}s`,'--evidence-marquee-delay':`${delay}s`}}
-        >
-          <div className="evidenceMarqueeGroup">
-            {group.cards.map((card,index)=><EvidenceCard key={`${card.title}-${index}`} card={card} index={index}/>) }
-          </div>
-          <div className="evidenceMarqueeGroup" aria-hidden="true">
-            {group.cards.map((card,index)=><EvidenceCard key={`duplicate-${card.title}-${index}`} card={card} index={index} duplicate/>) }
+    <section className={`evidenceCategoryCard contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`} onMouseEnter={()=>setHoverPaused(true)} onMouseLeave={()=>setHoverPaused(false)}>
+      <header className="evidenceCategoryHeader">
+        <div><span><Icon size={15}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
+        <small aria-live="polite">{String(active+1).padStart(2,'0')} / {String(group.cards.length).padStart(2,'0')}</small>
+      </header>
+      <div className="evidenceCategoryViewport" aria-live="off">
+        <div className={`evidenceHoloDeck direction-${direction}`}>
+          <i className="evidenceHoloGhost ghost-back" aria-hidden="true"/>
+          <i className="evidenceHoloGhost ghost-middle" aria-hidden="true"/>
+          <div className={`evidenceCategorySlide direction-${direction}`} key={`${group.key}-${active}`}>
+            <EvidenceCard card={card} index={active}/>
           </div>
         </div>
       </div>
-      <div className="evidenceShelfFooter">
-        <div className="evidenceDots" aria-hidden="true">
-          {group.cards.map((card,index)=><span className="evidenceDot" key={`${card.title}-dot-${index}`}/>) }
+      <footer className="evidenceCategoryFooter">
+        <div className="evidenceNumberNav" role="group" aria-label={`${group.title} sources`}>
+          {group.cards.map((source,index)=><button type="button" key={`${source.title}-nav`} className={active===index?'active':''} aria-label={`Show source ${index+1}: ${source.title}`} aria-pressed={active===index} onClick={()=>show(index)}>{index+1}</button>)}
         </div>
-        <button type="button" className="evidenceRowMotionToggle" disabled={!motionEnabled || reducedMotion} aria-label={manualPaused?'Resume this evidence row':'Pause this evidence row'} aria-pressed={manualPaused} onClick={()=>setManualPaused(v=>!v)} title={!motionEnabled?'Page-level motion is paused':reducedMotion?'Motion is disabled by your reduced-motion preference':undefined}>
-          {manualPaused?<Play size={12}/>:<Pause size={12}/>} 
-        </button>
-      </div>
+        <div className="evidenceRotationControls">
+          <span className="evidenceRotationStatus">{hoverPaused?'Paused on hover':manualPaused?'Paused':'Auto'}</span>
+          <button type="button" className="evidenceRowMotionToggle" disabled={!motionEnabled || reducedMotion} aria-label={manualPaused?'Resume automatic rotation for this category':'Pause automatic rotation for this category'} aria-pressed={manualPaused} onClick={()=>setManualPaused(v=>!v)} title={!motionEnabled?'Page-level rotation is paused':reducedMotion?'Motion is disabled by your reduced-motion preference':undefined}>
+            {manualPaused?<Play size={12}/>:<Pause size={12}/>}<span>{manualPaused?'Play':'Pause'}</span>
+          </button>
+        </div>
+      </footer>
     </section>
   );
 }
@@ -154,18 +163,25 @@ function EvidenceShelf({group, groupIndex, motionEnabled}) {
 export default function EvidencePage({onStart}) {
   const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const [motionEnabled, setMotionEnabled] = React.useState(!reducedMotion);
+  const [advanceTick, setAdvanceTick] = React.useState(0);
+
+  React.useEffect(()=>{
+    if (!motionEnabled || reducedMotion) return undefined;
+    const timer=window.setInterval(()=>setAdvanceTick(value=>value+1),2800);
+    return ()=>window.clearInterval(timer);
+  },[motionEnabled,reducedMotion]);
 
   return (
-    <main className="evidencePage">
+    <main className="evidencePage evidenceGalleryPage">
       <section className="evidenceHero contentSurfaceInset">
         <span>EVIDENCE BEHIND CEDARS</span>
         <h1>A reading library for sustainable radiology and medical AI.</h1>
-        <p>Browse the studies, standards, and guidance that shape CEDARS. Each card explains why a source matters and where it is used in the platform.</p>
+        <p>Choose a topic, then move through the sources inside that category. Only one card changes at a time so the library stays readable on desktop and mobile.</p>
         <div className="evidenceHeroActions">
           <button type="button" onClick={onStart}>Start an assessment <ArrowRight size={16}/></button>
           <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Technical source registry <ExternalLink size={14}/></a>
-          <button type="button" className="evidenceMotionToggle" disabled={reducedMotion} onClick={()=>setMotionEnabled(v=>!v)} aria-pressed={!motionEnabled} title={reducedMotion?'Automatic card motion is disabled by your reduced-motion preference':undefined}>
-            {motionEnabled?<Pause size={14}/>:<Play size={14}/>} {motionEnabled?'Pause motion':'Play motion'}
+          <button type="button" className="evidenceMotionToggle" disabled={reducedMotion} onClick={()=>setMotionEnabled(v=>!v)} aria-pressed={!motionEnabled} title={reducedMotion?'Automatic rotation is disabled by your reduced-motion preference':undefined}>
+            {motionEnabled?<Pause size={14}/>:<Play size={14}/>} {motionEnabled?'Pause rotation':'Play rotation'}
           </button>
         </div>
       </section>
@@ -174,8 +190,8 @@ export default function EvidencePage({onStart}) {
         {GROUPS.map(group=><a key={group.key} href={`#evidence-${group.key}`}>{group.eyebrow.replace(' & LIFECYCLE','')}</a>)}
       </nav>
 
-      <div className="evidenceShelves">
-        {GROUPS.map((group,index)=><EvidenceShelf key={group.key} group={group} groupIndex={index} motionEnabled={motionEnabled}/>) }
+      <div className="evidenceLibraryGrid">
+        {GROUPS.map((group,index)=><EvidenceCategory key={group.key} group={group} groupIndex={index} motionEnabled={motionEnabled} advanceTick={advanceTick}/>) }
       </div>
 
       <section className="evidenceRegistryNote contentSurfaceInset">

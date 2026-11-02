@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION
 import React, {useMemo, useState} from 'react';
 import {ExternalLink} from './Refs.jsx';
 import {REFS, refUrl} from './refs.js';
@@ -208,6 +209,6 @@ export default function AiImproveWorkspace({
       <div className="aiImproveAllGroups">{['Clinical purpose & evidence','Training & development','Inference & deployment','Monitoring & lifecycle'].map(group=>{const groupItems=options.filter(x=>x.group===group);if(!groupItems.length)return null;return <section key={group}><h3>{group}</h3><div className="aiImproveAllList">{groupItems.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div></section>})}</div>
     </details>
 
-    <div className="workflowNextStep"><div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Results</strong><small>Scenario values above are prospective. Results continues to show the baseline until implemented values are entered into the profile.</small></div><div className="workflowNextActions"><button type="button" className="workflowNextPrimary" onClick={onResults}>Continue to Results →</button><button type="button" className="download" onClick={()=>onEditProfile('inference')}>Edit AI profile</button></div></div>
+    <div className="prospectiveOnlyNote"><strong>Prospective scenario only.</strong><span>Changes tested here do not alter the current AI Profile. After implementation, update the affected lifecycle or deployment inputs and CEDARS will recalculate the current result.</span></div>
   </section>;
 }

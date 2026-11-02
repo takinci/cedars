@@ -167,9 +167,9 @@ const DEFAULT_EQUIPMENT = {mri_035t:0, mri_15t:0, mri_3t:0, mri_7t:0, ct:0, petc
 
 // Per-device fields a user can override with their own measured data (scanner logs, utility
 // bills, published benchmarks) — anything not present in `overrides[key]` keeps the
-// EQUIPMENT_UNITS literature default. Hours (active_h/idle_h/standby_h/off_h) are not yet
-// overridable — deferred; the plumbing below is field-agnostic so it's a one-line extension.
-const OVERRIDABLE_FIELDS = ['active_kw', 'idle_kw', 'standby_kw', 'off_kw', 'scans'];
+// EQUIPMENT_UNITS literature default. Power, activity, and operating-state hours may all be
+// replaced with local values; state hours are normalized to the average month below.
+const OVERRIDABLE_FIELDS = ['active_kw', 'idle_kw', 'standby_kw', 'off_kw', 'active_h', 'idle_h', 'standby_h', 'off_h', 'scans'];
 
 // Build a fleet array from equipment counts — scales power by count, hours stay per-unit.
 // `overrides` is a sparse {deviceKey: {field: value}} map (see OVERRIDABLE_FIELDS); devices/

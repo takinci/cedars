@@ -27,7 +27,7 @@ export const ALL_INTERVENTIONS = [
 export const SETTINGS_DEFAULTS = {
   intendedUse: "Estimate annual footprint", region: "Switzerland", metricType: "Energy",
   timePeriod: "Monthly", customCi: "0.30", actualStudiesYear: '', staffCount: '', staffCommuteKm: '',
-  patientTravelKm: '', waterLitresAnnual: '', paperKgAnnual: '', hazardousKgAnnual: '',
+  patientTravelKm: '', waterLitresAnnual: '', paperKgAnnual: '', hazardousKgAnnual: '', materialsNotes: '',
   electricityPrice: '', storageRetentionYears: '10', storageCloud: false, storageReformats: 'all',
   storageIntensityCustom: '', storageProvider: 'AWS', storageRegion: '', storageCloudCi: '',
   scope1AnnualKg: '',

@@ -1,12 +1,11 @@
 import React, {useEffect, useRef} from 'react';
+/* CEDARS_CHUNK_9K_NAV_AI_DARKMODE_CLEANUP */
+/* CEDARS_CHUNK_9I4_REPAIR */
 
 export default function StageCarousel({label='STAGES', steps=[], activeKey, onChange, compact=false}) {
   const trackRef=useRef(null);
   const cardRefs=useRef({});
   const activeIndex=Math.max(0,steps.findIndex(step=>step.key===activeKey));
-  const previous=activeIndex>0 ? steps[activeIndex-1] : null;
-  const next=activeIndex<steps.length-1 ? steps[activeIndex+1] : null;
-
   useEffect(()=>{
     const track=trackRef.current;
     const card=cardRefs.current[activeKey];
@@ -33,9 +32,5 @@ export default function StageCarousel({label='STAGES', steps=[], activeKey, onCh
         {step.optional&&<span className="stageCarouselOptional">OPTIONAL</span>}
       </button>)}
     </div>
-    <div className="stageCarouselControls">
-      <button type="button" className="stageCarouselPrevious" disabled={!previous} onClick={()=>previous&&onChange?.(previous.key)}>{previous?`← ${previous.title}`:'← Previous'}</button>
-      <button type="button" className="stageCarouselNext" disabled={!next} onClick={()=>next&&onChange?.(next.key)}>{next?`Next: ${next.title} →`:'Complete'}</button>
-    </div>
-  </nav>;
+</nav>;
 }

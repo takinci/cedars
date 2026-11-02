@@ -1,0 +1,110 @@
+/* CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
+   Canonical appearance layer loaded last.
+   Semantic dark surfaces: page -> panel -> card -> control.
+   Evidence/technical information uses blue-gray; uncertainty uses amber. */
+
+/* Geometry shared by both themes. */
+.workflowRailLabel>span,.homeFlowStep>b,.aiComparisonModalSection>summary b,.aiComparisonModalResultsHead b{
+  box-sizing:border-box!important;width:22px!important;height:22px!important;min-width:22px!important;max-width:22px!important;
+  padding:0!important;margin:0!important;border-radius:50%!important;display:inline-grid!important;place-items:center!important;
+  line-height:1!important;aspect-ratio:1/1!important;flex:0 0 22px!important
+}
+.homeFlowThreeStage{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr)!important}
+.themeToggleWrap{position:relative;display:inline-flex;align-items:center;z-index:90}
+.themeToggleTooltip{position:absolute;z-index:2600;top:calc(100% + 9px);right:0;width:292px;padding:11px 12px;border:1px solid #B7CBBF;border-radius:9px;background:#F0F6F2;color:#254C40;box-shadow:0 14px 34px rgba(20,42,32,.18);opacity:0;visibility:hidden;transform:translateY(-3px);pointer-events:none;transition:opacity .14s ease,transform .14s ease,visibility .14s ease;font-size:10.5px;line-height:1.45}
+.themeToggleTooltip strong{display:block;margin-bottom:4px;font-size:11px}.themeToggleTooltip span{display:block;color:#5D6F66}.themeToggleTooltip a{display:inline-block;margin-top:6px;color:#2F6B57;font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.themeToggleWrap:hover .themeToggleTooltip,.themeToggleWrap:focus-within .themeToggleTooltip{opacity:1;visibility:visible;transform:none;pointer-events:auto}
+
+.evidencePeekHint{display:none!important}
+/* Evidence: editorial shelves with a deliberate next-card peek.
+   Keep the existing moving multi-card rail so visitors can see there is more to read,
+   but remove repeated footer controls, pseudo rails, and accidental-looking fragments. */
+.evidencePage .evidenceShelf{background:transparent!important;border:0!important;border-top:1px solid var(--cedars-border)!important;border-radius:0!important;padding:17px 0 0!important;box-shadow:none!important;overflow:hidden!important}
+.evidencePage .evidenceShelfNumber{display:none!important}
+.evidencePage .evidenceShelfHeading{grid-template-columns:1fr!important;gap:0!important;margin-bottom:12px!important;align-items:start!important}
+.evidencePage .evidenceShelfHeading>div:nth-child(2)>span{display:inline-flex!important;align-items:center!important;gap:10px!important}
+.evidencePage .evidenceTrack{position:relative!important;container-type:inline-size;overflow:hidden!important;background:transparent!important;border:0!important;border-radius:0!important;padding:7px 34px 12px 0!important;box-shadow:none!important;scrollbar-width:none!important;clip-path:none!important;isolation:isolate!important}
+.evidencePage .evidenceTrack::-webkit-scrollbar,.evidencePage .evidenceMarqueeRail::-webkit-scrollbar,.evidencePage .evidenceMarqueeGroup::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+.evidencePage .evidenceTrack::before,.evidencePage .evidenceTrack::after,.evidencePage .evidenceMarqueeRail::before,.evidencePage .evidenceMarqueeRail::after,.evidencePage .evidenceMarqueeGroup::before,.evidencePage .evidenceMarqueeGroup::after,.evidencePage .evidenceCard::before,.evidencePage .evidenceCard::after,.evidencePage .evidenceShelfFooter::before,.evidencePage .evidenceShelfFooter::after{content:none!important;display:none!important}
+.evidencePage .evidenceMarqueeRail{align-items:stretch!important}
+.evidencePage .evidenceMarqueeGroup{display:flex!important;align-items:stretch!important;gap:12px!important;padding:0 12px 0 0!important}
+.evidencePage .evidenceMarqueeGroup .evidenceCard{box-sizing:border-box!important;flex:0 0 calc(100cqw - 52px)!important;width:calc(100cqw - 52px)!important;min-width:248px!important;max-width:360px!important;border-radius:10px!important;box-shadow:0 4px 14px rgba(32,58,45,.055)!important;overflow:hidden!important}
+.evidencePage .evidenceShelfFooter{display:none!important}
+.evidencePage .evidencePeekHint{display:none}
+@supports not (width:1cqw){.evidencePage .evidenceMarqueeGroup .evidenceCard{flex-basis:calc(100% - 52px)!important;width:calc(100% - 52px)!important}}
+@media(max-width:760px){.evidencePage .evidenceTrack{padding-right:28px!important}.evidencePage .evidenceMarqueeGroup .evidenceCard{flex-basis:calc(100cqw - 44px)!important;width:calc(100cqw - 44px)!important;min-width:250px!important}}
+
+html.dark{
+  --cedars-page-dark:#071710;--cedars-panel-dark:#0D241B;--cedars-card-dark:#143226;--cedars-control-dark:#1C4334;--cedars-control-hover-dark:#24513E;
+  --cedars-blue-dark:#112A31;--cedars-blue-card-dark:#17343D;--cedars-gold-dark:#2D2816;--cedars-gold-border-dark:#806F36;
+  --cedars-text-dark:#EDF4F0;--cedars-muted-dark:#B8C9C0;--cedars-line-dark:#3D5E50;--cedars-line-strong-dark:#587868;
+  --cedars-forest:#8FBEA5;--cedars-forest-deep:#E8F2ED;--cedars-sage:#29483A;--cedars-sage-soft:#17362A;
+  --cedars-ivory:#071710;--cedars-card:#143226;--cedars-ink:#EDF4F0;--cedars-muted:#B8C9C0;
+  --cedars-border:#3D5E50;--cedars-border-strong:#587868;--cedars-gold:#D0B66A;--cedars-gold-soft:#2D2816;
+  --cedars-info:#9BB9C4;--cedars-info-deep:#D3E3E9;--cedars-info-soft:#112A31;--cedars-example:#20352C;--cedars-example-border:#59695F
+}
+html.dark,html.dark body,html.dark #root{background:var(--cedars-page-dark)!important;color:var(--cedars-text-dark)!important}html.dark main{color:var(--cedars-text-dark)!important}html.dark h1,html.dark h2,html.dark h3,html.dark h4{color:#F4F8F5!important}html.dark p,html.dark .note,html.dark small{color:var(--cedars-muted-dark)!important}
+
+/* Header, navigation, theme, Save. */
+html.dark .siteHeader{background:#081A13!important;border-color:#29493C!important}html.dark .brand strong,html.dark .utilityNav button{color:var(--cedars-text-dark)!important}html.dark .brand span{color:#AFC2B8!important}
+html.dark .utilityNav button:hover,html.dark .utilityNav button.on{background:#17362A!important;border-color:#49695B!important;color:#F4F8F5!important}
+html.dark .themeToggle,html.dark .saveUtilityButton{background:#244B3A!important;border-color:#6D8C7C!important;color:#F0F6F2!important;box-shadow:none!important}html.dark .themeToggle:hover,html.dark .saveUtilityButton:hover{background:#2C5944!important;border-color:#8AA999!important}
+html.dark .themeToggleTooltip{background:#17382C!important;border-color:#668576!important;color:#F4F8F5!important}.themeToggleTooltip span{color:#C2D2CA!important}html.dark .themeToggleTooltip a{color:#B7D9C7!important}
+html.dark .saveUtilityMenu{background:#17382C!important;border-color:#668576!important;box-shadow:0 18px 52px rgba(0,0,0,.38)!important}html.dark .saveUtilityMenuTitle{color:#AFD0C0!important;border-color:#426253!important}
+html.dark .saveUtilityMenu button{background:#214A39!important;border-color:#638475!important;color:#F2F7F4!important}html.dark .saveUtilityMenu button:hover:not(:disabled){background:#2A5742!important;border-color:#88A697!important}html.dark .saveUtilityMenu button strong{color:#F2F7F4!important}html.dark .saveUtilityMenu button small{color:#C2D2CA!important}html.dark .saveUtilityMenu button:disabled{opacity:.55!important}
+html.dark .shareConfirmDialog{background:#17382C!important;border-color:#668576!important;color:var(--cedars-text-dark)!important}
+
+/* Three-stage shell and Home overview. */
+html.dark .workflowRailWrap{background:#0A1E16!important;border-color:#29493C!important}html.dark .workflowRail{border-color:#355548!important}html.dark .workflowRailStep{background:transparent!important;border-color:#355548!important;color:#C7D7CF!important}html.dark .workflowRailStep.active{background:#143126!important;border-bottom-color:#7BA58F!important;color:#F4F8F5!important}
+html.dark .workflowRailLabel>span,html.dark .homeFlowStep>b{background:#10281F!important;border:1px solid #5A7B6A!important;color:#D1E0D8!important}html.dark .workflowRailStep.active .workflowRailLabel>span{background:#7AA58F!important;border-color:#7AA58F!important;color:#071710!important}html.dark .workflowRailLabel strong{color:inherit!important}html.dark .workflowRailStep>small{color:#AFC2B8!important}
+html.dark .pathwayChips button{background:#10271E!important;border-color:#3C5C4E!important;color:#BFD0C7!important}html.dark .pathwayChips button.on{background:#204535!important;border-color:#7AA58F!important;color:#F4F8F5!important}
+html.dark .homeStartChoice{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important}html.dark .homeStartChoice:hover{background:var(--cedars-card-dark)!important;border-color:var(--cedars-line-strong-dark)!important}html.dark .homeStartChoice strong,html.dark .homeFlowCopy strong{color:#F4F8F5!important}html.dark .homeStartChoice small,html.dark .homeFlowCopy small{color:var(--cedars-muted-dark)!important}
+
+/* Generic controls/forms. */
+html.dark input,html.dark select,html.dark textarea{background:#173027!important;color:var(--cedars-text-dark)!important;border-color:#587568!important;box-shadow:none!important}html.dark option{background:#173027!important;color:var(--cedars-text-dark)!important}html.dark input::placeholder,html.dark textarea::placeholder{color:#91A69C!important;opacity:1!important}
+html.dark .download{background:#17382C!important;border-color:#648474!important;color:#E3EEE8!important}html.dark .inlineTextButton{color:#9FCDB6!important}
+
+/* Stage cards and Profile surfaces. */
+html.dark :is(.stageCarousel,.sectionStageDeck){background:transparent!important}html.dark .stageCarouselCard,html.dark .sectionStageCard{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark .stageCarouselCard.active,html.dark .sectionStageCard.active{background:#1B4333!important;border-color:#7EA58F!important}html.dark .stageCarouselCard strong,html.dark .sectionStageCard strong{color:#F4F8F5!important}html.dark .stageCarouselCard small,html.dark .sectionStageCard small{color:var(--cedars-muted-dark)!important}
+
+/* AI Profile and measurement. */
+html.dark .aiPage{background:var(--cedars-page-dark)!important;color:var(--cedars-text-dark)!important}
+html.dark :is(.aiProfileTopDeck,.aiProfileWorkspace,.aiProfileIdentity,.aiContextBand,.aiLifecycleEditor,.aiTechnicalDetails,.aiComputePhaseCard,.aiBoundarySummary,.aiProfileReviewPanel,.aiRouteStrip,.aiReportingBar,.aiProfileDisclosure){background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}
+html.dark :is(.aiLifecycleSummaryCard,.aiTaskLane,.aiExampleCard,.aiSystemChoice,.deploymentWorkloadCard){background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark :is(.aiLifecycleSummaryCard.active,.aiTaskLane.active,.aiSystemChoice.active,.deploymentWorkloadCard.active){background:#214A39!important;border-color:#8AAF98!important}
+html.dark .aiExamplesGrouped,html.dark .aiExamplesUtilityPanel{background:#20352C!important;border-color:#59695F!important}html.dark .aiExampleLane{background:#293A31!important;border-color:#65736B!important}
+html.dark .aiIntentEyebrow,html.dark .aiRoleGroupHeader>span,html.dark .aiContextStepHeader>span{color:#8FC5AA!important}html.dark .aiRoleGroupHeader>small,html.dark .aiFieldHelp,html.dark .aiProfileDisclosure small{color:var(--cedars-muted-dark)!important}
+html.dark .measureGrid>*{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important}html.dark .measurePrimaryTool,html.dark .measureCompatibleTool,html.dark .measureOtherTools{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark .measureToolHeader strong,html.dark .measureCompatibleHeading strong{color:#F4F8F5!important}html.dark .measureToolHeader small,html.dark .measureCompatibleTool p,html.dark .measureUpdated{color:var(--cedars-muted-dark)!important}html.dark .measureToolFills span{background:var(--cedars-gold-dark)!important;border-color:var(--cedars-gold-border-dark)!important;color:#E9D795!important}
+
+/* Evidence/validation is intentionally blue-gray rather than another green workflow surface. */
+html.dark :is(.aiMetricBestPractice,.aiMetricExamples,.aiPerformanceDisclosure){background:var(--cedars-blue-dark)!important;border-color:#496874!important;color:var(--cedars-text-dark)!important}html.dark .aiMetricGuideLinks a{color:#B9D5DF!important}
+
+/* Decision Workspace. */
+html.dark .improvePage{background:var(--cedars-page-dark)!important;color:var(--cedars-text-dark)!important}html.dark .improvePage :is(p,small,.note){color:#C0D1C8!important}
+html.dark .improveScopeSelector button{background:var(--cedars-panel-dark)!important;border-color:#456858!important;color:var(--cedars-text-dark)!important}html.dark .improveScopeSelector button.active{background:#1B4333!important;border-color:#7EA58F!important}
+html.dark :is(.decisionWorkspaceBaselineSummary,.improveWorkspace,.improveResultSection,.aiImproveWorkspace,.improveStateStrip,.aiScenarioCompare,.aiScenarioControls){background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}
+html.dark :is(.improveWorkflowMap button,.improveInfrastructureBand,.improveChangeCard,.improveOpportunityRow,.scenarioGrid .card,.aiImproveDriverCard,.aiImproveRec,.aiImproveGuidanceCompact){background:var(--cedars-card-dark)!important;border-color:#48695A!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark .improveWorkflowMap button.active,html.dark .improveChangeCard.active{background:#214A39!important;border-color:#7FA08F!important}
+html.dark .improveClinicalGuardrail,html.dark .aiImprovePrinciple{background:var(--cedars-blue-dark)!important;border-color:#4D6B76!important;color:#DDECF1!important}html.dark .systemEffectsCallout{background:var(--cedars-gold-dark)!important;border-color:var(--cedars-gold-border-dark)!important;color:#F3E5AE!important}html.dark .systemEffectsCallout p{color:#DCCF9D!important}html.dark .systemEffectsCallout strong{color:#F5E9B9!important}
+
+/* Candidate comparison modal: clinical gate first, environmental evidence second. */
+html.dark .aiComparisonModalBackdrop{background:rgba(2,14,9,.84)!important}html.dark .aiComparisonModal{background:#0D241B!important;border-color:#5B786A!important;color:var(--cedars-text-dark)!important}html.dark .aiComparisonModalHeader{background:#0D241B!important;border-color:#355247!important}html.dark .aiComparisonModalHeader p{color:#C0D1C8!important}
+html.dark .aiComparisonModalSection{background:var(--cedars-blue-dark)!important;border-color:#4D6B76!important;color:var(--cedars-text-dark)!important}html.dark .aiComparisonModalResults{background:var(--cedars-panel-dark)!important;border-color:#648675!important;color:var(--cedars-text-dark)!important}html.dark .aiCompareCandidateEditor{background:var(--cedars-blue-card-dark)!important;border-color:#52727E!important;color:var(--cedars-text-dark)!important}html.dark .aiCompareResultCard{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important}html.dark .aiCompareResultCard.pareto{background:#193D2F!important;border-color:#76A58E!important}
+html.dark .aiComparisonModalSection>summary b,html.dark .aiComparisonModalResultsHead b{background:#214A39!important;border:1px solid #6F917F!important;color:#F2F7F4!important}html.dark .aiComparisonModal label,html.dark .aiComparisonModal strong,html.dark .aiCompareResultMetrics b{color:#F2F7F4!important}html.dark .aiComparisonModal small,html.dark .aiCompareCandidateToolbar p,html.dark .aiCompareResultMetrics em,html.dark .aiCompareMethodNote p{color:#C0D1C8!important}html.dark .aiCompareWarning{background:var(--cedars-gold-dark)!important;border-color:var(--cedars-gold-border-dark)!important;color:#F0E3AF!important}
+
+/* Department Result and supporting detail. */
+html.dark .scoreResultPanel{background:var(--cedars-panel-dark)!important;color:var(--cedars-text-dark)!important}html.dark .scoreResultPanel .scoreDataGrid>div{background:var(--cedars-card-dark)!important;border-color:var(--cedars-line-dark)!important}html.dark .scoreResultPanel .scoreDataGrid span{color:var(--cedars-muted-dark)!important}html.dark .scoreResultPanel .scoreDataGrid strong{color:#F4F8F5!important}html.dark .scoreResultPanel .scoreResultHero div[style*="color: rgb"],html.dark .scoreResultPanel .scoreResultHero div[style*="color:#"]{filter:brightness(1.75) saturate(.8)}
+html.dark .scoreEverydayPanel,html.dark .scoreEverydayItem{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important}html.dark .scoreEverydayItem{background:var(--cedars-card-dark)!important}html.dark .scoreScopeToggle button{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important}html.dark .scoreScopeToggle button.on{background:#214A39!important;border-color:#7FA08F!important}
+html.dark .dashboardSection,html.dark .sectionBody,html.dark .inputSummary{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important}
+
+/* About: portraits remain photographic; framing follows the same surface hierarchy. */
+html.dark .aboutPage{background:var(--cedars-page-dark)!important;color:var(--cedars-text-dark)!important}html.dark .aboutPage>.note{color:#C0D1C8!important}html.dark .aboutPage .affiliationNotice{background:var(--cedars-gold-dark)!important;border-color:var(--cedars-gold-border-dark)!important;color:#E9D795!important}html.dark .aboutPage .affiliationNotice strong{color:#F2E3A8!important}
+html.dark .collaborativeSection{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark .collaborativeHeading h2{color:#F4F8F5!important}html.dark .collaborativeHeading svg{color:#8FBEA5!important}html.dark .collaboratorCard{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark .collaboratorCard.lead{border-top-color:#8FBEA5!important}html.dark .collaboratorName{color:#F4F8F5!important}html.dark .collaboratorRole{color:#A9C8B8!important}html.dark .personAffiliations span{background:#214A39!important;color:#CBE0D5!important;border-color:#5D7D6D!important}html.dark .leadDivider{border-color:var(--cedars-line-dark)!important}
+
+/* Evidence reading library. */
+html.dark .evidencePage{background:var(--cedars-page-dark)!important;color:var(--cedars-text-dark)!important}html.dark .evidencePage .evidenceShelf{border-top-color:#355548!important}html.dark .evidencePage .evidenceShelfHeading h2,html.dark .evidencePage .evidenceCard h3{color:#F4F8F5!important}html.dark .evidencePage .evidenceShelfHeading p,html.dark .evidencePage .evidenceCardWhy p,html.dark .evidencePage .evidenceCardCitation>small{color:var(--cedars-muted-dark)!important}html.dark .evidencePage .evidenceShelfHeading>div:nth-child(2)>span,html.dark .evidencePage .evidenceCardMeta span{color:#9FC3B1!important}html.dark .evidencePage .evidenceCard{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important}html.dark .evidencePage .evidenceCardUse p{color:#DBE7E1!important}html.dark .evidencePage .evidenceRegistryNote{background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important}html.dark .evidencePage .evidenceMarqueeGroup .evidenceCard{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;box-shadow:0 5px 18px rgba(0,0,0,.18)!important}
+
+
+/* Report & Share and walkthrough overlays. */
+html.dark :is(.reportStageCard,.reportContextBar,.reportProductTabsWrap,.reportTextPreview,.reportShareCard,.reportCompletion){background:var(--cedars-panel-dark)!important;border-color:var(--cedars-line-dark)!important;color:var(--cedars-text-dark)!important;box-shadow:none!important}html.dark .reportProductTabs button,html.dark .reportStudioTabs button{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important}html.dark .reportProductTabs button.active,html.dark .reportStudioTabs button.active{background:#214A39!important;border-color:#7FA08F!important}
+html.dark :is(.walkthroughDockToggle,.walkthroughDockPanel,.firstVisitWalkthrough,.guidedDemoPopover){background:#17382C!important;border-color:#668576!important;color:var(--cedars-text-dark)!important}html.dark .guidedDemoBanner{background:#0D2A20!important;border-color:#48695A!important;color:#F2F7F4!important}html.dark .walkthroughJourneyList button{background:var(--cedars-card-dark)!important;border-color:#4A6E5D!important;color:var(--cedars-text-dark)!important}
+
+@media(max-width:760px){.themeToggleTooltip{right:-54px;width:245px}.workflowRailLabel>span,.homeFlowStep>b,.aiComparisonModalSection>summary b,.aiComparisonModalResultsHead b{width:20px!important;height:20px!important;min-width:20px!important;max-width:20px!important;flex-basis:20px!important}.homeFlowThreeStage{grid-template-columns:1fr!important}.homeFlowThreeStage .homeFlowArrow{display:none!important}}
