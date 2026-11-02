@@ -1,5 +1,6 @@
 import React from 'react';
-import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler} from 'lucide-react';
+// CEDARS_CHUNK_9R14B_UNIVERSAL_DARK_EVIDENCE
+import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
 
 const GROUPS = [
   {
@@ -100,14 +101,23 @@ function EvidenceCard({card, index, duplicate=false}) {
       <h3>{card.title}</h3>
       <div className="evidenceCardWhy"><span>WHY IT MATTERS</span><p>{card.why}</p></div>
       <div className="evidenceCardUse"><span>USED IN CEDARS</span><p>{card.used}</p></div>
+      <a className="evidenceReadSource" href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>Read at source <ExternalLink size={12}/></a>
     </article>
   );
 }
 
-function EvidenceCategory({group}) {
+function EvidenceCategory({group, pausedAll=false}) {
   const [active, setActive] = React.useState(0);
+  const [pausedLocal, setPausedLocal] = React.useState(false);
   const Icon = group.icon;
   const card = group.cards[active] || group.cards[0];
+  const autoPaused = pausedAll || pausedLocal;
+
+  React.useEffect(()=>{
+    if (autoPaused || group.cards.length < 2) return undefined;
+    const timer = window.setTimeout(()=>setActive(current=>(current+1)%group.cards.length), 9000);
+    return ()=>window.clearTimeout(timer);
+  }, [active, autoPaused, group.cards.length]);
 
   return (
     <section className="evidenceCategoryCard contentSurfaceInset" id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
@@ -124,13 +134,17 @@ function EvidenceCategory({group}) {
         <div className="evidenceNumberNav" role="group" aria-label={`${group.title} sources`}>
           {group.cards.map((source,index)=><button type="button" key={`${source.title}-nav`} className={active===index?'active':''} aria-label={`Show source ${index+1}: ${source.title}`} aria-pressed={active===index} onClick={()=>setActive(index)}>{index+1}</button>)}
         </div>
-        <span className="evidenceSourceCount" aria-hidden="true">{active+1}/{group.cards.length}</span>
+        <div className="evidenceAutoControls">
+          <button type="button" className="evidenceAutoToggle" disabled={pausedAll} aria-pressed={pausedLocal} aria-label={pausedAll?`Auto-advance is paused for all evidence sections`:(pausedLocal?`Resume auto-advance for ${group.title}`:`Pause auto-advance for ${group.title}`)} onClick={()=>setPausedLocal(value=>!value)}>{pausedLocal?<Play size={11}/>:<Pause size={11}/>}<span>{pausedAll?'All paused':pausedLocal?'Resume':'Pause'}</span></button>
+          <span className="evidenceSourceCount" aria-hidden="true">{active+1}/{group.cards.length}</span>
+        </div>
       </footer>
     </section>
   );
 }
 
 export default function EvidencePage({onStart}) {
+  const [pausedAll, setPausedAll] = React.useState(()=>typeof window!=='undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   return (
     <main className="evidencePage evidenceGalleryPage">
       <section className="evidenceHero contentSurfaceInset">
@@ -138,12 +152,13 @@ export default function EvidencePage({onStart}) {
         <h1>A reading library for sustainable radiology and medical AI.</h1>
         <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions!</p>
         <div className="evidenceHeroActions">
-          <button type="button" onClick={onStart}>Start an assessment <ArrowRight size={16}/></button>
+          <button type="button" className="evidencePrimaryCta" onClick={onStart}>Start a CEDARS assessment <ArrowRight size={16}/></button>
+          <button type="button" className="evidencePauseAll" aria-pressed={pausedAll} onClick={()=>setPausedAll(value=>!value)}>{pausedAll?<Play size={14}/>:<Pause size={14}/>} {pausedAll?'Resume auto-advance':'Pause auto-advance'}</button>
         </div>
       </section>
 
       <div className="evidenceLibraryGrid">
-        {GROUPS.map(group=><EvidenceCategory key={group.key} group={group}/>) }
+        {GROUPS.map(group=><EvidenceCategory key={group.key} group={group} pausedAll={pausedAll}/>) }
       </div>
 
       <section className="evidenceRegistryNote contentSurfaceInset">

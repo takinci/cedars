@@ -4,6 +4,8 @@
 // CEDARS_CHUNK_9L_AI_WORKFLOW_UNIFICATION
 // CEDARS_CHUNK_9M_MODAL_DARKMODE_HANDOFF
 // CEDARS_CHUNK_9J1_EMPTY_CONDITIONAL_REPAIR
+// CEDARS_CHUNK_9R14_REPORT_DARKMODE_COMPLETION
+// CEDARS_CHUNK_9R14B_UNIVERSAL_DARK_EVIDENCE
 import React, {useState, useMemo, useEffect, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
@@ -2893,6 +2895,15 @@ function App() {
       {label:'Carbon kgCO₂e', data:[scenario.baseline.co2, scenario.projected.co2], backgroundColor:['#C3CDD2','#708894']},
     ],
   };
+  const chartScenarioOptions = useMemo(()=>({
+    responsive:true,
+    plugins:{legend:{labels:{color:darkMode?'#DDE7DF':'#455A64'}}},
+    scales:{
+      x:{ticks:{color:darkMode?'#C7D5CE':'#607D66'},grid:{color:darkMode?'rgba(126,171,146,.18)':'rgba(96,125,102,.12)'}},
+      y:{ticks:{color:darkMode?'#C7D5CE':'#607D66'},grid:{color:darkMode?'rgba(126,171,146,.18)':'rgba(96,125,102,.12)'}},
+    },
+  }),[darkMode]);
+
   // Scope 1/2/3 stacked horizontal bar — shown as % of total so all scopes are visible
   const scopeTotal = dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2;
   const scopePct   = v => scopeTotal > 0 ? rnd(v / scopeTotal * 100, 1) : 0;
@@ -5184,6 +5195,14 @@ function App() {
           <AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext('scenario',true)}/>
           <div className="improveScopeSelector" role="tablist" aria-label="Improve workspace"><button type="button" className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department</strong><small>Equipment, utilization, storage and workflows.</small></span></button><button type="button" className={ecoLabelMode==='ai'?'active':''} onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}}><Brain size={19}/><span><strong>AI</strong><small>Development, deployment and monitoring.</small></span></button></div>
 
+          {ecoLabelMode==='department' && !departmentScoreReadiness.ready && (
+            <div className="decisionBaselineRequiredCue" role="status">
+              <AlertTriangle size={17}/>
+              <div><span>REQUIRED BEFORE INTERPRETATION</span><strong>Department baseline incomplete</strong><p>Complete Context before interpreting a Department score or prospective change. You can still explore scenarios and save this assessment as a draft.</p></div>
+              <button type="button" onClick={()=>focusMissingScoreInput('department',departmentScoreReadiness.issues[0]?.key||'context')}>Complete Context →</button>
+            </div>
+          )}
+
           {ecoLabelMode==='department' && <section className="decisionCompareHero department" aria-label="Current Department result and prospective scenario">
             <div className="decisionCompareHeroHeading"><div><span>BASELINE → PROSPECTIVE</span><h2>Compare the current profile with a scenario</h2></div><div className="decisionCompareHeroActions"><button type="button" className="download" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);setDeptProfileStage('equipment');}}>Edit current profile</button><button type="button" onClick={()=>{setReportStudioTab('methods');setPage('report');}}>Report &amp; Share →</button></div></div>
             <div className="decisionComparePanels">
@@ -5296,7 +5315,7 @@ function App() {
 
               <details className="decisionComparisonDetails">
                 <summary>Chart &amp; calculation details</summary>
-                <div className="decisionComparisonDetailsBody"><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label><div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section></div><p className="note">The comparison above is authoritative. This chart uses the same combined intervention engine and keeps overlapping energy pools from being double-counted.</p></div>
+                <div className="decisionComparisonDetailsBody"><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label><div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario} options={chartScenarioOptions}/></Suspense></section></div><p className="note">The comparison above is authoritative. This chart uses the same combined intervention engine and keeps overlapping energy pools from being double-counted.</p></div>
               </details>
 
               <div className="prospectiveOnlyNote"><strong>Prospective scenario only.</strong><span>Changes tested here do not alter the current Department Profile. After implementation, update the affected Profile inputs and CEDARS will recalculate the current result.</span></div>
@@ -5362,6 +5381,23 @@ function App() {
             <div className="reportStudioLayout">
               <ReportStudioTabs active={reportStudioTab} onChange={setReportStudioTab} kind={ecoLabelMode}/>
               <section className={`reportStudioViewport ${reportStudioTab}`} aria-live="polite"><div className="reportStudioViewportInner">
+              {reportStudioTab==='methods' && (
+                <div className={`reportMethodsLead ${(ecoLabelMode==='department' ? !departmentScoreReadiness.ready : !aiScoreReadiness.ready) ? 'draft' : ''}`}>
+                  <div>
+                    <span>METHODS, ASSUMPTIONS &amp; PROVENANCE</span>
+                    <strong>{ecoLabelMode==='department' ? 'Department reporting record' : 'AI reporting record'}</strong>
+                    <p>{ecoLabelMode==='department'
+                      ? (departmentScoreReadiness.ready
+                        ? 'Expand the reporting text and reproducibility sections below to review the assumptions, evidence, and fields behind the current Department result.'
+                        : 'Draft assessment. Quantitative methods and reporting text populate as the required Department inputs are completed. You can still inspect assumptions and provenance and save this assessment as a draft.')
+                      : (aiScoreReadiness.ready
+                        ? 'Expand the reporting text, checklist, and provenance sections below to review the assumptions and evidence behind the current AI result.'
+                        : 'Draft or partial assessment. Add the required AI pathway and energy inputs to populate the quantitative result; available methods, assumptions, and provenance can still be reviewed and saved.')}</p>
+                  </div>
+                  {ecoLabelMode==='department' && !departmentScoreReadiness.ready && <button type="button" onClick={()=>focusMissingScoreInput('department',departmentScoreReadiness.issues[0]?.key||'context')}>Complete Context →</button>}
+                  {ecoLabelMode==='ai' && !aiScoreReadiness.ready && <button type="button" onClick={()=>focusMissingScoreInput('ai',aiScoreReadiness.issues[0]?.key||'pathway')}>Review AI Profile →</button>}
+                </div>
+              )}
           <div style={{display:ecoLabelMode==='department'?'block':'none'}}>
             {page==='ecolabel' && null}
             {page==='report' && <>
@@ -5518,7 +5554,10 @@ function App() {
               </div>
             </div>
 
-                        {deptLabelData.annualStudies>0 && (
+                        {!departmentScoreReadiness.ready && (
+                          <div className="reportMethodsEmptyState"><strong>No quantitative reporting paragraph yet.</strong><span>Complete the required Department context and workload inputs to generate it. Assumptions and reproducibility details remain available below.</span></div>
+                        )}
+                        {departmentScoreReadiness.ready && (
               <details className="reportMethodsText reportDisclosureDetails reportMaterialsDetail reportParagraphPrimary" open>
                 <summary>Methods / reporting text</summary>
                 <div className="reportDisclosureDetailsBody">
@@ -5783,8 +5822,8 @@ function App() {
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
           />
           {(()=>{
-            const departmentReady = !!(deptLabelData.hasData && deptLabelData.annualStudies>0 && deptLabelData.annualKwh>0 && deptLabelData.region);
-            const aiReady = !!ecoLabelData.hasData;
+            const departmentReady = departmentScoreReadiness.ready;
+            const aiReady = aiScoreReadiness.ready;
             const reportReady = ecoLabelMode==='department' ? departmentReady : aiReady;
             if (reportReady) return null;
             return (

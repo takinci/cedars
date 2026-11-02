@@ -1,4 +1,5 @@
 import React, {useRef, useState} from 'react';
+// CEDARS_CHUNK_9R14_REPORT_DARKMODE_COMPLETION
 import {Save, Download, Upload, Share2, Database, Trash2} from 'lucide-react';
 
 const buttonStyle = {justifyContent:'center',minHeight:44};
@@ -17,7 +18,7 @@ export default function SaveSharePanel({
       <h2>Preserve or share your assessment</h2>
       <p className="note reportShareIntro">Saving, transferring, and sharing are separate choices. Normal CEDARS use stays browser-local.</p>
 
-      {status && <div style={{background:status.type==='error'?'#ffebee':'#e8f5e9',color:status.type==='error'?'#b71c1c':'#1b5e20',borderRadius:12,padding:'9px 12px',fontSize:12,marginBottom:14}}>{status.text}</div>}
+      {status && <div className={`saveShareStatus ${status.type==='error'?'error':'success'}`}>{status.text}</div>}
 
       <div className="reportShareGroup">
         <div className="reportShareGroupHeading"><span>PRESERVE YOUR ASSESSMENT</span><h3>Keep a working or portable copy</h3></div>
@@ -52,12 +53,12 @@ export default function SaveSharePanel({
       </details>}
 
       {shareConfirmOpen && (
-        <div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget) setShareConfirmOpen(false);}} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(20,35,25,.42)',display:'grid',placeItems:'center',padding:18}}>
-          <div role="dialog" aria-modal="true" aria-labelledby="share-link-title" style={{width:'min(560px,100%)',background:'white',borderRadius:20,padding:22,boxShadow:'0 24px 80px rgba(0,0,0,.22)',border:'1px solid #dce9dc'}}>
-            <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:10}}><Share2 size={20} style={{color:'#2E7D32'}}/><h3 id="share-link-title" style={{margin:0,color:'#1b5e20'}}>Copy a shareable CEDARS assessment link?</h3></div>
-            <p style={{margin:'0 0 10px',fontSize:13,lineHeight:1.6,color:'#455a64'}}>This URL carries the core calculator/current AI-model configuration and supported CEDARS reference candidates. Custom candidate edits, free-text comparison notes, the complete Clinical AI inventory, and other full-assessment fields remain in the complete CEDARS file. CEDARS does not publish or send the link automatically.</p>
-            <p style={{margin:'0 0 18px',fontSize:12,lineHeight:1.55,color:'#607d66'}}>Personal details, email addresses, and contribution-consent information are not included.</p>
-            <div style={{display:'flex',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}><button className="download" onClick={()=>setShareConfirmOpen(false)} style={{minHeight:40}}>Cancel</button><button onClick={copyShareableAssessmentLink} style={{minHeight:40}}><Share2 size={15}/> Copy assessment link</button></div>
+        <div className="shareConfirmBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget) setShareConfirmOpen(false);}}>
+          <div className="shareConfirmDialog" role="dialog" aria-modal="true" aria-labelledby="share-link-title">
+            <div className="shareConfirmTitle"><Share2 size={20}/><h3 id="share-link-title">Copy a shareable CEDARS assessment link?</h3></div>
+            <p>This URL carries the core calculator/current AI-model configuration and supported CEDARS reference candidates. Custom candidate edits, free-text comparison notes, the complete Clinical AI inventory, and other full-assessment fields remain in the complete CEDARS file. CEDARS does not publish or send the link automatically.</p>
+            <p className="shareConfirmFine">Personal details, email addresses, and contribution-consent information are not included.</p>
+            <div className="shareConfirmActions"><button className="download" onClick={()=>setShareConfirmOpen(false)} style={{minHeight:40}}>Cancel</button><button onClick={copyShareableAssessmentLink} style={{minHeight:40}}><Share2 size={15}/> Copy assessment link</button></div>
           </div>
         </div>
       )}
