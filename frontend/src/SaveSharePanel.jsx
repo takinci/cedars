@@ -15,7 +15,7 @@ export default function SaveSharePanel({
     <section id="save-share" className="reportShareSection">
       <p className="eyebrow" style={{marginTop:0}}>3 · Preserve or share</p>
       <h2>Preserve or share your assessment</h2>
-      <p className="note reportShareIntro">Saving, transferring, and sharing are separate choices. Normal CEDARS use stays browser-local; research participation is optional and separated below.</p>
+      <p className="note reportShareIntro">Saving, transferring, and sharing are separate choices. Normal CEDARS use stays browser-local.</p>
 
       {status && <div style={{background:status.type==='error'?'#ffebee':'#e8f5e9',color:status.type==='error'?'#b71c1c':'#1b5e20',borderRadius:12,padding:'9px 12px',fontSize:12,marginBottom:14}}>{status.text}</div>}
 
@@ -46,11 +46,10 @@ export default function SaveSharePanel({
         </div>
       </div>
 
-      <div className="reportResearchParticipation">
-        <div className="reportResearchIcon"><Database size={20}/></div>
-        <div><span>OPTIONAL RESEARCH PARTICIPATION</span><h3>Contribute a copy to CEDARS research</h3><p>Separate from saving or sharing. CEDARS normally keeps assessment data in your browser; this action sends a copy only after you review the submission and consent choices.</p></div>
-        <div><button onClick={onContribute} disabled={!contributionConfigured} style={!contributionConfigured?{...buttonStyle,opacity:.55,cursor:'not-allowed'}:buttonStyle}><Database size={15}/> Contribute this assessment</button>{!contributionConfigured && <small>Research contribution will activate after the project team configures the submission service.</small>}</div>
-      </div>
+      {contributionConfigured && <details className="reportResearchParticipation reportResearchParticipationCompact">
+        <summary><Database size={18}/><span><strong>Optional research contribution</strong><small>Separate from save/share; nothing is sent until you review and consent.</small></span><b>Review →</b></summary>
+        <div className="reportResearchParticipationBody"><p>Contributing sends a copy of the current assessment to the CEDARS research team only after you review the submission and consent choices.</p><button onClick={onContribute} style={buttonStyle}><Database size={15}/> Review contribution options</button></div>
+      </details>}
 
       {shareConfirmOpen && (
         <div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget) setShareConfirmOpen(false);}} style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(20,35,25,.42)',display:'grid',placeItems:'center',padding:18}}>

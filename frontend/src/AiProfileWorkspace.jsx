@@ -75,7 +75,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
           <span>{contextGroupLabel}</span>
           <NavButton label={developMode?'1 · Task / workload':'1 · Clinical purpose'} meta={purposeDone?null:developMode?'Choose workload type':'Define task and intended use'} done={purposeDone} onClick={()=>{setProfileStage('context');openAndScroll('ai-model-record');}} tone="clinical"/>
           <NavButton label={developMode?'2 · Evaluation & validation':'2 · Performance & validation'} meta={performanceDone?null:compareMode?'Needed before candidate ranking':performanceStarted?'Finish evidence context':developMode?'Supporting context':'Optional unless needed clinically'} done={performanceDone} attention={performanceAttention} onClick={()=>{setProfileStage('context');openAndScroll('ai-performance-section');}} tone="evidence"/>
-          {!developMode&&<NavButton label="3 · Workflow effects" meta={effectsBasis==='none'?'Optional · no current effect credit':effectsBasis==='published'?'External evidence · report only':effectsBasis==='scenario'?'Scenario · Improve only':null} done={effectsDone} attention={false} onClick={()=>{setProfileStage('context');openAndScroll('ai-effects-section');}} tone="clinical"/>}
+          {!developMode&&<NavButton label="3 · Workflow & downstream effects" meta={effectsBasis==='none'?'Review local effects':effectsBasis==='published'?'External evidence documented':effectsBasis==='scenario'?'Prospective effect · Decision Workspace':null} done={effectsDone} attention={false} onClick={()=>{setProfileStage('context');openAndScroll('ai-effects-section');}} tone="clinical"/>}
         </div>
         <div className="aiProfileNavGroup">
           <span>LIFECYCLE</span>

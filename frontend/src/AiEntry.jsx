@@ -103,6 +103,7 @@ function exampleUse(ex) {
 
 export function AiExamplesUtility({examples, onExample, activePathway=''}) {
   const [open, setOpen] = useState(true);
+  useEffect(()=>{ if(activePathway) setOpen(false); },[activePathway]);
   const lanes = [
     {key:'develop', eyebrow:'DEVELOP / TRAIN', title:'Build or adapt a model', note:'Training, fine-tuning, or generative-model development.'},
     {key:'assess', eyebrow:'ASSESS / DEPLOY', title:'Review an externally developed model', note:'Same task, two common delivery variants: inspectable/open vs vendor-hosted.'},
@@ -119,9 +120,9 @@ export function AiExamplesUtility({examples, onExample, activePathway=''}) {
   };
   return <details className={`aiExamplesUtility aiExamplesGrouped ${activePathway?'pathwayActive':''}`} open={open} onToggle={e=>setOpen(e.currentTarget.open)}>
     <summary title="Load illustrative or literature-derived sample data">
-      <span className="aiExamplesUtilitySignal">ILLUSTRATIVE QUICK STARTS</span>
-      <span className="aiExamplesUtilityCopy"><strong>{activePathway?'Worked examples':'Start from an AI example'}</strong><small>{activePathway?'Illustrative examples open by default; collapse them whenever you want more working space.':'Choose an example by task. Loading it selects the matching pathway and fills an editable record.'}</small></span>
-      <b>{open?'Hide examples ↑':'Browse examples ↓'}</b>
+      <span className="aiExamplesUtilitySignal">QUICK-START EXAMPLES · ILLUSTRATIVE DATA</span>
+      <span className="aiExamplesUtilityCopy"><strong>{activePathway?'Worked examples':'Need a starting example?'}</strong><small>Loads editable illustrative data for this workflow. Examples are optional and are not evidence.</small></span>
+      <b>{open?'Hide examples ↑':'Browse examples →'}</b>
     </summary>
     <div className="aiExamplesGroupedPanel">
       {lanes.map(lane=>{
@@ -132,7 +133,7 @@ export function AiExamplesUtility({examples, onExample, activePathway=''}) {
           <div className="aiExampleLaneCards">
             {laneExamples.map(ex=>{
               const [Icon,kind]=exampleKind(ex);
-              return <button key={ex.key} type="button" className="aiExampleCard" onClick={()=>onExample(ex.key)}>
+              return <button key={ex.key} type="button" className="aiExampleCard" onClick={()=>{setOpen(false);onExample(ex.key);}}>
                 <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={18}/></span>
                 <span className="aiExampleCardCopy"><em>{variant(ex)}</em><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small></span>
                 <b>Load →</b>
@@ -177,10 +178,10 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
   return (
     <section className="aiIntentStart aiEntryRedesign" aria-labelledby="ai-intent-title">
       <div className="aiIntentHeader aiEntryHero">
-        <span className="aiIntentKicker">STEP 1 · PATHWAY</span>
+        <span className="aiIntentKicker">CONTEXT · START HERE</span>
         <div>
           <h2 id="ai-intent-title">What would you like to do?</h2>
-          <p>Choose the task first. CEDARS will then ask only for the model and lifecycle information needed for that workflow.</p>
+          <p>This is the first decision in Context. Choose what you are doing with the AI; CEDARS will then show the model and lifecycle information needed for that workflow.</p>
         </div>
       </div>
 
@@ -201,7 +202,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
 
       {lane && <div className="aiLaneDetail aiTypeStep" data-demo-target="ai-lane-detail">
         <div className="aiLaneDetailHeader">
-          <span>STEP 2 · AI TYPE</span>
+          <span>CONTEXT · AI TYPE</span>
           <strong>What kind of AI is this?</strong>
           <small>This separates image-model workloads from language, multimodal, and agentic workloads.</small>
         </div>
@@ -213,8 +214,8 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           ))}
         </div>
         <div className="aiEntryContinueRow">
-          <span><strong>STEP 3 · CONTINUE</strong>{!systemType?'Choose an AI type above.':`Continue into ${laneTitle}.`}</span>
-          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue to {laneTitle} →</button>
+          <span><strong>NEXT · CONTEXT</strong>{!systemType?'Choose an AI type above.':`Continue with ${laneTitle}.`}</span>
+          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue with {laneTitle} →</button>
         </div>
       </div>}
 

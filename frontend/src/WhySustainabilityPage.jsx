@@ -2,7 +2,7 @@
 // CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION
 // CEDARS_CHUNK_9G_PROFILE_RESULT_CONSOLIDATION
 import React from 'react';
-import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car, Globe2, Share2, ChevronLeft, ChevronRight} from 'lucide-react';
+import {Leaf, Scan, ArrowRight, FileText, Play, Pause, Zap, Factory, Database, Car, Globe2, Share2} from 'lucide-react';
 
 
 export function DecisionWorkspaceSwitch({kind='department', summary}) {
@@ -19,46 +19,24 @@ export function DecisionWorkspaceSwitch({kind='department', summary}) {
   );
 }
 
-export function ReportStudioTabs({active='methods', onChange, kind='department', summary, onResults}) {
+export function ReportStudioTabs({active='methods', onChange, kind='department'}) {
   const ai = kind === 'ai';
   const tabs = [
-    {key:'methods',label:'Methods & evidence',headline:'Make the result reproducible',detail:'Assumptions, provenance, reporting text, and evidence.',icon:FileText, bullets:['Assumptions and calculation boundary','Data provenance and disclosure gaps','Copy-ready reporting text']},
-    {key:'label',label:ai?'AI EcoLabel':'Department EcoLabel',headline:'Create the visual summary',detail:'Score, assessment boundary, and a presentation-ready visual.',icon:Leaf, bullets:['CEDARS Score and rating','Included / separate / not assessed boundary','Visual summary for communication']},
-    {key:'share',label:'Save & share',headline:'Take the assessment with you',detail:'Preserve, export, share, or optionally contribute the assessment.',icon:Share2, bullets:['Browser-local working copy','Portable CEDARS file','Shareable link and optional research contribution']},
+    {key:'methods', label:'Methods & evidence', detail:'Methods text, assumptions, provenance, and structured exports.', icon:FileText},
+    {key:'label', label:ai?'AI Research Label':'Department EcoLabel', detail:ai?'Optional visual research summary.':'Presentation-ready visual summary.', icon:Leaf},
+    {key:'share', label:'Save & share', detail:'Working copy, portable file, and shareable link.', icon:Share2},
   ];
-  const activeIndex = Math.max(0,tabs.findIndex(tab=>tab.key===active));
-  const selected = tabs[activeIndex] || tabs[0];
-  const Icon = selected.icon;
-  const move = delta => onChange(tabs[(activeIndex+delta+tabs.length)%tabs.length].key);
-  return <>
-    <section className="reportContextBar" aria-label="Current result being reported">
-      <div><span>CURRENT RESULT</span><strong>{summary?.title || (ai?'AI assessment':'Department assessment')}</strong><small>{summary?.detail || 'Current assessment state'}</small></div>
-      <button type="button" onClick={onResults}>View current result →</button>
-    </section>
-    <section className="reportSplitWorkspace" aria-label="Report and Share options">
-      <aside className="reportSplitMenu">
-        <span>REPORT &amp; SHARE</span><h2>Choose what to prepare</h2><p>Pick one output. Its preview appears beside the menu and the working controls open directly below.</p>
-        <div role="tablist" aria-label="Report and Share workspace">
-          {tabs.map((tab,index)=>{const TabIcon=tab.icon;return <button type="button" role="tab" aria-selected={active===tab.key} key={tab.key} className={active===tab.key?'active':''} onClick={()=>onChange(tab.key)}><b>0{index+1}</b><TabIcon size={18}/><span><strong>{tab.label}</strong><small>{tab.detail}</small></span><ArrowRight size={16}/></button>;})}
-        </div>
-      </aside>
-      <div className="reportSplitPreviewWrap">
-        <button type="button" className="reportSplitArrow previous" onClick={()=>move(-1)} aria-label="Previous Report and Share option"><ChevronLeft size={20}/></button>
-        <div key={selected.key} className="reportSplitPreview">
-          <div className="reportPreviewGhost ghost-left" aria-hidden="true"/><div className="reportPreviewGhost ghost-right" aria-hidden="true"/>
-          <article className="reportPreviewSheet">
-            <div className="reportPreviewSheetHead"><span>{ai?'AI ASSESSMENT':'DEPARTMENT ASSESSMENT'}</span><Icon size={23}/></div>
-            <small>{selected.label}</small><h3>{selected.headline}</h3><p>{selected.detail}</p>
-            <div className="reportPreviewAssessment"><strong>{summary?.title || (ai?'AI assessment':'Radiology Department')}</strong><span>{summary?.detail || 'Current assessment'}</span></div>
-            <div className="reportPreviewBullets">{selected.bullets.map(item=><span key={item}>✓ {item}</span>)}</div>
-            <button type="button" onClick={()=>onChange(selected.key)}>Selected · controls below ↓</button>
-          </article>
-          <div className="reportSplitDots" role="group" aria-label="Report and Share position">{tabs.map((tab,index)=><button type="button" key={tab.key} className={active===tab.key?'active':''} aria-label={`Open ${tab.label}`} onClick={()=>onChange(tab.key)}>{index+1}</button>)}</div>
-        </div>
-        <button type="button" className="reportSplitArrow next" onClick={()=>move(1)} aria-label="Next Report and Share option"><ChevronRight size={20}/></button>
+  const index=Math.max(0,tabs.findIndex(t=>t.key===active));
+  const move=delta=>onChange(tabs[(index+delta+tabs.length)%tabs.length].key);
+  return (
+    <aside className="reportStudioRail" aria-label="Report and Share outputs">
+      <div className="reportStudioRailHeading"><span>REPORT &amp; SHARE</span><h2>Choose an output</h2><p>The selected output opens in the scrollable card beside this menu.</p></div>
+      <div className="reportStudioRailButtons" role="tablist" aria-label="Report and Share output">
+        {tabs.map((tab,i)=>{const Icon=tab.icon;const selected=active===tab.key;return <button type="button" role="tab" aria-selected={selected} key={tab.key} className={`${selected?'active':''} ${tab.key}`} onClick={()=>onChange(tab.key)}><span>0{i+1}</span><Icon size={17}/><strong>{tab.label}</strong><small>{tab.detail}</small></button>;})}
       </div>
-    </section>
-  </>;
+      <div className="reportStudioRailNav"><button type="button" className="download" onClick={()=>move(-1)} aria-label="Previous output">←</button><span>{index+1} / {tabs.length}</span><button type="button" onClick={()=>move(1)} aria-label="Next output">→</button></div>
+    </aside>
+  );
 }
 
 const STORY_STEPS = [

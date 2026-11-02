@@ -1,5 +1,5 @@
 import React from 'react';
-import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
+import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler} from 'lucide-react';
 
 const GROUPS = [
   {
@@ -43,8 +43,8 @@ const GROUPS = [
     ],
   },
   {
-    key:'resources', eyebrow:'RESOURCES & LIFECYCLE', title:'Water, contrast, materials, and impacts outside the meter', icon:Droplets,
-    blurb:'Some important impacts are not captured by an electricity bill and need separate accounting.',
+    key:'resources', eyebrow:'RESOURCES & LIFECYCLE', title:'Water, contrast, and material waste', icon:Droplets,
+    blurb:'Energy is only part of the picture. These studies cover water use, contrast media, and material waste that should be counted separately.',
     cards:[
       {type:'WATER / AI METHODS',year:'2023',authors:['Li P','Yang J','Islam MA','Ren S'],venue:'arXiv',title:'Making AI less “thirsty”: uncovering and addressing the secret water footprint of AI models',href:'https://doi.org/10.48550/arXiv.2304.03271',why:'Separates on-site cooling water from water used in electricity generation and highlights location dependence.',used:'AI water disclosure and screening-boundary design.'},
       {type:'NATIONAL UTILIZATION STUDY',year:'2025',authors:['Doo FX','Lee R','Rockall A','Rula EY','Moy L'],venue:'JAMA Network Open',title:'Medical Imaging Contrast Media Use',href:'https://doi.org/10.1001/jamanetworkopen.2025.47304',why:'Quantifies national contrast-media use patterns and shows how a relatively small set of examinations accounts for most use.',used:'Contrast stewardship and utilization context; not a direct numerical Score default.'},
@@ -52,8 +52,8 @@ const GROUPS = [
     ],
   },
   {
-    key:'methods', eyebrow:'MEASUREMENT & REPORTING', title:'How to make environmental results interpretable', icon:Ruler,
-    blurb:'CEDARS borrows from software-carbon reporting and evaluation science to keep assumptions visible.',
+    key:'methods', eyebrow:'MEASUREMENT & REPORTING', title:'Interpreting environmental metrics', icon:Ruler,
+    blurb:'These sources show how to report environmental results clearly, including what was measured, estimated, and assumed.',
     cards:[
       {type:'RADIOLOGY METHODS',year:'2024',authors:['Doo FX','Parekh VS','Kanhere A','Savani D','Tejani AS','Sapkota A','Yi PH'],venue:'J Am Coll Radiol',title:'Evaluation of Climate-Aware Metrics Tools for Radiology Informatics and Artificial Intelligence: Toward a Potential Radiology Ecolabel',href:'https://doi.org/10.1016/j.jacr.2023.11.019',why:'Brings climate-aware measurement tools and reporting concepts into radiology and medical AI.',used:'Core CEDARS framework, lifecycle metrics, Scope structure, and reporting design.'},
       {type:'ML REPORTING FRAMEWORK',year:'2020',authors:['Henderson P','Hu J','Romoff J','Brunskill E','Jurafsky D','Pineau J'],venue:'J Mach Learn Res',title:'Towards the Systematic Reporting of the Energy and Carbon Footprints of Machine Learning',href:'https://jmlr.org/papers/v21/20-312.html',why:'Argues for transparent reporting of energy, carbon, infrastructure, and location rather than isolated performance alone.',used:'AI reporting completeness and provenance principles.'},
@@ -93,110 +93,62 @@ function EvidenceCard({card, index, duplicate=false}) {
   return (
     <article className="evidenceCard" data-card-index={index}>
       <div className="evidenceCardTopline">
-        <div className="evidenceCardMeta"><span>{card.type}</span><b>{card.year}</b></div>
-        <div className={`evidenceJournalMark ${mark?'has-logo':'text-only'}`} aria-label={`Source: ${card.venue}`}>
-          {mark ? <img src={mark.src} alt={mark.alt}/> : <span>{card.venue}</span>}
-        </div>
+        <div className="evidenceCardMeta"><span>{card.type}</span><div className="evidenceCardVenueLine"><b>{card.year}</b><a className="evidenceVenueSource" href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>{card.venue} <ExternalLink size={9}/></a></div></div>
+        {mark&&<div className="evidenceJournalMark has-logo" aria-label={`${card.venue} journal or venue mark`}><img src={mark.src} alt={mark.alt}/></div>}
       </div>
-      <div className="evidenceCardCitation"><AuthorList authors={card.authors} duplicate={duplicate}/><small>{card.venue}</small></div>
+      <div className="evidenceCardCitation"><AuthorList authors={card.authors} duplicate={duplicate}/></div>
       <h3>{card.title}</h3>
       <div className="evidenceCardWhy"><span>WHY IT MATTERS</span><p>{card.why}</p></div>
       <div className="evidenceCardUse"><span>USED IN CEDARS</span><p>{card.used}</p></div>
-      <a href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>Read source <ExternalLink size={14}/></a>
     </article>
   );
 }
 
-function EvidenceCategory({group, groupIndex, motionEnabled, advanceTick}) {
+function EvidenceCategory({group}) {
   const [active, setActive] = React.useState(0);
-  const [manualPaused, setManualPaused] = React.useState(false);
-  const [hoverPaused, setHoverPaused] = React.useState(false);
-  const [direction, setDirection] = React.useState(groupIndex % 2 === 0 ? 'next' : 'previous');
   const Icon = group.icon;
-  const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const paused = !motionEnabled || reducedMotion || manualPaused || hoverPaused;
-
-  React.useEffect(()=>{
-    if (paused || advanceTick < 1 || group.cards.length < 2) return;
-    if ((advanceTick - 1) % GROUPS.length !== groupIndex) return;
-    setDirection(groupIndex % 2 === 0 ? 'next' : 'previous');
-    setActive(value => groupIndex % 2 === 0 ? (value + 1) % group.cards.length : (value - 1 + group.cards.length) % group.cards.length);
-  },[advanceTick, paused, group.cards.length, groupIndex]);
-
-  const show = index => {
-    setDirection(index >= active ? 'next' : 'previous');
-    setActive((index + group.cards.length) % group.cards.length);
-    setManualPaused(true);
-  };
   const card = group.cards[active] || group.cards[0];
 
   return (
-    <section className={`evidenceCategoryCard contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`} onMouseEnter={()=>setHoverPaused(true)} onMouseLeave={()=>setHoverPaused(false)}>
+    <section className="evidenceCategoryCard contentSurfaceInset" id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
       <header className="evidenceCategoryHeader">
         <div><span><Icon size={15}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
         <small aria-live="polite">{String(active+1).padStart(2,'0')} / {String(group.cards.length).padStart(2,'0')}</small>
       </header>
-      <div className="evidenceCategoryViewport" aria-live="off">
-        <div className={`evidenceHoloDeck direction-${direction}`}>
-          <i className="evidenceHoloGhost ghost-back" aria-hidden="true"/>
-          <i className="evidenceHoloGhost ghost-middle" aria-hidden="true"/>
-          <div className={`evidenceCategorySlide direction-${direction}`} key={`${group.key}-${active}`}>
-            <EvidenceCard card={card} index={active}/>
-          </div>
+      <div className="evidenceCategoryViewport" aria-live="polite">
+        <div className="evidenceCategorySlide" key={`${group.key}-${active}`}>
+          <EvidenceCard card={card} index={active}/>
         </div>
       </div>
       <footer className="evidenceCategoryFooter">
         <div className="evidenceNumberNav" role="group" aria-label={`${group.title} sources`}>
-          {group.cards.map((source,index)=><button type="button" key={`${source.title}-nav`} className={active===index?'active':''} aria-label={`Show source ${index+1}: ${source.title}`} aria-pressed={active===index} onClick={()=>show(index)}>{index+1}</button>)}
+          {group.cards.map((source,index)=><button type="button" key={`${source.title}-nav`} className={active===index?'active':''} aria-label={`Show source ${index+1}: ${source.title}`} aria-pressed={active===index} onClick={()=>setActive(index)}>{index+1}</button>)}
         </div>
-        <div className="evidenceRotationControls">
-          <span className="evidenceRotationStatus">{hoverPaused?'Paused on hover':manualPaused?'Paused':'Auto'}</span>
-          <button type="button" className="evidenceRowMotionToggle" disabled={!motionEnabled || reducedMotion} aria-label={manualPaused?'Resume automatic rotation for this category':'Pause automatic rotation for this category'} aria-pressed={manualPaused} onClick={()=>setManualPaused(v=>!v)} title={!motionEnabled?'Page-level rotation is paused':reducedMotion?'Motion is disabled by your reduced-motion preference':undefined}>
-            {manualPaused?<Play size={12}/>:<Pause size={12}/>}<span>{manualPaused?'Play':'Pause'}</span>
-          </button>
-        </div>
+        <span className="evidenceSourceCount" aria-hidden="true">{active+1}/{group.cards.length}</span>
       </footer>
     </section>
   );
 }
 
 export default function EvidencePage({onStart}) {
-  const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const [motionEnabled, setMotionEnabled] = React.useState(!reducedMotion);
-  const [advanceTick, setAdvanceTick] = React.useState(0);
-
-  React.useEffect(()=>{
-    if (!motionEnabled || reducedMotion) return undefined;
-    const timer=window.setInterval(()=>setAdvanceTick(value=>value+1),2800);
-    return ()=>window.clearInterval(timer);
-  },[motionEnabled,reducedMotion]);
-
   return (
     <main className="evidencePage evidenceGalleryPage">
       <section className="evidenceHero contentSurfaceInset">
         <span>EVIDENCE BEHIND CEDARS</span>
         <h1>A reading library for sustainable radiology and medical AI.</h1>
-        <p>Choose a topic, then move through the sources inside that category. Only one card changes at a time so the library stays readable on desktop and mobile.</p>
+        <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions!</p>
         <div className="evidenceHeroActions">
           <button type="button" onClick={onStart}>Start an assessment <ArrowRight size={16}/></button>
-          <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Technical source registry <ExternalLink size={14}/></a>
-          <button type="button" className="evidenceMotionToggle" disabled={reducedMotion} onClick={()=>setMotionEnabled(v=>!v)} aria-pressed={!motionEnabled} title={reducedMotion?'Automatic rotation is disabled by your reduced-motion preference':undefined}>
-            {motionEnabled?<Pause size={14}/>:<Play size={14}/>} {motionEnabled?'Pause rotation':'Play rotation'}
-          </button>
         </div>
       </section>
 
-      <nav className="evidenceJump" aria-label="Evidence topics">
-        {GROUPS.map(group=><a key={group.key} href={`#evidence-${group.key}`}>{group.eyebrow.replace(' & LIFECYCLE','')}</a>)}
-      </nav>
-
       <div className="evidenceLibraryGrid">
-        {GROUPS.map((group,index)=><EvidenceCategory key={group.key} group={group} groupIndex={index} motionEnabled={motionEnabled} advanceTick={advanceTick}/>) }
+        {GROUPS.map(group=><EvidenceCategory key={group.key} group={group}/>) }
       </div>
 
       <section className="evidenceRegistryNote contentSurfaceInset">
-        <div><span>TECHNICAL PROVENANCE</span><h2>Need every assumption and source?</h2><p>The public library is curated for reading. The complete machine-adjacent registry remains in <code>sources.md</code>.</p></div>
-        <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Open sources.md <ExternalLink size={14}/></a>
+        <div><span>METHODS &amp; SOURCES</span><h2>Complete methods and source registry</h2><p>Calculation assumptions and citations used throughout CEDARS are maintained in <code>sources.md</code>.</p></div>
+        <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Open full registry <ExternalLink size={14}/></a>
       </section>
     </main>
   );

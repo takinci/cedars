@@ -1,22 +1,27 @@
-/* CEDARS design tokens — canonical visual vocabulary. */
+/* CEDARS_CHUNK_9R4_CONSOLIDATED_VISUAL_SYSTEM
+   Canonical visual tokens. Forest=current state; blue=decision/evidence; gold=assumptions/uncertainty. */
 :root{
-  --cedars-forest:#2F6B57;
-  --cedars-forest-deep:#254C40;
-  --cedars-sage:#DDE8E1;
-  --cedars-sage-soft:#EEF4F0;
-  --cedars-ivory:#F7F5EF;
+  --cedars-page:#F5F3EC;
+  --cedars-panel:#FBFAF6;
+  --cedars-control:#F1F4F1;
+  --cedars-control-hover:#E7ECE8;
+  --cedars-forest:#2F5233;
+  --cedars-forest-deep:#203A2E;
+  --cedars-sage:#D8E5DA;
+  --cedars-sage-soft:#EFF4EF;
+  --cedars-ivory:#F5F3EC;
   --cedars-card:#FFFFFF;
-  --cedars-ink:#25302D;
+  --cedars-ink:#1B1C1E;
   --cedars-muted:#66716D;
-  --cedars-border:#D8DEDA;
-  --cedars-border-strong:#BEC9C2;
-  --cedars-gold:#C2A45F;
-  --cedars-gold-soft:#F6F0DF;
-  --cedars-info:#708894;
-  --cedars-info-deep:#526B79;
-  --cedars-info-soft:#EEF3F5;
-  --cedars-example:#F6F2E9;
-  --cedars-example-border:#E3DDD0;
+  --cedars-border:#D4DDD7;
+  --cedars-border-strong:#B7C5BC;
+  --cedars-gold:#A88C4D;
+  --cedars-gold-soft:#F0EAD6;
+  --cedars-info:#457B9D;
+  --cedars-info-deep:#274690;
+  --cedars-info-soft:#EEF3F8;
+  --cedars-example:#F3EEE2;
+  --cedars-example-border:#DED2B6;
   --cedars-danger:#A33A32;
   --cedars-font-sans:"Aptos","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
   --cedars-radius-control:6px;
