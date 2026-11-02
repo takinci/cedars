@@ -1,10 +1,11 @@
+// CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
 import React, {useEffect, useState} from 'react';
 import {Activity, Brain, X} from 'lucide-react';
 
 const JOURNEYS = [
-  {key:'leader',icon:Activity,label:'Radiology Department',detail:'Operations, equipment, Clinical AI, Results, Improve, and reporting.'},
-  {key:'procure',icon:Brain,label:'Clinical AI evaluation',detail:'Compare or assess AI for clinical use.'},
-  {key:'developer',icon:Brain,label:'AI development',detail:'Training, inference, lifecycle measurement, and research reporting.'},
+  {key:'leader',icon:Activity,label:'Radiology Department',detail:'Profile current operations and Digital + AI, interpret Result, test scenarios, then report.'},
+  {key:'procure',icon:Brain,label:'Clinical AI evaluation',detail:'Compare or assess AI, carry the selected system into Profile, then test deployment choices.'},
+  {key:'developer',icon:Brain,label:'AI development',detail:'Measure Training and Deployment, interpret Result, test prospective changes, then report.'},
 ];
 
 function JourneyButtons({onStart, compact=false}) {
@@ -52,10 +53,10 @@ export default function WalkthroughDock({onStart,showHint=false,onDismissHint}) 
   const [open,setOpen]=useState(false);
   return <aside className={`walkthroughDock ${open?'open':''} ${showHint?'showHint':''}`} aria-label="Guided walkthroughs">
     {showHint&&<div className="walkthroughDockCoach" role="status">
-      <strong>Thanks — walkthroughs stay here.</strong>
-      <span>You can reopen them at any time.</span>
+      <strong>Walkthroughs stay here.</strong>
+      <span>Reopen them anytime. Next, CEDARS will point out the display-mode control.</span>
       <i aria-hidden="true">↓</i>
-      <button type="button" onClick={onDismissHint}>Got it</button>
+      <button type="button" onClick={onDismissHint}>Next</button>
     </div>}
     <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)onDismissHint?.();}} aria-expanded={open}>
       <span>GUIDED WALKTHROUGH</span><strong>Explore CEDARS</strong><b aria-hidden="true">{open?'×':'→'}</b>

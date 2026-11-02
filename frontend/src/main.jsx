@@ -1,3 +1,11 @@
+// CEDARS_CHUNK_9I3_REPORT_DEPT_AI_CLEANUP
+// CEDARS_CHUNK_9J_AI_RESULT_CONSOLIDATION
+// CEDARS_CHUNK_9K_NAV_AI_DARKMODE_CLEANUP
+// CEDARS_CHUNK_9L_AI_WORKFLOW_UNIFICATION
+// CEDARS_CHUNK_9M_MODAL_DARKMODE_HANDOFF
+// CEDARS_CHUNK_9J1_EMPTY_CONDITIONAL_REPAIR
+// CEDARS_CHUNK_9R14_REPORT_DARKMODE_COMPLETION
+// CEDARS_CHUNK_9R14B_UNIVERSAL_DARK_EVIDENCE
 import React, {useState, useMemo, useEffect, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
@@ -6,12 +14,14 @@ import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Po
 const Bar      = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Bar})));
 const Doughnut = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Doughnut})));
 const Scatter  = React.lazy(() => import('react-chartjs-2').then(m => ({default: m.Scatter})));
-import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot, Save, DollarSign} from 'lucide-react';
+import {Leaf, Brain, Download, Activity, Gauge, TrendingDown, Droplets, FileText, Trash2, Cpu, Car, TreePine, Plane, Factory, Zap, Target, AlertTriangle, BarChart3, Home, Flame, Lightbulb, Coffee, Monitor, Server, Database, Wifi, Cloud, Plus, ArrowRight, HardDrive, Globe, Heart, Scan, Bot, Save, DollarSign, Moon, Sun} from 'lucide-react';
 import './styles.css';
 import './styles/guided-demo.css';
 import './styles/tokens.css';
 import './styles/system.css';
 import './styles/production.css';
+import './styles/theme.css';
+// CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -188,6 +198,16 @@ function improveWorkflowStage(name) {
   return 'infrastructure';
 }
 
+// Optional current-state workflow measures. Blank means unknown; none is inferred from literature.
+// These are descriptive baseline fields and do not change the Department Score by themselves.
+const DEPARTMENT_WORKFLOW_METRICS = {
+  order: {key:'lowValueImagingPct', label:'Potentially avoidable / low-value imaging', unit:'%', min:0, max:100, step:0.5, help:'Use a local appropriateness or utilization review if one is available.'},
+  schedule: {key:'noShowCancelPct', label:'No-show / same-day cancellation rate', unit:'%', min:0, max:100, step:0.5, help:'A local scheduling signal; CEDARS does not automatically translate this rate into energy savings.'},
+  acquire: {key:'repeatRejectPct', label:'Repeat / reject rate', unit:'%', min:0, max:100, step:0.5, help:'Use modality or service-level quality data when available.'},
+  process: {key:'reportTurnaroundMin', label:'Median report turnaround time', unit:'min', min:0, max:1440, step:5, help:'Useful workflow context for downstream effects; it is not a footprint input on its own.'},
+  store: {key:'retentionYears', label:'Archive retention window', unit:'years', min:0, max:30, step:1, help:'Enter the local retention policy if known. This value also updates the storage-retention assumption used by CEDARS.'},
+};
+
 const AI_IMPROVE_LIFECYCLE = {
   develop:[
     {key:'define',step:'1',title:'Define',subtitle:'Goal, task & compute budget'},
@@ -248,11 +268,11 @@ import {
 // Realistic department archetypes — a quick-start starting fleet; every count stays editable.
 // Illustrative sizes, not authoritative. Only non-zero devices listed; the rest reset to 0 on apply.
 const DEPARTMENT_PRESETS = [
-  {key:'community',  label:'Community hospital',  desc:'Small general hospital',            equipment:{mri_15t:1, ct:1, xray:2, ultrasound:2, mammography:1, pacs:1, workstations:6}},
-  {key:'regional',   label:'Regional hospital',   desc:'Mid-size hospital with IR',         equipment:{mri_15t:1, mri_3t:1, ct:2, fluoro:1, angio:1, xray:3, ultrasound:3, mammography:1, pacs:1, workstations:12}},
-  {key:'academic',   label:'Academic center',     desc:'Large academic medical center',     equipment:{mri_15t:2, mri_3t:2, mri_7t:1, ct:4, petct:1, angio:2, fluoro:2, xray:5, ultrasound:6, mammography:2, pacs:2, workstations:30}},
-  {key:'outpatient', label:'Outpatient imaging',  desc:'Outpatient / ambulatory centre',    equipment:{mri_15t:1, ct:1, xray:2, ultrasound:3, mammography:1, pacs:1, workstations:6}},
-  {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}},
+  {key:'community',  label:'Community hospital',  desc:'Small general hospital',            equipment:{mri_15t:1, ct:1, xray:2, ultrasound:2, mammography:1, pacs:1, workstations:6}, practices:['Use standby mode during inactive periods','Apply an imaging data-retention policy']},
+  {key:'regional',   label:'Regional hospital',   desc:'Mid-size hospital with IR',         equipment:{mri_15t:1, mri_3t:1, ct:2, fluoro:1, angio:1, xray:3, ultrasound:3, mammography:1, pacs:1, workstations:12}, practices:['Optimize scheduling','Use standby mode during inactive periods','Apply an imaging data-retention policy']},
+  {key:'academic',   label:'Academic center',     desc:'Large academic medical center',     equipment:{mri_15t:2, mri_3t:2, mri_7t:1, ct:4, petct:1, angio:2, fluoro:2, xray:5, ultrasound:6, mammography:2, pacs:2, workstations:30}, practices:['Optimize scheduling','Consolidate servers','Use standby mode during inactive periods','Apply an imaging data-retention policy']},
+  {key:'outpatient', label:'Outpatient imaging',  desc:'Outpatient / ambulatory centre',    equipment:{mri_15t:1, ct:1, xray:2, ultrasound:3, mammography:1, pacs:1, workstations:6}, practices:['Optimize scheduling','Reduce repeat scans','Use standby mode during inactive periods']},
+  {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}, practices:['Consolidate servers','Apply an imaging data-retention policy']},
 ];
 
 // MRI cards rendered as a separate grouped section; other cards below.
@@ -962,7 +982,7 @@ function Sel({label: lbl, value, options, onChange}) {
 }
 
 function inputTargetName(target) {
-  return ({dashboard:'Radiology Department', ai:'AI Model & Informatics', scenario:'Improve', ecolabel:'Score & EcoLabel', report:'Report & Share'})[target] || 'your assessment';
+  return ({dashboard:'Radiology Department', ai:'AI Model & Informatics', scenario:'Decision Workspace', ecolabel:'Score & EcoLabel', report:'Report & Share'})[target] || 'your assessment';
 }
 function AssessmentContextStrip({settings, onEdit, ai = false, computeProvider = '', computeRegion = ''}) {
   const computeLocation = computeRegion
@@ -1517,18 +1537,18 @@ const SEO_PAGES = {
     canonical: SEO_BASE + '?page=ai',
   },
   ecolabel: {
-    title: 'CEDARS Score & EcoLabel | Radiology Sustainability Assessment',
-    description: 'Review the Radiology Department footprint, drivers, CEDARS Score, assessment boundary, and documented sustainability practices before reporting.',
+    title: 'CEDARS Decision Workspace | Radiology Sustainability Assessment',
+    description: 'Compare the current Radiology Department sustainability profile with prospective changes without overwriting the assessed baseline.',
     canonical: SEO_BASE + '?page=ecolabel',
   },
   ecolabelAi: {
-    title: 'CEDARS AI Score & EcoLabel | AI Environmental Assessment',
-    description: 'Review AI training, inference, deployment context, lifecycle coverage, and the current CEDARS Score before reproducible reporting.',
+    title: 'CEDARS AI Decision Workspace | AI Environmental Assessment',
+    description: 'Compare the current AI sustainability profile with prospective changes while preserving training, inference, deployment, and lifecycle assumptions.',
     canonical: SEO_BASE + '?page=ecolabel&label=ai',
   },
   scenario: {
-    title: 'Improve Radiology Sustainability | CEDARS',
-    description: 'Model prospective radiology sustainability interventions and compare projected energy, carbon, financial, operational, and CEDARS Score effects before implementation.',
+    title: 'CEDARS Decision Workspace | Radiology & AI Sustainability',
+    description: 'Test prospective radiology or AI sustainability changes against a fixed assessed Profile baseline without overwriting the current result.',
     canonical: SEO_BASE + '?page=scenario',
   },
   report: {
@@ -1555,13 +1575,12 @@ const SEO_PAGES = {
 
 function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, onAi, onFootprint, onImprove, onReport}) {
   const stage = page === 'input' || page === 'dashboard' || page === 'ai' || setupActive ? 1
-    : page === 'ecolabel' ? 2
-      : page === 'scenario' ? 3
-        : page === 'report' ? 4 : 0;
+    : (page === 'scenario' || page === 'ecolabel') ? 2
+      : page === 'report' ? 3 : 0;
   const selectedInput = activeProduct === 'ai' ? 'ai' : 'dashboard';
   return (
     <div className="workflowRailWrap" aria-label="CEDARS workflow navigation">
-      <div className="workflowRail">
+      <div className="workflowRail threeStageRail">
         <div className={`workflowRailStep ${stage===1?'active':''}`}>
           <button type="button" className="workflowRailLabel workflowRailLabelButton" onClick={onInput}><span>1</span><strong>PROFILE</strong></button>
           <div className="pathwayChips" role="group" aria-label="Sustainability Profile pathway">
@@ -1569,16 +1588,12 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
             <button type="button" className={selectedInput==='ai'?'on':''} aria-pressed={selectedInput==='ai'} onClick={onAi}>AI model</button>
           </div>
         </div>
-        <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onFootprint}>
-          <div className="workflowRailLabel"><span>2</span><strong>RESULTS</strong></div>
-          <small>Interpret footprint + boundary</small>
+        <button type="button" className={`workflowRailStep action ${stage===2?'active':''}`} onClick={onImprove}>
+          <div className="workflowRailLabel"><span>2</span><strong>DECISION WORKSPACE</strong></div>
+          <small className="workflowRailModePill">Improve</small>
         </button>
-        <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onImprove}>
-          <div className="workflowRailLabel"><span>3</span><strong>IMPROVE</strong></div>
-          <small>Test prospective changes</small>
-        </button>
-        <button type="button" className={`workflowRailStep action ${stage===4?'active':''}`} onClick={onReport}>
-          <div className="workflowRailLabel"><span>4</span><strong>REPORT &amp; SHARE</strong></div>
+        <button type="button" className={`workflowRailStep action ${stage===3?'active':''}`} onClick={onReport}>
+          <div className="workflowRailLabel"><span>3</span><strong>REPORT &amp; SHARE</strong></div>
           <small>Preserve assumptions + evidence</small>
         </button>
       </div>
@@ -1586,11 +1601,35 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
   );
 }
 
+/* CEDARS_CHUNK_9P1_SHELL_THEME_EVIDENCE_REPAIR
+   Restores the uncommitted global shell/theme layer lost during 9O2 reconstruction. */
+
 // ── App ───────────────────────────────────────────────────────────────────────
+/* CEDARS_CHUNK_9G_PROFILE_RESULT_CONSOLIDATION */
+/* CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION */
 function App() {
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = window.localStorage.getItem('cedars.theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+    } catch {}
+    return !!window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  });
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const dark = !!darkMode;
+    const targets = [document.documentElement, document.body, document.getElementById('root')].filter(Boolean);
+    targets.forEach(el => el.classList.toggle('dark', dark));
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    try { window.localStorage.setItem('cedars.theme', dark ? 'dark' : 'light'); } catch {}
+  }, [darkMode]);
   const [page, setPage] = useState(() => {
     if (typeof window === 'undefined') return 'landing';
     const requested = new URLSearchParams(window.location.search).get('page');
+    if (requested === 'ecolabel') return 'scenario';
     return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','evidence','about'].includes(requested) ? requested : 'landing';
   });
   const [reportStudioTab, setReportStudioTab] = useState('methods');
@@ -1607,13 +1646,23 @@ function App() {
   // so the user knows why they are here and has a clear path back after entering model details.
   const [aiEntryOrigin, setAiEntryOrigin] = useState('');
   const [aiEntryOriginModelId, setAiEntryOriginModelId] = useState('');
+  const [aiHandoffPrompt, setAiHandoffPrompt] = useState(null);
+  const [aiReturnCoachOpen, setAiReturnCoachOpen] = useState(false);
   const [aiExampleLoaded, setAiExampleLoaded] = useState('');
   const [clearClinicalAiConfirmOpen, setClearClinicalAiConfirmOpen] = useState(false);
   // When Score finds a missing prerequisite, remember the exact source field so the return
   // action can open, scroll to, and visibly highlight it instead of dropping the user at a page top.
   const [scoreAttention, setScoreAttention] = useState('');
-  const [deptProfileStage, setDeptProfileStage] = useState('context');
+  const [deptProfileStage, setDeptProfileStage] = useState(() => {
+    if (typeof window === 'undefined') return 'context';
+    const saved = window.sessionStorage.getItem('cedars.deptProfileStage');
+    return ['context','equipment','clinical-ai','review'].includes(saved) ? saved : 'context';
+  });
+  useEffect(()=>{
+    if (typeof window !== 'undefined') window.sessionStorage.setItem('cedars.deptProfileStage', deptProfileStage);
+  },[deptProfileStage]);
   const [walkthroughHint, setWalkthroughHint] = useState(false);
+
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
   // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
@@ -1662,6 +1711,13 @@ function App() {
   // AI scenario (model spec + cloud + scanner state). SCEN_DEFAULTS is the single source of truth
   // (shared with urlstate.js); restored from a shared link when present.
   const [scen, setScen] = useState(() => ({...SCEN_DEFAULTS, ...(initCfg.scen || {})}));
+  // CEDARS chunk 9M3 runtime repair: this effect must follow scen initialization.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    if (!(page==='ai' && scen.aiRoute==='compare')) return undefined;
+    const prior=document.body.style.overflow; document.body.style.overflow='hidden';
+    return ()=>{document.body.style.overflow=prior;};
+  }, [page, scen.aiRoute]);
   // Canonical model registry. `scen` is the currently open/editable model; the registry preserves
   // other models referenced by Department deployments so those deployments link rather than copy.
   const initialAiRecord = modelRecordFromScen({...SCEN_DEFAULTS, ...(initCfg.scen || {})});
@@ -1683,7 +1739,7 @@ function App() {
     setDeptLabel({
       deptName: '', hospitalName: '', region: '',
       annualKwh: '', annualStudies: '', renewablePct: '0',
-      activeInterventions: [], aiTools: [],
+      activeInterventions: [], workflowMetrics: {}, aiTools: [],
     });
     // Also wipe the AI Footprint page (model config, canonical registry, research label, cloud workloads).
     const defaultAiRecord = modelRecordFromScen(SCEN_DEFAULTS);
@@ -1692,6 +1748,7 @@ function App() {
     setDeptModelChoice('');
     setProvenance({equipment:{}});
     setScenarioInterventions([]);
+    setDeptWorkflowStage('order');
     setComparisonSelection(null);
     setComparisonDetailsOpen(true);
     setDeptSetupOpen(true);
@@ -1771,10 +1828,11 @@ function App() {
     const ex = AI_EXAMPLES.find(e => e.key === key); if (!ex) return;
     const region = ex.scen.cloudRegion || Object.keys(CLOUD_REGIONS[ex.scen.cloudProvider]?.regions ?? {})[0] || '';
     setAiExampleLoaded(key);
-    setAiProfileSection(ex.scen.ownMode==='spec' ? 'inference' : 'training');
+    setAiProfileSection('context');
     setScen({...SCEN_DEFAULTS, ...ex.scen, modelId:`example-${key}`, projectName:ex.scen.projectName || ex.title, cloudRegion: region, comparePreset:ex.bench?`${key}-v1`:'', compareCandidateKeys:ex.bench?referenceCandidateSpec(ex.bench):''});
     if (ex.bench) {
       setBenchModels(ex.bench.map((b, i) => ({...benchCfgFromLib(b.modelKey), ...b, id: `ex-${key}-${i}`})));
+      setComparisonDetailsOpen(false);
       setAiOpen(o => ({...o, benchmark: true}));
     }
     if (scrollToTop) window.setTimeout(() => window.scrollTo({top: 0, behavior: 'auto'}), 0);
@@ -1792,6 +1850,7 @@ function App() {
   const [improveAiStage, setImproveAiStage] = useState(() => scen.aiRoute==='compare'||scen.ownMode==='spec' ? 'procure' : 'develop');
   const [improveAiLifecycleStep, setImproveAiLifecycleStep] = useState(() => scen.aiRoute==='compare'||scen.ownMode==='spec' ? 'compare' : 'build');
   const [improveDeptStage, setImproveDeptStage] = useState('order');
+  const [deptWorkflowStage, setDeptWorkflowStage] = useState('order');
 
   // Keep the selected EcoLabel product directly linkable, and update page-level metadata for
   // traditional and AI-powered search engines after client-side navigation.
@@ -1905,9 +1964,10 @@ function App() {
   const [deptLabel, setDeptLabel] = useState(() => ({
     deptName: '', hospitalName: '', region: '',
     annualKwh: '', annualStudies: '', renewablePct: '0',
-    activeInterventions: initCfg.currentPractices || [], aiTools: [],
+    activeInterventions: initCfg.currentPractices || [], workflowMetrics: {}, aiTools: [],
   }));
   const setDept = (key, val) => setDeptLabel(d => ({...d, [key]: val}));
+  const setDeptWorkflowMetric = (key, val) => setDeptLabel(d => ({...d, workflowMetrics:{...(d.workflowMetrics || {}), [key]:val}}));
   const toggleIntervention = name => setDeptLabel(d => ({
     ...d,
     activeInterventions: d.activeInterventions.includes(name)
@@ -1984,13 +2044,15 @@ function App() {
     setScen({...SCEN_DEFAULTS, modelId:id, modelKey:'custom', projectName:'', taskType:'', paramsM:'', accuracyPct:'', accuracyMetric:'', trainGpu:'', trainHours:'', trainKwhMeasured:'', inferKwh:'', inferStudiesMonth:'', aiRoute:'', ownMode:'measured'});
     if (selectForDepartment) setDeptModelChoice(id); setBenchModels([]); setAiOpen(o=>({...o,benchmark:false,model:true})); return id;
   };
-  const openAiModelWorkspaceFromDepartment = (modelId = '', createNew = false) => {
+  const performOpenAiModelWorkspaceFromDepartment = (modelId = '', createNew = false) => {
     setAiEntryOrigin('department'); setAiEntryOriginModelId(modelId || deptModelChoice || '');
     if (createNew) { createBlankAiRecord(true); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
     else if (modelId && aiModels[modelId]) loadAiModelRecord(modelId, {scrollToTop:true});
     else { setS('aiRoute',''); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
   };
+  const openAiModelWorkspaceFromDepartment = (modelId = '', createNew = false) => setAiHandoffPrompt({modelId,createNew});
   const returnToClinicalAi = () => {
+    setAiReturnCoachOpen(false);
     if (aiEntryOriginModelId && aiModels[aiEntryOriginModelId]) setDeptModelChoice(aiEntryOriginModelId);
     setAiEntryOrigin(''); setAiEntryOriginModelId(''); setAiExampleLoaded(''); setDeptProfileStage('clinical-ai'); setPage('dashboard'); setDeptSetupOpen(false); setDashOpen(o=>({...o,clinicalai:true}));
   };
@@ -2117,8 +2179,8 @@ function App() {
     setDeptModelChoice(aiState.aiDeployments?.[0]?.modelId || '');
     const restoredTools = Array.isArray(aiState.aiDeployments) ? aiState.aiDeployments.map(toolFromDeployment) : (a.deptLabel?.aiTools || []);
     setDeptLabel({
-      deptName:'', hospitalName:'', region:'', annualKwh:'', annualStudies:'', renewablePct:'0', activeInterventions:[], aiTools:[],
-      ...(a.deptLabel || {}), aiTools: restoredTools,
+      deptName:'', hospitalName:'', region:'', annualKwh:'', annualStudies:'', renewablePct:'0', activeInterventions:[], workflowMetrics:{}, aiTools:[],
+      ...(a.deptLabel || {}), workflowMetrics:{...((a.deptLabel || {}).workflowMetrics || {})}, aiTools: restoredTools,
     });
     setCloudTracker(t => ({...t, ...(a.cloudTracker || {})}));
     setProvenance(a.provenance || {equipment:{}});
@@ -2162,28 +2224,26 @@ function App() {
         setPage('landing');
       } else if (stepIndex === 1) {
         setPage('dashboard');
+        setDeptProfileStage('equipment');
         setDeptSetupOpen(true);
       } else if (stepIndex === 2) {
-        applyLeaderDemoFleet();
-        setPage('dashboard');
-        setDeptSetupOpen(false);
-        setDashOpen(o => ({...o, clinicalai:true}));
-      } else if (stepIndex === 3) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setPage('dashboard');
         setDeptSetupOpen(false);
+        setDeptProfileStage('clinical-ai');
+        setDashOpen(o => ({...o, clinicalai:true}));
+      } else if (stepIndex === 3) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setEcoLabelMode('department');
+        goToScore('department');
       } else if (stepIndex === 4) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setEcoLabelMode('department');
         setPage('scenario');
-      } else if (stepIndex === 5) {
-        applyLeaderDemoFleet();
-        loadClinicalAiExample();
-        setEcoLabelMode('department');
-        setPage('ecolabel');
-      } else if (stepIndex >= 6) {
+      } else if (stepIndex >= 5) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setEcoLabelMode('department');
@@ -2210,20 +2270,15 @@ function App() {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
-        setPage('ai');
+        goToScore('ai');
       } else if (stepIndex === 5) {
-        const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setPage('ecolabel');
-      } else if (stepIndex === 6) {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
         setImproveAiStage('procure');
         setImproveAiLifecycleStep('deploy');
         setPage('scenario');
-      } else if (stepIndex >= 7) {
+      } else if (stepIndex >= 6) {
         const candidates = applyProcurementDemo();
         useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
         setEcoLabelMode('ai');
@@ -2244,19 +2299,24 @@ function App() {
         setScen(s => ({...s, aiRoute:'own', ownMode:'measure', aiSystemType:'imaging'}));
         setPage('ai');
       } else if (stepIndex === 3) {
-        setPage('ai');
         loadAiExample('cxr-measured', {scrollToTop:false});
+        setAiProfileSection('training');
+        setPage('ai');
       } else if (stepIndex === 4) {
         loadAiExample('cxr-measured', {scrollToTop:false});
-        setEcoLabelMode('ai');
-        setPage('ecolabel');
+        setAiProfileSection('inference');
+        setPage('ai');
       } else if (stepIndex === 5) {
+        loadAiExample('cxr-measured', {scrollToTop:false});
+        setEcoLabelMode('ai');
+        goToScore('ai');
+      } else if (stepIndex === 6) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
         setImproveAiStage('develop');
         setImproveAiLifecycleStep('build');
         setPage('scenario');
-      } else if (stepIndex >= 6) {
+      } else if (stepIndex >= 7) {
         loadAiExample('cxr-measured', {scrollToTop:false});
         setEcoLabelMode('ai');
         setPage('report');
@@ -2774,12 +2834,16 @@ function App() {
   const goToScore = mode => {
     setScoreAttention('');
     setEcoLabelMode(mode);
-    setPage('ecolabel');
-    window.setTimeout(() => {
-      const readiness = mode === 'ai' ? aiScoreReadiness : departmentScoreReadiness;
-      const target = readiness.ready ? (mode === 'ai' ? 'ai-score-panel' : 'department-score-panel') : `score-readiness-${mode}`;
-      document.getElementById(target)?.scrollIntoView({behavior:'smooth', block:'start'});
-    }, 80);
+    if (mode === 'ai') {
+      setAiProfileSection('review');
+      setPage('ai');
+      window.setTimeout(()=>document.getElementById('ai-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
+    } else {
+      setDeptProfileStage('review');
+      setDeptSetupOpen(false);
+      setPage('dashboard');
+      window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
+    }
   };
 
   // Auto-seed the AI model's training (amortised) + inference as locked compute lines,
@@ -2831,6 +2895,15 @@ function App() {
       {label:'Carbon kgCO₂e', data:[scenario.baseline.co2, scenario.projected.co2], backgroundColor:['#C3CDD2','#708894']},
     ],
   };
+  const chartScenarioOptions = useMemo(()=>({
+    responsive:true,
+    plugins:{legend:{labels:{color:darkMode?'#DDE7DF':'#455A64'}}},
+    scales:{
+      x:{ticks:{color:darkMode?'#C7D5CE':'#607D66'},grid:{color:darkMode?'rgba(126,171,146,.18)':'rgba(96,125,102,.12)'}},
+      y:{ticks:{color:darkMode?'#C7D5CE':'#607D66'},grid:{color:darkMode?'rgba(126,171,146,.18)':'rgba(96,125,102,.12)'}},
+    },
+  }),[darkMode]);
+
   // Scope 1/2/3 stacked horizontal bar — shown as % of total so all scopes are visible
   const scopeTotal = dash.scopes.scope1Kg + dash.scopes.scope2Kg + dash.scopes.scope3Kg + staffCommuteCo2 + networkTransferCo2;
   const scopePct   = v => scopeTotal > 0 ? rnd(v / scopeTotal * 100, 1) : 0;
@@ -2871,7 +2944,7 @@ function App() {
   ];
   const aiChecklistDone = aiChecklist.filter(([, ok]) => ok).length;
   const openAiChecklistItem = section => {
-    if (section === 'score') { setEcoLabelMode('ai'); setPage('ecolabel'); return; }
+    if (section === 'score') { setEcoLabelMode('ai'); setAiProfileSection('review'); setPage('ai'); return; }
     if (['training','inference','compute','water'].includes(section)) setAiProfileSection(section);
     setPage('ai');
     const target = section === 'model' ? 'ai-model-record'
@@ -3117,6 +3190,24 @@ function App() {
             <button className={page==='evidence'?'on':''} onClick={()=>setPage('evidence')}>Evidence</button>
             <button className={page==='about'?'on':''} onClick={()=>setPage('about')}>About</button>
           </nav>
+                    <span className="themeToggleWrap">
+            <button
+              type="button"
+              className="themeToggle"
+              onClick={()=>setDarkMode(v=>!v)}
+              aria-label={darkMode?'Switch to light mode':'Switch to dark mode'}
+              aria-pressed={darkMode}
+              aria-describedby="cedars-theme-tooltip"
+            >
+              {darkMode ? <Sun size={14}/> : <Moon size={14}/>}
+              <span>{darkMode?'Light':'Dark'}</span>
+            </button>
+            <span id="cedars-theme-tooltip" role="tooltip" className="themeToggleTooltip">
+              <strong>Dark mode &amp; display energy</strong>
+              <span>On OLED/AMOLED screens, darker pixels can use less power. Purdue researchers measured about 3-9% lower total phone power at typical indoor brightness; savings vary by screen and brightness.</span>
+              <a href="https://doi.org/10.1145/3458864.3467682" target="_blank" rel="noreferrer">OLED energy study &nearr;</a>
+            </span>
+          </span>
           <SaveUtility
             localSavedAt={localSavedAt}
             onSaveLocal={saveOnThisDevice}
@@ -3131,7 +3222,7 @@ function App() {
           />
           {/* Ambient CEDARS Score follows the active product; EcoLabel generation lives in Report & Share. */}
           {(() => { const aiProduct=page==='ai'||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai'); const b=aiProduct?ecoLabelData:deptLabelData; const bHas=aiProduct?b.graded:b.hasData; if(!bHas) return null; return (
-          <button onClick={()=>goToScore(aiProduct?'ai':'department')} title={aiProduct ? 'Current AI model score — open Score & EcoLabel' : 'Current Department score — open Score & EcoLabel'}
+          <div className="ambientScoreGroup"><button className="ambientScoreButton" onClick={()=>goToScore(aiProduct?'ai':'department')} title={aiProduct ? 'Current AI model score — open current result' : 'Current Department score — open current result'}
             style={{display:'inline-flex',alignItems:'center',gap:7,background:b.ratingBg,border:`1.5px solid ${b.ratingColor}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:'pointer',boxShadow:'none',flexShrink:0}}>
             <Leaf size={17}  fill={b.ratingColor}/>
             <span style={{fontSize:18,fontWeight:900,color:b.ratingColor,lineHeight:1}}>{b.score}</span>
@@ -3139,7 +3230,7 @@ function App() {
               <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:b.ratingColor}}>{aiProduct ? 'AI SCORE' : 'CEDARS SCORE'}</span>
               <span style={{fontSize:10,color:'#37474f'}}>{`${b.leaves}/5 leaves`}</span>
             </span>
-          </button>
+          </button><button type="button" className="ambientScoreClear" title="Clear the current assessment" onClick={()=>{if(window.confirm('Clear this CEDARS assessment and start over? This resets the current Department and AI inputs in this browser tab. Saved or downloaded copies are not deleted.'))resetToHome();}}>Clear</button></div>
           ); })()}
         </div>
       </header>
@@ -3153,20 +3244,25 @@ function App() {
           onInput={()=>{
             const aiProduct = page==='ai' || (page==='input'&&inputTarget==='ai') || (!['dashboard','input'].includes(page)&&ecoLabelMode==='ai');
             if (aiProduct) { setEcoLabelMode('ai'); setAiExampleLoaded(''); setS('aiRoute',''); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
-            else { setEcoLabelMode('department'); setDeptProfileStage('context'); setPage('dashboard'); setDeptSetupOpen(true); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
+            else { setEcoLabelMode('department'); setPage('dashboard'); setDeptSetupOpen(deptProfileStage!=='review'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
           }}
-          onDepartment={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
+          onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(deptProfileStage!=='review');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onAi={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
-            goToScore(aiProduct?'ai':'department');
+            setEcoLabelMode(aiProduct?'ai':'department');
+            setPage('scenario');
+            window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);
           }}
           onImprove={()=>{if(page==='ai'){setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}else if(page==='dashboard')setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onReport={()=>{if(page==='ai')setEcoLabelMode('ai');else if(page==='dashboard')setEcoLabelMode('department');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
         />
       )}
 
-      {!['why','evidence','about'].includes(page) && !guidedDemo && <><FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/><WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/></>}
+      {!guidedDemo && <>
+        {!['why','evidence','about'].includes(page) && <FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/>}
+        <WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/>
+      </>}
 
       {/* ── Home / Live Calculator ── */}
       {page==='landing' && (
@@ -3174,8 +3270,8 @@ function App() {
           <section className="homeHero">
             <div className="homeHeroCopy">
               <p className="eyebrow">Radiology + AI + Planetary Health</p>
-              <h1>Turn environmental impact into decisions.</h1>
-              <p className="homeHeroLead">Quantify energy, carbon, resource use, and lifecycle impacts with transparent, editable assumptions. Compare alternatives, test prospective changes, and preserve the evidence behind each result.</p>
+              <h1>Quantifiable sustainability for clinical imaging (AI) decisions.</h1>
+              <p className="homeHeroLead">Understand energy, carbon, and resource impacts of radiology (AI). Interactively simulate alternative decisions and view a methodology summary behind operational choices, with linked evidence.</p>
             </div>
           </section>
 
@@ -3185,17 +3281,15 @@ function App() {
             </div>
             <div className="homeStartGrid">
               <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
-              <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Clinical purpose, validation, candidate comparison, training, inference, and deployment.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
+              <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Clinical purpose, validation, candidate comparison, training, inference, and deployment.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
             </div>
             <div className="homeFlowHeading">CEDARS WORKFLOW</div>
-            <div className="homeFlow" aria-label="CEDARS assessment overview">
-              <span className="homeFlowStep"><b>1</b><span className="homeFlowCopy"><strong>Profile</strong><small>Define the current state</small></span></span>
+                        <div className="homeFlow homeFlowThreeStage" aria-label="CEDARS assessment overview">
+              <span className="homeFlowStep"><b>1</b><span className="homeFlowCopy"><strong>Profile</strong><small>Current state + Result</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
-              <span className="homeFlowStep"><b>2</b><span className="homeFlowCopy"><strong>Results</strong><small>Interpret footprint + boundary</small></span></span>
+              <span className="homeFlowStep"><b>2</b><span className="homeFlowCopy"><strong>Decision Workspace</strong><small>Test prospective changes</small></span></span>
               <ArrowRight className="homeFlowArrow" size={14}/>
-              <span className="homeFlowStep"><b>3</b><span className="homeFlowCopy"><strong>Improve</strong><small>Test prospective changes</small></span></span>
-              <ArrowRight className="homeFlowArrow" size={14}/>
-              <span className="homeFlowStep"><b>4</b><span className="homeFlowCopy"><strong>Report &amp; Share</strong><small>Preserve assumptions + evidence</small></span></span>
+              <span className="homeFlowStep"><b>3</b><span className="homeFlowCopy"><strong>Report &amp; Share</strong><small>Methods, evidence + outputs</small></span></span>
             </div>
           </section>
 
@@ -3283,13 +3377,14 @@ function App() {
             onChange={key=>{
               setDeptProfileStage(key);
               if(key==='context'||key==='equipment') setDeptSetupOpen(true);
+              if(key==='review') setDeptSetupOpen(false);
               if(key==='clinical-ai') setDashOpen(o=>({...o,clinicalai:true}));
             }}
             steps={[
-              {key:'context',title:'Context',detail:'Region, period, electricity'},
-              {key:'equipment',title:'Equipment',detail:'Fleet and energy baseline'},
-              {key:'clinical-ai',title:'Clinical AI',detail:'Local deployment',optional:true},
-              {key:'review',title:'Review',detail:'Current footprint and readiness'},
+              {key:'context',title:'Context',detail:'Region, equipment, energy baseline'},
+              {key:'equipment',title:'Workflow',detail:'Order → schedule → acquire → process → store'},
+              {key:'clinical-ai',title:'Digital + AI',detail:'Informatics & local AI',optional:true},
+              {key:'review',title:'Result',detail:'Current footprint & score'},
             ]}
           />
           <div className="departmentSetup">
@@ -3310,7 +3405,6 @@ function App() {
                       <span>FIRST STEP</span>
                       <h2 id="department-context-title">Shared assessment context</h2>
                     </div>
-                    <small>Used throughout this department assessment</small>
                   </div>
                   <div className="assessmentContextGrid">
                     <Sel label="Country / grid region" value={settings.region} options={META.regions} onChange={v=>set('region',v)}/>
@@ -3343,11 +3437,11 @@ function App() {
                 <AlertTriangle size={17}/>
                 <div>
                   <strong>Quick-start templates · illustrative data</strong>
-                  <p>Use a template to populate an editable starting fleet, then verify or replace every device count below. Or skip the templates and enter your own equipment directly.</p>
+                  <p>Use a template to load an editable example fleet and illustrative workflow practices. Verify or replace both before using the result, or enter your own department from scratch.</p>
                   <div className="quickStartChoices">
                     {DEPARTMENT_PRESETS.map(p=>(
                       <button key={p.key} title={p.desc} data-demo-target={p.key==='regional'?'leader-regional-preset':undefined}
-                        onClick={()=>set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])))}>
+                        onClick={()=>{set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])));setDept('activeInterventions',[...(p.practices||[])]);}}>
                         {p.label}
                       </button>
                     ))}
@@ -3410,7 +3504,7 @@ function App() {
             {/* Collapsible advanced equipment parameters — override literature defaults with
                 measured data (scanner logs, utility bills, a published benchmark). Only shown
                 per device type the user has actually added; blank field = literature default. */}
-            <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee',marginBottom:16}}>
+            <div className="departmentAdvancedEquipment" style={{marginTop:8,paddingTop:8,borderTop:'1px solid #eef7ee',marginBottom:16}}>
               <button onClick={()=>setAdvEquipExpanded(v=>!v)} style={{background:'none',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:6,width:'100%'}}>
                 <span style={{fontSize:11,fontWeight:700,color:'#607d66'}}>Advanced equipment parameters</span>
                 <span style={{fontSize:10,color:'#90a4ae'}}>{Object.keys(settings.equipmentOverrides).length
@@ -3479,30 +3573,65 @@ function App() {
               )}
             </div>
 
-            <div className="clinicalAiSetupPrompt">
-              <Brain size={18}/>
-              <div>
-                <strong>Clinical AI</strong>
-                <p>Add deployed AI when it changes local compute or imaging workflow.</p>
-              </div>
-              <button type="button" onClick={()=>{
-                setDashOpen(o=>({...o,clinicalai:true}));
-                setDeptProfileStage('clinical-ai');
-              }}>{(deptLabel.aiTools||[]).length ? 'Edit Clinical AI →' : 'Add Clinical AI →'}</button>
-            </div>
-            <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>For an AI system's own training and inference footprint, use <button onClick={()=>setPage('ai')} className="inlineTextButton">AI Model &amp; Informatics →</button>.</p>
-            <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
-              <button onClick={()=>setDeptProfileStage('review')} style={{padding:'8px 13px',fontSize:12}}>Done — review current footprint →</button>
-            </div>
+            {deptProfileStage==='context'&&<div className="profileStepProgression departmentContextProgression"><div><span>NEXT</span><strong>Continue to Workflow</strong><small>Document how imaging care is delivered today before adding optional Digital + AI.</small></div><button type="button" onClick={()=>{setDeptProfileStage('equipment');window.setTimeout(()=>document.getElementById('department-workflow-profile')?.scrollIntoView({behavior:'smooth',block:'start'}),50);}}>Next: Workflow →</button></div>}
+
 
               </div>
             )}
           </div>
 
+          {deptProfileStage==='equipment' && (()=>{
+            const stage=IMPROVE_WORKFLOW_STAGES.find(s=>s.key===deptWorkflowStage) || IMPROVE_WORKFLOW_STAGES[0];
+            const stagePractices=Object.keys(INTERVENTIONS).filter(name=>improveWorkflowStage(name)===deptWorkflowStage);
+            const selectedPractices=stagePractices.filter(name=>deptLabel.activeInterventions.includes(name));
+            const metric=DEPARTMENT_WORKFLOW_METRICS[deptWorkflowStage] || null;
+            const metricValue=metric ? String((deptLabel.workflowMetrics || {})[metric.key] ?? '') : '';
+            const enteredMetricCount=Object.values(deptLabel.workflowMetrics || {}).filter(v=>String(v ?? '').trim()!=='').length;
+            const updateMetric=value=>{
+              if(!metric) return;
+              setDeptWorkflowMetric(metric.key,value);
+              if(metric.key==='retentionYears') set('storageRetentionYears',value);
+            };
+            return <section id="department-workflow-profile" className="departmentWorkflowProfile" aria-labelledby="department-workflow-title">
+              <div className="departmentWorkflowProfileHeader">
+                <div><span>STEP 2 · CURRENT WORKFLOW</span><h2 id="department-workflow-title">Describe the current workflow</h2><p>Record what is already true today across the imaging pathway. Add local rates when they are available and leave them blank when they are not. If useful, these baseline details can be carried into Decision Workspace later.</p></div>
+                <b>{deptLabel.activeInterventions.length} practice{deptLabel.activeInterventions.length===1?'':'s'} · {enteredMetricCount} local metric{enteredMetricCount===1?'':'s'}</b>
+              </div>
+
+              <div className="improveWorkflowMap departmentBaselineWorkflowMap" role="tablist" aria-label="Current radiology workflow">
+                {IMPROVE_WORKFLOW_STAGES.slice(0,5).map((item,i)=><React.Fragment key={item.key}><button type="button" role="tab" aria-selected={deptWorkflowStage===item.key} className={deptWorkflowStage===item.key?'active':''} onClick={()=>setDeptWorkflowStage(item.key)}><span>{item.step}</span><strong>{item.title}</strong><small>{item.subtitle}</small></button>{i<4&&<ArrowRight size={18}/>}</React.Fragment>)}
+              </div>
+              <button type="button" className={`improveInfrastructureBand departmentBaselineInfrastructure ${deptWorkflowStage==='infrastructure'?'active':''}`} onClick={()=>setDeptWorkflowStage('infrastructure')}><span>+</span><div><strong>Infrastructure &amp; lifecycle</strong><small>Power management · electricity supply · equipment lifetime · materials</small></div></button>
+
+              <section className="departmentWorkflowStageDetail">
+                <div className="departmentWorkflowStageDetailHeading"><span>CURRENT WORKFLOW</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></div>
+                {metric&&<div className="workflowBaselineMetric">
+                  <div><span>OPTIONAL LOCAL METRIC</span><strong>{metric.label}</strong><p>{metric.help}</p></div>
+                  <div className="workflowMetricControl">
+                    <label><input type="number" min={metric.min} max={metric.max} step={metric.step} value={metricValue} onChange={e=>updateMetric(e.target.value)} placeholder="Unknown"/><span>{metric.unit}</span></label>
+                    {metricValue!==''&&<input type="range" min={metric.min} max={metric.max} step={metric.step} value={Math.min(metric.max,Math.max(metric.min,Number(metricValue)||0))} onChange={e=>updateMetric(e.target.value)} aria-label={`${metric.label} ${metric.unit}`}/>}
+                  </div>
+                </div>}
+                <div className="departmentCurrentPractices">
+                  <div className="departmentCurrentPracticesHeading"><span>CURRENT PRACTICES</span><p>Select a practice only when it is already part of routine operations.</p></div>
+                  <div className="departmentCurrentPracticeList">
+                    {stagePractices.map(name=>{const active=deptLabel.activeInterventions.includes(name);const meta=IMPROVE_INTERVENTION_META[name];return <label key={name} className={active?'active':''}><input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)}/><span><strong>{name}</strong>{meta?.description&&<small>{meta.description}</small>}</span></label>;})}
+                  </div>
+                  {stagePractices.length===0&&<p className="note">No current-practice item is defined for this stage yet.</p>}
+                </div>
+              </section>
+
+              <div className="departmentStageHandoff">
+                <div><span>NEXT</span><strong>Digital + AI is optional</strong><p>Add local informatics or Clinical AI when they are part of the Department today, or continue directly to Result.</p></div>
+                <div><button type="button" onClick={()=>{setDashOpen(o=>({...o,clinicalai:true}));setDeptProfileStage('clinical-ai');}}>Review Digital + AI →</button><button type="button" className="download" onClick={()=>{setDeptSetupOpen(false);setDeptProfileStage('review');window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Skip optional step — view Result →</button></div>
+              </div>
+            </section>;
+          })()}
+
           {/* ── Headline footprint: result first, methods second ── */}
           <section id="department-overview" className="footprintHero departmentFootprintHero workflowAnchor" aria-labelledby="department-footprint-title">
             <div className="footprintHeroHeader">
-              <div><span>PROFILE · CURRENT FOOTPRINT</span><h2 id="department-footprint-title">Department operational footprint</h2><p>Headline operational energy and carbon from the current setup. Extended estimates stay separate from the CEDARS Score boundary.</p></div>
+              <div><span>{deptProfileStage==='review'?'PROFILE REVIEW · CURRENT RESULT':'PROFILE · CURRENT FOOTPRINT'}</span><h2 id="department-footprint-title">Department operational footprint</h2><p>Headline operational energy and carbon from the current setup. Extended estimates stay separate from the CEDARS Score boundary.</p></div>
               <div className="footprintHeroPrimary"><small>Operational carbon {dash.totals.label}</small><strong>{fmtCo2(dash.totals.co2Kg)}</strong></div>
             </div>
             <div className="footprintMetricGrid">
@@ -3511,12 +3640,97 @@ function App() {
               <div><span>Recoverable idle</span><strong>{fmtKwh(dash.totals.idleWasteKwh)}{dash.totals.label}</strong></div>
             </div>
             <div className="footprintBoundaryGrid">
-              <div className="core"><span>CORE QUANTIFIED</span><strong>Operational energy &amp; carbon</strong><small>Used for the Department CEDARS Score.</small></div>
-              <div className="extended"><span>EXTENDED ESTIMATES</span><strong>{deptLabelData.extendedCategories?.length || 0} categories</strong><small>{deptLabelData.extendedCategories?.length ? deptLabelData.extendedCategories.slice(0,3).join(' · ') : 'Add local inputs when relevant.'}</small></div>
+              <div className="core"><span>SCORED BOUNDARY</span><strong>Operational energy &amp; carbon</strong><small>Used for the Department CEDARS Score.</small></div>
+              <div className="extended"><span>SHOWN SEPARATELY</span><strong>{deptLabelData.extendedCategories?.length || 0} categories</strong><small>{deptLabelData.extendedCategories?.length ? deptLabelData.extendedCategories.slice(0,3).join(' · ') : 'Add local inputs when relevant.'}</small></div>
               <div className="unassessed"><span>NOT ASSESSED</span><strong>{deptLabelData.notAssessedCategories?.length || 0} categories</strong><small>{deptLabelData.notAssessedCategories?.length ? deptLabelData.notAssessedCategories.slice(0,3).join(' · ') : 'No listed resource gaps.'}</small></div>
             </div>
-            <div className="footprintHeroActions"><button type="button" className="download" onClick={()=>openDash('energy')}>Explore drivers ↓</button><button type="button" onClick={()=>{setEcoLabelMode('department');setPage('scenario');}}>Improve this footprint →</button><button type="button" className="download" onClick={()=>goToScore('department')}>View score →</button></div>
+            <div className="footprintHeroActions"><button type="button" className="download" onClick={()=>openDash('energy')}>Explore drivers ↓</button><button type="button" onClick={()=>{setEcoLabelMode('department');setPage('scenario');}}>Test a change →</button><button type="button" className="download" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Decision workspace →</button></div>
           </section>
+
+          {deptProfileStage==='review' && (
+            <div className="profileCurrentResultStack departmentProfileResult" data-profile-result="department">
+              <div className="profileResultIntro profileResultIntroWithActions"><div><span>CURRENT DEPARTMENT RESULT</span><h2>Your department sustainability result</h2><p>This is the current assessed state. You can report it directly or optionally test prospective changes first.</p></div><div className="profileResultTopActions"><button type="button" className="download profileResultDecisionOptional" onClick={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Decision Workspace <small>optional</small> →</button><button type="button" className="profileResultReportAction" onClick={()=>{setEcoLabelMode('department');setReportStudioTab('methods');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Report &amp; Share →</button></div></div>
+              <div id="department-score-panel" className="scoreResultPanel workflowAnchor" style={{background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`}}>
+                            <div className="scoreResultHero">
+                            <div style={{textAlign:'center',flexShrink:0}}>
+                              <div style={{fontSize:50,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
+                              <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+                            </div>
+                            <div style={{flex:'1 1 260px'}}>
+                              <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
+                              <div style={{fontWeight:800,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
+                              <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study · ${deptLabelData.annualKwh.toLocaleString()} kWh/year`:'Complete your Radiology Department setup to generate the label.'}</div>
+                            </div>
+                            </div>
+                            <div className="scoreDataGrid" aria-label="Department score inputs and outputs">
+                              <div><span>Annual electricity</span><strong>{deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'}</strong></div>
+                              <div><span>Annual carbon</span><strong>{deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'}</strong></div>
+                              <div><span>Studies / year</span><strong>{deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'}</strong></div>
+                              <div><span>Energy / study</span><strong>{deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'}</strong></div>
+                              <div><span>Effective grid CI</span><strong>{deptLabelData.effectiveCi} kgCO₂e/kWh</strong></div>
+                              <div><span>Current practices</span><strong>{deptLabelData.interventionCount || 0} documented</strong></div>
+                            </div>
+
+              <div className="scoreResultCaveat">
+                <SystemEffectsCallout kind="department" onReview={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
+              </div>
+</div>
+
+
+                          <section className="scoreEverydayPanel" aria-labelledby="score-everyday-title">
+                            <div className="scoreEverydayHeader">
+                              <div>
+                                <span>INTERPRET THE RESULT</span>
+                                <h2 id="score-everyday-title">Put this result in everyday terms</h2>
+                                <p>{resultPeriodPhrase}, this footprint is approximately equivalent to:</p>
+                              </div>
+                              <div>
+                                <div className="scoreScopeQuestion">Which footprint should these examples explain?</div>
+                                <div className="scoreScopeToggle" role="group" aria-label="Footprint used for everyday equivalents">
+                                  <button type="button" aria-pressed={equivScope==='scope2'} className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}><span className="scoreScopeIndicator" aria-hidden="true"/><span><strong>Scored footprint</strong><small>Operational energy-related carbon · CEDARS Score boundary</small></span></button>
+                                  <button type="button" aria-pressed={equivScope==='all'} className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}><span className="scoreScopeIndicator" aria-hidden="true"/><span><strong>Scored + modeled estimates</strong><small>Adds assessed extended categories · Score does not change</small></span></button>
+                                </div>
+                                <div className="scoreScopeExplain">{equivScope==='scope2' ? <>Uses only the carbon included in the Department CEDARS Score.</> : <>Adds assessed direct and modeled extended categories for context. The CEDARS Score itself is unchanged.</>}</div>
+                                {equivScope==='all'&&!dash.scopes.scope1Assessed&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Direct fuel/gas emissions are not included because Scope 1 has not been assessed.</div>}
+                                {equivScope==='all'&&deptLabelData.notAssessedCarbonCategories?.length>0&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Additional carbon categories not assessed: {deptLabelData.notAssessedCarbonCategories.join(', ')}.</div>}
+                              </div>
+                            </div>
+
+                            {equivData.co2>0 ? (
+                              <>
+                                <div className="scoreEverydayGrid">
+                                  {[
+                                    {icon:<Car/>, n:fmtBig(equivData.car_km), unit:'km driven by a typical car'},
+                                    {icon:<Plane/>, n:fmtBig(equivData.flights_short), unit:'short-haul passenger flights'},
+                                    {icon:<TreePine/>, n:fmtBig(equivData.trees_year), unit:'mature trees’ annual CO₂ uptake'},
+                                    {icon:<Car/>, n:fmtBig(equivData.car_years), unit:'years of average car emissions'},
+                                  ].map((item,i)=>(
+                                    <div key={i} className="scoreEverydayItem">
+                                      <span className="scoreEverydayIcon">{item.icon}</span>
+                                      <strong>{item.n}</strong>
+                                      <small>{item.unit}</small>
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>Illustrative comparisons only. Tree uptake is a way to understand scale and does not represent a carbon offset.</p>
+                              </>
+                            ) : (
+                              <div style={{padding:'18px 16px',border:'1px dashed #c8d6c9',borderRadius:12,background:'#fafcfb',color:'#607d66',fontSize:12}}>
+                                Everyday comparisons will appear here once your assessment has a calculated carbon footprint.
+                              </div>
+                            )}
+
+                            <div className="scoreEverydayFoot" style={{marginTop:12}}>
+                              {equivData.kwh>0 ? <span><strong>Estimated electricity cost:</strong> {fmtMoney(equivData.cost, equivData.sym)} for this {resultPeriodNoun} at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}. Department electricity use is about {fmtBig(equivData.homes)} average household electricity-years.</span> : <span>Estimated electricity cost will appear once electricity use is calculated.</span>}
+                              <button type="button" className="inlineTextButton" onClick={()=>setPage('input')}>Edit assessment context →</button>
+                              <span>Equivalencies are interpretive aids; detailed factors and methodology remain in the source documentation.</span>
+                            </div>
+                          </section>
+
+                          <div className="ecoIntroBlock">
+                          </div>
+            </div>
+          )}
 
           {/* ── Primary input: deployed Clinical AI ── */}
           <div id="department-clinical-ai-input" className="primaryInputPanel workflowAnchor">
@@ -3535,6 +3749,19 @@ function App() {
 
             <div className="quickStartNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Quick start or enter your own Clinical AI</strong><p>The example is illustrative, not measured local data. Verify every study share and clinical-effect assumption before using the result.</p><div className="quickStartChoices"><button type="button" onClick={requestClearClinicalAi}>{(deptLabel.aiTools||[]).length>0?'Clear Clinical AI setup':'Start with no Clinical AI'}</button><button type="button" data-demo-target="leader-clinical-ai-example" onClick={loadClinicalAiExample}>Load example Clinical AI</button></div></div></div>
 
+            {aiHandoffPrompt && (
+              <div className="workflowHandoffBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setAiHandoffPrompt(null);}}>
+                <section className="workflowHandoffDialog" role="dialog" aria-modal="true" aria-labelledby="ai-handoff-title">
+                  <span>WORKFLOW HANDOFF</span>
+                  <h3 id="ai-handoff-title">Open AI Model &amp; Informatics?</h3>
+                  <p>You are leaving <strong>Radiology Department → Digital + AI</strong> to edit the shared technical AI record in more detail. Your Department inputs remain saved.</p>
+                  <div className="workflowHandoffPath"><b>Department → Clinical AI</b><span>→</span><b>AI Model &amp; Informatics</b></div>
+                  <p className="note">On the AI page, use <strong>Back to Clinical AI</strong> to return here. CEDARS will point it out when the page opens.</p>
+                  <div className="workflowHandoffActions"><button type="button" className="download" onClick={()=>setAiHandoffPrompt(null)}>Stay in Department</button><button type="button" onClick={()=>{const pending=aiHandoffPrompt;setAiHandoffPrompt(null);setAiReturnCoachOpen(true);performOpenAiModelWorkspaceFromDepartment(pending.modelId,pending.createNew);}}>Continue to AI Model &amp; Informatics →</button></div>
+                </section>
+              </div>
+            )}
+
             {clearClinicalAiConfirmOpen && (
               <div role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setClearClinicalAiConfirmOpen(false);}} style={{position:'fixed',inset:0,zIndex:1100,background:'rgba(20,35,25,.42)',display:'grid',placeItems:'center',padding:18}}>
                 <div role="dialog" aria-modal="true" aria-labelledby="clear-clinical-ai-title" style={{width:'min(540px,100%)',background:'white',borderRadius:18,padding:20,boxShadow:'0 24px 80px rgba(0,0,0,.22)',border:'1px solid #dce9dc'}}>
@@ -3548,7 +3775,7 @@ function App() {
               </div>
             )}
 
-            <div style={{border:'1px solid #dfe3d6',borderRadius:12,padding:'12px 14px',background:'#fff',marginBottom:10}}>
+            <div className="clinicalAiModelPickerCard" style={{marginBottom:10}}>
               <strong style={{fontSize:13,color:'#1b5e20'}}>1 · Choose a model</strong>
               <p className="note" style={{fontSize:11,margin:'5px 0 8px'}}>Use one menu to select a model already in this assessment, add a pre-filled reference model, or enter a model that is not listed. Choosing a reference model adds it to this assessment immediately. <strong>AI Model &amp; Informatics</strong> is where its shared technical details are edited.</p>
               <select id="clinical-ai-model-picker" value={deptModelChoice?`model:${deptModelChoice}`:''} onChange={e=>{const v=e.target.value;if(!v)return;if(v.startsWith('model:'))setDeptModelChoice(v.slice(6));else if(v.startsWith('library:'))registerLibraryModel(v.slice(8));else if(v==='__new__')openAiModelWorkspaceFromDepartment('',true);}} style={{width:'100%',padding:'9px 10px',border:'1px solid #c8e6c9',borderRadius:10,background:'white',fontSize:12,fontWeight:700,color:'#2E7D32'}}>
@@ -3579,14 +3806,14 @@ function App() {
             <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',border:'1.5px solid #c8e6c9',borderRadius:12,padding:'11px 14px',marginTop:12,background:'#fff'}}>
               <div style={{flex:'1 1 300px'}}><strong style={{fontSize:12,color:'#1b5e20'}}>Continue when you're ready</strong><div className="note" style={{fontSize:10,marginTop:3}}>{(deptLabel.aiTools||[]).length>0?<>{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size} model{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size===1?'':'s'} · {(deptLabel.aiTools||[]).length} local use{(deptLabel.aiTools||[]).length===1?'':'s'} configured. You can return here and add more later.</>:<>Clinical AI is optional. If this department currently uses none, continue with zero local AI uses.</>}</div></div>
               {(deptLabel.aiTools||[]).length>0&&<button type="button" className="download" onClick={()=>document.getElementById('clinical-ai-model-picker')?.scrollIntoView({behavior:'smooth',block:'center'})}>+ Add another model or use</button>}
-              <button type="button" onClick={()=>setDeptProfileStage('review')}>Done — review footprint →</button>
+              <button type="button" onClick={()=>{setDeptSetupOpen(false);setDeptProfileStage('review');window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Done — view Result →</button>
             </div>
           </section>
             )}
           </div>
 
           <section className="footprintExplore">
-            <div><span>EXPLORE THE RESULT</span><h2>What drives this footprint?</h2><p>Open only the detail you need. Energy, carbon scopes, infrastructure and resources remain available without competing with the headline result.</p></div>
+            <div><span>EXPLORE THE RESULT</span><h2>Explore drivers & assumptions</h2><p>Open only the detail you need. Energy, carbon scopes, infrastructure and resources remain available without competing with the headline result.</p></div>
             <div className="footprintExploreActions"><button type="button" className="download" onClick={()=>openDash('energy')}>Energy drivers</button><button type="button" className="download" onClick={()=>openDash('carbon')}>Carbon scopes</button><button type="button" className="download" onClick={()=>openDash('resources')}>Resources</button></div>
           </section>
 
@@ -3867,15 +4094,38 @@ function App() {
       {/* ── Equivalencies ── */}
       {/* ── AI ── */}
       {page==='ai' && (
-        <main className="aiPage">
+        <main className={`aiPage ${scen.aiRoute==='compare'?'aiComparisonModalActive':''}`}>
           <div className="aiPageHeaderRow" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:8}}>
-            <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('ai',true)}/>{visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>Current AI:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
-            <div className="aiPageActions">{aiEntryOrigin==='department'&&<button type="button" className="download aiContextBackButton" onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>Change pathway</button>}</div>
+            <div><h1 style={{margin:0}}>AI Model &amp; Informatics</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('ai',true)}/>{scen.aiRoute==='own'&&visibleAiModels.length>1&&<div className="contextLine" style={{marginTop:4}}><strong>AI model:</strong> <select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:''} onChange={e=>e.target.value&&loadAiModelRecord(e.target.value)}><option value="">Select model…</option>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></div>}</div>
+            <div className="aiPageActions">{aiEntryOrigin==='department'&&<button type="button" className={`download aiContextBackButton ${aiReturnCoachOpen?'aiReturnSpotlight':''}`} onClick={returnToClinicalAi}>← Back to Clinical AI</button>}{aiEntryOrigin==='improve'&&<button type="button" className="download aiContextBackButton" onClick={returnToAiImprove}>← Back to Improve</button>}{scen.aiRoute&&<button type="button" className="download aiChangePathwayButton" onClick={()=>{setAiExampleLoaded('');setAiProfileSection('context');setS('aiRoute','');window.setTimeout(()=>document.getElementById('ai-entry-start')?.scrollIntoView({behavior:'smooth',block:'start'}),40);}}>Change AI task</button>}</div>
           </div>
-          <AiExamplesUtility examples={AI_EXAMPLES} onExample={loadAiExample}/>
-
+          {aiEntryOrigin==='department' && aiReturnCoachOpen && (
+            <aside className="aiReturnCoach" role="status" aria-live="polite">
+              <span>RETURN PATH</span><strong>Need to go back to the Department?</strong><p>Use <b>Back to Clinical AI</b> above. It returns to the same Department → Digital + AI step with your work preserved.</p><button type="button" onClick={()=>setAiReturnCoachOpen(false)}>Got it</button>
+            </aside>
+          )}
+          <div className={`aiProfileTopDeck ${!scen.aiRoute?'entryContext':scen.aiRoute==='compare'?'comparisonContext':''}`}>
+            <StageCarousel
+              label="AI PROFILE"
+              steps={[
+                {key:'context',title:'Context',detail:'Purpose, task and evaluation'},
+                {key:'training',title:'Training',detail:'Development footprint or disclosure'},
+                {key:'inference',title:'Deployment',detail:'Inference, workload and compute'},
+                {key:'review',title:'Result',detail:'Current footprint & score'},
+              ]}
+              activeKey={!scen.aiRoute||scen.aiRoute==='compare'?'context':(aiProfileSection==='review'?'review':aiProfileSection==='inference'?'inference':aiProfileSection==='training'?'training':'context')}
+              onChange={key=>{
+                if(!scen.aiRoute||scen.aiRoute==='compare') return;
+                if(key==='context') { setAiProfileSection('context'); window.setTimeout(()=>document.getElementById('ai-model-record')?.scrollIntoView({behavior:'smooth',block:'start'}),40); }
+                else if(key==='training') { setAiProfileSection('training'); window.setTimeout(()=>document.getElementById('ai-training-section')?.scrollIntoView({behavior:'smooth',block:'start'}),60); }
+                else if(key==='inference') { setAiProfileSection('inference'); window.setTimeout(()=>document.getElementById('ai-inference-section')?.scrollIntoView({behavior:'smooth',block:'start'}),60); }
+                else if(key==='review') goToScore('ai');
+              }}
+            />
+              {scen.aiRoute==='compare'&&<div className="aiProfileTopDeckHint comparison"><strong>Candidate selection is part of Context.</strong><span>Define one like-for-like clinical question, choose a candidate, then continue with that model through Training → Deployment → Result.</span></div>}
+          </div>
           {aiEntryOrigin === 'department' && !aiExampleLoaded && (
-            <div className="quickStartNotice" style={{marginBottom:14,border:'2px solid #2E7D32',boxShadow:'0 4px 14px rgba(46,125,50,0.12)'}}><Brain size={17}/><div style={{width:'100%'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><strong>Linked to Department Clinical AI</strong><button type="button" onClick={returnToClinicalAi} style={{background:'#1b5e20',color:'#fff',fontWeight:800,padding:'7px 12px'}}>← Return to Clinical AI</button></div><p style={{marginBottom:0}}>Changes here update the shared AI profile used by the Department.</p></div></div>
+            <div className="quickStartNotice" style={{marginBottom:14,border:'2px solid #2E7D32',boxShadow:'0 4px 14px rgba(46,125,50,0.12)'}}><Brain size={17}/><div style={{width:'100%'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><strong>Linked to Department Clinical AI</strong><button type="button" onClick={returnToClinicalAi} style={{background:'#1b5e20',color:'#fff',fontWeight:800,padding:'7px 12px'}}>← Return to Clinical AI</button></div><p style={{marginBottom:0}}>You opened this shared AI record from Department → Clinical AI. Edit model and lifecycle details here, then use Back to Clinical AI to return to the department workflow.</p></div></div>
           )}
           {aiExampleLoaded && (()=>{const ex=AI_EXAMPLES.find(e=>e.key===aiExampleLoaded);return <div className="quickStartNotice aiExampleLoadedNotice" style={{marginBottom:14}}><AlertTriangle size={17}/><div><strong>Example loaded{ex?.title?`: ${ex.title}`:''}</strong><p>Example values are illustrative or literature-derived. Review them before using this as your starting point.</p><div className="quickStartChoices"><button type="button" onClick={()=>{setAiExampleLoaded('');setS('aiRoute','');}}>← Back to AI start</button><button type="button" onClick={useLoadedExampleAsStartingPoint}>Use as my starting point</button>{aiEntryOrigin==='department'&&<button type="button" onClick={returnToClinicalAi}>Return to Clinical AI</button>}</div></div></div>;})()}
 
@@ -3887,6 +4137,7 @@ function App() {
               systemType={scen.aiSystemType || ''}
               onSystemType={v => setS('aiSystemType', v)}
               onRoute={r => {
+                setAiProfileSection('context');
                 setScen(s => ({
                   ...s,
                   aiRoute:r,
@@ -3903,16 +4154,93 @@ function App() {
                 }
                 scrollToAiWorkspace();
               }}
-              onOwnMode={m => {setS('ownMode', m);setAiProfileSection(m==='spec'?'inference':'training');}}
+              onOwnMode={m => {setS('ownMode', m);setAiProfileSection('context');}}
               examples={AI_EXAMPLES} onExample={loadAiExample} onReset={startBlankAiRecord}
             />
+            <section className="aiEntryComputeContext" aria-labelledby="ai-entry-compute-title">
+              <div className="aiEntryComputeIntro"><Cpu size={19}/><div><span>AI COMPUTE / DEPLOYMENT CONTEXT</span><strong id="ai-entry-compute-title">Default AI compute geography</strong><small>Independent from the clinical context ({settings.region}). Training and deployment inherit this selection unless you set a phase-specific override later.</small></div></div>
+              <div className="aiEntryComputeFields">
+                <label>Provider<select value={scen.cloudProvider} onChange={e=>setCloudProvider(e.target.value)}><option value="">Unknown / not yet set</option>{META.cloudProviders.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                <label>Region<select value={scen.cloudRegion} onChange={e=>setS('cloudRegion',e.target.value)}><option value="">Unknown / provider average</option>{Object.entries(CLOUD_REGIONS[scen.cloudProvider]?.regions ?? {}).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
+              </div>
+            </section>
             </div>
           ) : (
+            <>
             <AiRouteStrip route={scen.aiRoute} ownMode={scen.ownMode} systemType={scen.aiSystemType || ''}
               onComparison={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
               onBackToComparison={benchModels.length ? ()=>{setS('aiRoute','compare');setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);} : null}
               onStartComparison={startComparisonFromCurrent}/>
+
+            </>
           )}
+
+          <AiExamplesUtility examples={AI_EXAMPLES} onExample={loadAiExample} activePathway={scen.aiRoute==='compare'?'compare':scen.aiRoute==='own'?(scen.ownMode==='spec'?'assess':'develop'):''}/>
+
+          {scen.aiRoute==='compare' && (
+            <div className="aiComparisonModalBackdrop" role="presentation">
+              <section className="aiComparisonModal" role="dialog" aria-modal="true" aria-labelledby="ai-comparison-modal-title">
+                <header className="aiComparisonModalHeader">
+                  <div><span>AI CANDIDATE SELECTION</span><h2 id="ai-comparison-modal-title">Compare candidates, then choose one model</h2><p>Comparison is a temporary selection step. The selected model returns to the same Context → Training → Deployment → Result profile.</p></div>
+                  <button type="button" className="download" onClick={()=>{setAiExampleLoaded('');setComparisonSelection(null);setS('aiRoute','');}}>Cancel comparison</button>
+                </header>
+
+                <details className="aiComparisonModalSection" open>
+                  <summary><span><b>1</b><strong>Decision &amp; deployment context</strong></span><small>One like-for-like question and workload for every candidate</small></summary>
+                  <div className="aiComparisonModalBody">
+                    <div className="aiCompareSharedDefinition">
+                      <label>Clinical task / intended use<input value={scen.compareClinicalTask||''} onChange={e=>setS('compareClinicalTask',e.target.value)} placeholder="e.g. PE triage on CTPA"/></label>
+                      <label>Clinical endpoint<input value={scen.compareEndpoint||''} onChange={e=>setS('compareEndpoint',e.target.value)} placeholder="e.g. case-level PE detection"/></label>
+                      <label>Validation cohort / dataset context<input value={scen.compareCohort||''} onChange={e=>setS('compareCohort',e.target.value)} placeholder="e.g. same local retrospective cohort"/></label>
+                    </div>
+                    <div className="aiCompareContextGrid">
+                      <label>Studies / month<input type="number" min="0" value={scen.inferStudiesMonth||''} onChange={e=>setScen(s=>({...s,compareVolumeSource:'custom',inferStudiesMonth:e.target.value}))}/></label>
+                      <Sel label="Cloud / deployment" value={scen.cloudProvider} options={META.cloudProviders} onChange={setCloudProvider}/>
+                      <label>Compute region<select value={scen.cloudRegion} onChange={e=>setS('cloudRegion',e.target.value)}>{Object.entries(CLOUD_REGIONS[scen.cloudProvider]?.regions ?? {}).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
+                      <label>Comparison basis<select value={scen.compareBasis||'lifecycle'} onChange={e=>setS('compareBasis',e.target.value)}><option value="lifecycle">Carbon/study incl. amortised training</option><option value="inference">Inference carbon/study only</option></select></label>
+                      {scen.compareBasis!=='inference'&&<label>Expected deployment (months)<input type="number" min="1" value={scen.deployMonths} onChange={e=>setS('deployMonths',e.target.value)}/></label>}
+                    </div>
+                    <p className="note">CEDARS holds workload and compute context constant across candidates. Performance comparison is only interpretable when task, endpoint, cohort, metric, unit, and direction are like-for-like.</p>
+                  </div>
+                </details>
+
+                <details className="aiComparisonModalSection" open={comparisonDetailsOpen} onToggle={e=>setComparisonDetailsOpen(e.currentTarget.open)}>
+                  <summary><span><b>2</b><strong>Candidate inputs</strong></span><small>{benchModels.length} candidate{benchModels.length===1?'':'s'} · {comparisonDetailsOpen?'hide editing':'review / edit'}</small></summary>
+                  <div className="aiComparisonModalBody">
+                    <div className="aiCompareCandidateToolbar"><p>Keep only the inputs needed for the side-by-side decision here. Detailed lifecycle documentation continues after one candidate is selected.</p><button type="button" onClick={addBenchModel} disabled={benchModels.length>=6}><Plus size={14}/> Add candidate</button></div>
+                    <div className="aiCompareCandidateEditorGrid">
+                      {benchModels.map((candidate,index)=><article className="aiCompareCandidateEditor" key={candidate.id}>
+                        <header><strong>Candidate {String.fromCharCode(65+index)}</strong>{benchModels.length>2&&<button type="button" title="Remove candidate" onClick={()=>removeBenchModel(candidate.id)}><Trash2 size={15}/></button>}</header>
+                        <label>Product / model name<input value={candidate.label} onChange={e=>updateBenchLabel(candidate.id,e.target.value)}/></label>
+                        <label>Starting template<select value={candidate.modelKey} onChange={e=>updateBenchTemplate(candidate.id,e.target.value)}>{AI_MODEL_LIBRARY.map(m=><option key={m.key} value={m.key}>{m.label}</option>)}</select></label>
+                        <div className="aiCompareCandidatePair"><label>Reported performance<input type="number" step="0.001" value={candidate.accuracyPct} onChange={e=>updateBenchModel(candidate.id,'accuracyPct',e.target.value)}/></label><label>Metric<select value={candidate.accuracyMetric} onChange={e=>updateBenchModel(candidate.id,'accuracyMetric',e.target.value)}>{['AUC','Accuracy','Sensitivity','Specificity','Dice','IoU','SSIM','PSNR','RadGraph F1','MAE','Other'].map(m=><option key={m} value={m}>{m}</option>)}</select></label></div>
+                        <label>Validation basis<select value={candidate.validationBasis||'Not specified'} onChange={e=>updateBenchModel(candidate.id,'validationBasis',e.target.value)}>{['Not specified','Development / internal validation only','External validation','Locally validated'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                        <label>Measured inference energy (kWh/study)<input type="number" min="0" step="0.0001" value={candidate.inferKwh||''} onChange={e=>updateBenchModel(candidate.id,'inferKwh',e.target.value)} placeholder="optional"/></label>
+                      </article>)}
+                    </div>
+                  </div>
+                </details>
+
+                <section className="aiComparisonModalResults">
+                  <div className="aiComparisonModalResultsHead"><span><b>3</b><strong>Choose one model</strong></span><small>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'} calculated</small></div>
+                  {!benchResults.comparisonDefinitionComplete&&benchResults.rows.length>1&&<div className="aiCompareWarning"><strong>Complete the shared task, endpoint, and validation cohort before interpreting relative performance.</strong><span>Environmental columns remain visible, but ranking should wait until the clinical comparison is like-for-like.</span></div>}
+                  <div className="aiCompareResultGrid">
+                    {benchResults.rows.map(r=><article className={`aiCompareResultCard ${r.pareto?'pareto':''}`} key={r.id}>
+                      <header><strong>{r.label}</strong>{r.pareto&&<span>★ Pareto-efficient</span>}</header>
+                      <div className="aiCompareResultMetrics"><span><small>Reported</small><b>{r.performanceValue} {r.performanceUnit}</b><em>{r.performanceMetric}</em></span><span><small>Operational carbon</small><b>{r.carbonPerStudyG} gCO₂e/study</b><em>{r.kwhPerStudy} kWh/study</em></span><span><small>At this workload</small><b>{r.aiFootprintMonthly} kgCO₂e/mo</b><em>training {fmtCo2(r.trainCo2)}</em></span></div>
+                      <button type="button" className="comparisonSelectButton" onClick={()=>useBenchModel(r.id)}>Use this candidate →</button>
+                    </article>)}
+                  </div>
+                  <details className="aiCompareMethodNote"><summary>How this comparison is interpreted</summary><p>Performance values are user-reported, not predicted by CEDARS. Carbon/study uses the selected comparison basis; embodied hardware remains a separate disclosure. After selection, complete or verify lifecycle fields in the normal AI Profile before reporting the result.</p></details>
+                </section>
+              </section>
+            </div>
+          )}
+
+          {scen.aiRoute === 'compare' && <section className="comparisonSelectionBridge" aria-label="Candidate selection before AI profile">
+            <span>SELECTION WORKSPACE · BEFORE AI PROFILE</span>
+            <div><strong>Compare candidates, then choose one model.</strong><p>This is a temporary decision step—not a second CEDARS workflow. After selection, the chosen model returns to Context → Training → Deployment → Result.</p></div>
+          </section>}
 
           {scen.aiRoute === 'compare' && (
             <div id="ai-comparison-workspace" data-ai-workspace-start className="workflowAnchor" style={{marginTop:12,display:'grid',gap:10}}>
@@ -3959,7 +4287,7 @@ function App() {
           {scen.aiRoute === 'compare' && (
             <div className="inputSummary comparisonWorkspaceSetup" style={{margin:'14px 0 0'}}>
               <div className="comparisonWorkspaceHeading">
-                <div><span>CANDIDATE COMPARISON</span><h2>Define the decision once</h2><p>Set one clinical question and one deployment context for every candidate. Essential inputs stay visible; procurement and technical metadata are optional.</p></div>
+                <div><span>CANDIDATE COMPARISON</span><h2>Comparison setup</h2><p>Set the shared clinical question and deployment assumptions once. Candidate-specific inputs stay secondary; the decision is made in Results & selection below.</p></div>
                 <button type="button" onClick={addBenchModel} disabled={benchModels.length>=6}><Plus size={14}/> Add candidate</button>
               </div>
               <div id="ai-shared-comparison-definition" style={{marginTop:14,padding:'11px 12px',border:'1px solid #c8e6c9',borderRadius:12,background:'#f7fbf8',scrollMarginTop:100}}>
@@ -4053,12 +4381,7 @@ function App() {
               </div>
               <p className="note" style={{margin:'10px 0 0',fontSize:11}}>Architecture and parameter count are optional procurement details; use measured inference energy when available. CEDARS applies the shared workload, provider and compute region to every candidate so the environmental comparison remains like-for-like.</p>
                 </div>
-              </details>
-              <div className="comparisonSetupActions">
-                <button type="button" disabled={benchResults.rows.length<2} onClick={()=>{setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Compare candidates ↓</button>
-                <small>{benchResults.rows.length<2?'Add at least two candidates to compare.':'Performance and environmental evidence appear together below.'}</small>
-              </div>
-            </div>
+              </details>            </div>
           )}
 
           {/* Legacy calculation editor retained temporarily for regression safety, but no longer rendered.
@@ -4614,15 +4937,7 @@ function App() {
           </button>
           {aiOpen['benchmark'] && (
           <section id="ai-benchmark" className="aiSection comparisonDecisionPanel workflowAnchor" style={{background:'none',boxShadow:'none',padding:0,marginTop:18}} data-demo-target="ai-candidate-results">
-            <div className="comparisonDecisionHeader"><div><span>COMPARISON RESULTS</span><h2>Results &amp; selection</h2><p>Each candidate uses the same clinical definition, workload, and compute context. Select one to continue into the AI Sustainability Profile.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>
-            <div className="comparisonProgress" aria-label="Candidate comparison workflow">
-              <span className={benchResults.comparisonDefinitionComplete?'done':'active'}><b>1</b> Clinical definition</span>
-              <span className={benchModels.length>=2?'done':benchResults.comparisonDefinitionComplete?'active':''}><b>2</b> Candidate inputs</span>
-              <span className={parseFloat(scen.inferStudiesMonth)>0?'done':benchModels.length>=2?'active':''}><b>3</b> Workload &amp; compute</span>
-              <span className={benchResults.rows.length>=2?'done':parseFloat(scen.inferStudiesMonth)>0?'active':''}><b>4</b> Results</span>
-              <span className={benchResults.rows.length>=2?'active':''}><b>5</b> Select candidate</span>
-            </div>
-            <p className="note" style={{marginBottom:8}}>
+            <div className="comparisonDecisionHeader"><div><span>COMPARISON RESULTS</span><h2>Choose one model to continue</h2><p>Use this focused selection workspace only to compare like-for-like candidates. Choosing one candidate closes the comparison step and returns that model to the four-step AI Profile above.</p></div><strong>{benchResults.rows.length} candidate{benchResults.rows.length===1?'':'s'}</strong></div>            <p className="note" style={{marginBottom:8}}>
               Compare candidates under the same deployment assumptions: <strong>{parseFloat(scen.inferStudiesMonth)>0?`${Number(scen.inferStudiesMonth).toLocaleString()} studies/month`:'study volume not yet set'}</strong> · <strong>{scen.cloudProvider}</strong> · <strong>{scen.cloudRegion || 'provider-average grid'}</strong>. The local radiology context remains {settings.region}.
             </p>
             <p className="note" style={{marginBottom:16,fontSize:12}}>
@@ -4689,7 +5004,7 @@ function App() {
                         <td style={{padding:'7px 10px',...hi(r.aiFootprintMonthly===best.aiFootprintMonthly)}}>{r.aiFootprintMonthly}</td>
                         <td style={{padding:'7px 10px',...hi(r.lifetimeCo2===best.lifetimeCo2)}}>{fmtCo2(r.lifetimeCo2)}</td>
                         <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>
-                          <button type="button" data-demo-target={r.id==='demo-candidate-a'?'ai-select-candidate':undefined} onClick={()=>useBenchModel(r.id)} className="comparisonSelectButton">Select →</button>
+                          <button type="button" data-demo-target={r.id==='demo-candidate-a'?'ai-select-candidate':undefined} onClick={()=>useBenchModel(r.id)} className="comparisonSelectButton">Use this candidate →</button>
                           {benchModels.length>2 && <button onClick={()=>removeBenchModel(r.id)} title="Remove" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button>}
                         </td>
                       </tr>
@@ -4777,29 +5092,79 @@ function App() {
 
           </>)}
 
-          {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && comparisonSelection && (
-            <div data-demo-target="ai-selected-candidate" style={{margin:'14px 0',padding:'12px 14px',border:'1px solid #a5d6a7',borderRadius:12,background:'#f1f8f1',display:'flex',justifyContent:'space-between',alignItems:'center',gap:14,flexWrap:'wrap'}}>
-              <div>
-                <span style={{fontSize:10,fontWeight:800,color:'#2E7D32',letterSpacing:'0.05em'}}>SELECTED FROM CANDIDATE COMPARISON</span>
-                <strong style={{display:'block',fontSize:15,color:'#1b5e20',marginTop:2}}>{comparisonSelection.label}</strong>
-                <p className="note" style={{margin:'3px 0 0',fontSize:11}}>This candidate now populates the AI Sustainability Profile. Review the carried-forward information, complete any missing lifecycle fields, then review Score &amp; EcoLabel.</p>
-              </div>
-              <button type="button" className="download" onClick={returnToComparison}>Return to comparison</button>
-            </div>
-          )}
 
           {scen.aiRoute === 'own' && scen.ownMode !== 'measure' && (
-            <div id="ai-profile-editor" data-ai-workspace-start data-demo-target="ai-record-row" className="aiRecordGrid aiRecordGridSingle workflowAnchor">
-              <div>
-                <div className="aiProfileEditorHeading" data-demo-target="ai-profile-status">
-                  <span>BUILD PROFILE</span>
-                  <h2>AI Sustainability Profile</h2>
-                  <p>Record the clinical context and lifecycle evidence once, then use the same profile for Score &amp; EcoLabel, Improve, and Report &amp; Share.</p>
-                </div>
-                <AiProfileWorkspace
+            <div id="ai-profile-editor" data-ai-workspace-start data-demo-target="ai-record-row" className="aiRecordGrid aiRecordGridSingle workflowAnchor aiProfileUsesTopDeck">
+              <div>                <AiProfileWorkspace
                   scen={scen} ecoLabel={ecoLabel} ecoLabelData={ecoLabelData}
                   section={aiProfileSection} onSection={setAiProfileSection}
                   checklistDone={aiChecklistDone} checklistTotal={aiChecklist.length}
+                  reviewContent={<>
+                    <div id="ai-score-panel" className="scoreResultPanel workflowAnchor" style={{background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`}}>
+                                  <div className="scoreResultHero">
+                                  <div style={{textAlign:'center',flexShrink:0}}>
+                                    <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
+                                    <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>OVERALL CEDARS SCORE</div>
+                                    {!ecoLabelData.graded&&<div className="aiScoreQualifier">NOT ASSIGNED · {ecoLabelData.scoreStatus==='training-unavailable'?'training/pretraining unavailable':ecoLabelData.scoreStatus==='deployment-workload-missing'?'deployment workload needed':'assessment incomplete'}</div>}
+                                  </div>
+                                  <div style={{flex:'1 1 260px'}}>
+                                    {ecoLabelData.graded ? <LeafRating leaves={ecoLabelData.leaves} size={22} color={ecoLabelData.ratingColor}/> : <div style={{fontSize:11,fontWeight:800,color:'#607d66'}}>No overall leaf Rating</div>}
+                                    <div style={{fontWeight:800,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint','modeled carbon intensity'):'Partial lifecycle coverage'}</div>
+                                    <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.graded?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · amortised training + inference`:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference reported separately`:'Complete the lifecycle inputs to calculate a score.'}</div>
+                                  </div>
+                                  </div>
+                                  <div className="scoreDataGrid" aria-label="AI score inputs and outputs">
+                                    <div><span>Lifecycle coverage</span><strong>{ecoLabelData.lifecycleCoverage}</strong></div>
+                                    <div><span>Training energy</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong></div>
+                                    <div><span>Training carbon</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO₂e` : 'Not available'}</strong></div>
+                                    <div><span>Inference energy</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : '—'}</strong></div>
+                                    <div><span>Inference carbon</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : '—'}</strong></div>
+                                    <div><span>Training compute</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainingProvider || '—'} · ${ecoLabelData.trainingRegion || 'provider average'}` : ecoLabelData.trainingStatusLabel}</strong></div>
+                                    <div><span>Inference compute</span><strong>{ecoLabelData.inferenceProvider || '—'} · {ecoLabelData.inferenceRegion || 'provider average'}</strong></div>
+                                    <div className="scoreWaterCell"><span>Water use {ecoLabelData.waterProv==='screening'&&<em>SCREENING</em>}</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `Training: ${ecoLabelData.waterLitres.toLocaleString()} L` : '—'}</strong>{ecoLabelData.waterProv!=='not-assessed'&&ecoLabelData.waterPerStudyMl>0&&<small>Inference: {ecoLabelData.waterPerStudyMl} mL/study</small>}{ecoLabelData.waterProv==='screening'&&<small>Default water-intensity factor; not a measured water footprint.</small>}<small>Reported separately; water does not currently affect the carbon-and-energy Score.</small></div>
+                                  </div>
+                                  {ecoLabelData.scoreStatus==='training-unavailable'&&<div className="aiInferenceScoreNotice"><div><span>PARTIAL LIFECYCLE COVERAGE</span><strong>{ecoLabelData.trainingStatusLabel}</strong><p>CEDARS reports the inference result but does not assign an overall Score or leaf Rating. An unknown training footprint is not treated as zero.</p></div></div>}
+                                  {ecoLabelData.scoreStatus==='deployment-workload-missing'&&<div className="aiInferenceScoreNotice"><div><span>DEPLOYMENT WORKLOAD NEEDED</span><strong>Training and inference are available, but they cannot yet be combined per study.</strong><p>Add expected deployment workload to amortise the one-time training footprint across use.</p></div><button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Add deployment workload →</button></div>}
+                                  <div className="aiScoreBasisBar"><div><span>ASSESSMENT COVERAGE</span><strong>{ecoLabelData.lifecycleCoverage}</strong><small>{ecoLabelData.graded?'Training is spread across expected use, then recurring inference is added per study.':ecoLabelData.scoreStatus==='training-unavailable'?'Inference is reported separately; the unavailable training/pretraining footprint prevents an overall score.':'Add the missing lifecycle inputs before interpreting an overall score.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
+                                  {showAiWorkloadExplore&&<div className="aiWorkloadExplorer">
+                                    <div className="aiWorkloadExplorerHead">
+                                      <div>
+                                        <span>EXPLORE WORKLOAD &amp; TOTAL IMPACT</span>
+                                        <h3>Intensity and total emissions answer different questions</h3>
+                                        <p>Try a deployment workload here without changing the saved assessment.</p>
+                                      </div>
+                                    </div>
+                                    <div className="aiWorkloadPreviewControl">
+                                      <label>
+                                        <span>Preview workload</span>
+                                        <div><input type="number" min="0" value={aiWorkloadPreview} placeholder="e.g. 5,100" onChange={e=>setAiWorkloadPreview(e.target.value)}/><strong>studies / month</strong></div>
+                                        <small>{ecoLabelData.inferStudies>0?`Current saved workload: ${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Current saved workload: not entered'}</small>
+                                      </label>
+                                    </div>
+                                    <div className="aiWorkloadMetrics"><div><span>Modeled carbon intensity</span><strong>{aiWorkloadScenario.intensityG!=null?`${aiWorkloadScenario.intensityG} gCO₂e/study`:'—'}</strong></div><div><span>Inference / month</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.inferenceMonthKg} kgCO₂e`:'—'}</strong></div><div><span>Training share</span><strong>{aiWorkloadScenario.trainingShareG!=null?`${aiWorkloadScenario.trainingShareG} gCO₂e/study`:'—'}</strong></div><div><span>Training + inference over deployment</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.deploymentKg} kgCO₂e`:'—'}</strong><small>Operational model only; embodied hardware remains a separate disclosure.</small></div></div>
+                                    <p>Higher use can spread one-time training emissions across more studies, lowering <strong>carbon intensity per study</strong>, while increasing <strong>total inference emissions</strong>. Use this explorer to test scale before changing the saved assessment.</p>
+                                    <div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>openAiChecklistItem('inference')}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div>
+                                  </div>}
+              <div className="scoreResultCaveat ai"><SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/></div>
+                                </div>              <div className="profileResultPrimaryAction"><span>Current result complete. Next, test a prospective change or prepare the result.</span><button type="button" onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Decision Workspace →</button><button type="button" className="download" onClick={()=>{setEcoLabelMode('ai');setReportStudioTab('methods');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Report &amp; Share →</button></div>
+                                <details className="aiCalculationDetails">
+                                  <summary>Calculation details &amp; assumptions <span>(expand to read more)</span></summary>
+                                  <div className="aiCalculationGrid">
+                                    <div><span>Training</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Not set'}</small></div>
+                                    <div><span>Inference</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
+                                    <div><span>Deployment</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Workload not entered'}</strong><small>{ecoLabelData.deployMonths || '—'} month deployment</small></div>
+                                    <div><span>Water</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `${ecoLabelData.waterLitres.toLocaleString()} L training` : 'Not quantified'}</strong><small>Reported separately from the carbon-and-energy Score</small></div>
+                                  </div>
+                                </details>
+                                <div className="ecoIntroBlock">
+                                  <details className="methodologyDetails">
+                                    <summary>How AI grading works</summary>
+                                    <div>
+                                      CEDARS currently scores <strong>modeled operational carbon intensity</strong> from AI training and inference; it is not a complete lifecycle assessment or an overall clinical-value / sustainability score. Training is a one-time cost and inference recurs with each use. When deployment workload is available, CEDARS can show training spread across expected use plus inference per study. Clinical value remains paramount, while water, embodied hardware, wider operational/workforce effects, and rebound/system effects remain separate disclosures or considerations.<Ref id="doo-policy-trustworthy-ai-2026" order={AI_IMPROVE_REFS}/> To see how a deployed model affects an imaging operation, attach it under <strong>Clinical AI</strong> on the Radiology Department tab. Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030). For the most accurate figures, measure training energy with <ExternalLink href={refUrl(REFS['codecarbon'])}>CodeCarbon</ExternalLink>, <code>nvidia-smi</code>, or your cloud provider's carbon dashboard.
+                                    </div>
+                                  </details>
+                                </div>
+                  </>}
                 >
                   <AiProfileEditor
                     scen={scen} ecoLabel={ecoLabel} ecoLabelData={ecoLabelData}
@@ -4808,23 +5173,12 @@ function App() {
                     waterPerKwh={WATER_PER_KWH} volumeEstimates={VOLUME_ESTIMATES} provenance={PROVENANCE}
                     refsOrder={AI_PAGE_REFS} onContribute={()=>setContributeOpen(true)}
                     section={aiProfileSection} onSection={setAiProfileSection}
+                    onChangeTask={()=>{setAiExampleLoaded('');setS('aiRoute','');setAiProfileSection('context');window.setTimeout(()=>document.getElementById('ai-entry-start')?.scrollIntoView({behavior:'smooth',block:'start'}),40);}}
                     localRegion={settings.region}
                     onMeasureEnergy={()=>{setS('ownMode','measure');window.setTimeout(()=>document.getElementById('ai-measure-workspace')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
                   />
                 </AiProfileWorkspace>
-              </div>
-              <div className="aiReportingBar" data-demo-target="ai-disclosure">
-                <div className="aiReportingBarMain">
-                  <div className="aiReportingBarLabel"><strong>Reporting completeness</strong><span>{aiChecklistDone} of {aiChecklist.length}</span></div>
-                  <div className="aiReportingTrack" role="progressbar" aria-label="Reporting completeness" aria-valuemin="0" aria-valuemax={aiChecklist.length} aria-valuenow={aiChecklistDone}><span style={{width:`${Math.round(aiChecklistDone/aiChecklist.length*100)}%`}}/></div>
-                  <div className="aiReportingActions">
-                    {aiChecklistDone < aiChecklist.length && <button type="button" className="download" onClick={()=>{const next=aiChecklist.find(([,ok])=>!ok);if(next)openAiChecklistItem(next[2]);}}>Review {aiChecklist.length-aiChecklistDone} gap{aiChecklist.length-aiChecklistDone===1?'':'s'}</button>}
-                    <button type="button" onClick={()=>goToScore('ai')}>View Score &amp; EcoLabel →</button>
-                  </div>
-                </div>
-                {aiChecklistDone < aiChecklist.length && <div className="aiReportingGapText">Needs review: {aiChecklist.filter(([,ok])=>!ok).map(([name])=>name).join(' · ')}</div>}
-              </div>
-            </div>
+              </div>            </div>
           )}
           </>)}
 
@@ -4834,23 +5188,29 @@ function App() {
       )}
 
       {/* ── Improve / intervention modelling ── */}
-      {page==='scenario' && (
+      {(page==='scenario'||page==='ecolabel') && (
         <main className="improvePage">
-          <h1 style={{margin:'0 0 6px'}}>Improve</h1>
+          <h1 style={{margin:'0 0 6px'}}>Decision Workspace</h1>
           <p className="note" style={{margin:'0 0 10px',fontSize:14}}>Choose Department or AI. Switching does not change either baseline.</p>
           <AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext('scenario',true)}/>
           <div className="improveScopeSelector" role="tablist" aria-label="Improve workspace"><button type="button" className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department</strong><small>Equipment, utilization, storage and workflows.</small></span></button><button type="button" className={ecoLabelMode==='ai'?'active':''} onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');}}><Brain size={19}/><span><strong>AI</strong><small>Development, deployment and monitoring.</small></span></button></div>
 
-          <DecisionWorkspaceSwitch
-            mode="improve"
-            kind={ecoLabelMode}
-            summary={ecoLabelMode==='ai'
-              ? {title:ecoLabelData.graded?`Score ${ecoLabelData.score} · ${ecoLabelData.effectivePerStudyG} gCO₂e/study`:ecoLabelData.lifecycleCoverage,detail:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study inference · current profile retained`:'Current AI profile retained as baseline'}
-              : {title:deptLabelData.hasData?`Score ${deptLabelData.score} · ${deptLabelData.co2PerStudy} kgCO₂e/study`:'Department result incomplete',detail:deptLabelData.hasData?`${deptLabelData.annualKwh.toLocaleString()} kWh/year · ${deptLabelData.annualStudies.toLocaleString()} studies/year`:'Current Department profile retained as baseline'}}
-            onResults={()=>{setPage('ecolabel');window.setTimeout(()=>document.getElementById('decision-workspace')?.scrollIntoView({behavior:'auto',block:'start'}),0);}}
-            onImprove={()=>window.setTimeout(()=>document.querySelector(ecoLabelMode==='ai'?'[data-demo-target="ai-improve-workspace"]':'[data-demo-target="department-improve-workspace"]')?.scrollIntoView({behavior:'smooth',block:'start'}),0)}
-            onReport={()=>{setReportStudioTab('methods');setPage('report');}}
-          />
+          {ecoLabelMode==='department' && !departmentScoreReadiness.ready && (
+            <div className="decisionBaselineRequiredCue" role="status">
+              <AlertTriangle size={17}/>
+              <div><span>REQUIRED BEFORE INTERPRETATION</span><strong>Department baseline incomplete</strong><p>Complete Context before interpreting a Department score or prospective change. You can still explore scenarios and save this assessment as a draft.</p></div>
+              <button type="button" onClick={()=>focusMissingScoreInput('department',departmentScoreReadiness.issues[0]?.key||'context')}>Complete Context →</button>
+            </div>
+          )}
+
+          {ecoLabelMode==='department' && <section className="decisionCompareHero department" aria-label="Current Department result and prospective scenario">
+            <div className="decisionCompareHeroHeading"><div><span>BASELINE → PROSPECTIVE</span><h2>Compare the current profile with a scenario</h2></div><div className="decisionCompareHeroActions"><button type="button" className="download" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);setDeptProfileStage('equipment');}}>Edit current profile</button><button type="button" onClick={()=>{setReportStudioTab('methods');setPage('report');}}>Report &amp; Share →</button></div></div>
+            <div className="decisionComparePanels">
+              <article className="decisionCompareCard baseline"><span>CURRENT PROFILE</span><strong>{deptLabelData.hasData?`Score ${deptLabelData.score}`:'Result incomplete'}</strong><small>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e/study · current assessed state`:'Complete the Department baseline before interpreting a score.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.baseline.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.baseline.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{deptLabelData.annualStudies>0?deptLabelData.annualStudies.toLocaleString():'—'}</b><em>studies/year</em></div></div></article>
+              <div className="decisionCompareArrow" aria-hidden="true"><span>→</span><small>{scenario.count?`${scenario.count} selected`:'test changes'}</small></div>
+              <article className={`decisionCompareCard prospective ${scenario.count?'active':''}`}><span>PROSPECTIVE SCENARIO</span><strong>{deptLabelData.hasData&&deptLabelData.potentialScore!=null?`Score ${deptLabelData.potentialScore}`:scenario.count?'Modeled scenario':'No changes selected'}</strong><small>{scenario.count?`${deptLabelData.potentialCo2PerStudy} kgCO₂e/study · modeled, not current state`:'Choose changes below to update this side without rewriting the baseline.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.projected.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.projected.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{scenario.count?`−${scenario.savings.pctEnergy}%`:'—'}</b><em>energy change</em></div></div></article>
+            </div>
+          </section>}
 
           {ecoLabelMode==='department' && (()=>{
             const price = getPrice(settings.region, settings.electricityPrice);
@@ -4886,37 +5246,18 @@ function App() {
             };
 
             return <>
-              <div className="improveStateStrip" data-demo-target="department-improve-state" aria-label="Improve workflow status">
-                <div><span>CURRENT ASSESSMENT</span><strong>Baseline</strong></div>
-                <ArrowRight size={18}/>
-                <div className="active"><span>YOUR SCENARIO</span><strong>{scenario.count} change{scenario.count===1?'':'s'} selected</strong></div>
-                <ArrowRight size={18}/>
-                <div><span>PROJECTED ASSESSMENT</span><strong>{scenario.count>0?'Calculated below':'Add a change to compare'}</strong></div>
-              </div>
-
               <section className="inputSummary improveWorkspace" data-demo-target="department-improve-workspace" style={{marginBottom:20}}>
-                <div className="improveWorkspaceHeading">
-                  <div><span>BUILD A SCENARIO</span><h2>Build your improvement scenario</h2><p>Start with where a change acts in the radiology workflow. CEDARS keeps that process view primary; modeled opportunities are shown as a secondary shortcut, not as a clinical ranking.</p></div>
-                  <div className="improveWorkspaceCount">{scenario.count} selected</div>
-                </div>
-
                 <div className="improveWorkspaceGrid">
                   <div className="improveChooser">
-                    <section className="improveOpportunities">
-                      <h3>Shortcut: largest modeled opportunities</h3>
-                      <div className="improveClinicalGuardrail"><strong>Clinical appropriateness is a prerequisite.</strong><span>This ordering shows modeled environmental opportunity only. Exclude any option that is not clinically appropriate or operationally safe; CEDARS does not trade patient care against carbon or cost.</span></div>
-                      <p className="note">This shortcut is ordered by modeled carbon reduction from the current assessment; it is not a clinical recommendation. Use the workflow navigator to understand where each change acts.</p>
-                      {ranked.length>0 ? <><div className="improveOpportunityList improveOpportunityPreview">{rankedPreview.map(renderOpportunityRow)}</div>{rankedMore.length>0&&<details className="improveOpportunityMore"><summary>Show {rankedMore.length} more modeled {rankedMore.length===1?'opportunity':'opportunities'}</summary><div className="improveOpportunityList">{rankedMore.map((row,i)=>renderOpportunityRow(row,i+rankedPreview.length))}</div></details>}</> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
-                    </section>
-
                     <section className="improveAllChanges">
-                      <div className="improveSectionHeading"><div><h3>Choose where change happens</h3><p>Select a care-delivery stage to reveal the relevant interventions, assumptions, and evidence. This workflow is the primary scenario-building view.</p></div><button type="button" className="inlineTextButton" onClick={()=>setImproveDeptStage('order')}>Reset to Order / need →</button></div>
+                      <div className="improveSectionHeading"><div><h3>Choose a workflow stage</h3><p>Start with the part of the imaging pathway you may want to change. Select a stage to see the available options, assumptions, and evidence.</p></div><div className="improveSectionHeadingActions"><span className="improveWorkspaceCount">{scenario.count} selected</span><button type="button" className="inlineTextButton" onClick={()=>setImproveDeptStage('order')}>Order / need →</button></div></div>
                       <div className="improveWorkflowMap" role="tablist" aria-label="Radiology sustainability workflow">
                         {IMPROVE_WORKFLOW_STAGES.slice(0,5).map((stage,i)=><React.Fragment key={stage.key}><button type="button" role="tab" aria-selected={improveDeptStage===stage.key} className={improveDeptStage===stage.key?'active':''} onClick={()=>setImproveDeptStage(stage.key)}><span>{stage.step}</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></button>{i<4&&<ArrowRight size={18}/>}</React.Fragment>)}
                       </div>
                       <button type="button" className={`improveInfrastructureBand ${improveDeptStage==='infrastructure'?'active':''}`} onClick={()=>setImproveDeptStage('infrastructure')}><span>+</span><div><strong>Infrastructure &amp; lifecycle</strong><small>Power management · electricity supply · equipment lifetime · materials</small></div></button>
-                      <SystemEffectsCallout kind="department" anchorId="department-system-effects"/>
+
                       <div className="improveStageHeader"><span>WORKFLOW STAGE</span><strong>{IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveDeptStage)?.title}</strong><small>{IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveDeptStage)?.subtitle}</small></div>
+                      {(()=>{const metric=DEPARTMENT_WORKFLOW_METRICS[improveDeptStage]||null;const raw=metric?String((deptLabel.workflowMetrics||{})[metric.key]??''):'';const current=deptLabel.activeInterventions.filter(name=>improveWorkflowStage(name)===improveDeptStage);if(!metric&&!current.length)return null;return <div className="improveCurrentBaseline"><span>CURRENT WORKFLOW</span>{metric&&<strong>{metric.label}: {raw!==''?`${raw} ${metric.unit}`:'not entered'}</strong>}{current.length>0&&<small>Already in place: {current.join(' · ')}</small>}{metric&&raw!==''&&<small>Recorded as baseline context; the prospective effect below still uses the stated CEDARS scenario assumption unless the underlying modeled input is changed.</small>}</div>;})()}
                       <div className="improveChangeGrid">
                         {individual.filter(row=>improveWorkflowStage(row.name)===improveDeptStage).map(row=>{
                           const active=scenarioInterventions.includes(row.name);
@@ -4934,6 +5275,12 @@ function App() {
                           </div>;
                         })}
                       </div>
+                    </section>
+
+                    <section className="improveOpportunities">
+                      <h3>Modeled opportunities from this profile</h3>
+                      <div className="improveClinicalGuardrail"><strong>Keep the clinical and operational requirements fixed.</strong><span>The ordering below reflects modeled environmental opportunity, not clinical priority.</span></div>
+                      {ranked.length>0 ? <><div className="improveOpportunityList improveOpportunityPreview">{rankedPreview.map(renderOpportunityRow)}</div>{rankedMore.length>0&&<details className="improveOpportunityMore"><summary>Show {rankedMore.length} more modeled {rankedMore.length===1?'opportunity':'opportunities'}</summary><div className="improveOpportunityList">{rankedMore.map((row,i)=>renderOpportunityRow(row,i+rankedPreview.length))}</div></details>}</> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
                     </section>
 
                     {scenario.usesCloud && <section className="improveAssumptions">
@@ -4966,35 +5313,12 @@ function App() {
                 </div>
               </section>
 
-              <section id="improve-before-after" className="inputSummary improveResultSection" style={{marginBottom:18}}>
-                <h2>Projected effect on your CEDARS Score</h2>
-                {(()=>{
-                  const cur=deptLabelData;
-                  const frac=scenario.baseline.co2>0?scenario.savings.co2/scenario.baseline.co2:0;
-                  const projCo2Study=rnd(cur.co2PerStudy*(1-frac),3);
-                  const projScore=cur.hasData?cedarsScore(projCo2Study,CEDARS_DEPT_LO,CEDARS_DEPT_HI):null;
-                  const projRating=projScore!=null?cedarsRating(projScore):null;
-                  const mkBox=(title,score,leaves,color,bg,label)=><div className="improveScoreBox" style={{background:bg,borderColor:color}}><span>{title}</span><div><strong style={{color}}>{score??'—'}</strong><div><LeafRating leaves={leaves} size={16} color={color}/><small style={{color}}>{label}</small></div></div></div>;
-                  return <><div className="improveScoreCompare">{mkBox('Current',cur.hasData?cur.score:null,cur.leaves,cur.ratingColor,cur.ratingBg,cur.ratingLabel)}<ArrowRight size={24}/>{mkBox(scenario.count>0?`Projected · ${scenario.count} change${scenario.count===1?'':'s'}`:'Projected',projScore,projRating?.leaves??0,projRating?.color??'#90a4ae',projRating?.bg??'#f5f5f5',projRating?.label??'')}</div>
-                    {projScore!=null&&(scenario.count===0?<p className="note">Add one or more changes above to project their combined impact.</p>:projScore===cur.score?<p className="note">The selected changes reduce the modeled footprint, but not enough to move the current operational CEDARS Score band. Modeled reduction: <strong>{scenario.savings.co2.toLocaleString()} kgCO₂e operational</strong>{scenario.embodied.savedCo2eKg>0?` plus ${scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3`:''}{scenario.contrast.savedCo2eKg>0?` plus ${scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast Scope 3`:''}.</p>:<p className="note">The selected scenario shifts the CEDARS Score <strong>{projScore>cur.score?'+':''}{projScore-cur.score}</strong> points ({cur.co2PerStudy} → {projCo2Study} kgCO₂e/study).</p>)}
-                  </>;
-                })()}
-              </section>
+              <details className="decisionComparisonDetails">
+                <summary>Chart &amp; calculation details</summary>
+                <div className="decisionComparisonDetailsBody"><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label><div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario} options={chartScenarioOptions}/></Suspense></section></div><p className="note">The comparison above is authoritative. This chart uses the same combined intervention engine and keeps overlapping energy pools from being double-counted.</p></div>
+              </details>
 
-              <section className="inputSummary improveResultSection" style={{marginBottom:18}}>
-                <div className="improveResultHeading"><div><h2>Energy, carbon &amp; cost — before vs after</h2><p>Combined results use the same intervention engine as the scenario builder above.</p></div><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label></div>
-                <div className="scenarioGrid">
-                  <section className="card"><div className="cardHead"><Gauge/><span>Baseline ({settings.timePeriod})</span></div><p><b>{scenario.baseline.kwh.toLocaleString()} kWh</b></p><p>{scenario.baseline.co2.toLocaleString()} kgCO₂e</p><p style={{color:'#607d66'}}>{fmtMoney(scenario.baseline.kwh*price,sym)}</p></section>
-                  <section className="card savings"><div className="cardHead"><TrendingDown/><span>Projected savings</span></div><b>−{scenario.savings.kwh.toLocaleString()} kWh</b><p>−{scenario.savings.co2.toLocaleString()} kgCO₂e operational</p>{scenario.savings.co2>0&&<p className="note" style={{fontSize:10}}>≈ {fmtBig(scenario.savings.co2/CAR_CO2_KG_KM)} km of typical car-travel emissions for this {periodNoun}.</p>}<p style={{fontWeight:800,color:'#1b5e20'}}>−{fmtMoney(scenario.savings.kwh*price,sym)}{dash.totals.label}</p><p><span className="badge">{scenario.savings.pctEnergy}% energy reduction</span></p>{scenario.contrast.savedCo2eKg>0&&<p style={{fontSize:11,color:'#607d66'}}>+ {scenario.contrast.savedCo2eKg.toLocaleString()} kgCO₂e contrast Scope 3</p>}{scenario.embodied.savedCo2eKg>0&&<p style={{fontSize:11,color:'#607d66'}}>+ {scenario.embodied.savedCo2eKg.toLocaleString()} kgCO₂e embodied Scope 3</p>}</section>
-                  <section className="card"><div className="cardHead"><Leaf/><span>After interventions</span></div><p><b>{scenario.projected.kwh.toLocaleString()} kWh</b></p><p>{scenario.projected.co2.toLocaleString()} kgCO₂e</p><p style={{color:'#607d66'}}>{fmtMoney(scenario.projected.kwh*price,sym)}</p></section>
-                </div>
-                <div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario}/></Suspense></section></div>
-              </section>
-
-              <div className="workflowNextStep">
-                <div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Results</strong><small>Your scenario remains prospective. Results continues to show the current Sustainability Profile until an implemented change is reflected in the underlying inputs.</small></div>
-                <div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('department');setPage('ecolabel');}}>Continue to Results <ArrowRight size={17}/></button><button className="download" onClick={()=>{setEcoLabelMode('department');setPage('report');}}>Report current profile</button></div>
-              </div>
+              <div className="prospectiveOnlyNote"><strong>Prospective scenario only.</strong><span>Changes tested here do not alter the current Department Profile. After implementation, update the affected Profile inputs and CEDARS will recalculate the current result.</span></div>
               <p className="note" style={{marginTop:12}}>Assessment context: {settings.region} — {settings.timePeriod} figures. Change these shared assumptions on Home or in Radiology Department setup.</p>
             </>;
           })()}
@@ -5025,204 +5349,108 @@ function App() {
               onOpenComparison={()=>{setPage('ai');setS('aiRoute','compare');ensureBenchModels();setAiOpen(o=>({...o,benchmark:true}));window.setTimeout(()=>document.getElementById('ai-benchmark')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}
               onResults={()=>{setEcoLabelMode('ai');setPage('ecolabel');}}
             />
-            <SystemEffectsCallout kind="ai" anchorId="ai-system-effects"/>
+
             <ReferenceList ids={AI_IMPROVE_REFS}/>
           </>}
           {false && ecoLabelMode==='ai' && <section className="aiImproveWorkspace" data-demo-target="ai-improve-workspace">
             <div className="aiImproveHeader"><div><span>AI MODEL &amp; INFORMATICS</span><h2>Improve AI · {improveAiStage==='develop'?'Develop / fine-tune':'Procure / deploy'}</h2><p>Use the lifecycle map to move from definition through monitoring. Development and procurement use different actions, but both point back to the same canonical AI model record.</p></div><div className="aiImproveModelPicker">{visibleAiModels.length>0?<><label>AI model<select value={visibleAiModels.some(m=>m.id===scen.modelId)?scen.modelId:visibleAiModels[0].id} onChange={e=>{const record=aiModels[e.target.value];if(record)setScen({...modelScenFromRecord(record,SCEN_DEFAULTS)});}}>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></label><small>Shows AI models already added to this CEDARS assessment.</small><button type="button" className="inlineTextButton" onClick={openAiModelsFromImprove}>Add or manage AI models →</button></>:<><strong>No AI models added yet</strong><small>Add a model before reviewing model-specific improvement opportunities.</small><button type="button" onClick={openAiModelsFromImprove}>Add an AI model →</button></>}</div></div>
             <div className="aiImproveStageLabel">LIFECYCLE STAGE</div><div className="aiImproveStageGrid"><button type="button" aria-selected={improveAiStage==='develop'} className={improveAiStage==='develop'?'active':''} onClick={()=>{setImproveAiStage('develop');setImproveAiLifecycleStep('build');}}><span>DEVELOP · FINE-TUNE</span><strong>Internally developed, fine-tuned, or retrained AI</strong><small>Training, experimentation, precision, model design, data and compute.</small>{improveAiStage==='develop'&&<b>SELECTED</b>}</button><button type="button" aria-selected={improveAiStage==='procure'} className={improveAiStage==='procure'?'active':''} onClick={()=>{setImproveAiStage('procure');setImproveAiLifecycleStep('compare');}}><span>PROCURE · DEPLOY</span><strong>Vendor / externally developed AI</strong><small>Candidate comparison, vendor questions, deployment assumptions and monitoring.</small>{improveAiStage==='procure'&&<b>SELECTED</b>}</button></div><div className="aiLifecycleMap">{AI_IMPROVE_LIFECYCLE[improveAiStage].map((stage,i)=><React.Fragment key={stage.key}><button type="button" className={improveAiLifecycleStep===stage.key?'active':''} aria-selected={improveAiLifecycleStep===stage.key} onClick={()=>setImproveAiLifecycleStep(stage.key)}><span>{stage.step}</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></button>{i<4&&<ArrowRight size={17}/>}</React.Fragment>)}</div>
             {(()=>{const stage=AI_IMPROVE_LIFECYCLE[improveAiStage].find(s=>s.key===improveAiLifecycleStep) || AI_IMPROVE_LIFECYCLE[improveAiStage][0];const items=(improveAiStage==='develop'?AI_IMPROVE_DEVELOP:AI_IMPROVE_PROCURE).filter(item=>aiImproveLifecycleStage(item.title,improveAiStage)===stage.key);return <><div className="aiImproveStageIntro"><strong>{stage.step} · {stage.title}</strong><p>{improveAiStage==='develop'?(stage.key==='build'?'Measure development compute and use explicit stopping/checkpoint policies before specialized optimization.':stage.key==='define'?'Set the clinical objective and compute budget before expanding model size or experimentation.':stage.key==='validate'?'Confirm that efficient settings preserve the required clinical performance.':stage.key==='deploy'?'Translate model efficiency into the actual serving hardware, utilization, and compute region.':'Track retraining, storage/hardware overhead, and demand growth after deployment.'):(stage.key==='compare'?'Compare clinical fit first, then request the environmental information needed for a like-for-like decision.':stage.key==='define'?'Define intended use, acceptable performance, and local workflow requirements before optimizing for efficiency.':stage.key==='validate'?'Validate both clinical performance and the deployment assumptions used in the environmental comparison.':stage.key==='deploy'?'Ask which validated serving/hosting options can reduce compute without changing clinical behavior.':'Keep vendor updates, hosting changes, and demand growth from turning today’s assumptions into stale ones.')}</p></div><div className="aiImproveRecommendationList">{items.map((item,i)=><article className="aiImproveRecommendation" key={item.title}><div className="aiImproveRank">{i+1}</div><div className="aiImproveRecommendationBody"><div className="aiImproveRecommendationTitle"><strong>{item.title}</strong><span className={`aiImprovePriority ${item.priority.toLowerCase()}`}>{item.priority}</span><span className="aiImproveMode">{item.mode}</span></div><p>{item.body}</p>{item.inputs&&<div className="aiImproveInputs"><strong>{item.mode==='CEDARS input'?'Updates':'May change'}:</strong> {item.inputs}</div>}<div className="aiImproveMeta"><span>{item.applies}</span><div className="improveEvidenceChips"><span>Evidence</span>{item.refs.map(id=>{const r=REFS[id];const author=(r?.authors||id).split(',')[0].split(' ')[0];return <ExternalLink key={id} href={refUrl(r)} className="improveEvidenceChip">{author} · {r?.venue||'Source'} {r?.year||''}</ExternalLink>;})}</div></div></div></article>)}</div>{improveAiStage==='procure'&&stage.key==='compare'&&<div className="aiImproveVendorPrompt integrated"><div><span>VENDOR DISCLOSURE CHECKLIST</span><strong>What should I ask for?</strong></div><p>Ask for product/model version, intended use, validation basis, training hardware/energy when available, inference energy or throughput on the proposed hardware, hosting region/PUE, expected calls or token use for LLM/agentic systems, integration path, and how software/model updates change these assumptions.</p><div className="aiImproveVendorActions"><button type="button" onClick={()=>{setPage('ai');setS('aiRoute','compare');ensureBenchModels();setAiOpen(o=>({...o,benchmark:true}));}}>Open candidate comparison →</button><button type="button" className="download" onClick={openAiModelsFromImprove}>Review AI model records →</button></div></div>}</>;})()}
-            <div className="aiImproveNote"><strong>How these recommendations affect your result.</strong> A recommendation does <strong>not</strong> change the CEDARS Score just because it is selected or followed. After implementation, update the values it actually changes—for example training kWh, inference energy, workload, hardware, or compute region. CEDARS then recalculates the Score; Report &amp; Share generates the downstream EcoLabel from the updated data.</div><SystemEffectsCallout kind="ai" anchorId="ai-system-effects"/>
-            <div className="workflowNextStep"><div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the AI result in Results</strong><small>Update the canonical AI record if needed, then interpret the current operational result before reporting it.</small></div><div className="workflowNextActions"><button className="workflowNextPrimary" onClick={()=>{setEcoLabelMode('ai');setPage('ecolabel');}}>Continue to Results <ArrowRight size={17}/></button><button className="download" onClick={()=>setPage('ai')}>Edit AI model first</button></div></div>
+            <div className="aiImproveNote"><strong>How these recommendations affect your result.</strong> A recommendation does <strong>not</strong> change the CEDARS Score just because it is selected or followed. After implementation, update the values it actually changes—for example training kWh, inference energy, workload, hardware, or compute region. CEDARS then recalculates the Score; Report &amp; Share generates the downstream EcoLabel from the updated data.</div>
+            <div className="prospectiveOnlyNote"><strong>Prospective scenario only.</strong><span>Changes tested here do not alter the current AI Profile. After implementation, update the affected AI inputs and CEDARS will recalculate the current result.</span></div>
             <ReferenceList ids={AI_IMPROVE_REFS}/>
           </section>}
         </main>
       )}
 
       {/* ── Results / Report & Share ── */}
-      {(page==='ecolabel' || page==='report') && (
+      {page==='report' && (
         <main className={page==='ecolabel'?'resultsPage':`reportPage reportStudio${reportStudioTab.charAt(0).toUpperCase()}${reportStudioTab.slice(1)}`}>
-          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Results' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
+          <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Decision Workspace' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}<AssessmentContextStrip settings={settings} ai={ecoLabelMode==='ai'} onEdit={()=>goToAssessmentContext(page,true)}/></div>
           <div className="researchAssessmentNotice">
             <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
           </div>
 
-          {page==='ecolabel' ? <>
-            <div className="ecoChooserHeader prominent">
-              <span>ASSESSMENT VIEW</span>
-              <h2>Choose which result to review</h2>
-              <p>Department and AI use different score boundaries but the same reporting principles.</p>
-            </div>
-            <div className="ecoProductChooser prominent" role="tablist" aria-label="CEDARS Results view">
-              <button type="button" className={`ecoProductChoice ${ecoLabelMode==='department'?'active':''}`} onClick={()=>selectEcoScore('department')} role="tab" aria-selected={ecoLabelMode==='department'}>
-                <span className="ecoProductIcon"><Activity size={20}/></span>
-                <span className="ecoProductText">
-                  <span className="ecoProductTitle">Radiology Department</span>
-                  <span className="ecoProductDesc">Footprint, drivers, boundary, and CEDARS Score.</span>
-                  <span className="ecoProductAction">Department results →</span>
-                </span>
-                {ecoLabelMode==='department' && <span className="ecoProductSelected">DEPARTMENT SELECTED</span>}
-              </button>
-              <button type="button" className={`ecoProductChoice ${ecoLabelMode==='ai'?'active':''}`} onClick={()=>selectEcoScore('ai')} role="tab" aria-selected={ecoLabelMode==='ai'}>
-                <span className="ecoProductIcon"><Brain size={20}/></span>
-                <span className="ecoProductText">
-                  <span className="ecoProductTitle">AI Model &amp; Informatics</span>
-                  <span className="ecoProductDesc">Training, inference, deployment, coverage, and CEDARS Score.</span>
-                  <span className="ecoProductAction">AI results →</span>
-                </span>
-                {ecoLabelMode==='ai' && <span className="ecoProductSelected">AI SELECTED</span>}
-              </button>
-            </div>
-            {ecoLabelMode==='department' && !departmentScoreReadiness.ready && (
-              <div id="score-readiness-department" className="scoreReadinessGate" role="status" aria-live="polite">
-                <AlertTriangle size={20}/>
-                <div className="scoreReadinessBody">
-                  <span>DEPARTMENT SCORE · INPUT NEEDED</span>
-                  <strong>{departmentScoreReadiness.issues.length===1?'One Department input is still needed.':`${departmentScoreReadiness.issues.length} Department inputs are still needed.`}</strong>
-                  <p>CEDARS keeps the Department baseline separate from Clinical AI. {deptLabelData.clinicalToolCount>0?'Your Clinical AI setup is saved, but the base Department footprint still needs the item below.':'Complete the item below; you do not have to use a quick-start example if you prefer to enter your own data.'}</p>
-                  <div className="scoreReadinessIssues">
-                    {departmentScoreReadiness.issues.map(issue=><button type="button" key={issue.key} onClick={()=>focusMissingScoreInput('department',issue.key)}><span><strong>{issue.title}</strong><small>{issue.detail}</small></span><b>{scoreIssueAction('department',issue.key)}</b></button>)}
-                  </div>
-                </div>
-              </div>
-            )}
-            {ecoLabelMode==='ai' && !aiScoreReadiness.ready && (
-              <div id="score-readiness-ai" className="scoreReadinessGate" role="status" aria-live="polite">
-                <AlertTriangle size={20}/>
-                <div className="scoreReadinessBody">
-                  <span>AI RESULT · INPUT NEEDED</span>
-                  <strong>{aiScoreReadiness.issues[0]?.title || 'Complete the AI model inputs.'}</strong>
-                  <p>{aiScoreReadiness.issues[0]?.detail}</p>
-                  <div className="scoreReadinessIssues">
-                    {aiScoreReadiness.issues.map(issue=><button type="button" key={issue.key} onClick={()=>focusMissingScoreInput('ai',issue.key)}><span><strong>{issue.title}</strong><small>{issue.detail}</small></span><b>{scoreIssueAction('ai',issue.key)}</b></button>)}
-                  </div>
-                </div>
-              </div>
-            )}
-            <DecisionWorkspaceSwitch
-              mode="results"
-              kind={ecoLabelMode}
-              summary={ecoLabelMode==='ai'
-                ? {title:ecoLabelData.graded?`Score ${ecoLabelData.score} · ${ecoLabelData.effectivePerStudyG} gCO₂e/study`:ecoLabelData.lifecycleCoverage,detail:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study inference · current profile`:ecoLabelData.trainingStatusLabel}
-                : {title:deptLabelData.hasData?`Score ${deptLabelData.score} · ${deptLabelData.co2PerStudy} kgCO₂e/study`:'Department result incomplete',detail:deptLabelData.hasData?`${deptLabelData.annualKwh.toLocaleString()} kWh/year · ${deptLabelData.annualStudies.toLocaleString()} studies/year`:'Complete the current Department profile'}}
-              onResults={()=>window.scrollTo({top:0,behavior:'smooth'})}
-              onImprove={()=>{setPage('scenario');window.setTimeout(()=>document.getElementById('decision-workspace')?.scrollIntoView({behavior:'auto',block:'start'}),0);}}
-              onReport={()=>{setReportStudioTab('methods');setPage('report');}}
-            />
-          </> : <>
-            <div className="reportProductTabsWrap">
-              <div className="reportProductTabsHeading">
-                <span>REPORT TYPE</span>
-                <strong>Choose the CEDARS product you are preparing</strong>
-              </div>
+          <div className="reportProductTabsWrap">
+              <div className="reportProductTabsHeading"><span>REPORT TYPE</span><strong>Choose the CEDARS product you are preparing</strong></div>
               <div className="reportProductTabs" role="tablist" aria-label="CEDARS reporting product">
-                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}>
-                  <Activity size={19}/>
-                  <span><strong>Department EcoLabel</strong><small>Radiology Department assessment</small></span>
-                  {ecoLabelMode==='department' && <b>Selected</b>}
-                </button>
-                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}>
-                  <Brain size={19}/>
-                  <span><strong>AI research report</strong><small>Methods, provenance &amp; optional Research Label</small></span>
-                  {ecoLabelMode==='ai' && <b>Selected</b>}
-                </button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department EcoLabel</strong><small>Radiology Department assessment</small></span>{ecoLabelMode==='department' && <b>Selected</b>}</button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}><Brain size={19}/><span><strong>AI research report</strong><small>Methods, provenance &amp; optional Research Label</small></span>{ecoLabelMode==='ai' && <b>Selected</b>}</button>
               </div>
             </div>
-            <ReportStudioTabs
-              active={reportStudioTab}
-              onChange={setReportStudioTab}
-              kind={ecoLabelMode}
-              summary={ecoLabelMode==='ai'?{title:ecoLabelData.projectName||'AI assessment',detail:ecoLabelData.lifecycleCoverage}:{title:deptLabelData.deptName||'Radiology Department',detail:deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e/study · Score ${deptLabelData.score}`:'Assessment incomplete'}}
-              onResults={()=>setPage('ecolabel')}
-            />
-          </>}
-          <div style={{display:ecoLabelMode==='department'?'block':'none'}}>
-            {page==='ecolabel' && <>
-            <div id="department-score-panel" className="scoreResultPanel workflowAnchor" style={{background:deptLabelData.ratingBg,border:`2px solid ${deptLabelData.ratingColor}`}}>
-              <div className="scoreResultHero">
-              <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:50,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData?deptLabelData.score:'—'}</div>
-                <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-              </div>
-              <div style={{flex:'1 1 260px'}}>
-                <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
-                <div style={{fontWeight:800,fontSize:16,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
-                <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e per imaging study · ${deptLabelData.annualKwh.toLocaleString()} kWh/year`:'Complete your Radiology Department setup to generate the label.'}</div>
-              </div>
-              </div>
-              <div className="scoreDataGrid" aria-label="Department score inputs and outputs">
-                <div><span>Annual electricity</span><strong>{deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'}</strong></div>
-                <div><span>Annual carbon</span><strong>{deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'}</strong></div>
-                <div><span>Studies / year</span><strong>{deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'}</strong></div>
-                <div><span>Energy / study</span><strong>{deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'}</strong></div>
-                <div><span>Effective grid CI</span><strong>{deptLabelData.effectiveCi} kgCO₂e/kWh</strong></div>
-                <div><span>Current practices</span><strong>{deptLabelData.interventionCount || 0} documented</strong></div>
-              </div>
-            </div>
-            <SystemEffectsCallout kind="department" onReview={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>document.getElementById('department-system-effects')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}/>
-
-            <section className="scoreEverydayPanel" aria-labelledby="score-everyday-title">
-              <div className="scoreEverydayHeader">
-                <div>
-                  <span>INTERPRET THE RESULT</span>
-                  <h2 id="score-everyday-title">What this means in everyday terms</h2>
-                  <p>{resultPeriodPhrase}, this footprint is approximately equivalent to:</p>
-                </div>
-                <div>
-                  <div className="scoreScopeToggle" aria-label="Emissions included in everyday equivalents">
-                    <button className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}><strong>Core quantified</strong><small>Operational energy/carbon · CEDARS Score boundary</small></button>
-                    <button className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}><strong>Core + extended estimates</strong><small>Additional modeled categories · not scored</small></button>
+            <div className="reportStudioLayout">
+              <ReportStudioTabs active={reportStudioTab} onChange={setReportStudioTab} kind={ecoLabelMode}/>
+              <section className={`reportStudioViewport ${reportStudioTab}`} aria-live="polite"><div className="reportStudioViewportInner">
+              {reportStudioTab==='methods' && (
+                <div className={`reportMethodsLead ${(ecoLabelMode==='department' ? !departmentScoreReadiness.ready : !aiScoreReadiness.ready) ? 'draft' : ''}`}>
+                  <div>
+                    <span>METHODS, ASSUMPTIONS &amp; PROVENANCE</span>
+                    <strong>{ecoLabelMode==='department' ? 'Department reporting record' : 'AI reporting record'}</strong>
+                    <p>{ecoLabelMode==='department'
+                      ? (departmentScoreReadiness.ready
+                        ? 'Expand the reporting text and reproducibility sections below to review the assumptions, evidence, and fields behind the current Department result.'
+                        : 'Draft assessment. Quantitative methods and reporting text populate as the required Department inputs are completed. You can still inspect assumptions and provenance and save this assessment as a draft.')
+                      : (aiScoreReadiness.ready
+                        ? 'Expand the reporting text, checklist, and provenance sections below to review the assumptions and evidence behind the current AI result.'
+                        : 'Draft or partial assessment. Add the required AI pathway and energy inputs to populate the quantitative result; available methods, assumptions, and provenance can still be reviewed and saved.')}</p>
                   </div>
-                  <div className="scoreScopeExplain"><strong>Core quantified</strong> shows operational energy-related carbon used by the Department Score, including operational cloud compute/archive where applicable. <strong>Core + extended estimates</strong> adds assessed direct emissions and modeled embodied, contrast, DICOM-transfer, patient-travel, and staff-commute categories without changing the Score.</div>
-                  {equivScope==='all'&&!dash.scopes.scope1Assessed&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Direct fuel/gas emissions are not included because Scope 1 has not been assessed.</div>}
-                  {equivScope==='all'&&deptLabelData.notAssessedCarbonCategories?.length>0&&<div className="note" style={{fontSize:10,marginTop:5,textAlign:'right'}}>Additional carbon categories not assessed: {deptLabelData.notAssessedCarbonCategories.join(', ')}.</div>}
-                </div>
-              </div>
-
-              {equivData.co2>0 ? (
-                <>
-                  <div className="scoreEverydayGrid">
-                    {[
-                      {icon:<Car/>, n:fmtBig(equivData.car_km), unit:'km driven by a typical car'},
-                      {icon:<Plane/>, n:fmtBig(equivData.flights_short), unit:'short-haul passenger flights'},
-                      {icon:<TreePine/>, n:fmtBig(equivData.trees_year), unit:'mature trees’ annual CO₂ uptake'},
-                      {icon:<Car/>, n:fmtBig(equivData.car_years), unit:'years of average car emissions'},
-                    ].map((item,i)=>(
-                      <div key={i} className="scoreEverydayItem">
-                        <span className="scoreEverydayIcon">{item.icon}</span>
-                        <strong>{item.n}</strong>
-                        <small>{item.unit}</small>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="note" style={{fontSize:10,margin:'8px 0 0'}}>Illustrative comparisons only. Tree uptake is a way to understand scale and does not represent a carbon offset.</p>
-                </>
-              ) : (
-                <div style={{padding:'18px 16px',border:'1px dashed #c8d6c9',borderRadius:12,background:'#fafcfb',color:'#607d66',fontSize:12}}>
-                  Everyday comparisons will appear here once your assessment has a calculated carbon footprint.
+                  {ecoLabelMode==='department' && !departmentScoreReadiness.ready && <button type="button" onClick={()=>focusMissingScoreInput('department',departmentScoreReadiness.issues[0]?.key||'context')}>Complete Context →</button>}
+                  {ecoLabelMode==='ai' && !aiScoreReadiness.ready && <button type="button" onClick={()=>focusMissingScoreInput('ai',aiScoreReadiness.issues[0]?.key||'pathway')}>Review AI Profile →</button>}
                 </div>
               )}
-
-              <div className="scoreEverydayFoot" style={{marginTop:12}}>
-                {equivData.kwh>0 ? <span><strong>Estimated electricity cost:</strong> {fmtMoney(equivData.cost, equivData.sym)} for this {resultPeriodNoun} at {equivData.sym}{equivData.pricePerKwh}/kWh · {settings.region}. Department electricity use is about {fmtBig(equivData.homes)} average household electricity-years.</span> : <span>Estimated electricity cost will appear once electricity use is calculated.</span>}
-                <button type="button" className="inlineTextButton" onClick={()=>setPage('input')}>Edit assessment context →</button>
-                <span>Equivalencies are interpretive aids; detailed factors and methodology remain in the source documentation.</span>
-              </div>
-            </section>
-
-            <div className="ecoIntroBlock">
-              <p><strong>Department result.</strong> The CEDARS Score summarizes operational carbon intensity within the stated boundary. Details and methodology are below.</p>
-              <details className="methodologyDetails">
-                <summary>Methodology &amp; scoring</summary>
-                <div>
-                  The CEDARS Score (0–100) and Rating (1–5 leaves) are based on <strong>operational energy-related kgCO₂e per imaging study</strong> — a measure of how efficiently the department converts energy into <em>delivered care</em>, so a busy department can score well even at a high absolute footprint while an under-used fleet does not. Operational cloud compute/archive is included when configured. Extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score. The current score anchors are transparent heuristic thresholds informed by published radiology carbon-intensity literature; they are <strong>not</strong> an empirically calibrated distribution of real departments. See the <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">full source list and assumptions</a>. The visual reporting concept draws on familiar ecolabel conventions such as Energy Star and the <a href="https://europa.eu/youreurope/citizens/consumers/shopping/energy-labels/index_en.htm" target="_blank" rel="noreferrer">EU Energy Label</a>.
-                </div>
-              </details>
-            </div>
-
-            </>}
+          <div style={{display:ecoLabelMode==='department'?'block':'none'}}>
+            {page==='ecolabel' && null}
             {page==='report' && <>
-            <details className="reportStageCard reportReviewCompact">
+            <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
+              <div className="reportStageHeading compact">
+                <div>
+                  <span>PREPARE YOUR CEDARS MATERIALS</span>
+                  <h2>Department EcoLabel</h2>
+                  <p>Download the presentation-ready EcoLabel. Methods text is kept in the separate Methods &amp; evidence output.</p>
+                </div>
+              </div>
+
+            <div className="reportLabelWorkspace" style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
+              <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
+                <div style={{background:'#1b5e20',padding:'14px 18px'}}>
+                  <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
+                  <div style={{color:'#A5D6A7',fontSize:13,marginTop:4}}>{deptLabelData.deptName}</div>
+                  <div style={{color:'#81C784',fontSize:11,marginTop:2}}>{deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}{deptLabelData.region} · {deptLabelData.date}</div>
+                </div>
+                <div style={{background:deptLabelData.ratingBg,padding:'16px 18px',display:'flex',alignItems:'center',gap:18}}>
+                  <div style={{textAlign:'center',flexShrink:0}}>
+                    <div style={{fontSize:48,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</div>
+                    <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
+                  </div>
+                  <div>
+                    <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
+                    <div style={{fontWeight:700,fontSize:15,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
+                    <div style={{fontSize:12,color:'#263238',marginTop:2}}>{deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e per imaging study` : 'Enter data above to calculate'}</div>
+                  </div>
+                </div>
+                {[
+                  ['Annual electricity',   deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'],
+                  ['Annual CO₂e',         deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
+                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
+                  ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
+                  ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
+                  ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
+                  ['Effective grid CI',    `${deptLabelData.effectiveCi} kgCO₂e/kWh (${deptLabelData.renewablePct}% renewable)`],
+                  ['Grid region',          deptLabelData.region],
+                  ...(deptLabelData.interventionCount>0 ? [['Current practices', `${deptLabelData.interventionCount} documented as implemented`]] : []),
+                ].map(([k,v],i)=>(
+                  <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 18px',background:i%2===0?'#f1f8f1':'white',fontSize:13,gap:12}}>
+                    <span style={{color:'#607d66',flexShrink:0}}>{k}</span>
+                    <span style={{fontWeight:700,color:'#263238',textAlign:'right'}}>{v}</span>
+                  </div>
+                ))}
+                <div style={{background:'#e8f5e9',padding:'8px 18px',fontSize:11,color:'#2E7D32'}}>
+                  Estimated with CEDARS · {deptLabelData.date} · CC BY 4.0
+                </div>
+              </div>
+
+              <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
+            <details className="reportStageCard reportReviewCompact reportLabelReadiness">
               <summary>{deptLabelData.hasData?'Ready to report · Review/edit Department inputs':'Department inputs need review'}</summary>
               <div className="reportReviewCompactBody">
               <div className="reportStageHeading">
@@ -5307,66 +5535,11 @@ function App() {
             </div>
               </div>
             </details>
-
-            <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
-              <div className="reportStageHeading compact">
-                <div>
-                  <span>PREPARE YOUR CEDARS MATERIALS</span>
-                  <h2>Department EcoLabel &amp; exports</h2>
-                  <p>Download the EcoLabel or copy a concise reporting paragraph. Expand the reproducibility options only when you need them.</p>
-                </div>
-              </div>
-
-            <div className="reportLabelWorkspace" style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
-              <div style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
-                <div style={{background:'#1b5e20',padding:'14px 18px'}}>
-                  <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
-                  <div style={{color:'#A5D6A7',fontSize:13,marginTop:4}}>{deptLabelData.deptName}</div>
-                  <div style={{color:'#81C784',fontSize:11,marginTop:2}}>{deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}{deptLabelData.region} · {deptLabelData.date}</div>
-                </div>
-                <div style={{background:deptLabelData.ratingBg,padding:'16px 18px',display:'flex',alignItems:'center',gap:18}}>
-                  <div style={{textAlign:'center',flexShrink:0}}>
-                    <div style={{fontSize:48,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</div>
-                    <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-                  </div>
-                  <div>
-                    <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
-                    <div style={{fontWeight:700,fontSize:15,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.ratingLabel}</div>
-                    <div style={{fontSize:12,color:'#263238',marginTop:2}}>{deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e per imaging study` : 'Enter data above to calculate'}</div>
-                  </div>
-                </div>
-                {[
-                  ['Annual electricity',   deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'],
-                  ['Annual CO₂e',         deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
-                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
-                  ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
-                  ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
-                  ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
-                  ['Effective grid CI',    `${deptLabelData.effectiveCi} kgCO₂e/kWh (${deptLabelData.renewablePct}% renewable)`],
-                  ['Grid region',          deptLabelData.region],
-                  ...(deptLabelData.interventionCount>0 ? [['Current practices', `${deptLabelData.interventionCount} documented as implemented`]] : []),
-                ].map(([k,v],i)=>(
-                  <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 18px',background:i%2===0?'#f1f8f1':'white',fontSize:13,gap:12}}>
-                    <span style={{color:'#607d66',flexShrink:0}}>{k}</span>
-                    <span style={{fontWeight:700,color:'#263238',textAlign:'right'}}>{v}</span>
-                  </div>
-                ))}
-                <div style={{background:'#e8f5e9',padding:'8px 18px',fontSize:11,color:'#2E7D32'}}>
-                  Estimated with CEDARS · {deptLabelData.date} · CC BY 4.0
-                </div>
-              </div>
-
-              <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
                 <button className="download" onClick={()=>downloadDeptPNG(deptLabelData)} disabled={deptLabelData.annualStudies===0}>
                   <Download/> Download PNG badge
                 </button>
-                <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} disabled={deptLabelData.annualStudies===0} style={deptCopied?{background:'#26A69A'}:undefined}>
-                  <FileText/> {deptCopied ? 'Copied!' : 'Copy reporting paragraph'}
-                </button>
-                <p className="note" style={{maxWidth:220,fontSize:12,margin:0}}>
-                  PNG badge: use in sustainability reports, posters, presentations, or accreditation materials.<br/><br/>
-                  Reporting paragraph: a concise starting point for a main report or sustainability-methods section; adapt it to your local reporting requirements.
-                </p>
+
+                <p className="note reportLabelUseNote" style={{maxWidth:220,fontSize:12,margin:0}}>Use the PNG EcoLabel in sustainability reports, posters, presentations, or other communication materials. Methods text is kept in the Methods &amp; evidence output.</p>
                 <div style={{marginTop:8}}>
                   <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
                   {CEDARS_RATINGS.map(r=>(
@@ -5381,7 +5554,20 @@ function App() {
               </div>
             </div>
 
-            <details className="reportDisclosureDetails reportMaterialsDetail">
+                        {!departmentScoreReadiness.ready && (
+                          <div className="reportMethodsEmptyState"><strong>No quantitative reporting paragraph yet.</strong><span>Complete the required Department context and workload inputs to generate it. Assumptions and reproducibility details remain available below.</span></div>
+                        )}
+                        {departmentScoreReadiness.ready && (
+              <details className="reportMethodsText reportDisclosureDetails reportMaterialsDetail reportParagraphPrimary" open>
+                <summary>Methods / reporting text</summary>
+                <div className="reportDisclosureDetailsBody">
+                  <p className="note reportDetailIntro">A concise starting point for a main sustainability report, Methods section, accreditation document, or institutional report. Review and adapt it for your local context.</p>
+                  <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} style={deptCopied?{background:'#26A69A'}:undefined}><FileText/> {deptCopied?'Copied!':'Copy reporting paragraph'}</button>
+                  <pre className="reportTextPreview">{generateDeptText(deptLabelData)}</pre>
+                </div>
+              </details>
+            )}
+<details className="reportDisclosureDetails reportMaterialsDetail">
               <summary>Reporting details &amp; reproducibility</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note reportDetailIntro">Review the fields CEDARS uses to make the Department EcoLabel understandable and reproducible. This detail can support a Methods section, sustainability report, accreditation documentation, or technical appendix when appropriate.</p>
@@ -5415,91 +5601,13 @@ function App() {
               })()}
               </div>
             </details>
-
-            {deptLabelData.annualStudies>0 && (
-              <details className="reportDisclosureDetails reportMaterialsDetail">
-                <summary>Reporting paragraph</summary>
-                <div className="reportDisclosureDetailsBody">
-                  <p className="note reportDetailIntro">A concise starting point for a main sustainability report, Methods section, accreditation document, or institutional report. Review and adapt it for your local context.</p>
-                  <button className="download" onClick={()=>{navigator.clipboard.writeText(generateDeptText(deptLabelData));setDeptCopied(true);setTimeout(()=>setDeptCopied(false),2000);}} style={deptCopied?{background:'#26A69A'}:undefined}><FileText/> {deptCopied?'Copied!':'Copy reporting paragraph'}</button>
-                  <pre className="reportTextPreview">{generateDeptText(deptLabelData)}</pre>
-                </div>
-              </details>
-            )}
             </section>
 
             </>}
           </div>
 
           <section id="ai-ecolabel" className="aiSection" style={{display:ecoLabelMode==='ai'?'block':'none',background:'none',boxShadow:'none',padding:0,marginTop:8}}>
-            {page==='ecolabel' && <>
-            <div id="ai-score-panel" className="scoreResultPanel workflowAnchor" style={{background:ecoLabelData.ratingBg,border:`2px solid ${ecoLabelData.ratingColor}`}}>
-              <div className="scoreResultHero">
-              <div style={{textAlign:'center',flexShrink:0}}>
-                <div style={{fontSize:50,fontWeight:900,color:ecoLabelData.ratingColor,lineHeight:1}}>{ecoLabelData.graded?ecoLabelData.score:'—'}</div>
-                <div style={{fontSize:10,fontWeight:700,color:ecoLabelData.ratingColor,letterSpacing:'0.04em'}}>OVERALL CEDARS SCORE</div>
-                {!ecoLabelData.graded&&<div className="aiScoreQualifier">NOT ASSIGNED · {ecoLabelData.scoreStatus==='training-unavailable'?'training/pretraining unavailable':ecoLabelData.scoreStatus==='deployment-workload-missing'?'deployment workload needed':'assessment incomplete'}</div>}
-              </div>
-              <div style={{flex:'1 1 260px'}}>
-                {ecoLabelData.graded ? <LeafRating leaves={ecoLabelData.leaves} size={22} color={ecoLabelData.ratingColor}/> : <div style={{fontSize:11,fontWeight:800,color:'#607d66'}}>No overall leaf Rating</div>}
-                <div style={{fontWeight:800,fontSize:16,color:ecoLabelData.ratingColor,marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint','modeled carbon intensity'):'Partial lifecycle coverage'}</div>
-                <div style={{fontSize:12,color:'#455a64',marginTop:3}}>{ecoLabelData.graded?`${ecoLabelData.effectivePerStudyG} gCO₂e/study · amortised training + inference`:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study · inference reported separately`:'Complete the lifecycle inputs to calculate a score.'}</div>
-              </div>
-              </div>
-              <div className="scoreDataGrid" aria-label="AI score inputs and outputs">
-                <div><span>Lifecycle coverage</span><strong>{ecoLabelData.lifecycleCoverage}</strong></div>
-                <div><span>Training energy</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong></div>
-                <div><span>Training carbon</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO₂e` : 'Not available'}</strong></div>
-                <div><span>Inference energy</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : '—'}</strong></div>
-                <div><span>Inference carbon</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : '—'}</strong></div>
-                <div><span>Training compute</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainingProvider || '—'} · ${ecoLabelData.trainingRegion || 'provider average'}` : ecoLabelData.trainingStatusLabel}</strong></div>
-                <div><span>Inference compute</span><strong>{ecoLabelData.inferenceProvider || '—'} · {ecoLabelData.inferenceRegion || 'provider average'}</strong></div>
-                <div className="scoreWaterCell"><span>Water use {ecoLabelData.waterProv==='screening'&&<em>SCREENING</em>}</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `Training: ${ecoLabelData.waterLitres.toLocaleString()} L` : '—'}</strong>{ecoLabelData.waterProv!=='not-assessed'&&ecoLabelData.waterPerStudyMl>0&&<small>Inference: {ecoLabelData.waterPerStudyMl} mL/study</small>}{ecoLabelData.waterProv==='screening'&&<small>Default water-intensity factor; not a measured water footprint.</small>}<small>Reported separately; water does not currently affect the carbon-and-energy Score.</small></div>
-              </div>
-              {ecoLabelData.scoreStatus==='training-unavailable'&&<div className="aiInferenceScoreNotice"><div><span>PARTIAL LIFECYCLE COVERAGE</span><strong>{ecoLabelData.trainingStatusLabel}</strong><p>CEDARS reports the inference result but does not assign an overall Score or leaf Rating. An unknown training footprint is not treated as zero.</p></div></div>}
-              {ecoLabelData.scoreStatus==='deployment-workload-missing'&&<div className="aiInferenceScoreNotice"><div><span>DEPLOYMENT WORKLOAD NEEDED</span><strong>Training and inference are available, but they cannot yet be combined per study.</strong><p>Add expected deployment workload to amortise the one-time training footprint across use.</p></div><button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Add deployment workload →</button></div>}
-              <div className="aiScoreBasisBar"><div><span>ASSESSMENT COVERAGE</span><strong>{ecoLabelData.lifecycleCoverage}</strong><small>{ecoLabelData.graded?'Training is spread across expected use, then recurring inference is added per study.':ecoLabelData.scoreStatus==='training-unavailable'?'Inference is reported separately; the unavailable training/pretraining footprint prevents an overall score.':'Add the missing lifecycle inputs before interpreting an overall score.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
-              {showAiWorkloadExplore&&<div className="aiWorkloadExplorer">
-                <div className="aiWorkloadExplorerHead">
-                  <div>
-                    <span>EXPLORE WORKLOAD &amp; TOTAL IMPACT</span>
-                    <h3>Intensity and total emissions answer different questions</h3>
-                    <p>Try a deployment workload here without changing the saved assessment.</p>
-                  </div>
-                </div>
-                <div className="aiWorkloadPreviewControl">
-                  <label>
-                    <span>Preview workload</span>
-                    <div><input type="number" min="0" value={aiWorkloadPreview} placeholder="e.g. 5,100" onChange={e=>setAiWorkloadPreview(e.target.value)}/><strong>studies / month</strong></div>
-                    <small>{ecoLabelData.inferStudies>0?`Current saved workload: ${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Current saved workload: not entered'}</small>
-                  </label>
-                </div>
-                <div className="aiWorkloadMetrics"><div><span>Modeled carbon intensity</span><strong>{aiWorkloadScenario.intensityG!=null?`${aiWorkloadScenario.intensityG} gCO₂e/study`:'—'}</strong></div><div><span>Inference / month</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.inferenceMonthKg} kgCO₂e`:'—'}</strong></div><div><span>Training share</span><strong>{aiWorkloadScenario.trainingShareG!=null?`${aiWorkloadScenario.trainingShareG} gCO₂e/study`:'—'}</strong></div><div><span>Training + inference over deployment</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.deploymentKg} kgCO₂e`:'—'}</strong><small>Operational model only; embodied hardware remains a separate disclosure.</small></div></div>
-                <p>Higher use can spread one-time training emissions across more studies, lowering <strong>carbon intensity per study</strong>, while increasing <strong>total inference emissions</strong>. Use this explorer to test scale before changing the saved assessment.</p>
-                <div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>openAiChecklistItem('inference')}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div>
-              </div>}
-                            <SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>document.getElementById('ai-system-effects')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}/>
-            </div>
-            <details className="aiCalculationDetails">
-              <summary>Calculation details &amp; assumptions <span>(expand to read more)</span></summary>
-              <div className="aiCalculationGrid">
-                <div><span>Training</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Not set'}</small></div>
-                <div><span>Inference</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
-                <div><span>Deployment</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Workload not entered'}</strong><small>{ecoLabelData.deployMonths || '—'} month deployment</small></div>
-                <div><span>Water</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `${ecoLabelData.waterLitres.toLocaleString()} L training` : 'Not quantified'}</strong><small>Reported separately from the carbon-and-energy Score</small></div>
-              </div>
-            </details>
-            <div className="ecoIntroBlock">
-              <p><strong>AI result.</strong> Review lifecycle coverage before interpreting the Score. Missing phases remain explicit.</p>
-              <details className="methodologyDetails">
-                <summary>How AI grading works</summary>
-                <div>
-                  CEDARS currently scores <strong>modeled operational carbon intensity</strong> from AI training and inference; it is not a complete lifecycle assessment or an overall clinical-value / sustainability score. Training is a one-time cost and inference recurs with each use. When deployment workload is available, CEDARS can show training spread across expected use plus inference per study. Clinical value remains paramount, while water, embodied hardware, wider operational/workforce effects, and rebound/system effects remain separate disclosures or considerations.<Ref id="doo-policy-trustworthy-ai-2026" order={AI_IMPROVE_REFS}/> To see how a deployed model affects an imaging operation, attach it under <strong>Clinical AI</strong> on the Radiology Department tab. Fields align with the AI environmental reporting framework recommended in Doo FX et al. <em>Radiology</em> 2024 (DOI 10.1148/radiol.232030). For the most accurate figures, measure training energy with <ExternalLink href={refUrl(REFS['codecarbon'])}>CodeCarbon</ExternalLink>, <code>nvidia-smi</code>, or your cloud provider's carbon dashboard.
-                </div>
-              </details>
-            </div>
-
-            </>}
+            {page==='ecolabel' && null}
             {page==='report' && <>
             <details className="reportStageCard reportReviewCompact">
               <summary>{ecoLabelData.hasData?'Ready to report · Review/edit AI inputs':'AI report needs assessment data'}</summary>
@@ -5539,8 +5647,8 @@ function App() {
             <div className="reportStageHeading compact">
               <div>
                 <span>RESEARCH OUTPUTS</span>
-                <h2>Research-ready outputs</h2>
-                <p>Copy manuscript-ready methods text, export assumptions and provenance, or download the optional visual summary below.</p>
+                <h2>AI Research Label</h2>
+                <p>Download the optional visual label here. Methods text and provenance are kept in the separate Methods &amp; evidence output.</p>
               </div>
             </div>
             <div className="reportOptionalVisualHeading"><span>OPTIONAL VISUAL SUMMARY · EXPERIMENTAL</span><strong>CEDARS AI Research Label</strong><small>A compact communication aid for posters, slides, model documentation, or exploratory reporting; not an external certification.</small></div>
@@ -5625,7 +5733,7 @@ function App() {
               <button className="download" onClick={()=>downloadEcoPNG(ecoLabelData)}>
                 <Download/> Download visual summary (PNG)
               </button>
-              <p className="note reportVisualSummaryNote">Use this optional visual summary in presentations, posters, model documentation, or exploratory reporting. The reproducible methods and provenance record above remain the primary research output.</p>
+              <p className="note reportVisualSummaryNote">Use this optional visual summary in presentations, posters, model documentation, or exploratory reporting.</p>
               <div style={{marginTop:8}}>
                 <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
                 {CEDARS_RATINGS.map(r=>(
@@ -5685,7 +5793,7 @@ function App() {
               </div>
             </details>
 
-            <details className="reportDisclosureDetails" open>
+            <details className="reportMethodsText reportDisclosureDetails" open>
               <summary>Methods text</summary>
               <div className="reportDisclosureDetailsBody">
                 <p className="note" style={{marginTop:0}}>Use or adapt this concise text directly in the main Methods, Environmental Impact, model-card, or technical-report narrative when that fits the venue. CEDARS does not require a separate supplementary section. For transparent reporting, retain the accompanying CEDARS assumptions and provenance table when feasible.</p>
@@ -5714,28 +5822,20 @@ function App() {
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
           />
           {(()=>{
-            const departmentReady = !!(deptLabelData.hasData && deptLabelData.annualStudies>0 && deptLabelData.annualKwh>0 && deptLabelData.region);
-            const aiReady = !!ecoLabelData.hasData;
+            const departmentReady = departmentScoreReadiness.ready;
+            const aiReady = aiScoreReadiness.ready;
             const reportReady = ecoLabelMode==='department' ? departmentReady : aiReady;
-            return reportReady ? (
-              <div className="reportCompletion">
-                <div><span>✓</span><div><strong>Your CEDARS result is ready to preserve or share</strong><small>{ecoLabelMode==='ai' && !ecoLabelData.graded ? 'This AI Sustainability Profile contains reportable lifecycle data but does not support an overall CEDARS Score; missing phases remain explicitly disclosed.' : 'Save on this device or download a complete CEDARS file above if you want to return to this exact assessment later.'}</small></div></div>
-                <div className="reportCompletionActions">
-                  <button type="button" onClick={saveOnThisDevice}><Save size={15}/> Save on this device</button>
-                  <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
-                </div>
-              </div>
-            ) : (
-              <div className="reportCompletion needsWork">
-                <div><span>!</span><div><strong>This CEDARS report still needs assessment data</strong><small>{ecoLabelMode==='department' ? 'Complete the core Radiology Department inputs before treating this as a final Department EcoLabel.' : 'Add at least one quantified AI training or inference energy result. A partial lifecycle assessment can still be reported when unavailable phases are disclosed explicitly.'} You can still save incomplete work using the controls above.</small></div></div>
-                <div className="reportCompletionActions">
-                  <button type="button" onClick={()=>ecoLabelMode==='department' ? (setPage('dashboard'),setDeptSetupOpen(true)) : setPage('ai')}>{ecoLabelMode==='department' ? 'Complete Department input →' : 'Edit AI model details →'}</button>
-                  <button type="button" className="download" onClick={()=>setPage('landing')}>Return to Home</button>
-                </div>
+            if (reportReady) return null;
+            return (
+              <div className="reportCompletion needsWork reportCompletionCompact">
+                <div><span>!</span><div><strong>Assessment data still needs review</strong><small>{ecoLabelMode==='department' ? 'Complete the core Radiology Department inputs before treating the Department EcoLabel as final.' : 'Add at least one quantified AI training or inference energy result. Partial lifecycle reporting is still possible when unavailable phases are disclosed explicitly.'} You can still preserve incomplete work above.</small></div></div>
+                <div className="reportCompletionActions"><button type="button" onClick={()=>ecoLabelMode==='department' ? (setPage('dashboard'),setDeptSetupOpen(true)) : (setAiProfileSection('context'),setPage('ai'))}>{ecoLabelMode==='department' ? 'Review Department profile →' : 'Review AI profile →'}</button></div>
               </div>
             );
           })()}
           </>}
+              </div></section>
+            </div>
         </main>
       )}
 
@@ -5766,20 +5866,15 @@ function App() {
         buildSnapshot={currentAssessmentSnapshot}
       />
 
-      <footer style={{flexWrap:'wrap',gap:16}}>
-        <Logo dark/>
-        <div style={{flex:1,minWidth:240}}>
-          <span>Open research platform for transparent environmental assessment of radiology and medical AI.</span>
-          <div style={{fontSize:11,color:'#90a4ae',marginTop:10,lineHeight:1.6,maxWidth:640}}>
-            © 2026 CEDARS · code <a href="https://github.com/takinci/cedars/blob/main/LICENSE" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">Apache-2.0</a>, project-authored content <a href="https://creativecommons.org/licenses/by/4.0/" style={{color:'#A5D6A7'}} target="_blank" rel="noreferrer">CC BY 4.0</a>.
-            {' '}Research/estimation tool — literature-based estimates, not measured values or medical/regulatory advice; provided as-is, no warranty.
-            {' '}Assessment data stays in your browser by default. Data is transmitted only if you explicitly choose to contribute an assessment to CEDARS research; local saves, portable-file import/export, and normal calculations remain browser-side.
-          </div>
+      <footer className="siteFooter">
+        <div className="siteFooterLead">CEDARS is an open research tool for estimating environmental impacts in radiology and medical AI.</div>
+        <div className="siteFooterMeta">Estimates depend on published evidence and user-entered assumptions; they are not direct measurements or medical or regulatory advice. Assessment data stays in your browser unless you choose to contribute an assessment to CEDARS research.</div>
+        <div className="siteFooterLinks">
+          <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Methods &amp; sources</a>
+          <span aria-hidden="true">·</span>
+          <a href={FEEDBACK_URL} target="_blank" rel="noreferrer"><Plus size={13}/> Feedback / suggest an improvement ↗</a>
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
-          <a href="https://github.com/takinci/cedars/blob/main/sources.md" style={{color:'#A5D6A7',fontSize:13,whiteSpace:'nowrap'}} target="_blank" rel="noreferrer">All assumptions &amp; citations: sources.md</a>
-          <a href={FEEDBACK_URL} style={{color:'#A5D6A7',fontSize:13,whiteSpace:'nowrap',display:'inline-flex',alignItems:'center',gap:6}} target="_blank" rel="noreferrer"><Plus size={13}/> Feedback / suggest an improvement ↗</a>
-        </div>
+        <div className="siteFooterLicense">© 2026 CEDARS · Code <a href="https://github.com/takinci/cedars/blob/main/LICENSE" target="_blank" rel="noreferrer">Apache-2.0</a> · Project-authored content <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></div>
       </footer>
     </>
   );

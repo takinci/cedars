@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION
 import React, {useMemo, useState} from 'react';
 import {ExternalLink} from './Refs.jsx';
 import {REFS, refUrl} from './refs.js';
@@ -148,7 +149,24 @@ export default function AiImproveWorkspace({
       <div className="aiImproveModelPicker"><label>AI profile<select value={currentModel?.id||''} onChange={e=>onSelectModel(e.target.value)}>{visibleAiModels.map(m=><option key={m.id} value={m.id}>{modelDisplayName(m)}</option>)}</select></label><button type="button" className="inlineTextButton" onClick={onManageModels}>Add or manage profiles →</button></div>
     </div>
 
-    <div className="aiImprovePrinciple"><strong>Clinical acceptability comes first.</strong><span>Environmental efficiency helps differentiate options only after intended use, safety, performance, validation and workflow fit are acceptable for patient care.</span></div>
+    <div className="aiImprovePrinciple"><strong>Compare clinically appropriate options.</strong><span>Test how compute, workflow, and scale change environmental impact while the clinical requirements for this use remain fixed.</span></div>
+
+    <section id="ai-scenario-sandbox" className={`aiScenarioSandbox ${scenarioFocus?'focus-'+scenarioFocus:''}`}>
+      <div className="aiImproveSectionHeading"><div><span>BASELINE → PROSPECTIVE</span><h3>Compare the current AI profile with a scenario</h3></div><button type="button" className="download" onClick={()=>{setTrainingReduction(0);setInferenceReduction(0);setWorkloadGrowth(0);setScenarioFocus('');}}>Reset scenario</button></div>
+      <p className="note">Adjust assumptions to explore direction and scale. The baseline Sustainability Profile remains unchanged until you deliberately edit it after implementation.</p>
+      <div className="aiScenarioCompare decisionComparePanels">
+        <article className="decisionCompareCard baseline"><span>CURRENT PROFILE</span><strong>{ecoLabelData.graded?`Score ${ecoLabelData.score}`:ecoLabelData.lifecycleCoverage}</strong><small>{scenario.baseKnown>0?`${scenario.baseKnown.toFixed(2)} kgCO₂e/month · current known lifecycle`:'Not enough quantified data'}</small><div className="decisionCompareMetrics"><div><b>{ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} g`:'—'}</b><em>CO₂e / study</em></div><div><b>{ecoLabelData.trainingAvailable?`${ecoLabelData.trainCo2} kg`:'—'}</b><em>training CO₂e</em></div><div><b>{ecoLabelData.hasInference?ecoLabelData.inferStudies.toLocaleString():'—'}</b><em>uses / month</em></div></div></article>
+        <div className="decisionCompareArrow" aria-hidden="true"><span>→</span><small>test changes</small></div>
+        <article className="decisionCompareCard prospective active"><span>PROSPECTIVE SCENARIO</span><strong>{scenario.nextKnown>0?`${scenario.nextKnown.toFixed(2)} kgCO₂e/month`:'—'}</strong><small>{scenario.delta==null?'Adjust a control below':`${scenario.delta<=0?'':'+'}${scenario.delta.toFixed(0)}% vs current known lifecycle`}</small><div className="decisionCompareMetrics"><div><b>−{trainingReduction}%</b><em>training energy</em></div><div><b>−{inferenceReduction}%</b><em>inference energy</em></div><div><b>+{workloadGrowth}%</b><em>deployment demand</em></div></div></article>
+      </div>
+      <div className="aiScenarioControls">
+        <label className={scenarioFocus==='training'?'active':''}><span>Training energy reduction</span><strong>{trainingReduction}%</strong><input type="range" min="0" max="60" step="5" value={trainingReduction} disabled={!ecoLabelData.trainingAvailable} onChange={e=>setTrainingReduction(Number(e.target.value))}/><small>{ecoLabelData.trainingAvailable?'Illustrative sensitivity at the current training compute context.':'Training footprint is unavailable, so CEDARS does not model a training reduction as though it were zero.'}</small></label>
+        <label className={scenarioFocus==='inference'?'active':''}><span>Inference energy reduction</span><strong>{inferenceReduction}%</strong><input type="range" min="0" max="60" step="5" value={inferenceReduction} onChange={e=>setInferenceReduction(Number(e.target.value))}/><small>Represents a lower-energy serving configuration; clinical performance must be rechecked when behavior changes.</small></label>
+        <label><span>Deployment demand growth</span><strong>+{workloadGrowth}%</strong><input type="range" min="0" max="100" step="10" value={workloadGrowth} onChange={e=>setWorkloadGrowth(Number(e.target.value))}/><small>Shows rebound or scale-up. Clinically indicated care is not a reduction lever; avoided low-value use belongs in the validated workflow-effects section.</small></label>
+      </div>
+      <div className="aiScenarioActions"><button type="button" className="download" onClick={()=>onEditProfile('compute')}>Review compute location assumptions →</button><button type="button" className="download" onClick={()=>onEditProfile('inference')}>Edit implemented values →</button></div>
+    </section>
+
 
     <section className="aiImproveDriverMap" aria-labelledby="ai-driver-map-title">
       <div className="aiImproveSectionHeading"><div><span>WHAT DRIVES THIS RESULT?</span><h3 id="ai-driver-map-title">Follow the AI lifecycle and change the inputs that matter</h3></div><small>Start with the current state. Scenario controls below remain prospective until you update the underlying profile.</small></div>
@@ -187,27 +205,11 @@ export default function AiImproveWorkspace({
       </details>
     </section>
 
-    <section id="ai-scenario-sandbox" className={`aiScenarioSandbox ${scenarioFocus?'focus-'+scenarioFocus:''}`}>
-      <div className="aiImproveSectionHeading"><div><span>SCENARIO SANDBOX</span><h3>Test changes without rewriting the baseline</h3></div><button type="button" className="download" onClick={()=>{setTrainingReduction(0);setInferenceReduction(0);setWorkloadGrowth(0);setScenarioFocus('');}}>Reset scenario</button></div>
-      <p className="note">Adjust assumptions to explore direction and scale. The baseline Sustainability Profile remains unchanged until you deliberately edit it after implementation.</p>
-      <div className="aiScenarioCompare">
-        <div><span>CURRENT PROFILE</span><strong>{scenario.baseKnown>0?`${scenario.baseKnown.toFixed(2)} kgCO₂e/month`:'Not enough quantified data'}</strong><small>{scenario.complete?'Training + inference lifecycle represented':'Known lifecycle only; unavailable phases remain excluded'}</small></div>
-        <div className="aiScenarioArrow">→</div>
-        <div><span>SCENARIO</span><strong>{scenario.nextKnown>0?`${scenario.nextKnown.toFixed(2)} kgCO₂e/month`:'—'}</strong><small>{scenario.delta==null?'Adjust a control below':`${scenario.delta<=0?'':'+'}${scenario.delta.toFixed(0)}% vs current known lifecycle`}</small></div>
-      </div>
-      <div className="aiScenarioControls">
-        <label className={scenarioFocus==='training'?'active':''}><span>Training energy reduction</span><strong>{trainingReduction}%</strong><input type="range" min="0" max="60" step="5" value={trainingReduction} disabled={!ecoLabelData.trainingAvailable} onChange={e=>setTrainingReduction(Number(e.target.value))}/><small>{ecoLabelData.trainingAvailable?'Illustrative sensitivity at the current training compute context.':'Training footprint is unavailable, so CEDARS does not model a training reduction as though it were zero.'}</small></label>
-        <label className={scenarioFocus==='inference'?'active':''}><span>Inference energy reduction</span><strong>{inferenceReduction}%</strong><input type="range" min="0" max="60" step="5" value={inferenceReduction} onChange={e=>setInferenceReduction(Number(e.target.value))}/><small>Represents a lower-energy serving configuration; clinical performance must be rechecked when behavior changes.</small></label>
-        <label><span>Deployment demand growth</span><strong>+{workloadGrowth}%</strong><input type="range" min="0" max="100" step="10" value={workloadGrowth} onChange={e=>setWorkloadGrowth(Number(e.target.value))}/><small>Shows rebound or scale-up. Clinically indicated care is not a reduction lever; avoided low-value use belongs in the validated workflow-effects section.</small></label>
-      </div>
-      <div className="aiScenarioActions"><button type="button" className="download" onClick={()=>onEditProfile('compute')}>Review compute location assumptions →</button><button type="button" className="download" onClick={()=>onEditProfile('inference')}>Edit implemented values →</button></div>
-    </section>
-
     <details className="aiImproveAll">
       <summary>View all {options.length} guidance options</summary>
       <div className="aiImproveAllGroups">{['Clinical purpose & evidence','Training & development','Inference & deployment','Monitoring & lifecycle'].map(group=>{const groupItems=options.filter(x=>x.group===group);if(!groupItems.length)return null;return <section key={group}><h3>{group}</h3><div className="aiImproveAllList">{groupItems.map((item,i)=><Recommendation key={item.title} item={item} index={i} onAction={act}/>)}</div></section>})}</div>
     </details>
 
-    <div className="workflowNextStep"><div className="workflowNextCopy"><span>NEXT STEP</span><strong>Review the current Results</strong><small>Scenario values above are prospective. Results continues to show the baseline until implemented values are entered into the profile.</small></div><div className="workflowNextActions"><button type="button" className="workflowNextPrimary" onClick={onResults}>Continue to Results →</button><button type="button" className="download" onClick={()=>onEditProfile('inference')}>Edit AI profile</button></div></div>
+    <div className="prospectiveOnlyNote"><strong>Prospective scenario only.</strong><span>Changes tested here do not alter the current AI Profile. After implementation, update the affected lifecycle or deployment inputs and CEDARS will recalculate the current result.</span></div>
   </section>;
 }

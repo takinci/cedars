@@ -1,4 +1,9 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
+/* CEDARS_CHUNK_9L_AI_WORKFLOW_UNIFICATION */
+/* CEDARS_CHUNK_9K_NAV_AI_DARKMODE_CLEANUP */
+/* CEDARS_CHUNK_9J_AI_RESULT_CONSOLIDATION */
+/* CEDARS_CHUNK_9I4_REPAIR */
+/* CEDARS_CHUNK_9I3_REPORT_DEPT_AI_CLEANUP */
 import {Search, Columns3, Cpu, Scan, Brain, Bot} from 'lucide-react';
 import {Ref} from './Refs.jsx';
 import {VOLUME_ESTIMATES, VOLUME_ESTIMATE_REF} from './aiExamples.js';
@@ -78,8 +83,13 @@ function exampleKind(ex) {
 }
 
 function exampleLane(ex) {
-  if (ex.scen?.aiRoute==='compare') return 'compare';
-  if (ex.scen?.ownMode==='spec') return 'assess';
+  const key=String(ex.key||'').toLowerCase();
+  const title=String(ex.title||'').toLowerCase();
+  if (key.includes('maistro')) return 'compare';
+  if (key.includes('roentgen') || key.includes('cxr')) return 'develop';
+  if (title.includes('vendor') || title.includes('published') || title.includes('open-source') || title.includes('open source') || key.includes('vendor') || key.includes('open')) return 'assess';
+  if (ex.scen?.aiRoute === 'compare') return 'compare';
+  if (ex.scen?.ownMode === 'spec') return 'assess';
   return 'develop';
 }
 
@@ -91,25 +101,47 @@ function exampleUse(ex) {
 }
 
 
-export function AiExamplesUtility({examples, onExample}) {
-  return <details className="aiExamplesUtility">
+export function AiExamplesUtility({examples, onExample, activePathway=''}) {
+  const [open, setOpen] = useState(true);
+  useEffect(()=>{ if(activePathway) setOpen(false); },[activePathway]);
+  const lanes = [
+    {key:'develop', eyebrow:'DEVELOP / TRAIN', title:'Build or adapt a model', note:'Training, fine-tuning, or generative-model development.'},
+    {key:'assess', eyebrow:'ASSESS / DEPLOY', title:'Review an externally developed model', note:'Same task, two common delivery variants: inspectable/open vs vendor-hosted.'},
+    {key:'compare', eyebrow:'COMPARE CANDIDATES', title:'Choose among systems', note:'Use only when multiple candidates address the same clinical need.'},
+  ];
+  const variant = ex => {
+    const key=String(ex.key||'').toLowerCase(), title=String(ex.title||'').toLowerCase();
+    if(key.includes('roentgen')) return 'GENERATIVE IMAGING';
+    if(key.includes('maistro')) return 'MULTI-MODEL / AGENTIC';
+    if(key.includes('cxr')) return 'MEASURED DEVELOPMENT';
+    if(title.includes('vendor') || key.includes('vendor')) return 'VENDOR-HOSTED';
+    if(title.includes('published') || title.includes('open') || key.includes('open')) return 'OPEN / SELF-HOSTED';
+    return 'WORKED EXAMPLE';
+  };
+  return <details className={`aiExamplesUtility aiExamplesGrouped ${activePathway?'pathwayActive':''}`} open={open} onToggle={e=>setOpen(e.currentTarget.open)}>
     <summary title="Load illustrative or literature-derived sample data">
-      <span className="aiExamplesUtilitySignal">ILLUSTRATIVE QUICK STARTS</span>
-      <span className="aiExamplesUtilityCopy"><strong>Quick starts &amp; worked examples</strong><small>New to this workflow? Load sample data without treating it as evidence.</small></span>
-      <b>Browse examples ↓</b>
+      <span className="aiExamplesUtilitySignal">QUICK-START EXAMPLES · ILLUSTRATIVE DATA</span>
+      <span className="aiExamplesUtilityCopy"><strong>{activePathway?'Worked examples':'Need a starting example?'}</strong><small>Loads editable illustrative data for this workflow. Examples are optional and are not evidence.</small></span>
+      <b>{open?'Hide examples ↑':'Browse examples →'}</b>
     </summary>
-    <div className="aiExamplesUtilityPanel">
-      <div className="aiExamplesUtilityHeader"><strong>Worked examples</strong><p>Loading an example chooses its matching pathway and fills an editable starting record. Replace illustrative or literature-derived values with your own before interpreting or reporting a result.</p></div>
-      <div className="aiExamplesUtilityList">
-        {examples.map(ex=>{
-          const [Icon,kind]=exampleKind(ex);
-          return <button key={ex.key} type="button" onClick={()=>onExample(ex.key)}>
-            <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={20}/></span>
-            <span><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small></span>
-            <b>Load →</b>
-          </button>;
-        })}
-      </div>
+    <div className="aiExamplesGroupedPanel">
+      {lanes.map(lane=>{
+        const laneExamples=examples.filter(ex=>exampleLane(ex)===lane.key);
+        if(!laneExamples.length) return null;
+        return <section key={lane.key} className={`aiExampleLane aiExampleLane-${lane.key}`}>
+          <div className="aiExampleLaneHead"><span>{lane.eyebrow}</span><strong>{lane.title}</strong><small>{lane.note}</small></div>
+          <div className="aiExampleLaneCards">
+            {laneExamples.map(ex=>{
+              const [Icon,kind]=exampleKind(ex);
+              return <button key={ex.key} type="button" className="aiExampleCard" onClick={()=>{setOpen(false);onExample(ex.key);}}>
+                <span className={`aiExampleThumb ${kind}`} aria-hidden="true"><Icon size={18}/></span>
+                <span className="aiExampleCardCopy"><em>{variant(ex)}</em><strong>{ex.title}</strong><small>{exampleUse(ex)} · {ex.scen?.aiSystemType==='foundation'?'LLM / multimodal / agentic':'Imaging AI'}</small></span>
+                <b>Load →</b>
+              </button>;
+            })}
+          </div>
+        </section>;
+      })}
     </div>
   </details>;
 }
@@ -146,10 +178,10 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
   return (
     <section className="aiIntentStart aiEntryRedesign" aria-labelledby="ai-intent-title">
       <div className="aiIntentHeader aiEntryHero">
-        <span className="aiIntentKicker">STEP 1 · PATHWAY</span>
+        <span className="aiIntentKicker">CONTEXT · START HERE</span>
         <div>
           <h2 id="ai-intent-title">What would you like to do?</h2>
-          <p>Choose the task first. CEDARS will then ask only for the model and lifecycle information needed for that workflow.</p>
+          <p>This is the first decision in Context. Choose what you are doing with the AI; CEDARS will then show the model and lifecycle information needed for that workflow.</p>
         </div>
       </div>
 
@@ -170,7 +202,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
 
       {lane && <div className="aiLaneDetail aiTypeStep" data-demo-target="ai-lane-detail">
         <div className="aiLaneDetailHeader">
-          <span>STEP 2 · AI TYPE</span>
+          <span>CONTEXT · AI TYPE</span>
           <strong>What kind of AI is this?</strong>
           <small>This separates image-model workloads from language, multimodal, and agentic workloads.</small>
         </div>
@@ -182,8 +214,8 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           ))}
         </div>
         <div className="aiEntryContinueRow">
-          <span><strong>STEP 3 · CONTINUE</strong>{!systemType?'Choose an AI type above.':`Continue into ${laneTitle}.`}</span>
-          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue to {laneTitle} →</button>
+          <span><strong>NEXT · CONTEXT</strong>{!systemType?'Choose an AI type above.':`Continue with ${laneTitle}.`}</span>
+          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue with {laneTitle} →</button>
         </div>
       </div>}
 
@@ -201,10 +233,10 @@ export function AiRouteStrip({route, ownMode, systemType, onComparison, onBackTo
       : `Develop / train / fine-tune · ${family}`;
   return (
     <div className="aiRouteStrip">
-      <span className="aiIntentKicker">AI PATHWAY</span>
+      <span className="aiIntentKicker">AI TASK</span>
       <strong>{label}</strong>
       <span className="aiRouteActions">
-        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>Open comparison results ↓</button>}
+        {route === 'compare' && <button type="button" className="inlineTextButton" onClick={onComparison}>Choose a candidate ↓</button>}
         {route === 'own' && ownMode === 'spec' && onBackToComparison && <button type="button" className="inlineTextButton" onClick={onBackToComparison}>← Back to candidate comparison</button>}
         {route === 'own' && ownMode === 'spec' && !onBackToComparison && onStartComparison && <button type="button" className="inlineTextButton" onClick={onStartComparison}>Compare this model with candidates →</button>}
       </span>

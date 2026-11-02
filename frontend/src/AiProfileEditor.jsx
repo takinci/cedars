@@ -1,5 +1,6 @@
 import React from 'react';
 import {ExternalLink, Ref} from './Refs.jsx';
+import { BarChart3, Zap, Repeat2, MessageSquare, CalendarRange, Activity, Box, Clock, Cpu, Database, Gauge, Layers, Repeat } from 'lucide-react';
 
 const METRIC_EXAMPLES = {
   Classification:['AUROC','Sensitivity / specificity','PPV / F1 / MCC','Calibration'],
@@ -23,7 +24,7 @@ function summaryValue(parts, fallback='Not documented') {
 export default function AiProfileEditor({
   scen, ecoLabel, ecoLabelData, setS, setEco, setModel, setCloudProvider,
   meta, modelLibrary, cloudRegions, cloud, waterPerKwh, volumeEstimates, provenance,
-  refsOrder, onContribute, section, onSection, localRegion, onMeasureEnergy,
+  refsOrder, onContribute, section, onSection, onChangeTask, localRegion, onMeasureEnergy,
 }) {
   const tokenWorkload=ecoLabel.architecture==='LLM / Agent (transformer)' || ['Report generation','Agentic workflow'].includes(ecoLabel.taskType);
   const metricExamples=METRIC_EXAMPLES[ecoLabel.taskType] || METRIC_EXAMPLES.Other;
@@ -40,6 +41,9 @@ export default function AiProfileEditor({
   const inferencePueDefault=cloudRegions[inferenceProvider]?.pue ?? cloud[inferenceProvider]?.pue ?? pue;
   const trainingCompute=[trainingProvider,trainingRegion||'provider average'].filter(Boolean).join(' · ') || 'not specified';
   const inferenceCompute=[inferenceProvider,inferenceRegion||'provider average'].filter(Boolean).join(' · ') || 'not specified';
+  const [computeDialogOpen,setComputeDialogOpen]=React.useState(false);
+  const [computeFocus,setComputeFocus]=React.useState('inference');
+  const openComputeDialog=focus=>{setComputeFocus(focus);setComputeDialogOpen(true);};
   const clinicalEffectStatus=scen.clinicalEffectBasis==='none'
     ? 'No downstream effect credited'
     : summaryValue([
@@ -61,12 +65,12 @@ export default function AiProfileEditor({
   const profilePath=scen.aiRoute==='compare'?'compare':scen.ownMode==='spec'?'assess':'develop';
   const developing=profilePath==='develop';
   const comparing=profilePath==='compare';
-  const contextTitle=developing?'Model & workload context':comparing?'Clinical comparison context':'Clinical use context';
+  const contextTitle=developing?'Development context':comparing?'Comparison context':'Clinical use context';
   const contextNote=developing
     ? 'Start with the workload CEDARS needs to characterize the model lifecycle. Project naming, research-objective prose, and technical presets are optional metadata or helpers; they are not required to estimate the footprint.'
     : comparing
       ? 'Define the shared clinical need and a comparable validation basis before environmental ranking. Clinical suitability is a gate, not a weighted offset against environmental performance.'
-      : 'Document the clinical purpose, available validation, and local workflow context for the selected or deployed model. These fields travel with the environmental result; they do not reduce the footprint.';
+      : 'Document the clinical purpose and available validation for the selected or deployed model. Workflow effects are recorded separately below.';
 
   const openContext=id=>{
     const node=document.getElementById(id);
@@ -84,21 +88,19 @@ export default function AiProfileEditor({
       <div className="aiContextStepHeader"><span>{developing?'1 · TASK / WORKLOAD':comparing?'1 · SHARED CLINICAL PURPOSE':'1 · CLINICAL PURPOSE'}</span><strong>{developing?'What kind of workload are you assessing?':comparing?'What clinical need must every candidate address?':'What is this AI intended to do?'}</strong></div>
 
       {!developing&&<label className="aiIdentityName">
-        <span className="aiFieldLabelLine"><span>Model name</span><span className="aiOptionalTag">optional identifier</span></span>
+        <span className="aiFieldLabelLine"><span>Label / model name</span><span className="aiOptionalTag">editable</span></span>
         <input type="text" value={ecoLabel.projectName} onChange={e=>setEco('projectName',e.target.value)} placeholder="e.g. PE triage model"/>
+        <span className="aiFieldHelp">This is the name shown on the CEDARS AI result and report. You can edit it later.</span>
       </label>}
 
-      <div className="aiProfilePrimaryGrid">
-        <label>{developing?'Task / workload type':comparing?'Shared clinical task':'Clinical task'}
+      <div className="aiProfilePrimaryGrid aiClinicalPurposeGrid aiClinicalPurposeGridSingle">
+        <label className="aiPrimaryTaskField">{developing?'Task / workload type':comparing?'Shared clinical task':'Clinical task'}
           <select value={ecoLabel.taskType||''} onChange={e=>setEco('taskType',e.target.value)}>
             <option value="">{developing?'— Choose workload type —':'— Choose clinical task —'}</option>
             {meta.taskTypes.map(v=><option key={v} value={v}>{v}</option>)}
           </select>
           {developing&&<span className="aiFieldHelp">Sets the workload-specific fields and metric guidance CEDARS shows; it does not determine the footprint by itself.</span>}
         </label>
-        {!developing&&<label>{comparing?'Shared intended clinical use':'Intended clinical use'}
-          <input type="text" value={scen.modelIntendedUse||''} onChange={e=>setS('modelIntendedUse',e.target.value)} placeholder="e.g. triage suspected PE on CTPA"/>
-        </label>}
       </div>
 
       {developing&&<details className="aiProfileDisclosure aiReportingMetadataDisclosure">
@@ -140,13 +142,19 @@ export default function AiProfileEditor({
           <b>{clinicalEffectStatus}</b>
         </summary>
         <div className="aiProfileDisclosureBody">
-          <p className="note">This is the bridge between clinical use and downstream sustainability effects. “No current effect credit” is a valid state and does not imply that the AI has no workflow effect. Only locally observed or locally validated effects may change the current modeled footprint; published evidence remains contextual and scenario assumptions belong in Improve.</p>
-          <div className="grid grid3">
+          <div className="aiWorkflowEffectsIntro"><strong>What changes after the AI is introduced?</strong>{scen.clinicalWorkflowStage&&<span className="aiWorkflowStageChip">Primary stage: {{order:'Order / triage',schedule:'Schedule / prepare',acquire:'Acquire / scan',process:'Process / interpret',store:'Follow-up / store',cross:'Cross-cutting'}[scen.clinicalWorkflowStage]}</span>}<p>Consider effects across the clinical pathway, including detection or triage time, scheduling, scan duration or repeats, radiologist reading time, downstream imaging or follow-up, and patient-facing outcomes. Faster or cheaper workflows can also increase total use, so demand and rebound matter.</p></div>
+          <div className="aiWorkflowEffectPath" aria-label="Workflow effects to consider">
+            {[['1','Order / triage','appropriateness · detection'],['2','Schedule','priority · turnaround'],['3','Acquire','scan time · repeats · contrast'],['4','Process / interpret','reading time · compute'],['5','Follow-up','downstream imaging · demand / rebound']].map(([n,label,meta])=><div key={label}><b>{n}</b><span><strong>{label}</strong><small>{meta}</small></span></div>)}
+          </div>
+          <p className="note">Use local observations or a locally validated estimate when you have one. Published evidence can document a plausible effect without automatically crediting it to the current footprint; hypothetical changes belong in Decision Workspace.</p>
+          <div className="grid grid3 aiWorkflowEffectsGrid">
+            <label>Primary workflow stage<select value={scen.clinicalWorkflowStage||''} onChange={e=>setS('clinicalWorkflowStage',e.target.value)}><option value="">— Not specified —</option><option value="order">Order / need</option><option value="schedule">Schedule / prepare</option><option value="acquire">Acquire</option><option value="process">Process / interpret</option><option value="store">Store / follow-up</option><option value="cross">Cross-cutting / multiple stages</option></select></label>
             <label>Evidence basis<select value={scen.clinicalEffectBasis} onChange={e=>setS('clinicalEffectBasis',e.target.value)}><option value="none">No downstream effect credited</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence (report only)</option><option value="scenario">Scenario assumption (Improve only)</option></select></label>
             <label>Scan-time reduction (%)<input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)}/></label>
             <label>Low-value imaging avoided (%)<input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)}/></label>
           </div>
-          <p className="note">Additional local effects such as contrast reduction are recorded when the model is attached to a specific Department use, where the affected imaging workflow is known.</p>
+          <label className="aiWorkflowEffectsNote">Other workflow or patient-pathway effects <span className="aiOptionalTag">optional</span><textarea rows="3" value={scen.workflowEffectsNote||''} onChange={e=>setS('workflowEffectsNote',e.target.value)} placeholder="e.g. median triage-to-notification time, radiologist reading time, downstream imaging, follow-up, patient outcome, or observed change in demand"/></label>
+          <p className="note">When an AI model is attached to a specific Radiology Department use, review the affected Department workflow as well so local operational effects are not treated as model properties.</p>
         </div>
       </details> : <div className="aiDevelopWorkflowNote">
         <span>DEPLOYMENT-STAGE CONTEXT</span>
@@ -178,16 +186,17 @@ export default function AiProfileEditor({
           {!tokenWorkload&&<label>Input size (pixels per side)<input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} placeholder="e.g. 512"/></label>}
         </div>
       </details>
+      <div className="aiProfileStepNav aiContextStepNav"><button type="button" onClick={onChangeTask}>← Change AI task</button><span>Context describes the use or development task. Compute geography was set at the AI start and can be overridden by lifecycle phase later.</span><button type="button" onClick={()=>onSection('training')}>Next: Training →</button></div>
     </section>
 
-    <section className="aiContextBand aiPhaseContextBand" aria-label="Clinical and AI compute context">
+    {section!=='context'&&<section className="aiContextBand aiPhaseContextBand" aria-label="Clinical and AI compute context">
       <div className="aiClinicalContext"><span>CLINICAL CONTEXT</span><strong>{localRegion||'Not set'}</strong><small>Where care is being assessed; this does not define where AI compute runs.</small></div>
       <div className="aiPhaseComputeSummary">
         <div><span>TRAINING COMPUTE</span><strong>{trainingCompute}</strong><small>{scen.trainingProvider||scen.trainingRegion?'Phase-specific context':'Using shared fallback settings'}</small></div>
         <div><span>INFERENCE / DEPLOYMENT COMPUTE</span><strong>{inferenceCompute}</strong><small>{scen.inferenceProvider||scen.inferenceRegion?'Phase-specific context':'Using shared fallback settings'}</small></div>
       </div>
-      <button type="button" className="download" onClick={()=>onSection('compute')}>Edit compute contexts →</button>
-    </section>
+      <button type="button" className="download" onClick={()=>openComputeDialog(section==='training'?'training':'inference')}>Edit AI compute location →</button>
+    </section>}
 
     {section==='compute'&&<section id="ai-compute-section" className="aiLifecycleEditor aiContextEditor">
       <h2>Phase-specific compute context</h2><p className="note">This is an advanced cross-phase editor. Compute location belongs to the lifecycle phase where the work occurs: training and inference may use the same infrastructure, but CEDARS does not assume they share a provider or region.</p>
@@ -229,44 +238,45 @@ export default function AiProfileEditor({
       <p className="note">Use measured energy when available. Otherwise CEDARS estimates training from the workload and hardware information entered here.</p>
       {onMeasureEnergy&&<button type="button" className="download aiMeasureMethodButton" onClick={onMeasureEnergy}>Need to measure energy? Choose a measurement method →</button>}
       <div className="aiAvailabilityRow"><span>Training footprint</span><button type="button" onClick={()=>{setEco('trainDisclosed','yes');setS('trainMissingReason','');}} className={ecoLabel.trainDisclosed!=='no'?'on':''}>Available</button><button type="button" onClick={()=>{setEco('trainDisclosed','no');if(!scen.trainMissingReason)setS('trainMissingReason','vendor');}} className={ecoLabel.trainDisclosed==='no'?'on':''}>Unavailable</button></div>
-      {ecoLabel.trainDisclosed==='no'?<label className="aiNarrowField">Why is training unavailable?<select value={scen.trainMissingReason||'vendor'} onChange={e=>setS('trainMissingReason',e.target.value)}><option value="vendor">Not disclosed by developer / vendor</option><option value="notassessed">Not assessed in this study / evaluation</option></select></label>:<div className="grid grid3">
-        <label>{tokenWorkload?'Training / fine-tuning examples':'Training dataset (studies / images)'}<input type="number" min="0" value={ecoLabel.datasetSize} onChange={e=>setEco('datasetSize',e.target.value)} placeholder={tokenWorkload?'optional':'e.g. 45000'}/></label>
-        <label>{tokenWorkload?'Fine-tuning epochs':'Epochs'} <span className="aiOptionalTag">optional</span><input type="number" min="0" value={scen.epochs} onChange={e=>setS('epochs',e.target.value)} placeholder={tokenWorkload?'if fine-tuned locally':'e.g. 30'}/></label>
-        {!tokenWorkload&&<label>Slices / passes per study<input type="number" min="1" value={scen.slices} onChange={e=>setS('slices',e.target.value)} placeholder="1"/></label>}
-        <label>Precision<select value={scen.precision} onChange={e=>setS('precision',e.target.value)}>{meta.precisions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-        <label>GPU model<select value={ecoLabel.gpuModel} onChange={e=>setEco('gpuModel',e.target.value)}>{meta.gpuModels.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-        {ecoLabel.gpuModel==='Custom (enter TDP below)'&&<label>GPU TDP (Watts)<input type="number" min="1" value={ecoLabel.customTdpW} onChange={e=>setEco('customTdpW',e.target.value)} placeholder="e.g. 350"/></label>}
-        <label>Number of GPUs<input type="number" min="1" value={ecoLabel.gpuCount} onChange={e=>setEco('gpuCount',e.target.value)} placeholder="e.g. 4"/></label>
-        <label>Training hours / run<input type="number" min="0" step="0.1" value={ecoLabel.trainingHoursPerRun} onChange={e=>setEco('trainingHoursPerRun',e.target.value)} placeholder="e.g. 18"/></label>
-        <label>Training runs / experiments<input type="number" min="1" value={ecoLabel.numRuns} onChange={e=>setEco('numRuns',e.target.value)} placeholder="e.g. 12"/></label>
-        <label>Measured energy / run (kWh) <span className="aiOptionalTag">overrides estimate</span><input type="number" min="0" step="0.01" value={ecoLabel.energyKwhPerRun} onChange={e=>setEco('energyKwhPerRun',e.target.value)} placeholder="e.g. 24.0"/></label>
-        <label>Measured with<select value={ecoLabel.trainTool} onChange={e=>setEco('trainTool',e.target.value)}><option value="">—</option>{['CodeCarbon','Zeus','Carbontracker','EcoLogits','Green Algorithms','nvidia-smi','Power meter','Cloud provider dashboard','Other'].map(t=><option key={t} value={t}>{t}</option>)}</select></label>
+      {ecoLabel.trainDisclosed==='no'?<label className="aiNarrowField">Why is training unavailable?<select value={scen.trainMissingReason||'vendor'} onChange={e=>setS('trainMissingReason',e.target.value)}><option value="vendor">Not disclosed by developer / vendor</option><option value="notassessed">Not assessed in this study / evaluation</option></select></label>:<div className="grid grid3 aiTrainingInputGrid">
+        <label><span className="aiInputTileLabel"><Database size={15}/><span>{tokenWorkload?'Training / fine-tuning examples':'Training dataset (studies / images)'}</span></span><input type="number" min="0" value={ecoLabel.datasetSize} onChange={e=>setEco('datasetSize',e.target.value)} placeholder={tokenWorkload?'optional':'e.g. 45000'}/></label>
+        <label><span className="aiInputTileLabel"><Repeat size={15}/><span>{tokenWorkload?'Fine-tuning epochs':'Epochs'} <em>optional</em></span></span><input type="number" min="0" value={scen.epochs} onChange={e=>setS('epochs',e.target.value)} placeholder={tokenWorkload?'if fine-tuned locally':'e.g. 30'}/></label>
+        {!tokenWorkload&&<label><span className="aiInputTileLabel"><Layers size={15}/><span>Slices / passes per study</span></span><input type="number" min="1" value={scen.slices} onChange={e=>setS('slices',e.target.value)} placeholder="1"/></label>}
+        <label><span className="aiInputTileLabel"><Gauge size={15}/><span>Precision</span></span><select value={scen.precision} onChange={e=>setS('precision',e.target.value)}>{meta.precisions.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+        <label><span className="aiInputTileLabel"><Cpu size={15}/><span>GPU model</span></span><select value={ecoLabel.gpuModel} onChange={e=>setEco('gpuModel',e.target.value)}>{meta.gpuModels.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+        {ecoLabel.gpuModel==='Custom (enter TDP below)'&&<label><span className="aiInputTileLabel"><Zap size={15}/><span>GPU TDP (Watts)</span></span><input type="number" min="1" value={ecoLabel.customTdpW} onChange={e=>setEco('customTdpW',e.target.value)} placeholder="e.g. 350"/></label>}
+        <label><span className="aiInputTileLabel"><Box size={15}/><span>Number of GPUs</span></span><input type="number" min="1" value={ecoLabel.gpuCount} onChange={e=>setEco('gpuCount',e.target.value)} placeholder="e.g. 4"/></label>
+        <label><span className="aiInputTileLabel"><Clock size={15}/><span>Training hours / run</span></span><input type="number" min="0" step="0.1" value={ecoLabel.trainingHoursPerRun} onChange={e=>setEco('trainingHoursPerRun',e.target.value)} placeholder="e.g. 18"/></label>
+        <label><span className="aiInputTileLabel"><Repeat size={15}/><span>Training runs / experiments</span></span><input type="number" min="1" value={ecoLabel.numRuns} onChange={e=>setEco('numRuns',e.target.value)} placeholder="e.g. 12"/></label>
+        <label><span className="aiInputTileLabel"><Zap size={15}/><span>Measured energy / run (kWh) <em>overrides estimate</em></span></span><input type="number" min="0" step="0.01" value={ecoLabel.energyKwhPerRun} onChange={e=>setEco('energyKwhPerRun',e.target.value)} placeholder="e.g. 24.0"/></label>
+        <label><span className="aiInputTileLabel"><Activity size={15}/><span>Measured with</span></span><select value={ecoLabel.trainTool} onChange={e=>setEco('trainTool',e.target.value)}><option value="">—</option>{['CodeCarbon','Zeus','Carbontracker','EcoLogits','Green Algorithms','nvidia-smi','Power meter','Cloud provider dashboard','Other'].map(t=><option key={t} value={t}>{t}</option>)}</select></label>
       </div>}
       <div className="aiPhaseSubcontext">
         <div><span>TRAINING COMPUTE CONTEXT</span><strong>{trainingCompute}</strong><small>Where training runs belongs to this phase and may differ from deployment.</small></div>
-        <button type="button" className="download" onClick={()=>onSection('compute')}>Edit training compute →</button>
+        <button type="button" className="download" onClick={()=>openComputeDialog('training')}>Edit training compute →</button>
       </div>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>openContext('ai-model-record')}>← Clinical context</button><button type="button" onClick={()=>onSection('inference')}>Next: inference &amp; deployment →</button></div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>{onSection('context');openContext('ai-model-record');}}>← Clinical context</button><button type="button" onClick={()=>onSection('inference')}>Next: inference &amp; deployment →</button></div>
     </section>}
 
     {section==='inference'&&<section id="ai-inference-section" className="aiLifecycleEditor" data-demo-target="ai-inference-section">
       <h2>Inference &amp; deployment</h2><p className="note">Inference recurs with each use. Enter the per-use energy and expected workload for the deployment you are assessing.</p>
       <div className="aiAvailabilityRow"><span>Inference energy</span><button type="button" onClick={()=>setEco('inferMode','kwh')} className={ecoLabel.inferMode!=='tokens'?'on':''}>Vision · kWh / study</button><button type="button" onClick={()=>setEco('inferMode','tokens')} className={ecoLabel.inferMode==='tokens'?'on':''}>LLM / agentic · token-based</button></div>
-      <div className="grid grid3">
-        <label>Monthly study volume<input type="number" min="0" value={ecoLabel.inferStudiesMonth} onChange={e=>setEco('inferStudiesMonth',e.target.value)} placeholder={`e.g. ${volumeEstimates[0]?.studiesPerMonth||5100}`}/></label>
-        {ecoLabel.inferMode==='tokens'?<><label>Energy (Wh / 1k tokens)<input type="number" min="0" step="0.05" value={ecoLabel.whPer1kTokens} onChange={e=>setEco('whPer1kTokens',e.target.value)} placeholder="0.4"/></label><label>Model calls / study<input type="number" min="1" value={ecoLabel.callsPerTask} onChange={e=>setEco('callsPerTask',e.target.value)} placeholder="1"/></label><label>Tokens / call<input type="number" min="0" step="100" value={ecoLabel.tokensPerCall} onChange={e=>setEco('tokensPerCall',e.target.value)} placeholder="e.g. 2500"/></label></>:<label>Inference energy / study (kWh)<input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/></label>}
-        <label>Deployment lifetime (months)<input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/></label>
+      <div className="aiDeploymentMetricGrid">
+        <label><span className="aiMetricTileIcon"><BarChart3 size={18}/></span><span className="aiMetricTileLabel">Monthly study volume</span><input type="number" min="0" value={ecoLabel.inferStudiesMonth} onChange={e=>setEco('inferStudiesMonth',e.target.value)} placeholder={`e.g. ${volumeEstimates[0]?.studiesPerMonth||5100}`}/></label>
+        {ecoLabel.inferMode==='tokens'?<><label><span className="aiMetricTileIcon"><Zap size={18}/></span><span className="aiMetricTileLabel">Energy (Wh / 1k tokens)</span><input type="number" min="0" step="0.05" value={ecoLabel.whPer1kTokens} onChange={e=>setEco('whPer1kTokens',e.target.value)} placeholder="0.4"/></label><label><span className="aiMetricTileIcon"><Repeat2 size={18}/></span><span className="aiMetricTileLabel">Model calls / study</span><input type="number" min="1" value={ecoLabel.callsPerTask} onChange={e=>setEco('callsPerTask',e.target.value)} placeholder="1"/></label><label><span className="aiMetricTileIcon"><MessageSquare size={18}/></span><span className="aiMetricTileLabel">Tokens / call</span><input type="number" min="0" step="100" value={ecoLabel.tokensPerCall} onChange={e=>setEco('tokensPerCall',e.target.value)} placeholder="e.g. 2500"/></label></>:<label><span className="aiMetricTileIcon"><Zap size={18}/></span><span className="aiMetricTileLabel">Inference energy / study (kWh)</span><input type="number" min="0" step="0.0001" value={ecoLabel.inferKwhPerStudy} onChange={e=>setEco('inferKwhPerStudy',e.target.value)} placeholder="e.g. 0.004"/></label>}
+        <label><span className="aiMetricTileIcon"><CalendarRange size={18}/></span><span className="aiMetricTileLabel">Deployment lifetime (months)</span><input type="number" min="1" value={ecoLabel.deployMonths} onChange={e=>setEco('deployMonths',e.target.value)} placeholder="e.g. 36"/></label>
       </div>
+      <div className="aiDeploymentDerived"><span>MODELED INFERENCE</span><strong>{ecoLabelData.hasInference?`${ecoLabelData.inferMonthlyKwh} kWh/month · ${ecoLabelData.inferCo2Month} kgCO₂e/month`:'Add workload + per-use energy'}</strong><small>{ecoLabelData.inferKwhPerStudy>0?`${ecoLabelData.inferKwhPerStudy} kWh/study · ${ecoLabelData.perInferCo2g} gCO₂e/study`:'CEDARS will show the recurring deployment footprint here.'}</small></div>
       {ecoLabel.inferMode==='tokens'&&<p className="note">{ecoLabelData.tokensPerStudy>0?<>{ecoLabelData.tokensPerStudy.toLocaleString()} tokens/study → <strong>{ecoLabelData.inferKwhPerStudy} kWh/study</strong> ({ecoLabelData.perInferCo2g} gCO₂e).</>:<>Enter tokens/call to derive kWh/study.</>}</p>}
       <div className="aiPhaseSubcontext">
         <div><span>INFERENCE / DEPLOYMENT COMPUTE</span><strong>{inferenceCompute}</strong><small>Recurring deployment compute belongs to this phase and can differ from training.</small></div>
-        <button type="button" className="download" onClick={()=>onSection('compute')}>Edit inference compute →</button>
+        <button type="button" className="download" onClick={()=>openComputeDialog('inference')}>Edit inference compute →</button>
       </div>
       <div className="aiDeploymentEffectsLink">
-        <div><span>DEPLOYMENT-LINKED WORKFLOW EFFECTS</span><strong>{clinicalEffectStatus}</strong><small>Only locally observed or locally validated effects may alter current accounting. External evidence stays contextual; hypothetical effects stay in Improve.</small></div>
+        <div><span>WORKFLOW &amp; DOWNSTREAM EFFECTS</span><strong>{clinicalEffectStatus==='No downstream effect credited'?'Review what this AI changes in care':clinicalEffectStatus}</strong><small>Scan time, detection and triage, reading time, downstream imaging, follow-up, patient outcomes, and demand may all matter even when they are not yet quantified.</small></div>
         <button type="button" className="download" onClick={()=>openContext('ai-effects-section')}>Review workflow effects →</button>
       </div>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('training')}>← Training</button><button type="button" onClick={()=>onSection('water')}>Next: environmental boundary →</button></div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('training')}>← Training</button><button type="button" className="download" onClick={()=>onSection('water')}>Water disclosure (optional)</button><button type="button" onClick={()=>onSection('review')}>Next: Result →</button></div>
     </section>}
 
     <section className="aiBoundarySummary">
@@ -279,7 +289,22 @@ export default function AiProfileEditor({
       <div className="grid grid3"><label>On-site cooling water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label><label>Electricity-generation water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label><label>Water reporting<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use screening estimate ({waterPerKwh} L/kWh)</option><option value="notassessed">Mark water as not assessed</option></select></label></div>
       <p className="note">Water is reported separately and does not currently affect the carbon-and-energy CEDARS Score.<Ref id="li-thirsty-2023" order={refsOrder}/></p>
       <button type="button" className="download" onClick={onContribute}>Contribute water evidence →</button>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('inference')}>← Inference &amp; deployment</button><button type="button" onClick={()=>document.querySelector('[data-demo-target="ai-disclosure"]')?.scrollIntoView({behavior:'smooth',block:'center'})}>Review reporting completeness →</button></div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('inference')}>← Deployment</button><button type="button" onClick={()=>onSection('review')}>Done — view Result →</button></div>
     </section>}
+
+    {computeDialogOpen&&<div className="aiComputeDialogBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setComputeDialogOpen(false);}}>
+      <section className="aiComputeDialog" role="dialog" aria-modal="true" aria-labelledby="ai-compute-dialog-title">
+        <div className="aiComputeDialogHead"><div><span>AI MODEL &amp; INFORMATICS</span><h2 id="ai-compute-dialog-title">{computeFocus==='training'?'Training':'Deployment'} compute location</h2><p>Set AI compute here. This does not move you to the Radiology Department profile, and the AI compute location may differ from the clinical context ({localRegion||'not set'}).</p></div><button type="button" className="download" onClick={()=>setComputeDialogOpen(false)}>Close</button></div>
+        <div className="aiComputeDialogGrid">
+          <label>Provider<select value={computeFocus==='training'?trainingProvider:inferenceProvider} onChange={e=>{const key=computeFocus==='training'?'trainingProvider':'inferenceProvider';const regionKey=computeFocus==='training'?'trainingRegion':'inferenceRegion';setS(key,e.target.value);setS(regionKey,'');}}>{providers.map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+          <label>Region <span className="aiOptionalTag">sets grid carbon intensity</span><select value={computeFocus==='training'?trainingRegion:inferenceRegion} onChange={e=>setS(computeFocus==='training'?'trainingRegion':'inferenceRegion',e.target.value)}><option value="">Provider average</option>{regions(computeFocus==='training'?trainingProvider:inferenceProvider).map(([name,rci])=><option key={name} value={name}>{name} — {rci} kgCO₂e/kWh</option>)}</select></label>
+          <label>Custom PUE <span className="aiOptionalTag">optional</span><input type="number" min="1" step="0.05" value={computeFocus==='training'?scen.trainingPue:scen.inferencePue} onChange={e=>setS(computeFocus==='training'?'trainingPue':'inferencePue',e.target.value)} placeholder={`${computeFocus==='training'?trainingPueDefault:inferencePueDefault} provider default`}/></label>
+          <label>Reported renewable share (%)<input type="number" min="0" max="100" value={computeFocus==='training'?scen.trainingRenewablePct:scen.inferenceRenewablePct} onChange={e=>setS(computeFocus==='training'?'trainingRenewablePct':'inferenceRenewablePct',e.target.value)} placeholder={`${ecoLabel.renewablePct||0}% fallback`}/></label>
+        </div>
+        <div className="aiComputeDialogSummary"><span>CURRENT SELECTION</span><strong>{computeFocus==='training'?trainingCompute:inferenceCompute}</strong><small>Reported renewable share remains disclosure-only in the location-based result; it does not automatically reduce the grid factor.</small></div>
+        <div className="aiComputeDialogActions"><button type="button" className="download" onClick={()=>{setS(computeFocus==='training'?'trainingProvider':'inferenceProvider','');setS(computeFocus==='training'?'trainingRegion':'inferenceRegion','');setS(computeFocus==='training'?'trainingPue':'inferencePue','');setS(computeFocus==='training'?'trainingRenewablePct':'inferenceRenewablePct','');}}>Use shared fallback</button><button type="button" onClick={()=>setComputeDialogOpen(false)}>Done — return to {computeFocus==='training'?'Training':'Deployment'} →</button></div>
+      </section>
+    </div>}
+
   </>;
 }

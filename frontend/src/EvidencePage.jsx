@@ -1,4 +1,5 @@
 import React from 'react';
+// CEDARS_CHUNK_9R14B_UNIVERSAL_DARK_EVIDENCE
 import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
 
 const GROUPS = [
@@ -43,8 +44,8 @@ const GROUPS = [
     ],
   },
   {
-    key:'resources', eyebrow:'RESOURCES & LIFECYCLE', title:'Water, contrast, materials, and impacts outside the meter', icon:Droplets,
-    blurb:'Some important impacts are not captured by an electricity bill and need separate accounting.',
+    key:'resources', eyebrow:'RESOURCES & LIFECYCLE', title:'Water, contrast, and material waste', icon:Droplets,
+    blurb:'Energy is only part of the picture. These studies cover water use, contrast media, and material waste that should be counted separately.',
     cards:[
       {type:'WATER / AI METHODS',year:'2023',authors:['Li P','Yang J','Islam MA','Ren S'],venue:'arXiv',title:'Making AI less “thirsty”: uncovering and addressing the secret water footprint of AI models',href:'https://doi.org/10.48550/arXiv.2304.03271',why:'Separates on-site cooling water from water used in electricity generation and highlights location dependence.',used:'AI water disclosure and screening-boundary design.'},
       {type:'NATIONAL UTILIZATION STUDY',year:'2025',authors:['Doo FX','Lee R','Rockall A','Rula EY','Moy L'],venue:'JAMA Network Open',title:'Medical Imaging Contrast Media Use',href:'https://doi.org/10.1001/jamanetworkopen.2025.47304',why:'Quantifies national contrast-media use patterns and shows how a relatively small set of examinations accounts for most use.',used:'Contrast stewardship and utilization context; not a direct numerical Score default.'},
@@ -52,8 +53,8 @@ const GROUPS = [
     ],
   },
   {
-    key:'methods', eyebrow:'MEASUREMENT & REPORTING', title:'How to make environmental results interpretable', icon:Ruler,
-    blurb:'CEDARS borrows from software-carbon reporting and evaluation science to keep assumptions visible.',
+    key:'methods', eyebrow:'MEASUREMENT & REPORTING', title:'Interpreting environmental metrics', icon:Ruler,
+    blurb:'These sources show how to report environmental results clearly, including what was measured, estimated, and assumed.',
     cards:[
       {type:'RADIOLOGY METHODS',year:'2024',authors:['Doo FX','Parekh VS','Kanhere A','Savani D','Tejani AS','Sapkota A','Yi PH'],venue:'J Am Coll Radiol',title:'Evaluation of Climate-Aware Metrics Tools for Radiology Informatics and Artificial Intelligence: Toward a Potential Radiology Ecolabel',href:'https://doi.org/10.1016/j.jacr.2023.11.019',why:'Brings climate-aware measurement tools and reporting concepts into radiology and medical AI.',used:'Core CEDARS framework, lifecycle metrics, Scope structure, and reporting design.'},
       {type:'ML REPORTING FRAMEWORK',year:'2020',authors:['Henderson P','Hu J','Romoff J','Brunskill E','Jurafsky D','Pineau J'],venue:'J Mach Learn Res',title:'Towards the Systematic Reporting of the Energy and Carbon Footprints of Machine Learning',href:'https://jmlr.org/papers/v21/20-312.html',why:'Argues for transparent reporting of energy, carbon, infrastructure, and location rather than isolated performance alone.',used:'AI reporting completeness and provenance principles.'},
@@ -81,15 +82,11 @@ const JOURNAL_MARKS = {
   'J Mach Learn Res': {src:'/journal-jmlr-cedars-v2.png?v=8x', alt:'Journal of Machine Learning Research'},
 };
 
-function AuthorList({authors=[], duplicate=false}) {
-  if (authors.length <= 9) return <div className="evidenceAuthorsFull">{authors.join(', ')}</div>;
-  const preview=authors.slice(0,4).join(', ');
-  return (
-    <details className="evidenceAuthorsDisclosure">
-      <summary tabIndex={duplicate?-1:undefined}>{preview} <span>+ {authors.length-4} more · All authors</span></summary>
-      <div>{authors.join(', ')}</div>
-    </details>
-  );
+function AuthorList({authors=[]}) {
+  const shown = authors.length > 12
+    ? [...authors.slice(0,5), '…', authors[authors.length-1]]
+    : authors;
+  return <div className="evidenceAuthorsFull" title={authors.length>12?authors.join(', '):undefined}>{shown.join(', ')}</div>;
 }
 
 function EvidenceCard({card, index, duplicate=false}) {
@@ -97,90 +94,76 @@ function EvidenceCard({card, index, duplicate=false}) {
   return (
     <article className="evidenceCard" data-card-index={index}>
       <div className="evidenceCardTopline">
-        <div className="evidenceCardMeta"><span>{card.type}</span><b>{card.year}</b></div>
-        <div className={`evidenceJournalMark ${mark?'has-logo':'text-only'}`} aria-label={`Source: ${card.venue}`}>
-          {mark ? <img src={mark.src} alt={mark.alt}/> : <span>{card.venue}</span>}
-        </div>
+        <div className="evidenceCardMeta"><span>{card.type}</span><div className="evidenceCardVenueLine"><b>{card.year}</b><a className="evidenceVenueSource" href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>{card.venue} <ExternalLink size={9}/></a></div></div>
+        {mark&&<div className="evidenceJournalMark has-logo" aria-label={`${card.venue} journal or venue mark`}><img src={mark.src} alt={mark.alt}/></div>}
       </div>
-      <div className="evidenceCardCitation"><AuthorList authors={card.authors} duplicate={duplicate}/><small>{card.venue}</small></div>
+      <div className="evidenceCardCitation"><AuthorList authors={card.authors} duplicate={duplicate}/></div>
       <h3>{card.title}</h3>
       <div className="evidenceCardWhy"><span>WHY IT MATTERS</span><p>{card.why}</p></div>
       <div className="evidenceCardUse"><span>USED IN CEDARS</span><p>{card.used}</p></div>
-      <a href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>Read source <ExternalLink size={14}/></a>
+      <a className="evidenceReadSource" href={card.href} target="_blank" rel="noreferrer" tabIndex={duplicate?-1:undefined}>Read at source <ExternalLink size={12}/></a>
     </article>
   );
 }
 
-function EvidenceShelf({group, groupIndex, motionEnabled}) {
-  const [manualPaused, setManualPaused] = React.useState(false);
+function EvidenceCategory({group, pausedAll=false}) {
+  const [active, setActive] = React.useState(0);
+  const [pausedLocal, setPausedLocal] = React.useState(false);
   const Icon = group.icon;
-  const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const paused = !motionEnabled || reducedMotion || manualPaused;
-  const direction = groupIndex % 2 === 0 ? 'left' : 'right';
-  const duration = Math.max(30, group.cards.length * 9);
-  const delay = -(groupIndex * 4.5);
+  const card = group.cards[active] || group.cards[0];
+  const autoPaused = pausedAll || pausedLocal;
+
+  React.useEffect(()=>{
+    if (autoPaused || group.cards.length < 2) return undefined;
+    const timer = window.setTimeout(()=>setActive(current=>(current+1)%group.cards.length), 9000);
+    return ()=>window.clearTimeout(timer);
+  }, [active, autoPaused, group.cards.length]);
 
   return (
-    <section className={`evidenceShelf contentSurfaceInset ${paused?'is-paused':''}`} id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
-      <div className="evidenceShelfHeading">
-        <div className="evidenceShelfNumber">{String(groupIndex+1).padStart(2,'0')}</div>
-        <div><span><Icon size={16}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
-      </div>
-      <div className="evidenceTrack" aria-label={`${group.title} continuously moving reading cards`}>
-        <div
-          className={`evidenceMarqueeRail direction-${direction} ${paused?'is-paused':''}`}
-          style={{'--evidence-marquee-duration':`${duration}s`,'--evidence-marquee-delay':`${delay}s`}}
-        >
-          <div className="evidenceMarqueeGroup">
-            {group.cards.map((card,index)=><EvidenceCard key={`${card.title}-${index}`} card={card} index={index}/>) }
-          </div>
-          <div className="evidenceMarqueeGroup" aria-hidden="true">
-            {group.cards.map((card,index)=><EvidenceCard key={`duplicate-${card.title}-${index}`} card={card} index={index} duplicate/>) }
-          </div>
+    <section className="evidenceCategoryCard contentSurfaceInset" id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
+      <header className="evidenceCategoryHeader">
+        <div><span><Icon size={15}/>{group.eyebrow}</span><h2 id={`evidence-${group.key}-title`}>{group.title}</h2><p>{group.blurb}</p></div>
+        <small aria-live="polite">{String(active+1).padStart(2,'0')} / {String(group.cards.length).padStart(2,'0')}</small>
+      </header>
+      <div className="evidenceCategoryViewport" aria-live="polite">
+        <div className="evidenceCategorySlide" key={`${group.key}-${active}`}>
+          <EvidenceCard card={card} index={active}/>
         </div>
       </div>
-      <div className="evidenceShelfFooter">
-        <div className="evidenceDots" aria-hidden="true">
-          {group.cards.map((card,index)=><span className="evidenceDot" key={`${card.title}-dot-${index}`}/>) }
+      <footer className="evidenceCategoryFooter">
+        <div className="evidenceNumberNav" role="group" aria-label={`${group.title} sources`}>
+          {group.cards.map((source,index)=><button type="button" key={`${source.title}-nav`} className={active===index?'active':''} aria-label={`Show source ${index+1}: ${source.title}`} aria-pressed={active===index} onClick={()=>setActive(index)}>{index+1}</button>)}
         </div>
-        <button type="button" className="evidenceRowMotionToggle" disabled={!motionEnabled || reducedMotion} aria-label={manualPaused?'Resume this evidence row':'Pause this evidence row'} aria-pressed={manualPaused} onClick={()=>setManualPaused(v=>!v)} title={!motionEnabled?'Page-level motion is paused':reducedMotion?'Motion is disabled by your reduced-motion preference':undefined}>
-          {manualPaused?<Play size={12}/>:<Pause size={12}/>} 
-        </button>
-      </div>
+        <div className="evidenceAutoControls">
+          <button type="button" className="evidenceAutoToggle" disabled={pausedAll} aria-pressed={pausedLocal} aria-label={pausedAll?`Auto-advance is paused for all evidence sections`:(pausedLocal?`Resume auto-advance for ${group.title}`:`Pause auto-advance for ${group.title}`)} onClick={()=>setPausedLocal(value=>!value)}>{pausedLocal?<Play size={11}/>:<Pause size={11}/>}<span>{pausedAll?'All paused':pausedLocal?'Resume':'Pause'}</span></button>
+          <span className="evidenceSourceCount" aria-hidden="true">{active+1}/{group.cards.length}</span>
+        </div>
+      </footer>
     </section>
   );
 }
 
 export default function EvidencePage({onStart}) {
-  const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const [motionEnabled, setMotionEnabled] = React.useState(!reducedMotion);
-
+  const [pausedAll, setPausedAll] = React.useState(()=>typeof window!=='undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   return (
-    <main className="evidencePage">
+    <main className="evidencePage evidenceGalleryPage">
       <section className="evidenceHero contentSurfaceInset">
         <span>EVIDENCE BEHIND CEDARS</span>
         <h1>A reading library for sustainable radiology and medical AI.</h1>
-        <p>Browse the studies, standards, and guidance that shape CEDARS. Each card explains why a source matters and where it is used in the platform.</p>
+        <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions!</p>
         <div className="evidenceHeroActions">
-          <button type="button" onClick={onStart}>Start an assessment <ArrowRight size={16}/></button>
-          <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Technical source registry <ExternalLink size={14}/></a>
-          <button type="button" className="evidenceMotionToggle" disabled={reducedMotion} onClick={()=>setMotionEnabled(v=>!v)} aria-pressed={!motionEnabled} title={reducedMotion?'Automatic card motion is disabled by your reduced-motion preference':undefined}>
-            {motionEnabled?<Pause size={14}/>:<Play size={14}/>} {motionEnabled?'Pause motion':'Play motion'}
-          </button>
+          <button type="button" className="evidencePrimaryCta" onClick={onStart}>Start a CEDARS assessment <ArrowRight size={16}/></button>
+          <button type="button" className="evidencePauseAll" aria-pressed={pausedAll} onClick={()=>setPausedAll(value=>!value)}>{pausedAll?<Play size={14}/>:<Pause size={14}/>} {pausedAll?'Resume auto-advance':'Pause auto-advance'}</button>
         </div>
       </section>
 
-      <nav className="evidenceJump" aria-label="Evidence topics">
-        {GROUPS.map(group=><a key={group.key} href={`#evidence-${group.key}`}>{group.eyebrow.replace(' & LIFECYCLE','')}</a>)}
-      </nav>
-
-      <div className="evidenceShelves">
-        {GROUPS.map((group,index)=><EvidenceShelf key={group.key} group={group} groupIndex={index} motionEnabled={motionEnabled}/>) }
+      <div className="evidenceLibraryGrid">
+        {GROUPS.map(group=><EvidenceCategory key={group.key} group={group} pausedAll={pausedAll}/>) }
       </div>
 
       <section className="evidenceRegistryNote contentSurfaceInset">
-        <div><span>TECHNICAL PROVENANCE</span><h2>Need every assumption and source?</h2><p>The public library is curated for reading. The complete machine-adjacent registry remains in <code>sources.md</code>.</p></div>
-        <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Open sources.md <ExternalLink size={14}/></a>
+        <div><span>METHODS &amp; SOURCES</span><h2>Complete methods and source registry</h2><p>Calculation assumptions and citations used throughout CEDARS are maintained in <code>sources.md</code>.</p></div>
+        <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Open full registry <ExternalLink size={14}/></a>
       </section>
     </main>
   );
