@@ -26,6 +26,7 @@ import './styles/system.css';
 import './styles/production.css';
 import './styles/theme.css';
 // CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
+// CEDARS_CHUNK_9R22_WALKTHROUGH_PREFILL_GATING_QA
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -2205,13 +2206,23 @@ function App() {
     setPage('landing');
   };
 
-  const applyLeaderDemoFleet = () => {
+  const applyLeaderDemoBaseline = () => {
     const preset = DEPARTMENT_PRESETS.find(p => p.key === 'regional');
     if (!preset) return;
     setSettings(s => ({
       ...s,
+      // The walkthrough must satisfy the same Context gate as a real assessment.
+      // Use an explicitly illustrative geography rather than bypassing readiness.
+      region: 'United States',
+      timePeriod: s.timePeriod || 'Monthly',
+      actualStudiesYear: '',
       equipment: Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k => [k, preset.equipment[k] || 0])),
     }));
+    setDeptLabel(d => ({
+      ...d,
+      activeInterventions: [...(preset.practices || [])],
+    }));
+    setScenarioInterventions(list => list.filter(name => !(preset.practices || []).includes(name)));
   };
 
   const applyProcurementDemo = () => {
@@ -2234,38 +2245,59 @@ function App() {
     return candidates;
   };
 
+  const applyProcurementWalkthroughCandidate = (section = 'training') => {
+    const candidates = applyProcurementDemo();
+    useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
+    // For an externally developed vendor candidate, undisclosed training is a documented gap,
+    // not zero energy and not a reason for the walkthrough to bypass the Training stage.
+    setScen(s => ({
+      ...s,
+      trainDisclosed: 'no',
+      trainMissingReason: 'Vendor training energy not disclosed in this illustrative comparison.',
+    }));
+    setAiProfileSection(section);
+    setEcoLabelMode('ai');
+    return candidates;
+  };
+
   const prepareGuidedDemoStep = (kind, stepIndex) => {
     if (kind === 'leader') {
       if (stepIndex === 0) {
         setPage('landing');
       } else if (stepIndex === 1) {
+        // Enter Context with a complete illustrative baseline already present. This keeps the
+        // real lock behavior intact while ensuring the walkthrough itself can advance.
+        applyLeaderDemoBaseline();
+        setEcoLabelMode('department');
         setPage('dashboard');
         setDeptProfileStage('context');
         setDeptSetupOpen(true);
       } else if (stepIndex === 2) {
-        applyLeaderDemoFleet();
+        applyLeaderDemoBaseline();
+        setEcoLabelMode('department');
         setPage('dashboard');
         setDeptSetupOpen(false);
         setDeptProfileStage('equipment');
       } else if (stepIndex === 3) {
-        applyLeaderDemoFleet();
+        applyLeaderDemoBaseline();
         loadClinicalAiExample();
+        setEcoLabelMode('department');
         setPage('dashboard');
         setDeptSetupOpen(false);
         setDeptProfileStage('clinical-ai');
         setDashOpen(o => ({...o, clinicalai:true}));
       } else if (stepIndex === 4) {
-        applyLeaderDemoFleet();
+        applyLeaderDemoBaseline();
         loadClinicalAiExample();
         setEcoLabelMode('department');
         goToScore('department');
       } else if (stepIndex === 5) {
-        applyLeaderDemoFleet();
+        applyLeaderDemoBaseline();
         loadClinicalAiExample();
         setEcoLabelMode('department');
         setPage('scenario');
       } else if (stepIndex >= 6) {
-        applyLeaderDemoFleet();
+        applyLeaderDemoBaseline();
         loadClinicalAiExample();
         setEcoLabelMode('department');
         setPage('report');
@@ -2281,6 +2313,7 @@ function App() {
         setComparisonSelection(null);
         setComparisonDetailsOpen(true);
         setScen({...SCEN_DEFAULTS, ownMode:'spec', aiSystemType:''});
+        setAiProfileSection('context');
         setPage('ai');
       } else if (stepIndex === 2 || stepIndex === 3) {
         applyProcurementDemo();
@@ -2288,21 +2321,21 @@ function App() {
         setEcoLabelMode('ai');
         setPage('ai');
       } else if (stepIndex === 4) {
-        const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
-        setEcoLabelMode('ai');
-        goToScore('ai');
+        applyProcurementWalkthroughCandidate('training');
+        setPage('ai');
       } else if (stepIndex === 5) {
-        const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
-        setEcoLabelMode('ai');
+        applyProcurementWalkthroughCandidate('inference');
+        setPage('ai');
+      } else if (stepIndex === 6) {
+        applyProcurementWalkthroughCandidate('inference');
+        goToScore('ai');
+      } else if (stepIndex === 7) {
+        applyProcurementWalkthroughCandidate('inference');
         setImproveAiStage('procure');
         setImproveAiLifecycleStep('deploy');
         setPage('scenario');
-      } else if (stepIndex >= 6) {
-        const candidates = applyProcurementDemo();
-        useBenchModel('demo-candidate-a', candidates, {scrollToTop:false});
-        setEcoLabelMode('ai');
+      } else if (stepIndex >= 8) {
+        applyProcurementWalkthroughCandidate('inference');
         setPage('report');
       }
       return;
@@ -2347,6 +2380,10 @@ function App() {
 
   const startGuidedDemo = kind => {
     setGuidedDemoSaved(currentAssessmentSnapshot());
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('cedars.deptProfileStage');
+      window.sessionStorage.removeItem('cedars.aiProfileStage');
+    }
     setGuidedDemoReturnView({
       page, ecoLabelMode, deptSetupOpen, dashOpen, inputTarget, inputReturnMode,
       aiEntryOrigin, aiEntryOriginModelId, aiExampleLoaded,
