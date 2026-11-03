@@ -3277,11 +3277,11 @@ function App() {
           activeProduct={page==='ai'||(page==='input'&&inputTarget==='ai')||(!['dashboard','input'].includes(page)&&ecoLabelMode==='ai')?'ai':'dashboard'}
           onInput={()=>{
             const aiProduct = page==='ai' || (page==='input'&&inputTarget==='ai') || (!['dashboard','input'].includes(page)&&ecoLabelMode==='ai');
-            if (aiProduct) { setEcoLabelMode('ai'); setAiExampleLoaded(''); setS('aiRoute',''); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
+            if (aiProduct) { setEcoLabelMode('ai'); setPage('ai'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
             else { setEcoLabelMode('department'); setPage('dashboard'); setDeptSetupOpen(deptProfileStage!=='review'); window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0); }
           }}
           onDepartment={()=>{setEcoLabelMode('department');setPage('dashboard');setDeptSetupOpen(deptProfileStage!=='review');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
-          onAi={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
+          onAi={()=>{setEcoLabelMode('ai');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}
           onFootprint={()=>{
             const aiProduct = page==='ai' || (!['dashboard','input'].includes(page) && ecoLabelMode==='ai');
             setEcoLabelMode(aiProduct?'ai':'department');
@@ -3640,27 +3640,43 @@ function App() {
               </div>
               <button type="button" className={`improveInfrastructureBand departmentBaselineInfrastructure ${deptWorkflowStage==='infrastructure'?'active':''}`} onClick={()=>setDeptWorkflowStage('infrastructure')}><span>+</span><div><strong>Infrastructure &amp; lifecycle</strong><small>Power management · electricity supply · equipment lifetime · materials</small></div></button>
 
-              <section className="departmentWorkflowStageDetail">
-                <div className="departmentWorkflowStageDetailHeading"><span>CURRENT WORKFLOW</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></div>
-                {metric&&<div className="workflowBaselineMetric">
-                  <div><span>OPTIONAL LOCAL METRIC</span><strong>{metric.label}</strong><p>{metric.help}</p></div>
-                  <div className="workflowMetricControl">
-                    <label><input type="number" min={metric.min} max={metric.max} step={metric.step} value={metricValue} onChange={e=>updateMetric(e.target.value)} placeholder="Unknown"/><span>{metric.unit}</span></label>
-                    {metricValue!==''&&<input type="range" min={metric.min} max={metric.max} step={metric.step} value={Math.min(metric.max,Math.max(metric.min,Number(metricValue)||0))} onChange={e=>updateMetric(e.target.value)} aria-label={`${metric.label} ${metric.unit}`}/>}
+              <div className="departmentWorkflowStageWorkspace">
+                <section className="departmentWorkflowStageDetail">
+                  <div className="departmentWorkflowStageDetailHeading"><span>CURRENT WORKFLOW</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></div>
+                  {metric&&<div className="workflowBaselineMetric">
+                    <div><span>OPTIONAL LOCAL METRIC</span><strong>{metric.label}</strong><p>{metric.help}</p></div>
+                    <div className="workflowMetricControl">
+                      <label><input type="number" min={metric.min} max={metric.max} step={metric.step} value={metricValue} onChange={e=>updateMetric(e.target.value)} placeholder="Unknown"/><span>{metric.unit}</span></label>
+                      {metricValue!==''&&<input type="range" min={metric.min} max={metric.max} step={metric.step} value={Math.min(metric.max,Math.max(metric.min,Number(metricValue)||0))} onChange={e=>updateMetric(e.target.value)} aria-label={`${metric.label} ${metric.unit}`}/>}
+                    </div>
+                  </div>}
+                  <div className="departmentCurrentPractices">
+                    <div className="departmentCurrentPracticesHeading"><span>CURRENT PRACTICES</span><p>Select a practice only when it is already part of routine operations.</p></div>
+                    <div className="departmentCurrentPracticeList">
+                      {stagePractices.map(name=>{const active=deptLabel.activeInterventions.includes(name);const meta=IMPROVE_INTERVENTION_META[name];return <label key={name} className={active?'active':''}><input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)}/><span><strong>{name}</strong>{meta?.description&&<small>{meta.description}</small>}</span></label>;})}
+                    </div>
+                    {stagePractices.length===0&&<p className="note">No current-practice item is defined for this stage yet.</p>}
                   </div>
-                </div>}
-                <div className="departmentCurrentPractices">
-                  <div className="departmentCurrentPracticesHeading"><span>CURRENT PRACTICES</span><p>Select a practice only when it is already part of routine operations.</p></div>
-                  <div className="departmentCurrentPracticeList">
-                    {stagePractices.map(name=>{const active=deptLabel.activeInterventions.includes(name);const meta=IMPROVE_INTERVENTION_META[name];return <label key={name} className={active?'active':''}><input type="checkbox" checked={active} onChange={()=>toggleIntervention(name)}/><span><strong>{name}</strong>{meta?.description&&<small>{meta.description}</small>}</span></label>;})}
+                </section>
+                <aside className="departmentWorkflowCurrentTally" aria-label="Current Department profile tally">
+                  <div className="departmentWorkflowTallyHeader"><span>CURRENT PROFILE TALLY</span><strong>{stage.title}</strong></div>
+                  <div className="departmentWorkflowTallyStage">
+                    {metric?<><span>{metric.label}</span><strong>{metricValue!==''?`${metricValue} ${metric.unit}`:'Not entered'}</strong></>:<><span>Local stage metric</span><strong>Not defined</strong></>}
+                    {selectedPractices.length>0?<small>Already in place: {selectedPractices.join(' · ')}</small>:<small>No current practice from this stage is documented as implemented.</small>}
                   </div>
-                  {stagePractices.length===0&&<p className="note">No current-practice item is defined for this stage yet.</p>}
-                </div>
-              </section>
+                  <div className="departmentWorkflowTallyMetrics">
+                    <div><span>Current practices</span><strong>{deptLabel.activeInterventions.length}</strong></div>
+                    <div><span>Local metrics</span><strong>{enteredMetricCount}</strong></div>
+                    <div><span>Operational energy</span><strong>{fmtKwh(dash.totals.kwh)}{dash.totals.label}</strong></div>
+                    <div><span>Carbon / study</span><strong>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e`:'—'}</strong></div>
+                  </div>
+                  <p>Edits here describe the <strong>current assessed state</strong>. They do not create prospective savings. Decision Workspace carries this profile forward and keeps proposed changes separate.</p>
+                </aside>
+              </div>
 
               <div className="departmentStageHandoff">
                 <div><span>NEXT</span><strong>Digital + AI is optional</strong><p>Add local informatics or Clinical AI when they are part of the Department today, or continue directly to Result.</p></div>
-                <div><button type="button" onClick={()=>{setDashOpen(o=>({...o,clinicalai:true}));setDeptProfileStage('clinical-ai');}}>Review Digital + AI →</button><button type="button" className="download" onClick={()=>{setDeptSetupOpen(false);setDeptProfileStage('review');window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Skip optional step — view Result →</button></div>
+                <div><button type="button" className="departmentOptionalAction" onClick={()=>{setDashOpen(o=>({...o,clinicalai:true}));setDeptProfileStage('clinical-ai');}}>Review Digital + AI <small>optional</small> →</button><button type="button" onClick={()=>{setDeptSetupOpen(false);setDeptProfileStage('review');window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Continue to Result →</button></div>
               </div>
             </section>;
           })()}
@@ -5262,8 +5278,7 @@ function App() {
             const individualByName = Object.fromEntries(individual.map(x=>[x.name,x]));
             const currentPracticeSet = new Set(deptLabel.activeInterventions || []);
             const ranked = individual.filter(x=>x.totalCo2>0 && !currentPracticeSet.has(x.name)).sort((x,y)=>y.totalCo2-x.totalCo2);
-            const rankedPreview = ranked.slice(0,3);
-            const rankedMore = ranked.slice(3);
+            const rankedPreview = ranked.slice(0,10);
             const selectedRows = prospectiveScenarioInterventions.map(name=>individualByName[name]).filter(Boolean);
             const activeStageMeta = IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveDeptStage) || IMPROVE_WORKFLOW_STAGES[0];
             const activeStageMetric = DEPARTMENT_WORKFLOW_METRICS[improveDeptStage] || null;
@@ -5281,11 +5296,14 @@ function App() {
             };
             const renderOpportunityRow = (row,i) => {
               const active=prospectiveScenarioInterventions.includes(row.name);
-              return <div key={row.name} className="improveOpportunityRow">
-                <div className="improveRank">{i+1}</div>
-                <div className="improveOpportunityText"><strong>{row.name}</strong><span>−{row.totalCo2.toLocaleString()} kgCO₂e · {row.meta.reason}</span></div>
-                <button type="button" className={active?'added':''} disabled={active} onClick={()=>toggleScenarioIntervention(row.name)}>{active?'Added ✓':'Add to scenario'}</button>
-              </div>;
+              const stageLabel=IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveWorkflowStage(row.name))?.title || 'Workflow';
+              return <article key={row.name} className={`improveOpportunityTile ${active?'added':''}`}>
+                <div className="improveOpportunityTileTop"><span className="improveRank">{i+1}</span><Lightbulb size={15}/><small>{stageLabel}</small></div>
+                <strong>{row.name}</strong>
+                <span className="improveOpportunityTileImpact">−{row.totalCo2.toLocaleString()} kgCO₂e</span>
+                <small className="improveOpportunityTileReason">{row.meta.reason}</small>
+                <button type="button" className={active?'added':''} disabled={active} onClick={()=>toggleScenarioIntervention(row.name)}>{active?'Added ✓':<><Plus size={13}/> Add to scenario</>}</button>
+              </article>;
             };
 
             return <>
@@ -5321,10 +5339,10 @@ function App() {
                       </div>
                     </section>
 
-                    <section id="department-modeled-opportunities" className="improveOpportunities">
-                      <h3>Modeled opportunities from this profile</h3>
-                      <div className="improveClinicalGuardrail"><strong>Keep the clinical and operational requirements fixed.</strong><span>The ordering below reflects modeled environmental opportunity, not clinical priority.</span></div>
-                      {ranked.length>0 ? <><div className="improveOpportunityList improveOpportunityPreview">{rankedPreview.map(renderOpportunityRow)}</div>{rankedMore.length>0&&<details className="improveOpportunityMore"><summary>Show {rankedMore.length} more modeled {rankedMore.length===1?'opportunity':'opportunities'}</summary><div className="improveOpportunityList">{rankedMore.map((row,i)=>renderOpportunityRow(row,i+rankedPreview.length))}</div></details>}</> : <div className="note" style={{padding:'10px 0'}}>No quantified opportunity is available from the current inputs yet. You can still browse the scenario options below.</div>}
+                    <section id="department-modeled-opportunities" className="improveOpportunities improveGuidanceOpportunities">
+                      <div className="improveGuidanceHeading"><Lightbulb size={18}/><div><span>CEDARS GUIDANCE</span><h3>Modeled opportunities from this profile</h3><p>These are addable scenario ideas derived from the current assessment. They are not recommendations to compromise clinical quality, access, safety, or operational requirements.</p></div></div>
+                      <div className="improveClinicalGuardrail"><strong>Keep the clinical and operational requirements fixed.</strong><span>Ordering reflects modeled environmental opportunity only; clinical and operational priorities remain the constraint.</span></div>
+                      {ranked.length>0 ? <><div className="improveOpportunityTileGrid">{rankedPreview.map(renderOpportunityRow)}</div>{ranked.length>10&&<div className="improveOpportunityOverflow">Showing the 10 largest quantified opportunities. Use the workflow-stage controls above to review every available change.</div>}</> : <div className="note improveOpportunityEmpty">No quantified opportunity is available from the current inputs yet. You can still browse the scenario options above.</div>}
                     </section>
 
                     {scenario.usesCloud && <section className="improveAssumptions">
@@ -5637,15 +5655,10 @@ function App() {
                   ['11', 'Not assessed', d.notAssessedCategories.length ? d.notAssessedCategories.join(' · ') : 'none', d.notAssessedCategories.length===0, 'Boundary'],
                 ];
                 return (
-                  <div style={{border:'1px solid #c8e6c9', borderRadius:14, overflow:'hidden'}}>
-                    {items.map(([n, item, val, ok, mod], i)=>(
-                      <div key={n} style={{display:'grid', gridTemplateColumns:'28px 1.6fr 2fr 110px', gap:10, alignItems:'center', padding:'9px 14px', background:i%2===0?'#f1f8f1':'white', fontSize:13}}>
-                        <span style={{color: ok ? '#2E7D32' : '#bdbdbd', fontWeight:900}}>{ok ? '✓' : '○'}</span>
-                        <span style={{color:'#263238', fontWeight:600}}>{item}</span>
-                        <span style={{color:'#607d66'}}>{val}</span>
-                        <span style={{fontSize:11, color:'#90a4ae', textAlign:'right'}}>{mod}</span>
-                      </div>
-                    ))}
+                  <div className="reportChecklist departmentReportChecklist">
+                    {items.map(([n, item, val, ok, mod], i)=><div key={n} className={i%2===0?'alt':''}>
+                      <span className={ok?'ok':''}>{ok?'✓':'○'}</span><strong>{item}</strong><span>{val}</span><small>{mod}</small>
+                    </div>)}
                   </div>
                 );
               })()}

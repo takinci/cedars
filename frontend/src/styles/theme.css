@@ -1962,3 +1962,88 @@ html,body,#root{background:var(--cedars-role-page)!important}
 #root.dark .walkthroughDockCoach span{color:#D8CCAA!important}
 #root.dark .walkthroughDockCoach i{color:#E0C36A!important}
 #root.dark .walkthroughDockCoach button{background:#D5B553!important;border-color:#E0C36A!important;color:#211B0C!important}
+
+/* CEDARS_CHUNK_9R19_RECONCILED_CHECKPOINT
+   Reconciled against checkpoint 21464401: Department Workflow current-state tally,
+   warm guidance / blue addable opportunity grid, readable Department reproducibility checklist,
+   and optional-vs-primary handoff hierarchy. Existing stage gating is intentionally preserved. */
+
+/* Department Workflow mirrors Decision Workspace: editable current state at left, live current-profile tally at right. */
+#root .departmentWorkflowStageWorkspace{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(235px,300px)!important;gap:12px!important;align-items:start!important;margin-top:10px!important}
+#root .departmentWorkflowStageWorkspace>.departmentWorkflowStageDetail{margin:0!important;min-width:0!important}
+#root .departmentWorkflowCurrentTally{align-self:start!important;position:sticky!important;top:84px!important;overflow:hidden!important;border:1px solid var(--cedars-role-structure-line)!important;border-radius:9px!important;background:var(--cedars-role-structure-raised)!important;color:var(--cedars-ink)!important}
+#root .departmentWorkflowTallyHeader{display:flex!important;flex-direction:column!important;gap:2px!important;padding:10px 11px!important;background:var(--cedars-role-structure)!important;border-bottom:1px solid var(--cedars-role-structure-line)!important}
+#root .departmentWorkflowTallyHeader>span{font-size:7.5px!important;font-weight:900!important;letter-spacing:.08em!important;color:var(--cedars-forest)!important}
+#root .departmentWorkflowTallyHeader>strong{font-size:12px!important;color:var(--cedars-ink)!important}
+#root .departmentWorkflowTallyStage{display:grid!important;gap:3px!important;margin:9px!important;padding:9px 10px!important;border:1px solid var(--cedars-role-info-line)!important;border-left:3px solid var(--cedars-role-info)!important;border-radius:7px!important;background:var(--cedars-role-info-soft)!important}
+#root .departmentWorkflowTallyStage>span{font-size:8px!important;color:var(--cedars-role-info)!important;font-weight:850!important}
+#root .departmentWorkflowTallyStage>strong{font-size:10px!important;line-height:1.35!important;color:var(--cedars-ink)!important}
+#root .departmentWorkflowTallyStage>small{font-size:8.5px!important;line-height:1.35!important;color:var(--cedars-muted)!important;overflow-wrap:anywhere!important}
+#root .departmentWorkflowTallyMetrics{display:grid!important;grid-template-columns:1fr 1fr!important;border-top:1px solid var(--cedars-role-structure-line)!important;border-bottom:1px solid var(--cedars-role-structure-line)!important}
+#root .departmentWorkflowTallyMetrics>div{display:flex!important;flex-direction:column!important;gap:2px!important;min-width:0!important;padding:9px 10px!important;background:var(--cedars-role-structure)!important;border-right:1px solid var(--cedars-role-structure-line)!important;border-bottom:1px solid var(--cedars-role-structure-line)!important}
+#root .departmentWorkflowTallyMetrics>div:nth-child(2n){border-right:0!important}
+#root .departmentWorkflowTallyMetrics>div:nth-last-child(-n+2){border-bottom:0!important}
+#root .departmentWorkflowTallyMetrics span{font-size:7.5px!important;color:var(--cedars-muted)!important}
+#root .departmentWorkflowTallyMetrics strong{font-size:10px!important;line-height:1.3!important;color:var(--cedars-ink)!important;overflow-wrap:anywhere!important}
+#root .departmentWorkflowCurrentTally>p{margin:0!important;padding:9px 10px!important;font-size:8.5px!important;line-height:1.4!important;color:var(--cedars-muted)!important}
+#root.dark .departmentWorkflowCurrentTally{background:var(--cedars-role-structure-raised)!important;border-color:var(--cedars-role-structure-line)!important;color:#E7EFEA!important}
+#root.dark .departmentWorkflowTallyHeader,#root.dark .departmentWorkflowTallyMetrics>div{background:var(--cedars-role-structure)!important}
+#root.dark .departmentWorkflowTallyHeader>strong,#root.dark .departmentWorkflowTallyStage>strong,#root.dark .departmentWorkflowTallyMetrics strong{color:#F1F6F3!important}
+#root.dark .departmentWorkflowTallyStage>small,#root.dark .departmentWorkflowTallyMetrics span,#root.dark .departmentWorkflowCurrentTally>p{color:#B8C9C1!important}
+
+/* Digital + AI is optional; Result remains the primary continuation. */
+#root .departmentStageHandoff .departmentOptionalAction{background:transparent!important;border:1px dashed var(--cedars-role-guide-line)!important;color:var(--cedars-forest-deep)!important;box-shadow:none!important}
+#root .departmentStageHandoff .departmentOptionalAction:hover{background:var(--cedars-role-guide-soft)!important;border-color:var(--cedars-role-guide)!important}
+#root .departmentStageHandoff .departmentOptionalAction small{margin-left:4px!important;font-size:7px!important;font-weight:850!important;letter-spacing:.04em!important;text-transform:uppercase!important;color:var(--cedars-role-guide)!important}
+#root.dark .departmentStageHandoff .departmentOptionalAction{background:transparent!important;color:#E9E2C5!important;border-color:var(--cedars-role-guide-line)!important}
+#root.dark .departmentStageHandoff .departmentOptionalAction:hover{background:var(--cedars-role-guide-soft)!important}
+
+/* Warm/gold = CEDARS guidance; blue = an action the user can add to the prospective scenario. */
+#root .improvePage .improveOpportunities.improveGuidanceOpportunities{padding:14px!important;background:var(--cedars-role-guide-soft)!important;border:1px solid var(--cedars-role-guide-line)!important;color:var(--cedars-ink)!important}
+#root .improveGuidanceHeading{display:grid!important;grid-template-columns:24px minmax(0,1fr)!important;gap:8px!important;align-items:start!important;margin-bottom:10px!important}
+#root .improveGuidanceHeading>svg{margin-top:2px!important;color:var(--cedars-role-guide)!important}
+#root .improveGuidanceHeading span{display:block!important;font-size:7.5px!important;font-weight:900!important;letter-spacing:.09em!important;color:#725E2C!important}
+#root .improveGuidanceHeading h3{margin:2px 0 3px!important;font-size:15px!important;color:var(--cedars-ink)!important}
+#root .improveGuidanceHeading p{margin:0!important;font-size:9.5px!important;line-height:1.42!important;color:var(--cedars-muted)!important}
+#root .improveGuidanceOpportunities .improveClinicalGuardrail{margin-bottom:10px!important;background:rgba(255,255,255,.45)!important;border-color:var(--cedars-role-guide-line)!important;border-left-color:var(--cedars-role-guide)!important}
+#root .improveOpportunityTileGrid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:7px!important}
+#root .improveOpportunityTile{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important;min-height:158px!important;padding:9px!important;border:1px solid var(--cedars-role-action-line)!important;border-radius:8px!important;background:var(--cedars-role-action-soft)!important;color:var(--cedars-ink)!important}
+#root .improveOpportunityTile.added{border-color:var(--cedars-role-structure-line)!important;background:var(--cedars-role-structure-raised)!important}
+#root .improveOpportunityTileTop{display:grid!important;grid-template-columns:20px 16px minmax(0,1fr)!important;gap:4px!important;align-items:center!important}
+#root .improveOpportunityTileTop .improveRank{display:grid!important;place-items:center!important;width:18px!important;height:18px!important;border-radius:50%!important;background:var(--cedars-role-guide-line)!important;color:#3D3216!important;font-size:7px!important;font-weight:900!important}
+#root .improveOpportunityTileTop>svg{color:var(--cedars-role-action-strong)!important}
+#root .improveOpportunityTileTop>small{font-size:7px!important;font-weight:800!important;line-height:1.2!important;color:var(--cedars-role-action-strong)!important;overflow-wrap:anywhere!important}
+#root .improveOpportunityTile>strong{font-size:9.5px!important;line-height:1.28!important;color:var(--cedars-ink)!important;overflow-wrap:anywhere!important}
+#root .improveOpportunityTileImpact{font-size:10px!important;font-weight:900!important;color:var(--cedars-forest-deep)!important}
+#root .improveOpportunityTileReason{flex:1 1 auto!important;font-size:7.8px!important;line-height:1.35!important;color:var(--cedars-muted)!important;overflow-wrap:anywhere!important}
+#root .improveOpportunityTile>button{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;width:100%!important;margin-top:auto!important;padding:6px 7px!important;font-size:8px!important;background:var(--cedars-role-action-strong)!important;border:1px solid var(--cedars-role-action-strong)!important;color:#fff!important;box-shadow:none!important}
+#root .improveOpportunityTile>button:disabled{background:var(--cedars-role-neutral-soft)!important;border-color:var(--cedars-role-neutral-line)!important;color:var(--cedars-role-neutral)!important}
+#root .improveOpportunityOverflow{margin-top:8px!important;padding-top:8px!important;border-top:1px solid var(--cedars-role-guide-line)!important;font-size:8.5px!important;line-height:1.35!important;color:var(--cedars-muted)!important}
+#root .improveOpportunityEmpty{color:var(--cedars-muted)!important}
+#root.dark .improvePage .improveOpportunities.improveGuidanceOpportunities{background:var(--cedars-role-guide-soft)!important;border-color:var(--cedars-role-guide-line)!important;color:#F1E8C8!important}
+#root.dark .improveGuidanceHeading span{color:#E0C36A!important}
+#root.dark .improveGuidanceHeading h3{color:#FFF5D4!important}
+#root.dark .improveGuidanceHeading p,#root.dark .improveOpportunityOverflow,#root.dark .improveOpportunityEmpty{color:#D8CCAA!important}
+#root.dark .improveGuidanceOpportunities .improveClinicalGuardrail{background:rgba(20,31,42,.42)!important;border-color:var(--cedars-role-guide-line)!important}
+#root.dark .improveOpportunityTile{background:var(--cedars-role-action-soft)!important;border-color:var(--cedars-role-action-line)!important;color:#EEF5F8!important}
+#root.dark .improveOpportunityTile>strong{color:#F1F7FA!important}
+#root.dark .improveOpportunityTileImpact{color:#B9DFC8!important}
+#root.dark .improveOpportunityTileReason{color:#B7CAD3!important}
+#root.dark .improveOpportunityTile.added{background:var(--cedars-role-structure-raised)!important;border-color:var(--cedars-role-structure-line)!important}
+
+/* Department and AI reproducibility checklists share one legible component in both themes. */
+#root .departmentReportChecklist{margin-top:2px!important}
+
+@media(max-width:1100px){
+  #root .improveOpportunityTileGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:860px){
+  #root .departmentWorkflowStageWorkspace{grid-template-columns:1fr!important}
+  #root .departmentWorkflowCurrentTally{position:static!important}
+  #root .improveOpportunityTileGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:540px){
+  #root .improveOpportunityTileGrid{grid-template-columns:1fr!important}
+  #root .improveOpportunityTile{min-height:0!important}
+}
+
