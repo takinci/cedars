@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R17_REQUIRED_CONTEXT_STEPPER_COLOR_AUDIT
 const positive = value => {
   const n = Number(value);
   return Number.isFinite(n) && n > 0;
@@ -36,8 +37,8 @@ export function getDepartmentScoreReadiness({
 
   if (!gridReady) issues.push({
     key: 'context',
-    title: 'Enter the custom grid carbon intensity',
-    detail: '“Editable custom” was selected for the grid region, so enter its kgCO₂e/kWh value before CEDARS calculates a carbon score.',
+    title: 'Complete the Department grid context',
+    detail: 'Choose a country / grid region. If you select “Editable custom,” also enter its kgCO₂e/kWh value before CEDARS calculates a carbon score.',
   });
 
   return {ready: issues.length === 0, issues};

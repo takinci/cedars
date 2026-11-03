@@ -11,7 +11,7 @@ function statusClass(done, attention=true) {
 export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, section, onSection, checklistDone=0, checklistTotal=0, onResults, onReport, reviewContent=null, children}) {
   const compareMode=scen.aiRoute==='compare';
   const developMode=scen.aiRoute!=='compare' && scen.ownMode!=='spec';
-  const purposeDone=developMode ? Boolean(String(ecoLabel.taskType||'').trim()) : Boolean(String(ecoLabel.taskType||'').trim() && String(scen.modelIntendedUse||'').trim());
+  const purposeDone=Boolean(String(ecoLabel.taskType||'').trim());
   const performanceStarted=Boolean(String(scen.performanceSource||'').trim() || String(scen.performanceValidationContext||'').trim() || String(scen.performanceSupporting||'').trim() || String(scen.performanceUncertainty||'').trim());
   const performanceDone=Boolean(String(scen.accuracyMetric||'').trim() && scen.accuracyPct!=='' && scen.accuracyPct!=null && String(scen.performanceSource||'').trim());
   const performanceAttention=compareMode || performanceStarted;
@@ -44,7 +44,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     else if(key==='context') onSection('context');
   };
   const contextGroupLabel=developMode?'MODEL & WORKLOAD CONTEXT':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
-  const contextFlow='Context → training → deployment → review. Validation and environmental-boundary details stay attached to the same profile.';
+  const contextFlow='Context → training → deployment → result. Validation and optional water disclosure stay attached to the same profile.';
 
   const openAndScroll=id=>{
     const node=document.getElementById(id);
@@ -61,13 +61,13 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
 
   const stageSteps=[
     {key:'context',title:'Context',detail:purposeDone?'Purpose / workload set':'Purpose, task and evaluation'},
-    {key:'training',title:'Training',detail:trainingDone?'Documented':'Add status or measurement'},
-    {key:'inference',title:'Deployment',detail:inferenceDone?'Inference / use documented':'Inference, hosting and expected use'},
-    {key:'review',title:'Result',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`},
+    {key:'training',title:'Training',detail:trainingDone?'Documented':'Add status or measurement',disabled:!purposeDone,lockedLabel:'Complete Context first'},
+    {key:'inference',title:'Deployment',detail:inferenceDone?'Inference / use documented':'Inference, hosting and expected use',disabled:!trainingDone,lockedLabel:'Document Training first'},
+    {key:'review',title:'Result',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`,disabled:!ecoLabelData.hasData,lockedLabel:'Complete required lifecycle inputs'},
   ];
 
   return <div className="aiProfileWorkspace aiProfileWorkspaceCarousel" data-ai-stage={profileStage}>
-    <StageCarousel label="AI PROFILE" steps={stageSteps} activeKey={profileStage} onChange={changeStage}/>
+    <StageCarousel label="AI PROFILE" showHeading={false} steps={stageSteps} activeKey={profileStage} onChange={changeStage}/>
     <aside className="aiProfileSidebar" aria-label="AI Sustainability Profile sections">
       <div className="aiProfileSidebarIntro"><span>PROFILE</span><strong>AI Sustainability Profile</strong><small>{contextFlow}</small></div>
       <nav className="aiProfileNav">
@@ -83,8 +83,8 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
           <NavButton label="Inference & deployment" meta={inferenceDone?null:'Needs deployment inputs'} done={inferenceDone} active={section==='inference'} onClick={()=>lifecycle('inference','ai-inference-section')} tone="lifecycle"/>
         </div>
         <div className="aiProfileNavGroup">
-          <span>BOUNDARY</span>
-          <NavButton label="Environmental boundary" meta={boundaryDone?null:'Review water boundary'} done={boundaryDone} active={section==='water'} onClick={()=>{setProfileStage('review');lifecycle('water','ai-water-section');}} tone="boundary"/>
+          <span>RESOURCES</span>
+          <NavButton label="Water disclosure" meta={boundaryDone?null:'Review water use'} done={boundaryDone} active={section==='water'} onClick={()=>{setProfileStage('review');lifecycle('water','ai-water-section');}} tone="boundary"/>
         </div>
       </nav>
       <button type="button" className={`aiProfileReviewAction ${reviewDone?'complete':''}`} onClick={()=>setProfileStage('review')}>
@@ -94,7 +94,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     </aside>
     <div className={`aiProfileWorkspaceMain aiStageSurface aiStage-${profileStage}`} key={profileStage}>
       {profileStage==='review'
-        ? <div className="aiProfileReviewStack consolidatedAiResult">            {reviewContent}
+        ? <div className="aiProfileReviewStack consolidatedAiResult profileCurrentResultStack aiProfileResult">            {reviewContent}
           </div>
         : children}
     </div>

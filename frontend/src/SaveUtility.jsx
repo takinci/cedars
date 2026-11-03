@@ -37,13 +37,13 @@ export default function SaveUtility({
         title={isReportMode ? 'Preserve or share this CEDARS assessment' : 'Save, reopen, or share your CEDARS assessment'}
       >
         {isReportMode ? <Share2 size={16}/> : localSavedAt ? <CheckCircle2 size={16}/> : <Save size={16}/>}
-        <span>{isReportMode ? 'Save / Share' : localSavedAt ? 'Saved' : 'Save'}</span>
+        <span>{isReportMode ? 'Save / Share' : localSavedAt ? 'Saved / Open' : 'Save / Open'}</span>
         <span className="saveUtilityCaret">▾</span>
       </button>
 
       {menuOpen && (
         <div className="saveUtilityMenu" role="menu" data-demo-target="global-save-menu">
-          <div className="saveUtilityMenuTitle">{isReportMode ? 'Preserve or share' : 'Save your work'}</div>
+          <div className="saveUtilityMenuTitle">{isReportMode ? 'Preserve or share' : 'Save / open assessment'}</div>
           {isReportMode && <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
             <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Copy shareable CEDARS assessment link'}</strong><small>Reopens the supported assessment configuration. Complete multi-model details still require a downloaded CEDARS file.</small></span>
           </button>}

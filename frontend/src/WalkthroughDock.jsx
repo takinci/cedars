@@ -1,4 +1,5 @@
 // CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
+// CEDARS_CHUNK_9R16_SEMANTIC_COLOR_WALKTHROUGH_AI_ENTRY
 import React, {useEffect, useState} from 'react';
 import {Activity, Brain, X} from 'lucide-react';
 
@@ -53,14 +54,14 @@ export default function WalkthroughDock({onStart,showHint=false,onDismissHint}) 
   const [open,setOpen]=useState(false);
   return <aside className={`walkthroughDock ${open?'open':''} ${showHint?'showHint':''}`} aria-label="Guided walkthroughs">
     {showHint&&<div className="walkthroughDockCoach" role="status">
-      <strong>Walkthroughs stay here.</strong>
-      <span>Reopen them anytime. Next, CEDARS will point out the display-mode control.</span>
+      <strong>Need the tour again?</strong>
+      <span>Use Explore CEDARS anytime. Next, we will show you where to switch between light and dark mode.</span>
       <i aria-hidden="true">↓</i>
       <button type="button" onClick={onDismissHint}>Next</button>
     </div>}
     <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)onDismissHint?.();}} aria-expanded={open}>
       <span>GUIDED WALKTHROUGH</span><strong>Explore CEDARS</strong><b aria-hidden="true">{open?'×':'→'}</b>
     </button>
-    {open&&<div className="walkthroughDockPanel"><p>Illustrative, read-only walkthroughs.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
+    {open&&<div className="walkthroughDockPanel"><p>Read-only examples that show where to click and what each step means.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
   </aside>;
 }

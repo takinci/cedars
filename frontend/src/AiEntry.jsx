@@ -1,4 +1,6 @@
 import React, {useState, useEffect} from 'react';
+// CEDARS_CHUNK_9R16_SEMANTIC_COLOR_WALKTHROUGH_AI_ENTRY
+// CEDARS_CHUNK_9R17_REQUIRED_CONTEXT_STEPPER_COLOR_AUDIT
 /* CEDARS_CHUNK_9L_AI_WORKFLOW_UNIFICATION */
 /* CEDARS_CHUNK_9K_NAV_AI_DARKMODE_CLEANUP */
 /* CEDARS_CHUNK_9J_AI_RESULT_CONSOLIDATION */
@@ -172,7 +174,7 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
       <span className="aiIntentEyebrow">{choice.eyebrow}</span>
       <strong>{choice.title}</strong>
       <small>{choice.desc}</small>
-      <b>{active?'Selected':'Select →'}</b>
+      <b>{active?'Selected ✓':'Choose →'}</b>
     </button>;
   };
   return (
@@ -183,6 +185,10 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
           <h2 id="ai-intent-title">What would you like to do?</h2>
           <p>This is the first decision in Context. Choose what you are doing with the AI; CEDARS will then show the model and lifecycle information needed for that workflow.</p>
         </div>
+      </div>
+
+      <div className={`aiEntryStepPrompt ${lane?'complete':'pending'}`} role="status" aria-live="polite">
+        <span aria-hidden="true">{lane?'✓':'•'}</span><div><strong>{lane?`Pathway selected: ${laneTitle}`:'Choose one pathway to begin'}</strong><small>{lane?'Next, choose the AI type below.':'Required: choose Assess one model, Compare candidates, or Develop / train / fine-tune.'}</small></div>
       </div>
 
       <div className="aiRoleTaskGrid" aria-label="AI role and task">
@@ -200,24 +206,24 @@ export function AiEntryStep({route, ownMode, systemType, onSystemType, onRoute, 
         </section>
       </div>
 
-      {lane && <div className="aiLaneDetail aiTypeStep" data-demo-target="ai-lane-detail">
+      <div className={`aiLaneDetail aiTypeStep ${lane?'ready':'waiting'}`} data-demo-target="ai-lane-detail" aria-disabled={!lane}>
         <div className="aiLaneDetailHeader">
-          <span>CONTEXT · AI TYPE</span>
-          <strong>What kind of AI is this?</strong>
-          <small>This separates image-model workloads from language, multimodal, and agentic workloads.</small>
+          <span>THEN · AI TYPE</span>
+          <strong>{lane?'What kind of AI is this?':'Choose a pathway above first'}</strong>
+          <small>{lane?'Choose the AI family so CEDARS can show the right workload fields.':'AI type stays visible so you can see what comes next. Select Assess one model, Compare candidates, or Develop / train / fine-tune above to unlock it.'}</small>
         </div>
-        <div className="aiSystemChoiceGrid" role="group" aria-label="AI system family">
+        <div className="aiSystemChoiceGrid" role="group" aria-label="AI system family" aria-disabled={!lane}>
           {SYSTEM_CHOICES.map(([key,title,desc]) => (
-            <button key={key} type="button" className={`aiSystemChoice ${systemType===key?'active':''}`} aria-pressed={systemType===key} onClick={()=>onSystemType(key)}>
+            <button key={key} type="button" disabled={!lane} className={`aiSystemChoice ${lane&&systemType===key?'active':''}`} aria-pressed={!!lane&&systemType===key} onClick={()=>onSystemType(key)}>
               <strong>{title}</strong><small>{desc}</small>
             </button>
           ))}
         </div>
         <div className="aiEntryContinueRow">
-          <span><strong>NEXT · CONTEXT</strong>{!systemType?'Choose an AI type above.':`Continue with ${laneTitle}.`}</span>
-          <button type="button" disabled={!systemType} onClick={continueWithSelection}>Continue with {laneTitle} →</button>
+          <span><strong>CONTINUE</strong>{!lane?'Pick one pathway above to continue.':!systemType?'Now choose the AI type.':`Ready to continue with ${laneTitle}.`}</span>
+          <button type="button" disabled={!lane||!systemType} onClick={continueWithSelection}>{lane?`Continue with ${laneTitle} →`:'Continue →'}</button>
         </div>
-      </div>}
+      </div>
 
 
     </section>

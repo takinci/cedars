@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R17_REQUIRED_CONTEXT_STEPPER_COLOR_AUDIT
 // Shareable-URL state — serialises the full calculator configuration into the location hash so a
 // copied link reproduces the whole setup: department settings + equipment inventory + storage +
 // cost/commute, the AI scenario (model spec, cloud, scanner state), and the selected interventions.
@@ -25,7 +26,7 @@ export const ALL_INTERVENTIONS = [
 // Defaults must mirror the initial `settings` / `scen` state in main.jsx (single source of truth —
 // main.jsx imports these for its initial state and reset).
 export const SETTINGS_DEFAULTS = {
-  intendedUse: "Estimate annual footprint", region: "Switzerland", metricType: "Energy",
+  intendedUse: "Estimate annual footprint", region: "", metricType: "Energy",
   timePeriod: "Monthly", customCi: "0.30", actualStudiesYear: '', staffCount: '', staffCommuteKm: '',
   patientTravelKm: '', waterLitresAnnual: '', paperKgAnnual: '', hazardousKgAnnual: '', materialsNotes: '',
   electricityPrice: '', storageRetentionYears: '10', storageCloud: false, storageReformats: 'all',

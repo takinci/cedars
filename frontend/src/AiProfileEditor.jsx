@@ -1,6 +1,6 @@
 import React from 'react';
 import {ExternalLink, Ref} from './Refs.jsx';
-import { BarChart3, Zap, Repeat2, MessageSquare, CalendarRange, Activity, Box, Clock, Cpu, Database, Gauge, Layers, Repeat } from 'lucide-react';
+import { BarChart3, Zap, Repeat2, MessageSquare, CalendarRange, Activity, Box, Clock, Cpu, Database, Gauge, Layers, Repeat, Target, Workflow } from 'lucide-react';
 
 const METRIC_EXAMPLES = {
   Classification:['AUROC','Sensitivity / specificity','PPV / F1 / MCC','Calibration'],
@@ -79,22 +79,22 @@ export default function AiProfileEditor({
   };
 
   return <>
-    <section id="ai-model-record" className="inputSummary aiProfileIdentity" data-demo-target="ai-model-record">
-      <div>
-        <h2>{contextTitle}</h2>
-        <p className="note">{contextNote}</p>
+    <section id="ai-model-record" className={`inputSummary aiProfileIdentity ${developing?'development':'clinical'}`} data-demo-target="ai-model-record">
+      <div className="aiContextSectionHeading">
+        <span className="aiContextSectionIcon"><Target size={19}/></span>
+        <div><h2>{contextTitle}</h2><p className="note">{contextNote}</p></div>
       </div>
 
       <div className="aiContextStepHeader"><span>{developing?'1 · TASK / WORKLOAD':comparing?'1 · SHARED CLINICAL PURPOSE':'1 · CLINICAL PURPOSE'}</span><strong>{developing?'What kind of workload are you assessing?':comparing?'What clinical need must every candidate address?':'What is this AI intended to do?'}</strong></div>
 
-      {!developing&&<label className="aiIdentityName">
-        <span className="aiFieldLabelLine"><span>Label / model name</span><span className="aiOptionalTag">editable</span></span>
+      {!developing&&<label className="aiIdentityName aiContextFieldCard">
+        <span className="aiFieldLabelLine"><span className="aiInputTileLabel"><Box size={15}/><span>Label / model name</span></span><span className="aiOptionalTag">editable</span></span>
         <input type="text" value={ecoLabel.projectName} onChange={e=>setEco('projectName',e.target.value)} placeholder="e.g. PE triage model"/>
         <span className="aiFieldHelp">This is the name shown on the CEDARS AI result and report. You can edit it later.</span>
       </label>}
 
       <div className="aiProfilePrimaryGrid aiClinicalPurposeGrid aiClinicalPurposeGridSingle">
-        <label className="aiPrimaryTaskField">{developing?'Task / workload type':comparing?'Shared clinical task':'Clinical task'}
+        <label className="aiPrimaryTaskField aiContextFieldCard"><span className="aiInputTileLabel"><Activity size={15}/><span>{developing?'Task / workload type':comparing?'Shared clinical task':'Clinical task'}</span></span>
           <select value={ecoLabel.taskType||''} onChange={e=>setEco('taskType',e.target.value)}>
             <option value="">{developing?'— Choose workload type —':'— Choose clinical task —'}</option>
             {meta.taskTypes.map(v=><option key={v} value={v}>{v}</option>)}
@@ -112,7 +112,8 @@ export default function AiProfileEditor({
       </details>}
 
       <details id="ai-performance-section" className="aiProfileDisclosure aiPerformanceDisclosure">
-        <summary>
+        <summary className="aiIconSummary">
+          <BarChart3 size={16} className="aiDisclosureIcon"/>
           <span><strong>2 · {developing?'Evaluation & validation':'Performance & validation'}</strong><small>{developing?'Optional for development-footprint accounting; document planned or available evaluation when useful.':comparing?'Required context before candidate ranking; compare like-for-like evidence.':'Optional for environmental accounting; useful for clinical interpretation and governance.'}</small></span>
           <b>{performanceStatus}</b>
         </summary>
@@ -137,7 +138,8 @@ export default function AiProfileEditor({
       </details>
 
       {!developing ? <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure">
-        <summary>
+        <summary className="aiIconSummary">
+          <Workflow size={16} className="aiDisclosureIcon"/>
           <span><strong>3 · Workflow effects</strong><small>Optional deployment context for downstream changes in care or workflow that may alter resource use.</small></span>
           <b>{clinicalEffectStatus}</b>
         </summary>
@@ -163,7 +165,8 @@ export default function AiProfileEditor({
       </div>}
 
       <details id="ai-technical-section" className="aiProfileDisclosure aiTechnicalDisclosure">
-        <summary>
+        <summary className="aiIconSummary">
+          <Cpu size={16} className="aiDisclosureIcon"/>
           <span><strong>Advanced technical assumptions</strong><small>Optional unless these details are needed to estimate energy or characterize the workload.</small></span>
           <b>{technicalStatus}</b>
         </summary>
@@ -280,12 +283,12 @@ export default function AiProfileEditor({
     </section>}
 
     <section className="aiBoundarySummary">
-      <div><span>ENVIRONMENTAL BOUNDARY · OPTIONAL DISCLOSURE</span><strong>Water: {ecoLabelData.waterProv==='not-assessed'?'not assessed':ecoLabelData.waterProv==='screening'?'screening estimate':'inputs entered'}</strong><small>Water is reported separately from the carbon-and-energy Score. Review it when relevant; unknown is never treated as zero.</small></div>
+      <div><span>OPTIONAL RESOURCE DISCLOSURE</span><strong>Water: {ecoLabelData.waterProv==='not-assessed'?'not assessed':ecoLabelData.waterProv==='screening'?'screening estimate':'inputs entered'}</strong><small>Water is reported separately from the carbon-and-energy Score. Review it when relevant; unknown is never treated as zero.</small></div>
       <button type="button" className="download" onClick={()=>onSection('water')}>Review water disclosure →</button>
     </section>
 
     {section==='water'&&<section id="ai-water-section" className="aiLifecycleEditor" data-demo-target="ai-water-section">
-      <h2>Environmental boundary</h2><p className="note">Water is a separate optional disclosure. Enter site/grid values when known; otherwise use the screening estimate or mark water as not assessed.</p>
+      <h2>Water use disclosure</h2><p className="note">Water is a separate optional disclosure. Enter site/grid values when known; otherwise use the screening estimate or mark water as not assessed.</p>
       <div className="grid grid3"><label>On-site cooling water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label><label>Electricity-generation water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label><label>Water reporting<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use screening estimate ({waterPerKwh} L/kWh)</option><option value="notassessed">Mark water as not assessed</option></select></label></div>
       <p className="note">Water is reported separately and does not currently affect the carbon-and-energy CEDARS Score.<Ref id="li-thirsty-2023" order={refsOrder}/></p>
       <button type="button" className="download" onClick={onContribute}>Contribute water evidence →</button>

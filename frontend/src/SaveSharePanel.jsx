@@ -14,9 +14,7 @@ export default function SaveSharePanel({
 
   return (
     <section id="save-share" className="reportShareSection">
-      <p className="eyebrow" style={{marginTop:0}}>3 · Preserve or share</p>
-      <h2>Preserve or share your assessment</h2>
-      <p className="note reportShareIntro">Saving, transferring, and sharing are separate choices. Normal CEDARS use stays browser-local.</p>
+      <div className="reportStageHeading compact reportUnifiedHeading reportShareHeading"><div><span>SAVE &amp; SHARE</span><h2>Preserve or share your assessment</h2><p>Saving, transferring, and sharing are separate choices. Normal CEDARS use stays browser-local.</p></div></div>
 
       {status && <div className={`saveShareStatus ${status.type==='error'?'error':'success'}`}>{status.text}</div>}
 

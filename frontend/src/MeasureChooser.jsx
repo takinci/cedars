@@ -128,13 +128,13 @@ export function MeasureChooser({scen, onUse, onDone}) {
   return (
     <div data-demo-target="measure-chooser" style={{display:'flex', flexDirection:'column', gap:14, marginTop:16}}>
       <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-        <span style={tag()}>1 · WHERE IT RUNS</span><span style={{color:'#90a4ae'}}>→</span>
-        <span style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>2 · PICK A TOOL</span><span style={{color:'#90a4ae'}}>→</span>
-        <span style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>3 · ENTER RESULTS</span>
+        <span className="measureStepPill active" style={tag()}>1 · WHERE IT RUNS</span><span className="measureStepArrow" style={{color:'#90a4ae'}}>→</span>
+        <span className="measureStepPill" style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>2 · PICK A TOOL</span><span className="measureStepArrow" style={{color:'#90a4ae'}}>→</span>
+        <span className="measureStepPill" style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>3 · ENTER RESULTS</span>
       </div>
 
       <div style={{display:'grid', gridTemplateColumns:'minmax(300px, 420px) 1fr', gap:18, alignItems:'start'}} className="measureGrid">
-        <div style={{background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'18px 20px', display:'flex', flexDirection:'column', gap:18}}>
+        <div className="measureQuestionPanel" style={{background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'18px 20px', display:'flex', flexDirection:'column', gap:18}}>
           <div>
             <h2 style={{margin:'0 0 4px', fontSize:18}}>Three questions about your setup</h2>
             <p className="note" style={{margin:0}}>The recommendations on the right narrow as you answer. Your answers stay in your browser.</p>
@@ -143,23 +143,23 @@ export function MeasureChooser({scen, onUse, onDone}) {
             <h3 style={{margin:'0 0 8px', fontSize:13}}>Where does the model run?</h3>
             <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
               {[['local','Local workstation or server GPU'],['hpc','HPC cluster (Slurm, PBS)'],['cloud','Cloud VM (AWS · Azure · Google Cloud)'],['api','Vendor API only (hosted LLM)']].map(([k,l]) => (
-                <button key={k} type="button" style={chip(a.run===k)} onClick={()=>setA(x=>({...x, run:k, python: k==='api' ? 'yes' : x.python}))}>{l}</button>
+                <button key={k} type="button" className={`measureChoice ${a.run===k?'on':''}`} style={chip(a.run===k)} onClick={()=>setA(x=>({...x, run:k, python: k==='api' ? 'yes' : x.python}))}>{l}</button>
               ))}
             </div>
           </div>
           <div>
             <h3 style={{margin:'0 0 8px', fontSize:13}}>Which phase do you need numbers for?</h3>
             <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
-              <button type="button" style={chip(a.phase.includes('training'))} onClick={()=>togglePhase('training')}>Training (one-time)</button>
-              <button type="button" style={chip(a.phase.includes('inference'))} onClick={()=>togglePhase('inference')}>Inference (per study)</button>
+              <button type="button" className={`measureChoice ${a.phase.includes('training')?'on':''}`} style={chip(a.phase.includes('training'))} onClick={()=>togglePhase('training')}>Training (one-time)</button>
+              <button type="button" className={`measureChoice ${a.phase.includes('inference')?'on':''}`} style={chip(a.phase.includes('inference'))} onClick={()=>togglePhase('inference')}>Inference (per study)</button>
             </div>
           </div>
           {a.run !== 'api' && (
             <div>
               <h3 style={{margin:'0 0 8px', fontSize:13}}>Can you add a few lines of Python to the code?</h3>
               <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
-                <button type="button" style={chip(a.python==='yes')} onClick={()=>setA(x=>({...x, python:'yes'}))}>Yes</button>
-                <button type="button" style={chip(a.python==='no')} onClick={()=>setA(x=>({...x, python:'no'}))}>No — I only have logs or a dashboard</button>
+                <button type="button" className={`measureChoice ${a.python==='yes'?'on':''}`} style={chip(a.python==='yes')} onClick={()=>setA(x=>({...x, python:'yes'}))}>Yes</button>
+                <button type="button" className={`measureChoice ${a.python==='no'?'on':''}`} style={chip(a.python==='no')} onClick={()=>setA(x=>({...x, python:'no'}))}>No — I only have logs or a dashboard</button>
               </div>
             </div>
           )}
@@ -219,7 +219,7 @@ export function MeasureChooser({scen, onUse, onDone}) {
             </div>
           )}
           {fallback && (
-            <div style={{border:'1px solid #c8e6c9', borderRadius:14, padding:'14px 18px', background:'#fbfdfb', display:'flex', flexDirection:'column', gap:8}}>
+            <div className="measureFallback" style={{border:'1px solid #c8e6c9', borderRadius:14, padding:'14px 18px', background:'#fbfdfb', display:'flex', flexDirection:'column', gap:8}}>
               <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}><strong>No-code fallback</strong><span style={tag('meta')}>manual</span><span style={tag('fill')}>fills → either field, as ESTIMATED</span></div>
               <div className="note" style={{margin:0}}>Run <code>{fallback.snippet}</code> during the job, then average the watts and multiply by hours ÷ 1000. Or enter the GPU model and hours and let CEDARS apply TDP × PUE.</div>
             </div>

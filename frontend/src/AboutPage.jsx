@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R18_DECISION_HANDOFF_LABEL_ABOUT_GUIDANCE
 import React from 'react';
 import {TriangleAlert, Users} from 'lucide-react';
 
@@ -14,17 +15,17 @@ import elmarPhoto from './assets/team/elmar-merkle.webp';
 import florencePhoto from './assets/team/florence-doo.webp';
 
 const PEOPLE = [
-  {name:"Tugba Akinci D’Antonoli", affiliations:['EuSoMII'], orcid:'0000-0002-7237-711X', image:tugbaPhoto, position:'center', lead:true},
-  {name:'Florence X. Doo', affiliations:['ACR','RSNA'], orcid:'0000-0001-6519-5222', image:florencePhoto, position:'center 24%', lead:true},
-  {name:'Jan Vosshenrich', affiliations:['ESR'], orcid:'0000-0003-3323-8472', image:janPhoto},
-  {name:'Ghada Zamzmi', affiliations:['MICCAI'], orcid:'0000-0003-4723-5539', image:ghadaPhoto},
-  {name:'Michail Ε. Klontzas', affiliations:['EuSoMII'], orcid:'0000-0003-2731-933X', image:michailPhoto, position:'center 18%'},
-  {name:'Wen-Jeng Lee', affiliations:['AOSR'], orcid:'0000-0003-3267-4811', image:wenJengPhoto, position:'center 15%'},
-  {name:'Hamed Asadi', affiliations:['RANZCR'], orcid:'0000-0003-2475-9727', image:hamedPhoto, position:'center 22%'},
-  {name:'Rachel Gerson', affiliations:['ACR'], orcid:'0009-0007-0986-5536', image:rachelPhoto, position:'center 18%'},
-  {name:'Julia Schoen', affiliations:['ACR','RSNA'], orcid:'0000-0003-0679-3446', image:juliaPhoto},
-  {name:'Martin Segeroth', affiliations:['Independent Researcher'], orcid:'0000-0001-7820-2778', image:martinPhoto, position:'center 18%'},
-  {name:'Elmar Merkle', affiliations:['RSNA'], orcid:'0000-0001-6894-0507', image:elmarPhoto, position:'center 18%'},
+  {name:"Tugba Akinci D’Antonoli", affiliations:['EuSoMII'], orcid:'0000-0002-7237-711X', image:tugbaPhoto, position:'center 20%', scale:1.08, lead:true},
+  {name:'Florence X. Doo', affiliations:['ACR','RSNA'], orcid:'0000-0001-6519-5222', image:florencePhoto, position:'center 24%', scale:1.08, lead:true},
+  {name:'Jan Vosshenrich', affiliations:['ESR'], orcid:'0000-0003-3323-8472', image:janPhoto, position:'center 20%', scale:1.04},
+  {name:'Ghada Zamzmi', affiliations:['MICCAI'], orcid:'0000-0003-4723-5539', image:ghadaPhoto, position:'center 18%', scale:1.10},
+  {name:'Michail Ε. Klontzas', affiliations:['EuSoMII'], orcid:'0000-0003-2731-933X', image:michailPhoto, position:'center 18%', scale:1.06},
+  {name:'Wen-Jeng Lee', affiliations:['AOSR'], orcid:'0000-0003-3267-4811', image:wenJengPhoto, position:'center 15%', scale:1.08},
+  {name:'Hamed Asadi', affiliations:['RANZCR'], orcid:'0000-0003-2475-9727', image:hamedPhoto, position:'center 22%', scale:1.07},
+  {name:'Rachel Gerson', affiliations:['ACR'], orcid:'0009-0007-0986-5536', image:rachelPhoto, position:'center 18%', scale:1.05},
+  {name:'Julia Schoen', affiliations:['ACR','RSNA'], orcid:'0000-0003-0679-3446', image:juliaPhoto, position:'center 18%', scale:1.10},
+  {name:'Martin Segeroth', affiliations:['Independent Researcher'], orcid:'0000-0001-7820-2778', image:martinPhoto, position:'center 18%', scale:1.10},
+  {name:'Elmar Merkle', affiliations:['RSNA'], orcid:'0000-0001-6894-0507', image:elmarPhoto, position:'center 18%', scale:1.08},
 ];
 
 function OrcidLink({orcid, name}) {
@@ -55,7 +56,7 @@ function PersonCard({person}) {
   if (person.lead) {
     return (
       <article className="collaboratorCard lead">
-        <img src={person.image} alt={`${person.name} portrait`} style={{objectPosition:person.position || 'center 20%'}}/>
+        <div className="collaboratorPortrait" style={{'--portrait-scale':person.scale || 1}}><img src={person.image} alt={`${person.name} portrait`} style={{objectPosition:person.position || 'center 20%'}}/></div>
         <div>
           <div className="collaboratorNameRow"><div className="collaboratorName">{person.name}</div><OrcidLink orcid={person.orcid} name={person.name}/></div>
           <div className="collaboratorRole">CEDARS Lead</div>
@@ -66,7 +67,7 @@ function PersonCard({person}) {
   }
   return (
     <article className="collaboratorCard">
-      <img src={person.image} alt={`${person.name} portrait`} style={{objectPosition:person.position || 'center 20%'}}/>
+      <div className="collaboratorPortrait" style={{'--portrait-scale':person.scale || 1}}><img src={person.image} alt={`${person.name} portrait`} style={{objectPosition:person.position || 'center 20%'}}/></div>
       <div className="collaboratorNameRow"><div className="collaboratorName">{person.name}</div><OrcidLink orcid={person.orcid} name={person.name}/></div>
       <AffiliationBadges affiliations={person.affiliations}/>
     </article>

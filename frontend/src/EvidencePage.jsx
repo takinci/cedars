@@ -1,5 +1,6 @@
 import React from 'react';
 // CEDARS_CHUNK_9R14B_UNIVERSAL_DARK_EVIDENCE
+// CEDARS_CHUNK_9R15_EVIDENCE_LAYERING
 import {ArrowRight, ExternalLink, BookOpen, Scan, Brain, Database, Droplets, Ruler, Pause, Play} from 'lucide-react';
 
 const GROUPS = [
@@ -60,7 +61,7 @@ const GROUPS = [
       {type:'ML REPORTING FRAMEWORK',year:'2020',authors:['Henderson P','Hu J','Romoff J','Brunskill E','Jurafsky D','Pineau J'],venue:'J Mach Learn Res',title:'Towards the Systematic Reporting of the Energy and Carbon Footprints of Machine Learning',href:'https://jmlr.org/papers/v21/20-312.html',why:'Argues for transparent reporting of energy, carbon, infrastructure, and location rather than isolated performance alone.',used:'AI reporting completeness and provenance principles.'},
       {type:'COMPUTE EFFICIENCY FRAMEWORK',year:'2020',authors:['Schwartz R','Dodge J','Smith NA','Etzioni O'],venue:'Commun ACM',title:'Green AI',href:'https://doi.org/10.1145/3381831',why:'Makes computational efficiency an explicit evaluation dimension alongside model quality.',used:'Compute-efficiency framing and input-size scaling context.'},
       {type:'EVALUATION METHODOLOGY',year:'2024',authors:['Maier-Hein L','Reinke A','Godau P','Tizabi MD','Buettner F','Christodoulou E','Glocker B','Isensee F','Kleesiek J','Kozubek M','Reyes M','Riegler MA','Wiesenfarth M','Kavur AE','Sudre CH','Baumgartner M','Eisenmann M','Heckmann-Nötzel D','Rädsch T','Acion L','Antonelli M','Arbel T','Bakas S','Benis A','Blaschko MB','Cardoso MJ','Cheplygina V','Cimini BA','Collins GS','Farahani K','Ferrer L','Galdran A','van Ginneken B','Haase R','Hashimoto DA','Hoffman MM','Huisman M','Jannin P','Kahn CE','Kainmueller D','Kainz B','Karargyris A','Karthikesalingam A','Kofler F','Kopp-Schneider A','Kreshuk A','Kurc T','Landman BA','Litjens G','Madani A','Maier-Hein K','Martel AL','Mattson P','Meijering E','Menze B','Moons KGM','Müller H','Nichyporuk B','Nickel F','Petersen J','Rajpoot N','Rieke N','Saez-Rodriguez J','Sánchez CI','Shetty S','van Smeden M','Summers RM','Taha AA','Tiulpin A','Tsaftaris SA','Van Calster B','Varoquaux G','Jäger PF'],venue:'Nature Methods',title:'Metrics reloaded: recommendations for image analysis validation',href:'https://doi.org/10.1038/s41592-023-02151-z',why:'Shows how metric choice should follow the actual scientific question rather than convenience.',used:'Conceptual precedent for transparent, task-aligned metric selection.'},
-      {type:'PRACTICE RECOMMENDATIONS',year:'2026',authors:['Klontzas ME','Groot Lipman KBW','Akinci D’Antonoli T','Andreychenko A','Cuocolo R','Dietzel M','Gitto S','Huisman H','Santinha J','Vernuccio F','Visser JJ','Huisman M'],venue:'European Radiology',title:'ESR Essentials: common performance metrics in AI—practice recommendations by the European Society of Medical Imaging Informatics',href:'https://doi.org/10.1007/s00330-025-11890-w',why:'Provides practical guidance for selecting and interpreting AI performance metrics in radiology, including task fit, prevalence, thresholds, local validation, and deployment context.',used:'Clinical-quality gate and task-aligned metric selection when evaluating medical AI; not an environmental Score input.'},
+      {type:'PRACTICE RECOMMENDATIONS',year:'2026',authors:['Klontzas ME','Groot Lipman KBW','Akinci D’Antonoli T','Andreychenko A','Cuocolo R','Dietzel M','Gitto S','Huisman H','Santinha J','Vernuccio F','Visser JJ','Huisman M'],venue:'European Radiology',title:'ESR Essentials: common performance metrics in AI—practice recommendations by the European Society of Medical Imaging Informatics',href:'https://doi.org/10.1007/s00330-025-11890-w',why:'Practical guidance for selecting and interpreting radiology AI performance metrics, including task fit and local validation.',used:'Clinical-quality gate and task-aligned metric selection; not an environmental Score input.'},
     ],
   },
 ];
@@ -83,7 +84,7 @@ const JOURNAL_MARKS = {
 };
 
 function AuthorList({authors=[]}) {
-  const shown = authors.length > 12
+  const shown = authors.length > 8
     ? [...authors.slice(0,5), '…', authors[authors.length-1]]
     : authors;
   return <div className="evidenceAuthorsFull" title={authors.length>12?authors.join(', '):undefined}>{shown.join(', ')}</div>;
@@ -106,18 +107,23 @@ function EvidenceCard({card, index, duplicate=false}) {
   );
 }
 
-function EvidenceCategory({group, pausedAll=false}) {
+function EvidenceCategory({group, pausedAll=false, order=0}) {
   const [active, setActive] = React.useState(0);
   const [pausedLocal, setPausedLocal] = React.useState(false);
+  const autoStartedRef = React.useRef(false);
   const Icon = group.icon;
   const card = group.cards[active] || group.cards[0];
   const autoPaused = pausedAll || pausedLocal;
 
   React.useEffect(()=>{
     if (autoPaused || group.cards.length < 2) return undefined;
-    const timer = window.setTimeout(()=>setActive(current=>(current+1)%group.cards.length), 9000);
+    const delay = 9000 + (autoStartedRef.current ? 0 : order * 250);
+    const timer = window.setTimeout(()=>{
+      autoStartedRef.current = true;
+      setActive(current=>(current+1)%group.cards.length);
+    }, delay);
     return ()=>window.clearTimeout(timer);
-  }, [active, autoPaused, group.cards.length]);
+  }, [active, autoPaused, group.cards.length, order]);
 
   return (
     <section className="evidenceCategoryCard contentSurfaceInset" id={`evidence-${group.key}`} aria-labelledby={`evidence-${group.key}-title`}>
@@ -158,7 +164,7 @@ export default function EvidencePage({onStart}) {
       </section>
 
       <div className="evidenceLibraryGrid">
-        {GROUPS.map(group=><EvidenceCategory key={group.key} group={group} pausedAll={pausedAll}/>) }
+        {GROUPS.map((group,index)=><EvidenceCategory key={group.key} group={group} pausedAll={pausedAll} order={index}/>) }
       </div>
 
       <section className="evidenceRegistryNote contentSurfaceInset">
