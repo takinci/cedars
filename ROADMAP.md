@@ -5,7 +5,7 @@ This roadmap is a lightweight collaboration note for work that is planned or act
 ## In progress — site usability, persistence, and collaboration
 
 - [x] Public **About CEDARS** page with collaborator affiliations and a non-endorsement note.
-- [x] Homepage journey: **Input → Score → Improve → Share**.
+- [x] Homepage journey: **Profile → Decision Workspace → Report & Share**, with parallel four-stage Department and AI Profiles.
 - [x] User-facing AI terminology:
   - **Clinical AI** — environmental impact of AI used in clinical practice.
   - **AI Model & Informatics** — environmental footprint of building and running the AI itself (name retained; see CHANGELOG).

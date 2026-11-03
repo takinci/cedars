@@ -31,15 +31,24 @@ CEDARS is a multi-person, multi-institutional, international collaboration spann
 
 ## What CEDARS does
 
-CEDARS turns radiology sustainability data into a structured workflow:
+CEDARS separates the **current assessed state** from **prospective decision support** and **reporting**:
 
-| Step | Purpose |
+| Stage | Purpose |
 |---|---|
-| **1 · Set up** | Describe a Radiology Department or choose the AI decision you need to make |
-| **2 · See footprint** | Review the headline operational footprint and its main drivers before opening technical detail |
-| **3 · Improve** | Test prospective changes separately from the current state and compare projected effects |
-| **4 · Score & EcoLabel** | Interpret operational intensity using the CEDARS Score, Rating, and standardized label |
-| **5 · Report & Share** | Review disclosure gaps, prepare CEDARS materials, and preserve or share the assessment |
+| **1 · Profile** | Document the current Radiology Department or AI system and establish the evidence-supported baseline |
+| **2 · Decision Workspace** | Explore prospective changes without silently rewriting the current Profile |
+| **3 · Report & Share** | Review reproducibility and disclosure gaps, prepare CEDARS materials, and preserve or share the assessment |
+
+Within **Profile**, the Department and AI pathways use parallel four-stage structures:
+
+| Radiology Department | AI Model & Informatics |
+|---|---|
+| **Context** — region, equipment, workload, energy baseline | **Context** — clinical purpose, model/task context, comparison or assessment setup |
+| **Workflow** — how imaging care is delivered today | **Training** — development/training inputs and compute context |
+| **Digital + AI** — optional local informatics/Clinical AI use | **Deployment** — inference workload, compute location, and deployment assumptions |
+| **Result** — current footprint and Score interpretation | **Result** — current lifecycle result and coverage |
+
+The **CEDARS Score is interpreted with the current Result**. EcoLabels and the optional AI Research Label are reporting outputs prepared in **Report & Share**, not separate top-level workflow stages.
 
 No account or installation is required for the public site.
 
@@ -58,25 +67,25 @@ The technical model is described once; local Department use is configured separa
 
 ### Radiology Department
 
-CEDARS can estimate and contextualize equipment energy, utilization, energy/carbon per study, electricity emissions, modeled Scope 3 categories, storage/archiving, clinical AI, contrast-media and resource indicators, current practices, and projected intervention scenarios. Local measured values can replace defaults where supported.
+The Department Profile follows **Context → Workflow → Digital + AI (optional) → Result**. CEDARS can estimate and contextualize equipment energy, utilization, energy/carbon per study, electricity emissions, modeled Scope 3 categories, storage/archiving, Clinical AI, contrast-media and resource indicators, and current workflow practices. Local measured values can replace defaults where supported.
 
 ### AI Model & Informatics
 
-CEDARS starts from three user intentions: assess one AI system already selected or in use, compare like-for-like candidates, or assess a model being developed/evaluated. The underlying record supports single-task imaging AI, LLM/foundation-model and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an **AI Research Label**. CEDARS does not predict model performance.
+The AI Profile follows **Context → Training → Deployment → Result**. CEDARS starts from three user intentions: assess one AI system already selected or in use, compare like-for-like candidates, or assess a model being developed/evaluated. The underlying record supports single-task imaging AI, LLM/foundation-model and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an optional **AI Research Label**. CEDARS does not predict model performance.
 
-### Improve
+### Decision Workspace
 
-The Improve workspace separates **current practice** from **future scenarios**. Opportunities are ranked from the current assessment when CEDARS can model them; guidance-only AI/informatics checks remain explicitly non-quantified unless sufficient inputs exist.
+The Decision Workspace separates the **current Profile** from **prospective scenarios**. Department opportunities can be ranked from the current assessment when CEDARS can model them; guidance-only AI/informatics checks remain explicitly non-quantified unless sufficient inputs exist. A modeled scenario does not become part of the current Profile until the underlying real-world inputs are deliberately updated after implementation.
 
 ### Report & Share
 
 Reporting is organized around:
 
-1. **Review & finalize**
-2. **Prepare your CEDARS materials**
+1. **Reporting details & reproducibility**
+2. **CEDARS materials** — including the Department EcoLabel and optional AI Research Label
 3. **Preserve or share**
 
-Outputs include EcoLabels, reporting text, structured methods/reproducibility fields, and portable assessment files.
+Outputs include research labels, reporting text, structured methods/reproducibility fields, and portable assessment files. CEDARS labels are research outputs, not external certification.
 
 ---
 
@@ -102,7 +111,7 @@ Normal calculator use is browser-local by default.
 |---|---|
 | **Save on this device** | Browser-local working copy |
 | **Complete CEDARS file** | Portable, versioned `.cedars.json` assessment for backup or exact transfer |
-| **Reproducible link** | Compact current calculator/current AI-model configuration; not a complete multi-model backup |
+| **Reproducible link** | Compact calculator / selected AI-profile configuration; useful for reproducibility, but not a complete multi-model or free-text backup |
 | **Contribute this assessment** | Optional research submission after explicit review and consent |
 
 A reproducible URL is **not private**: anyone with the full link can open the encoded configuration. Names, email addresses, consent choices, and patient-identifiable information are not intentionally placed in the shareable URL.
