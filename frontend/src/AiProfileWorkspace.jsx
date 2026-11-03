@@ -21,25 +21,48 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
   const inferenceDone=Boolean(Number(ecoLabelData.inferKwhPerStudy)>0 && ecoLabelData.hasInference);
   const boundaryDone=ecoLabelData.waterProv==='not-assessed' || (ecoLabelData.waterProv && ecoLabelData.waterProv!=='screening');
   const reviewDone=checklistTotal>0 && checklistDone===checklistTotal;
-  const [profileStage,setProfileStage]=React.useState('context');
+  const [profileStage,setProfileStage]=React.useState(()=>{
+    if (typeof window === 'undefined') return 'context';
+    const saved=window.sessionStorage.getItem('cedars.aiProfileStage');
+    return ['context','training','inference','review'].includes(saved) ? saved : 'context';
+  });
+
+  const earliestPermittedStage=()=>{
+    if(!purposeDone) return 'context';
+    if(!trainingDone) return 'training';
+    if(!ecoLabelData.hasData) return 'inference';
+    return 'review';
+  };
+  const stagePermitted=key=>key==='context'
+    || (key==='training'&&purposeDone)
+    || (key==='inference'&&purposeDone&&trainingDone)
+    || (key==='review'&&ecoLabelData.hasData);
 
   React.useEffect(()=>{
-    if(section==='training') setProfileStage('training');
-    else if(section==='inference') setProfileStage('inference');
-    else if(section==='water') setProfileStage('boundary');
-    else if(section==='review') setProfileStage('review');
-    else if(section==='context') setProfileStage('context');
-  },[section]);
+    let requested=null;
+    if(section==='training') requested='training';
+    else if(section==='inference') requested='inference';
+    else if(section==='review') requested='review';
+    else if(section==='context') requested='context';
+    else if(section==='water') requested=ecoLabelData.hasData?'review':earliestPermittedStage();
+    setProfileStage(current=>{
+      const candidate=requested||current;
+      return stagePermitted(candidate) ? candidate : earliestPermittedStage();
+    });
+  },[section,purposeDone,trainingDone,ecoLabelData.hasData]);
 
   React.useEffect(()=>{
     if (typeof window !== 'undefined') window.sessionStorage.setItem('cedars.aiProfileStage', profileStage);
   },[profileStage]);
 
   const changeStage=key=>{
+    if(!stagePermitted(key)) {
+      setProfileStage(earliestPermittedStage());
+      return;
+    }
     setProfileStage(key);
     if(key==='training') onSection('training');
     else if(key==='inference') onSection('inference');
-    else if(key==='boundary') onSection('water');
     else if(key==='review') onSection('review');
     else if(key==='context') onSection('context');
   };

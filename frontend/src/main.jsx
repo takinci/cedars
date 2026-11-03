@@ -2817,6 +2817,14 @@ function App() {
     gridReady: deptLabelData.hasGridFactor,
     clinicalAiCount: deptLabelData.clinicalToolCount,
   }), [deptLabelData.annualKwh, deptLabelData.annualStudies, deptLabelData.hasGridFactor, deptLabelData.clinicalToolCount]);
+  // Stage gating is stateful as well as visual: a restored later stage cannot survive
+  // after its required Department baseline becomes incomplete.
+  useEffect(()=>{
+    if (!departmentScoreReadiness.ready && deptProfileStage !== 'context') {
+      setDeptProfileStage('context');
+      setDeptSetupOpen(true);
+    }
+  }, [departmentScoreReadiness.ready, deptProfileStage]);
   const aiScoreReadiness = useMemo(() => getAiScoreReadiness({
     hasData: ecoLabelData.hasData,
     hasPathway: !!scen.aiRoute,

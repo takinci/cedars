@@ -2047,3 +2047,163 @@ html,body,#root{background:var(--cedars-role-page)!important}
   #root .improveOpportunityTile{min-height:0!important}
 }
 
+/* CEDARS_CHUNK_9R20_SEMANTIC_PARALLELISM_GATING_OVERFLOW
+   Final semantic alignment pass: Department and AI are parallel four-stage workflows;
+   current-profile summaries are teal, user choices are blue, CEDARS structure is green,
+   guidance is gold, optional actions share one dashed treatment, and card text must wrap safely. */
+
+/* ---- Semantic role: current assessed state = teal in both themes. ---- */
+#root .departmentWorkflowCurrentTally{
+  background:#E8F4F2!important;border-color:#79AAA4!important;color:var(--cedars-ink)!important
+}
+#root .departmentWorkflowTallyHeader{
+  background:#D9ECE8!important;border-bottom-color:#79AAA4!important
+}
+#root .departmentWorkflowTallyHeader>span{color:#216F70!important}
+#root .departmentWorkflowTallyStage{
+  background:#F2FAF8!important;border-color:#8CBDB7!important;border-left-color:#2C7C7A!important
+}
+#root .departmentWorkflowTallyStage>span{color:#216F70!important}
+#root .departmentWorkflowTallyMetrics{border-color:#8CBDB7!important}
+#root .departmentWorkflowTallyMetrics>div{
+  background:#E8F4F2!important;border-color:#8CBDB7!important
+}
+#root .departmentWorkflowCurrentTally>p{background:#DFF0ED!important;color:#526D69!important}
+#root.dark .departmentWorkflowCurrentTally{
+  background:#102D2D!important;border-color:#477A76!important;color:#E7F3F1!important
+}
+#root.dark .departmentWorkflowTallyHeader{
+  background:#163A38!important;border-bottom-color:#477A76!important
+}
+#root.dark .departmentWorkflowTallyHeader>span,#root.dark .departmentWorkflowTallyStage>span{color:#8FD3CB!important}
+#root.dark .departmentWorkflowTallyStage{
+  background:#123532!important;border-color:#477A76!important;border-left-color:#65B7AE!important
+}
+#root.dark .departmentWorkflowTallyMetrics{border-color:#477A76!important}
+#root.dark .departmentWorkflowTallyMetrics>div{background:#102D2D!important;border-color:#477A76!important}
+#root.dark .departmentWorkflowCurrentTally>p{background:#0D2625!important;color:#B8D2CE!important}
+
+/* ---- Overflow contract: no card/grid child may paint outside its own box. ---- */
+#root :is(
+  .departmentWorkflowStageWorkspace,.departmentWorkflowStageDetail,.workflowBaselineMetric,
+  .departmentCurrentPractices,.departmentCurrentPracticeList,.departmentCurrentPracticeList>label,
+  .departmentWorkflowCurrentTally,.departmentWorkflowTallyStage,.departmentWorkflowTallyMetrics>div,
+  .improveChangeCard,.improveOpportunityTile,.improveOpportunityTileTop,
+  .reportChecklist>div,.stageCarouselCard,.stageCarouselCopy,.aiTaskLane,.aiSystemChoice
+){min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+#root .departmentCurrentPracticeList{grid-template-columns:minmax(0,1fr)!important;width:100%!important}
+#root .departmentCurrentPracticeList>label{
+  display:grid!important;grid-template-columns:14px minmax(0,1fr)!important;width:100%!important;overflow:hidden!important
+}
+#root .departmentCurrentPracticeList>label>span{display:block!important;min-width:0!important;max-width:100%!important}
+#root :is(
+  .departmentCurrentPracticeList,.departmentWorkflowCurrentTally,.workflowBaselineMetric,
+  .improveChangeCard,.improveOpportunityTile,.reportChecklist,.stageCarouselCard,.aiTaskLane,.aiSystemChoice
+) :is(strong,small,p,span,b,em){
+  min-width:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important
+}
+#root :is(.departmentWorkflowStageWorkspace,.improveWorkspaceGrid,.reportStudioViewportInner){overflow-x:clip!important}
+
+/* ---- Department and AI use the same four-stage visual grammar. ---- */
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselTrack{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important
+}
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselCard{
+  min-height:64px!important;padding:10px 12px!important;grid-template-columns:28px minmax(0,1fr)!important;
+  gap:9px!important;align-content:center!important
+}
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselNumber{
+  width:24px!important;height:24px!important;min-width:24px!important;font-size:8px!important
+}
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselCopy strong{
+  font-size:11.5px!important;line-height:1.2!important
+}
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselCopy small{
+  font-size:8.8px!important;line-height:1.3!important
+}
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) :is(.stageCarouselOptional,.stageCarouselLock){
+  font-size:7.2px!important;line-height:1.2!important
+}
+#root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselCard.locked{
+  opacity:.48!important;cursor:not-allowed!important
+}
+
+/* ---- One optional-action treatment everywhere: same dashed action as Result -> Decision Workspace. ---- */
+#root :is(.profileResultDecisionOptional,.departmentOptionalAction){
+  background:#F7FAF8!important;color:var(--cedars-forest-deep)!important;
+  border:1px dashed #7EA38C!important;box-shadow:none!important
+}
+#root :is(.profileResultDecisionOptional,.departmentOptionalAction):hover{
+  background:#EEF6F0!important;border-color:#5F8E70!important
+}
+#root :is(.profileResultDecisionOptional,.departmentOptionalAction) small{
+  margin-left:4px!important;font-size:7px!important;font-weight:800!important;
+  letter-spacing:.04em!important;text-transform:uppercase!important;color:inherit!important;opacity:.72!important
+}
+#root.dark :is(.profileResultDecisionOptional,.departmentOptionalAction){
+  background:#15201D!important;color:#DDF1E3!important;border-color:#5E8E73!important
+}
+#root.dark :is(.profileResultDecisionOptional,.departmentOptionalAction):hover{background:#1B2B25!important}
+
+/* ---- Modeled-opportunity typography follows the rest of Decision Workspace. ---- */
+#root .improveGuidanceHeading span{font-size:8px!important}
+#root .improveGuidanceHeading h3{font-size:14px!important;line-height:1.25!important}
+#root .improveGuidanceHeading p{font-size:10.5px!important;line-height:1.45!important}
+#root .improveGuidanceOpportunities .improveClinicalGuardrail :is(strong,span){font-size:9.5px!important;line-height:1.4!important}
+#root .improveOpportunityTile{gap:6px!important;min-height:172px!important;padding:10px!important}
+#root .improveOpportunityTileTop>small{font-size:8.5px!important;line-height:1.25!important}
+#root .improveOpportunityTile>strong{font-size:10.5px!important;line-height:1.32!important}
+#root .improveOpportunityTileImpact{font-size:11px!important;line-height:1.2!important}
+#root .improveOpportunityTileReason{font-size:9px!important;line-height:1.4!important}
+#root .improveOpportunityTile>button{font-size:9.5px!important;line-height:1.2!important;padding:7px 8px!important}
+#root .improveOpportunityOverflow{font-size:9.5px!important;line-height:1.4!important}
+
+/* ---- Home workflow is one CEDARS structural family, including dark mode. ---- */
+#root .homeFlowThreeStage .homeFlowStep{
+  background:var(--cedars-role-structure)!important;border-color:var(--cedars-role-structure-line)!important;color:var(--cedars-ink)!important
+}
+#root .homeFlowThreeStage .homeFlowStep:nth-of-type(1)>b,
+#root .homeFlowThreeStage .homeFlowStep:nth-of-type(2)>b,
+#root .homeFlowThreeStage .homeFlowStep:nth-of-type(3)>b{
+  background:var(--cedars-role-structure-active)!important;border:1px solid var(--cedars-role-structure-line)!important;
+  color:var(--cedars-forest-deep)!important;box-shadow:none!important
+}
+#root.dark .homeFlowThreeStage .homeFlowStep{
+  background:var(--cedars-role-structure)!important;border-color:var(--cedars-role-structure-line)!important;color:#E7EFEA!important
+}
+#root.dark .homeFlowThreeStage .homeFlowStep:nth-of-type(1)>b,
+#root.dark .homeFlowThreeStage .homeFlowStep:nth-of-type(2)>b,
+#root.dark .homeFlowThreeStage .homeFlowStep:nth-of-type(3)>b{
+  background:var(--cedars-role-structure-active)!important;border-color:var(--cedars-role-structure-line)!important;
+  color:#B9DFC8!important;box-shadow:none!important
+}
+#root.dark .homeFlowThreeStage .homeFlowCopy strong{color:#E7EEE9!important}
+#root.dark .homeFlowThreeStage .homeFlowCopy small{color:#AEBAB4!important}
+
+/* ---- Blue means user choice in AI, in light AND dark modes. ---- */
+#root.dark .aiPage :is(.aiTaskLane,.aiSystemChoice){
+  background:#14263B!important;border-color:#415F76!important;color:#EAF3F8!important;box-shadow:none!important
+}
+#root.dark .aiPage :is(.aiTaskLane,.aiSystemChoice):hover:not(:disabled){
+  background:#193249!important;border-color:#6F9FC0!important;box-shadow:inset 0 0 0 1px #6F9FC0!important
+}
+#root.dark .aiPage :is(.aiTaskLane,.aiSystemChoice).active{
+  background:#1D3557!important;border:2px solid #78A9C7!important;box-shadow:inset 0 3px 0 #78A9C7!important
+}
+#root.dark .aiPage :is(.aiTaskLane,.aiSystemChoice) :is(strong,small){color:#EAF3F8!important}
+#root.dark .aiPage :is(.aiTaskLane,.aiSystemChoice) b{color:#9BC8E0!important}
+#root.dark .aiPage :is(.aiTaskLane,.aiSystemChoice) svg{color:#9BC8E0!important}
+#root.dark .aiPage .aiTypeStep.waiting .aiSystemChoice{
+  background:#111C29!important;border-color:#334D61!important;color:#91A6B1!important
+}
+#root.dark .aiPage .aiTypeStep.waiting .aiSystemChoice :is(strong,small){color:#91A6B1!important}
+
+@media(max-width:760px){
+  #root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselTrack{
+    display:flex!important;grid-template-columns:none!important;overflow-x:auto!important
+  }
+  #root :is(.departmentPage,.aiPage,.aiProfileWorkspaceCarousel) .stageCarouselCard{
+    flex:0 0 min(74vw,250px)!important
+  }
+}
+
