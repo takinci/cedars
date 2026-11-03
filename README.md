@@ -116,7 +116,7 @@ Normal calculator use is browser-local by default.
 
 A reproducible URL is **not private**: anyone with the full link can open the encoded configuration. Names, email addresses, consent choices, and patient-identifiable information are not intentionally placed in the shareable URL.
 
-Research contribution is separate from normal saving and sharing. Until the optional contribution service is deployed/configured, that action remains disabled.
+Research contribution is separate from normal saving and sharing. A contribution is transmitted only when the user explicitly reviews and submits the contribution form; normal calculations, local saves, portable-file import/export, and shareable links remain browser-side.
 
 ---
 
@@ -164,7 +164,6 @@ Current frontend stack includes React 18, Vite 8, Chart.js, Lucide React, and Vi
 - [`sources.md`](./sources.md) — evidence, assumptions, provenance, limitations, and references
 - [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md) — visual and interaction system
 - [`CHANGELOG.md`](./CHANGELOG.md) — user-facing changes
-- [`ROADMAP.md`](./ROADMAP.md) — active/planned work
 - [`CITATION.cff`](./CITATION.cff) — software citation metadata
 - [About the CEDARS Collaborative](https://cedarsleaf.com/?page=about) — collaborators, institutions, and project background
 - [`cloudflare/README.md`](./cloudflare/README.md) — optional research-contribution backend

@@ -18,9 +18,9 @@
 - Input provenance labels for advanced equipment overrides.
 - Optional research-contribution modal with separate consent, acknowledgment, and future-contact permissions.
 - Cloudflare Worker + D1 deployment scaffold for optional research contributions.
-- `ROADMAP.md` for shared implementation planning.
 
 ### Changed
+- Repository planning now uses GitHub Issues for concrete future work rather than a static ROADMAP file; scientific limitations remain documented in METHODS/sources and completed user-facing changes in this changelog.
 - Guided onboarding now prompts first-time visitors to start or skip a walkthrough, keeps a bright dark walkthrough launcher available throughout the assessment, gives quick starts/examples the same high-contrast illustrative treatment, and adds horizontal scroll-snap stage cards across the major workflow pages so the active section is visually explicit.
 - Finishing-pass interaction hierarchy makes **Profile → Decision Workspace → Report & Share** prominent on Home; aligns the parallel Department and AI Profile rails; unifies walkthroughs, quick-start templates, and worked examples under one illustrative visual language; surfaces AI examples as a persistent utility rather than a workflow step; promotes the radiology workflow as the primary Department decision navigator; compacts the experimental AI visual summary; opens Methods-ready text by default for research reporting; and makes the global header action read **Save / Share** on the Report step.
 - Workflow architecture now separates AI examples from the primary pathway, returns Profile → AI model to the AI start screen without deleting saved data, renames stage 2 to **Results**, simplifies development-profile requirements to workload/lifecycle inputs, makes AI Improve lifecycle-driver-first, gates model-specific Improve until a comparison candidate is selected, and makes methods/provenance the primary AI research-report output while keeping the AI Research Label as an optional experimental visual summary.
