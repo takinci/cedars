@@ -129,12 +129,12 @@ export function MeasureChooser({scen, onUse, onDone}) {
     <div data-demo-target="measure-chooser" style={{display:'flex', flexDirection:'column', gap:14, marginTop:16}}>
       <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
         <span className="measureStepPill active" style={tag()}>1 · WHERE IT RUNS</span><span className="measureStepArrow" style={{color:'#90a4ae'}}>→</span>
-        <span className="measureStepPill" style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>2 · PICK A TOOL</span><span className="measureStepArrow" style={{color:'#90a4ae'}}>→</span>
-        <span className="measureStepPill" style={{...tag('meta'), background:'#fff', border:'1px solid #c8e6c9'}}>3 · ENTER RESULTS</span>
+        <span className="measureStepPill" style={{...tag('meta'), border:'1px solid #c8e6c9'}}>2 · PICK A TOOL</span><span className="measureStepArrow" style={{color:'#90a4ae'}}>→</span>
+        <span className="measureStepPill" style={{...tag('meta'), border:'1px solid #c8e6c9'}}>3 · ENTER RESULTS</span>
       </div>
 
       <div style={{display:'grid', gridTemplateColumns:'minmax(300px, 420px) 1fr', gap:18, alignItems:'start'}} className="measureGrid">
-        <div className="measureQuestionPanel" style={{background:'#fff', border:'1px solid #c8e6c9', borderRadius:16, padding:'18px 20px', display:'flex', flexDirection:'column', gap:18}}>
+        <div className="measureQuestionPanel" style={{border:'1px solid #c8e6c9', borderRadius:16, padding:'18px 20px', display:'flex', flexDirection:'column', gap:18}}>
           <div>
             <h2 style={{margin:'0 0 4px', fontSize:18}}>Three questions about your setup</h2>
             <p className="note" style={{margin:0}}>The recommendations on the right narrow as you answer. Your answers stay in your browser.</p>

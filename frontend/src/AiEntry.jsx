@@ -21,7 +21,7 @@ export function AiDeploymentContext({ctxSource, dept, volume, onCtxSource, onVol
   const hasDeptVolume = dept.studiesPerMonth > 0;
   const custom = ctxSource === 'custom';
   return (
-    <div style={{...inset, gap:10}}>
+    <div className="aiDeploymentContextPanel" style={{...inset, gap:10}}>
       <div>
         <p style={q}>Expected deployment workload</p>
         <p className="note" style={{margin:0}}>

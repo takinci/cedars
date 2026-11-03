@@ -2240,26 +2240,31 @@ function App() {
         setPage('landing');
       } else if (stepIndex === 1) {
         setPage('dashboard');
-        setDeptProfileStage('equipment');
+        setDeptProfileStage('context');
         setDeptSetupOpen(true);
       } else if (stepIndex === 2) {
+        applyLeaderDemoFleet();
+        setPage('dashboard');
+        setDeptSetupOpen(false);
+        setDeptProfileStage('equipment');
+      } else if (stepIndex === 3) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setPage('dashboard');
         setDeptSetupOpen(false);
         setDeptProfileStage('clinical-ai');
         setDashOpen(o => ({...o, clinicalai:true}));
-      } else if (stepIndex === 3) {
-        applyLeaderDemoFleet();
-        loadClinicalAiExample();
-        setEcoLabelMode('department');
-        goToScore('department');
       } else if (stepIndex === 4) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setEcoLabelMode('department');
+        goToScore('department');
+      } else if (stepIndex === 5) {
+        applyLeaderDemoFleet();
+        loadClinicalAiExample();
+        setEcoLabelMode('department');
         setPage('scenario');
-      } else if (stepIndex >= 5) {
+      } else if (stepIndex >= 6) {
         applyLeaderDemoFleet();
         loadClinicalAiExample();
         setEcoLabelMode('department');
@@ -3415,6 +3420,7 @@ function App() {
           <div style={{marginBottom:8}}><h1 style={{margin:0}}>Radiology Department</h1><AssessmentContextStrip settings={settings} onEdit={()=>goToAssessmentContext('dashboard',true)}/></div>
           <StageCarousel
             label="DEPARTMENT PROFILE"
+            variant="profileParallel"
             showHeading={false}
             activeKey={deptProfileStage}
             onChange={key=>{
@@ -3858,13 +3864,13 @@ function App() {
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:8}}><div style={{flex:1,minWidth:220}}><strong style={{color:'#1b5e20'}}>{modelName}</strong><div className="note" style={{fontSize:10,marginTop:2}}>Shared energy, hardware, performance, and compute-location details feed every local use nested below.</div></div>{record&&<button type="button" className="download" onClick={()=>openAiModelWorkspaceFromDepartment(modelId)} style={{padding:'5px 8px',fontSize:11}}>Edit model details</button>}<button type="button" className="download" onClick={()=>{setDeptModelChoice(modelId);addDeptDeployment(modelId);}} style={{padding:'5px 8px',fontSize:11}}>+ Add another local use</button></div>
                 <div style={{display:'grid',gridTemplateColumns:'minmax(220px,auto) minmax(160px,220px) 1fr',gap:8,alignItems:'start',background:'#f4faf4',borderRadius:10,padding:'8px 10px',marginBottom:8}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Where should this model's training be counted?<select value={accountingUse?.trainingBoundary||'upstream'} onChange={e=>updateDeptModelUses(modelId,'trainingBoundary',e.target.value)} style={{display:'block',width:'100%',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}><option value="upstream">Upstream / outside this department</option><option value="allocated-local">Allocate a share to this department</option></select></label>{accountingUse?.trainingBoundary==='allocated-local'&&<label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Department share of training (%)<input type="number" min="0" max="100" step="1" value={accountingUse?.trainingAllocationPct??'100'} onChange={e=>updateDeptModelUses(modelId,'trainingAllocationPct',e.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/></label>}<div className="note" style={{fontSize:10,margin:0,paddingTop:3}}>{accountingUse?.trainingBoundary==='allocated-local'?(trainingTotalKwh>0?<>CEDARS allocates <strong>{allocationPct}%</strong> of this model's training to the department, approximately <strong>{trainingMonthlyKwh} kWh/month</strong> over {allocationMonths} months. It is counted once for this model, not once per local use.</>:<>This model has no training-energy value yet. Enter one in AI Model &amp; Informatics before this allocation can affect the Department footprint.</>):<>No training electricity is added to this Department footprint. Training remains in the model's upstream lifecycle disclosure; inference is still counted for each local use.</>}</div></div>
                 <div style={{display:'grid',gridTemplateColumns:'minmax(220px,auto) minmax(160px,220px) 1fr',gap:8,alignItems:'start',background:'#f8faf8',borderRadius:10,padding:'8px 10px',marginBottom:8}}><label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Where should AI hardware manufacturing be counted?<select value={embodiedUse?.embodiedBoundary||'upstream'} onChange={e=>updateDeptModelUses(modelId,'embodiedBoundary',e.target.value)} style={{display:'block',width:'100%',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}><option value="upstream">Upstream / vendor or cloud service</option><option value="allocated-local">Allocate a share to this department</option></select></label>{embodiedUse?.embodiedBoundary==='allocated-local'&&<label style={{fontSize:11,fontWeight:700,color:'#2E7D32'}}>Department share of hardware (%)<input type="number" min="0" max="100" step="1" value={embodiedUse?.embodiedAllocationPct??'100'} onChange={e=>updateDeptModelUses(modelId,'embodiedAllocationPct',e.target.value)} style={{display:'block',width:'100%',boxSizing:'border-box',marginTop:4,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,background:'white'}}/></label>}<div className="note" style={{fontSize:10,margin:0,paddingTop:3}}>{embodiedUse?.embodiedBoundary==='allocated-local'?(embodiedTotalKg>0?<>CEDARS allocates <strong>{embAllocationPct}%</strong> of this model's manufacturing footprint here, approximately <strong>{embodiedMonthlyKg} kgCO₂e/month</strong> over {embodiedMonths} months. It is counted once per model.</>:<>No model-hardware embodied value is available yet, so this allocation currently adds nothing.</>):<>Manufacturing remains upstream and is not added to the Department Scope 3 footprint.</>}</div></div>
-                {uses.map(t=><div key={t.id} style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'10px 12px',margin:'0 0 8px 18px',background:'#fff',boxShadow:'inset 3px 0 0 #c8e6c9'}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:7}}><strong style={{fontSize:11,color:'#607d66'}}>LOCAL USE</strong><input value={t.label??''} placeholder="e.g. ED PE triage" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{flex:1,minWidth:180,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,fontWeight:600}}/><button onClick={()=>removeDeptAiTool(t.id)} title="Remove local use" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button></div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8}}>{[['Share of studies (%)','studiesShare','1','100'],['Deployment period (months)','deployMonths','1','36'],['Local low-value scans avoided (%)','lowValueReductPct','1','0'],['Local scan-time reduction (%)','scanTimeReductPct','1','0'],['Local contrast reduction (%)','contrastReductPct','1','0']].map(([lab,key,step,ph])=><label key={key} style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>{lab}<input type="number" min="0" max={key==='deployMonths'?undefined:'100'} step={step} value={t[key]??''} placeholder={ph} onChange={e=>updateDeptAiTool(t.id,key,e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/></label>)}</div><label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11,marginTop:7}}>Basis for the local clinical-effect values<select value={t.effectBasis||'none'} onChange={e=>updateDeptAiTool(t.id,'effectBasis',e.target.value)}><option value="none">No clinical effect claimed</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence</option><option value="scenario">Assumed scenario</option></select></label><div className="note" style={{fontSize:10,marginTop:6}}>{['observed-local','validated-local'].includes(t.effectBasis)?<>These local-effect values are included in the <strong>current</strong> Department footprint.</>:<>These values are <strong>not</strong> credited to the current Department score. If you want to test them prospectively, model the corresponding change on Improve; CEDARS does not automatically transfer these percentages. This prevents an unvalidated benefit from making today's footprint look better.</>}</div></div>)}</div>;})}
+                {uses.map(t=><div key={t.id} className="departmentClinicalAiUseCard" style={{border:'1px solid #c8e6c9',borderRadius:10,padding:'10px 12px',margin:'0 0 8px 18px',boxShadow:'inset 3px 0 0 #c8e6c9'}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:7}}><strong style={{fontSize:11,color:'#607d66'}}>LOCAL USE</strong><input value={t.label??''} placeholder="e.g. ED PE triage" onChange={e=>updateDeptAiTool(t.id,'label',e.target.value)} style={{flex:1,minWidth:180,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,fontWeight:600}}/><button onClick={()=>removeDeptAiTool(t.id)} title="Remove local use" style={{background:'none',color:'#aaa',padding:4,borderRadius:8,boxShadow:'none',lineHeight:1}}><Trash2 size={15}/></button></div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8}}>{[['Share of studies (%)','studiesShare','1','100'],['Deployment period (months)','deployMonths','1','36'],['Local low-value scans avoided (%)','lowValueReductPct','1','0'],['Local scan-time reduction (%)','scanTimeReductPct','1','0'],['Local contrast reduction (%)','contrastReductPct','1','0']].map(([lab,key,step,ph])=><label key={key} style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11}}>{lab}<input type="number" min="0" max={key==='deployMonths'?undefined:'100'} step={step} value={t[key]??''} placeholder={ph} onChange={e=>updateDeptAiTool(t.id,key,e.target.value)} style={{padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/></label>)}</div><label style={{display:'flex',flexDirection:'column',gap:3,fontWeight:700,color:'#2E7D32',fontSize:11,marginTop:7}}>Basis for the local clinical-effect values<select value={t.effectBasis||'none'} onChange={e=>updateDeptAiTool(t.id,'effectBasis',e.target.value)}><option value="none">No clinical effect claimed</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence</option><option value="scenario">Assumed scenario</option></select></label><div className="note" style={{fontSize:10,marginTop:6}}>{['observed-local','validated-local'].includes(t.effectBasis)?<>These local-effect values are included in the <strong>current</strong> Department footprint.</>:<>These values are <strong>not</strong> credited to the current Department score. If you want to test them prospectively, model the corresponding change on Improve; CEDARS does not automatically transfer these percentages. This prevents an unvalidated benefit from making today's footprint look better.</>}</div></div>)}</div>;})}
             </div>
 
             {(deptLabel.aiTools||[]).length>0&&<div style={{background:'#f1f8f1',border:'1px solid #c8e6c9',borderRadius:12,padding:'10px 14px',marginBottom:10}}><strong style={{fontSize:12,color:'#1b5e20'}}>Estimated effect of the configured Clinical AI</strong><div style={{display:'flex',gap:14,flexWrap:'wrap',marginTop:5,fontSize:12}}><span>AI electricity <strong>+{fmtKwh(dash.clinicalMeta.aiKwh)}{dash.totals.label}</strong></span><span>Modeled active-scanner energy avoided <strong>−{fmtKwh(dash.clinicalMeta.scannerSavedKwh)}{dash.totals.label}</strong></span>{dash.clinicalMeta.aiEmbodiedKg>0&&<span>AI hardware Scope 3 <strong>+{fmtCo2(dash.clinicalMeta.aiEmbodiedKg)}{dash.totals.label}</strong></span>}</div><div className="note" style={{fontSize:10,marginTop:4}}>Updates automatically. Avoided studies are applied first; scan-time savings are then applied only to the remaining studies, so the same scanner energy is not credited twice.</div></div>}
             {(deptLabel.aiTools||[]).length===0&&<p className="note" style={{fontSize:12}}>No Clinical AI is currently listed. That is a valid department state.</p>}
 
-            <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',border:'1.5px solid #c8e6c9',borderRadius:12,padding:'11px 14px',marginTop:12,background:'#fff'}}>
+            <div className="departmentClinicalAiContinue">
               <div style={{flex:'1 1 300px'}}><strong style={{fontSize:12,color:'#1b5e20'}}>Continue when you're ready</strong><div className="note" style={{fontSize:10,marginTop:3}}>{(deptLabel.aiTools||[]).length>0?<>{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size} model{new Set((deptLabel.aiTools||[]).map(t=>t.modelId)).size===1?'':'s'} · {(deptLabel.aiTools||[]).length} local use{(deptLabel.aiTools||[]).length===1?'':'s'} configured. You can return here and add more later.</>:<>Clinical AI is optional. If this department currently uses none, continue with zero local AI uses.</>}</div></div>
               {(deptLabel.aiTools||[]).length>0&&<button type="button" className="download" onClick={()=>document.getElementById('clinical-ai-model-picker')?.scrollIntoView({behavior:'smooth',block:'center'})}>+ Add another model or use</button>}
               <button type="button" onClick={()=>{setDeptSetupOpen(false);setDeptProfileStage('review');window.setTimeout(()=>document.getElementById('department-score-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Done — view Result →</button>
@@ -4168,6 +4174,7 @@ function App() {
           <div className={`aiProfileTopDeck ${!scen.aiRoute?'entryContext':scen.aiRoute==='compare'?'comparisonContext':''}`}>
             <StageCarousel
               label="AI PROFILE"
+              variant="profileParallel"
               showHeading={false}
               steps={[
                 {key:'context',title:'Context',detail:'Purpose, task and evaluation'},
@@ -4362,7 +4369,7 @@ function App() {
                 </div>
                 {!benchResults.comparisonDefinitionComplete&&<div className="note" style={{fontSize:10,marginTop:7,color:'#8d6e63'}}>Ranking is intentionally suppressed until all three shared fields are completed.</div>}
               </div>
-              <details data-demo-target="ai-candidate-details" open={comparisonDetailsOpen} onToggle={e=>setComparisonDetailsOpen(e.currentTarget.open)} style={{marginTop:14,border:'1px solid #c8e6c9',borderRadius:12,background:'#fff',overflow:'hidden'}}>
+              <details className="aiCandidateDetails" data-demo-target="ai-candidate-details" open={comparisonDetailsOpen} onToggle={e=>setComparisonDetailsOpen(e.currentTarget.open)} style={{marginTop:14,border:'1px solid #c8e6c9',borderRadius:12,overflow:'hidden'}}>
                 <summary style={{cursor:'pointer',padding:'11px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
                   <span><strong style={{color:'#1b5e20'}}>Essential candidate inputs</strong><small style={{display:'block',fontWeight:400,color:'#607d66',marginTop:2}}>{benchModels.length} candidates · performance and inference data for the side-by-side decision</small></span>
                   <small style={{color:'#607d66',whiteSpace:'nowrap'}}>{comparisonDetailsOpen?'Hide inputs':'Review / edit inputs'}</small>
@@ -4370,7 +4377,7 @@ function App() {
                 <div style={{padding:'0 12px 12px'}}>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(310px,1fr))',gap:14,marginTop:14}}>
                 {benchModels.map((candidate, index) => (
-                  <section key={candidate.id} style={{background:'#fff',border:'1px solid #c8e6c9',borderRadius:14,padding:'14px 16px',boxShadow:'none'}}>
+                  <section key={candidate.id} className="aiCandidateInputCard" style={{border:'1px solid #c8e6c9',borderRadius:14,padding:'14px 16px',boxShadow:'none'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,marginBottom:10}}>
                       <strong style={{color:'#1b5e20'}}>Candidate {String.fromCharCode(65 + index)}</strong>
                       {benchModels.length>2 && <button type="button" title="Remove candidate" onClick={()=>removeBenchModel(candidate.id)} style={{background:'none',color:'#90a4ae',padding:3,boxShadow:'none'}}><Trash2 size={15}/></button>}
@@ -5900,7 +5907,7 @@ function App() {
             return (
               <div className="reportCompletion needsWork reportCompletionCompact">
                 <div><span>!</span><div><strong>Assessment data still needs review</strong><small>{ecoLabelMode==='department' ? 'Complete the core Radiology Department inputs before treating the Department EcoLabel as final.' : 'Add at least one quantified AI training or inference energy result. Partial lifecycle reporting is still possible when unavailable phases are disclosed explicitly.'} You can still preserve incomplete work above.</small></div></div>
-                <div className="reportCompletionActions"><button type="button" onClick={()=>ecoLabelMode==='department' ? (setPage('dashboard'),setDeptSetupOpen(true)) : (setAiProfileSection('context'),setPage('ai'))}>{ecoLabelMode==='department' ? 'Review Department profile →' : 'Review AI profile →'}</button></div>
+                <div className="reportCompletionActions"><button type="button" className="reportReviewProfileAction" onClick={()=>ecoLabelMode==='department' ? (setPage('dashboard'),setDeptSetupOpen(true)) : (setAiProfileSection('context'),setPage('ai'))}>{ecoLabelMode==='department' ? 'Review Department profile →' : 'Review AI profile →'}</button></div>
               </div>
             );
           })()}

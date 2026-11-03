@@ -2,7 +2,7 @@ import React, {useEffect, useRef} from 'react';
 /* CEDARS_CHUNK_9K_NAV_AI_DARKMODE_CLEANUP */
 /* CEDARS_CHUNK_9I4_REPAIR */
 
-export default function StageCarousel({label='STAGES', steps=[], activeKey, onChange, compact=false, showHeading=true}) {
+export default function StageCarousel({label='STAGES', steps=[], activeKey, onChange, compact=false, showHeading=true, variant=''}) {
   const trackRef=useRef(null);
   const cardRefs=useRef({});
   const activeIndex=Math.max(0,steps.findIndex(step=>step.key===activeKey));
@@ -15,7 +15,7 @@ export default function StageCarousel({label='STAGES', steps=[], activeKey, onCh
   },[activeKey]);
 
   if(!steps.length) return null;
-  return <nav className={`stageCarousel ${compact?'compact':''}`} aria-label={`${label} navigation`}>
+  return <nav className={`stageCarousel ${compact?'compact':''} ${variant}`.trim()} aria-label={`${label} navigation`}>
     {showHeading&&<div className="stageCarouselHeading"><span>{label}</span><small>{activeIndex+1} of {steps.length}</small></div>}
     <div className="stageCarouselTrack" ref={trackRef} role="tablist">
       {steps.map((step,index)=><button

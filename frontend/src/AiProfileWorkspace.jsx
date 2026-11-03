@@ -90,7 +90,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
   ];
 
   return <div className="aiProfileWorkspace aiProfileWorkspaceCarousel" data-ai-stage={profileStage}>
-    <StageCarousel label="AI PROFILE" showHeading={false} steps={stageSteps} activeKey={profileStage} onChange={changeStage}/>
+    <StageCarousel label="AI PROFILE" variant="profileParallel" showHeading={false} steps={stageSteps} activeKey={profileStage} onChange={changeStage}/>
     <aside className="aiProfileSidebar" aria-label="AI Sustainability Profile sections">
       <div className="aiProfileSidebarIntro"><span>PROFILE</span><strong>AI Sustainability Profile</strong><small>{contextFlow}</small></div>
       <nav className="aiProfileNav">

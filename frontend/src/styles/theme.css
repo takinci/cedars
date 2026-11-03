@@ -2207,3 +2207,153 @@ html,body,#root{background:var(--cedars-role-page)!important}
   }
 }
 
+/* CEDARS_CHUNK_9R21_PROFILE_PARALLELISM_WALKTHROUGH_DARK
+   Shared Department/AI profile rail, explicit optional actions, and dark workflow surfaces. */
+
+/* One exact Profile-rail contract for Department and AI. */
+#root .stageCarousel.profileParallel{
+  width:100%!important;max-width:none!important;margin:0!important;font-family:inherit!important
+}
+#root .stageCarousel.profileParallel .stageCarouselTrack{
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  width:100%!important;gap:0!important;padding:0!important;
+  border-top:1px solid var(--cedars-role-structure-line)!important;
+  border-bottom:1px solid var(--cedars-role-structure-line)!important
+}
+#root .stageCarousel.profileParallel .stageCarouselCard{
+  min-width:0!important;min-height:68px!important;
+  display:grid!important;grid-template-columns:28px minmax(0,1fr)!important;
+  align-content:center!important;align-items:start!important;
+  column-gap:9px!important;row-gap:2px!important;
+  margin:0!important;padding:10px 12px!important;border-radius:0!important
+}
+#root .stageCarousel.profileParallel .stageCarouselNumber{
+  grid-row:1 / span 3!important;width:24px!important;height:24px!important;min-width:24px!important;
+  font-size:8px!important;font-weight:850!important;line-height:1!important
+}
+#root .stageCarousel.profileParallel .stageCarouselCopy{
+  display:flex!important;flex-direction:column!important;gap:2px!important;
+  align-self:center!important;min-width:0!important
+}
+#root .stageCarousel.profileParallel .stageCarouselCopy strong{
+  margin:0!important;font-size:11.5px!important;font-weight:800!important;
+  line-height:1.18!important;letter-spacing:0!important
+}
+#root .stageCarousel.profileParallel .stageCarouselCopy small{
+  margin:0!important;font-size:8.8px!important;font-weight:550!important;
+  line-height:1.28!important;letter-spacing:0!important
+}
+#root .stageCarousel.profileParallel :is(.stageCarouselOptional,.stageCarouselLock){
+  grid-column:2!important;margin:1px 0 0!important;
+  font-size:7px!important;font-weight:850!important;line-height:1.15!important;
+  letter-spacing:.04em!important
+}
+
+/* Optional means optional everywhere, including dark mode. */
+#root :is(.profileResultDecisionOptional,.departmentOptionalAction){
+  background:transparent!important;border:1px dashed #7EA38C!important;box-shadow:none!important
+}
+#root.dark :is(.profileResultDecisionOptional,.departmentOptionalAction),
+html.dark #root :is(.profileResultDecisionOptional,.departmentOptionalAction){
+  background:transparent!important;border:1px dashed #79A98A!important;
+  color:#DDF1E3!important;box-shadow:none!important
+}
+#root.dark :is(.profileResultDecisionOptional,.departmentOptionalAction):hover,
+html.dark #root :is(.profileResultDecisionOptional,.departmentOptionalAction):hover{
+  background:#15261F!important;border-style:dashed!important
+}
+
+/* Department Digital + AI continuation is a workflow surface, never a white callout. */
+#root .departmentClinicalAiContinue{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid var(--cedars-role-structure-line);border-radius:9px;
+  padding:11px 14px;margin-top:12px;
+  background:var(--cedars-role-structure-raised);color:var(--cedars-ink)
+}
+#root .departmentClinicalAiContinue>div:first-child{flex:1 1 300px;min-width:0}
+#root.dark .departmentClinicalAiContinue,
+html.dark #root .departmentClinicalAiContinue{
+  background:#10231B!important;border-color:#416052!important;color:#E7EFEA!important
+}
+#root.dark .departmentClinicalAiContinue strong,
+html.dark #root .departmentClinicalAiContinue strong{color:#F1F6F3!important}
+#root.dark .departmentClinicalAiContinue .note,
+html.dark #root .departmentClinicalAiContinue .note{color:#B8C9C1!important}
+
+/* No accidental light islands within the Clinical-AI pathway. */
+#root.dark .departmentPage :is(.clinicalAiPrimaryBody,.clinicalAiModelPickerCard),
+html.dark #root .departmentPage :is(.clinicalAiPrimaryBody,.clinicalAiModelPickerCard){
+  background:var(--cedars-role-structure-raised)!important;
+  border-color:var(--cedars-role-structure-line)!important;color:#E7EFEA!important
+}
+
+/* Candidate comparison nested headers must not inherit a generic light header surface. */
+#root.dark .aiComparisonModal :is(.aiCompareResultCard,.aiCompareCandidateEditor)>header,
+html.dark #root .aiComparisonModal :is(.aiCompareResultCard,.aiCompareCandidateEditor)>header{
+  background:transparent!important;color:#EAF2ED!important;border-color:#49695B!important
+}
+#root.dark .aiComparisonModal .aiCompareResultCard>header :is(strong,span),
+html.dark #root .aiComparisonModal .aiCompareResultCard>header :is(strong,span){
+  color:#F1F6F3!important
+}
+#root.dark .aiComparisonModal :is(.aiComparisonModalSection,.aiComparisonModalResults,.aiCompareCandidateEditor,.aiCompareResultCard),
+html.dark #root .aiComparisonModal :is(.aiComparisonModalSection,.aiComparisonModalResults,.aiCompareCandidateEditor,.aiCompareResultCard){
+  background:#133126!important;border-color:#49695B!important;color:#EAF2ED!important
+}
+#root.dark .aiComparisonModal .aiCompareResultCard.pareto,
+html.dark #root .aiComparisonModal .aiCompareResultCard.pareto{
+  background:#193D2F!important;border-color:#76A58E!important
+}
+
+
+/* Corrective/navigation actions are user choices: blue, never paper-white. */
+#root :is(.aiImproveEmptyAction,.reportReviewProfileAction){
+  background:#E7F1F7!important;border:1px solid #6F9FC0!important;
+  color:#24536B!important;box-shadow:none!important
+}
+#root :is(.aiImproveEmptyAction,.reportReviewProfileAction):hover{
+  background:#DCECF5!important;border-color:#4F829F!important
+}
+#root.dark :is(.aiImproveEmptyAction,.reportReviewProfileAction),
+html.dark #root :is(.aiImproveEmptyAction,.reportReviewProfileAction){
+  background:#14263B!important;border-color:#5F8198!important;
+  color:#EAF3F8!important;box-shadow:none!important
+}
+#root.dark :is(.aiImproveEmptyAction,.reportReviewProfileAction):hover,
+html.dark #root :is(.aiImproveEmptyAction,.reportReviewProfileAction):hover{
+  background:#193249!important;border-color:#78A9C7!important
+}
+
+/* Remaining workflow surfaces use theme panels instead of literal white. */
+#root :is(.measureQuestionPanel,.aiDeploymentContextPanel,.aiCandidateDetails,.aiCandidateInputCard,.departmentClinicalAiUseCard){
+  background:var(--cedars-panel)!important;border-color:var(--cedars-border)!important;color:var(--cedars-ink)!important
+}
+#root .measureStepPill:not(.active){
+  background:var(--cedars-panel)!important;border-color:var(--cedars-border)!important;color:var(--cedars-muted)!important
+}
+#root.dark :is(.measureQuestionPanel,.aiDeploymentContextPanel,.aiCandidateDetails,.aiCandidateInputCard,.departmentClinicalAiUseCard),
+html.dark #root :is(.measureQuestionPanel,.aiDeploymentContextPanel,.aiCandidateDetails,.aiCandidateInputCard,.departmentClinicalAiUseCard){
+  background:#111C1A!important;border-color:#34483F!important;color:#DDE7DF!important
+}
+#root.dark .measureStepPill:not(.active),
+html.dark #root .measureStepPill:not(.active){
+  background:#111C1A!important;border-color:#34483F!important;color:#AEBAB4!important
+}
+#root.dark .aiCandidateDetails>summary,
+html.dark #root .aiCandidateDetails>summary{
+  background:#111C1A!important;color:#DDE7DF!important
+}
+#root.dark .departmentClinicalAiUseCard,
+html.dark #root .departmentClinicalAiUseCard{
+  box-shadow:inset 3px 0 0 #477A76!important
+}
+
+@media(max-width:760px){
+  #root .stageCarousel.profileParallel .stageCarouselTrack{
+    display:flex!important;grid-template-columns:none!important;overflow-x:auto!important
+  }
+  #root .stageCarousel.profileParallel .stageCarouselCard{
+    flex:0 0 min(74vw,250px)!important
+  }
+}
+

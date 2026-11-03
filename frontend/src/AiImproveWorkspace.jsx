@@ -126,7 +126,7 @@ export default function AiImproveWorkspace({
     <h2>Select a candidate before model-specific Improve</h2>
     <p>Your candidate comparison is preserved. Select the working candidate first so CEDARS can connect improvement scenarios to one actual lifecycle profile rather than mixing assumptions across models.</p>
     <div className="aiImproveEmptyBenefits"><span><strong>Clinical comparison</strong><small>Keep intended use, endpoint, validation context, workload, and compute basis aligned.</small></span><span><strong>Select candidate</strong><small>Carry one candidate into the canonical AI Sustainability Profile.</small></span><span><strong>Then improve</strong><small>Test training, inference, compute, and demand changes for that selected profile.</small></span></div>
-    <button type="button" onClick={onOpenComparison}>← Return to candidate comparison</button>
+    <button type="button" className="aiImproveEmptyAction" onClick={onOpenComparison}>← Return to candidate comparison</button>
     <details><summary>Browse procurement &amp; deployment guidance</summary><div className="aiImproveAllList">{options.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></details>
   </section>;
 
@@ -139,7 +139,7 @@ export default function AiImproveWorkspace({
       <span><strong>Lifecycle footprint</strong><small>Identify missing training, inference, compute, or deployment assumptions.</small></span>
       <span><strong>Prospective scenarios</strong><small>Test environmental changes without rewriting the current baseline.</small></span>
     </div>
-    <button type="button" onClick={onManageModels}>Add or select an AI profile →</button>
+    <button type="button" className="aiImproveEmptyAction" onClick={onManageModels}>Add or select an AI profile →</button>
     <details><summary>Browse general sustainable-AI guidance</summary><div className="aiImproveAllList">{options.map(item=><Recommendation key={item.title} item={item} onAction={act}/>)}</div></details>
   </section>;
 
