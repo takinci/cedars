@@ -240,8 +240,11 @@ function equipmentProvenanceSummary(eq, inputProvenance = {}) {
 // Replace kwh values with before/after metering for your department.
 const INTERVENTIONS = {
   // Fleet-based power-state deltas; no fixed departmental kWh credit is applied.
-  "Turn MRI/CT scanners off overnight":      {kwh:0, note: "Moves eligible MRI/CT avoidable-idle hours from Idle to each device's modeled Off state. PET-CT is excluded because full shutdown can require lengthy recalibration. Replace with local power-state logs where available. (Woolen 2023; Heye 2020; Hernandez 2026)"},
-  "Use standby mode during inactive periods":{kwh:0, note: "Moves avoidable-idle hours from Idle to each device's modeled Standby state where that state uses less power. Replace with local power-state logs where available. (Herrmann 2012; CJRS 2022)"},
+  "Turn MRI/CT scanners off overnight":      {kwh:0, legacyOnly:true, note: "Legacy compatibility lever. New assessments use modality-specific CT/MRI power-management coverage."},
+  "Use standby mode during inactive periods":{kwh:0, legacyOnly:true, note: "Legacy compatibility lever. New assessments use modality-specific power-management coverage."},
+  "Expand CT low-power / shutdown coverage":{kwh:0, powerManagement:"ct", note:"Uses the entered CT fleet and additional current-to-target coverage. Savings are bounded by the remaining avoidable-idle pool and the modeled Idle→Off delta; replace with local/vendor state data when available. (Brown 2022; Hehenkamp 2026)"},
+  "Expand MRI low-power coverage":{kwh:0, powerManagement:"mri", note:"Uses the entered MRI fleet and additional current-to-target coverage. Savings are bounded by the remaining avoidable-idle pool and the lowest modeled nonproductive state; superconducting MRI remains powered for cooling even when user-facing systems are off. (Woolen 2023)"},
+  "Automate reporting workstation power management":{kwh:0, powerManagement:"workstation", note:"Uses the entered reporting-workstation fleet and additional current-to-target automated sleep/shutdown coverage. (Walters 2024)"},
   // reducing 5–10 % unnecessary scans (McKee 2024, ESR PP 2025)
   "Reduce low-value imaging":                {kwh:0, pool:'scanner-active', fraction:0.05, note: "Appropriateness-guided ordering reduces unnecessary acquisitions. CEDARS models a conservative 5% scenario reduction of remaining active-scanner energy; replace with a local measured/target rate when available. (McKee 2024; ESR PP 2025)"},
   // tighter scheduling cuts dead-time idle (IJHCQA 2016)
@@ -260,7 +263,7 @@ const INTERVENTIONS = {
   "Extend hardware lifetime":                {kwh: 0, scope3EmbPct: 15, note: "Amortises embodied hardware carbon over more years; does not reduce operational electricity. (ESR PP 2025)"},
   // Qualitative evidence supports consolidation/right-sizing; 20% is an explicit CEDARS
   // scenario assumption rather than a universal measured effect.
-  "Consolidate servers":                     {kwh:0, pool:'server', fraction:0.20, note: "Right-size or consolidate under-used PACS/RIS and workstation compute. CEDARS applies a 20% scenario reduction to that modeled server/workstation energy pool; replace with before/after metering for reporting of record. (Doo et al. JACR 2024)"},
+  "Consolidate servers":                     {kwh:0, pool:'server', fraction:0.20, note: "Right-size or consolidate under-used PACS/RIS server compute. CEDARS applies a 20% scenario reduction to that modeled server pool; reporting-workstation sleep/shutdown is modeled separately. Replace with before/after metering for reporting of record. (Doo et al. JACR 2024)"},
   // lighter models use less inference compute (LLM-Energy PDF)
   "Use smaller or more efficient AI models": {kwh:0, pool:'ai-inference', fraction:0.20, note: "Right-size models to the clinical task. CEDARS models a 20% scenario reduction of deployed inference energy when Clinical AI is configured; replace with measured candidate energy when available. (Doo 2024; LLM energy literature)"},
   // data storage levers — savings computed dynamically against the storage footprint (Jia 2026; Doo 2024)
@@ -575,6 +578,8 @@ function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, cus
 const SCANNER_STATE_INTERVENTIONS = new Set([
   'Turn MRI/CT scanners off overnight',
   'Use standby mode during inactive periods',
+  'Expand CT low-power / shutdown coverage',
+  'Expand MRI low-power coverage',
 ]);
 
 const CLOUD_INTERVENTIONS = new Set([
@@ -612,7 +617,7 @@ const CONTRAST_LEVER_FRACTION = {[CONTRAST_VIAL_OPT_LEVER]: 0.064, [CONTRAST_MUL
 // fleet-based saving, then combines: the two idle-reduction levers overlap on the same
 // avoidable-idle pool (standby ⊇ scanners-off) so we take the deepest ONE rather than summing;
 // all other energy levers add; carbon-% levers stack multiplicatively. Everything floors at 0.
-function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}, overrides = {}, clinicalAdj = {}, currentRenewablePct = 0) {
+function computeInterventions(names, region, timePeriod, equipment, customCi, cloudProvider, scannerState, storage = {}, overrides = {}, clinicalAdj = {}, currentRenewablePct = 0, powerManagement = {}) {
   const hasIntervention=n=>typeof n==='string'&&own(INTERVENTIONS,n);
   const list=Array.isArray(names)?names.filter(hasIntervention):(hasIntervention(names)?[names]:[]);
   const ci=getCI(region,customCi), mult=safeTimeMult(timePeriod), fleet=buildFleet(equipment,overrides), cf=safeCloud(cloudProvider);
@@ -625,31 +630,83 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   const imaging=fleet.filter(eq=>IMAGING_MODALITIES.has(eq.modality));
   const scannerActiveRaw=imaging.reduce((s,eq)=>s+eq.active_kw*eq.active_h*mult,0);
   const scannerActivePool=Math.max(0,scannerActiveRaw-(base.clinicalMeta?.scannerSavedKwh||0));
-  const serverPool=fleet.filter(eq=>['PACS/RIS','Workstation'].includes(eq.modality)).reduce((s,eq)=>s+(eq.active_kw*eq.active_h+eq.idle_kw*eq.idle_h+eq.standby_kw*eq.standby_h+eq.off_kw*eq.off_h)*mult,0);
+  const serverPool=fleet.filter(eq=>eq.modality==='PACS/RIS').reduce((s,eq)=>s+(eq.active_kw*eq.active_h+eq.idle_kw*eq.idle_h+eq.standby_kw*eq.standby_h+eq.off_kw*eq.off_h)*mult,0);
   const aiLocalInferencePool=Math.max(0,base.clinicalMeta?.aiLocalInferenceKwh||0), aiCloudInferencePool=Math.max(0,base.clinicalMeta?.aiCloudInferenceKwh||0);
   const fracFor=pool=>1-list.filter(n=>INTERVENTIONS[n]?.pool===pool).reduce((keep,n)=>keep*(1-(INTERVENTIONS[n]?.fraction||0)),1);
   const scannerActiveSaving=rnd(scannerActivePool*fracFor('scanner-active'),2);
   const aiRightSizeFrac=fracFor('ai-inference');
   const aiLocalInferenceSaving=rnd(aiLocalInferencePool*aiRightSizeFrac,2), aiCloudInferenceSaving=rnd(aiCloudInferencePool*aiRightSizeFrac,2);
 
-  // Idle interventions define their own target states. Full shutdown applies to MRI/CT only;
-  // PET-CT is excluded. Scheduling is a partial imaging idle-to-standby opportunity. When selected
-  // together, take the deepest per-device reduction instead of double-counting the same hours.
-  const hasOff=list.includes('Turn MRI/CT scanners off overnight');
-  const hasStandby=list.includes('Use standby mode during inactive periods');
+  // Legacy scanner-state levers remain valid for older save files. New assessments use
+  // modality-specific current-to-target coverage so CT, MRI, and workstations are not treated
+  // as one all-or-none fleet intervention.
+  const legacyHasOff=list.includes('Turn MRI/CT scanners off overnight');
+  const legacyHasStandby=list.includes('Use standby mode during inactive periods');
   const hasScheduling=list.includes('Optimize scheduling');
   const scheduleFraction=INTERVENTIONS['Optimize scheduling']?.fraction||0;
-  const perDeviceIdleSaving=(eq,includeScheduling)=>{
+  const modernScannerPowerSelected=list.includes('Expand CT low-power / shutdown coverage')||list.includes('Expand MRI low-power coverage');
+  const perDeviceLegacyIdleSaving=(eq,includeScheduling)=>{
     const hours=eq.avoidable_idle_h*mult;
     let best=0;
-    if(hasStandby)best=Math.max(best,Math.max(0,eq.idle_kw-eq.standby_kw)*hours);
-    if(hasOff&&['MRI','CT'].includes(eq.modality))best=Math.max(best,Math.max(0,eq.idle_kw-eq.off_kw)*hours);
+    if(legacyHasStandby)best=Math.max(best,Math.max(0,eq.idle_kw-eq.standby_kw)*hours);
+    if(legacyHasOff&&['MRI','CT'].includes(eq.modality))best=Math.max(best,Math.max(0,eq.idle_kw-eq.off_kw)*hours);
     if(includeScheduling&&hasScheduling&&IMAGING_MODALITIES.has(eq.modality))best=Math.max(best,Math.max(0,eq.idle_kw-eq.standby_kw)*hours*scheduleFraction);
     return best;
   };
-  const powerdownSaving=rnd(fleet.reduce((s,eq)=>s+perDeviceIdleSaving(eq,false),0),2);
-  const combinedIdleSaving=rnd(fleet.reduce((s,eq)=>s+perDeviceIdleSaving(eq,true),0),2);
-  const schedulingSaving=rnd(Math.max(0,combinedIdleSaving-powerdownSaving),2);
+  const legacyPowerdownSaving=modernScannerPowerSelected?0:rnd(fleet.reduce((s,eq)=>s+perDeviceLegacyIdleSaving(eq,false),0),2);
+  const legacyCombinedIdleSaving=modernScannerPowerSelected?0:rnd(fleet.reduce((s,eq)=>s+perDeviceLegacyIdleSaving(eq,true),0),2);
+  const legacySchedulingSaving=modernScannerPowerSelected?0:rnd(Math.max(0,legacyCombinedIdleSaving-legacyPowerdownSaving),2);
+
+  const pm=powerManagement||{};
+  const pmNum=(key,fallback=0)=>{const raw=String(pm[key]??'').trim();if(raw==='')return fallback;const n=Number(raw);return Number.isFinite(n)?n:fallback;};
+  const pmRaw=key=>String(pm[key]??'').trim();
+  const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+  const daysPerMonth=AVERAGE_MONTH_HOURS/24;
+  const managedHourFraction=(raw,avoidableHours)=>{
+    if(!(avoidableHours>0))return 0;
+    if(String(raw??'').trim()==='')return 1;
+    const hoursPerDay=clamp(Number(raw)||0,0,24);
+    return clamp((hoursPerDay*daysPerMonth)/avoidableHours,0,1);
+  };
+  const powerCoverageResult=({modality,targetMode,currentCountKey,currentHoursKey,targetCountKey,targetHoursKey,selected})=>{
+    if(!selected)return {saving:0,exposure:0};
+    const group=fleet.filter(eq=>eq.modality===modality);
+    const totalCount=group.reduce((sum,eq)=>sum+(Number(eq.count)||0),0);
+    if(totalCount<=0)return {saving:0,exposure:0};
+    const currentCount=clamp(pmNum(currentCountKey,0),0,totalCount);
+    const targetCount=clamp(pmNum(targetCountKey,totalCount),currentCount,totalCount);
+    const currentCoverage=currentCount/totalCount, targetCoverage=targetCount/totalCount;
+    let saving=0, weightedExposure=0, weight=0;
+    group.forEach(eq=>{
+      const targetKw=targetMode==='lowest'?Math.min(eq.standby_kw,eq.off_kw):targetMode==='off'?eq.off_kw:eq.standby_kw;
+      const potential=Math.max(0,eq.idle_kw-targetKw)*Math.max(0,eq.avoidable_idle_h)*mult;
+      const currentHourFraction=managedHourFraction(pmRaw(currentHoursKey),eq.avoidable_idle_h);
+      const targetHourFraction=managedHourFraction(pmRaw(targetHoursKey),eq.avoidable_idle_h);
+      const incrementalExposure=clamp(targetCoverage*targetHourFraction-currentCoverage*currentHourFraction,0,1);
+      saving+=potential*incrementalExposure;
+      weightedExposure+=incrementalExposure*potential;
+      weight+=potential;
+    });
+    return {saving:rnd(saving,2),exposure:weight>0?clamp(weightedExposure/weight,0,1):0};
+  };
+
+  const ctPower=powerCoverageResult({modality:'CT',targetMode:'off',currentCountKey:'ctCurrentCount',currentHoursKey:'ctCurrentHours',targetCountKey:'ctTargetCount',targetHoursKey:'ctTargetHours',selected:list.includes('Expand CT low-power / shutdown coverage')});
+  const mriPower=powerCoverageResult({modality:'MRI',targetMode:'lowest',currentCountKey:'mriCurrentCount',currentHoursKey:'mriCurrentHours',targetCountKey:'mriTargetCount',targetHoursKey:'mriTargetHours',selected:list.includes('Expand MRI low-power coverage')});
+  const workstationPower=powerCoverageResult({modality:'Workstation',targetMode:'off',currentCountKey:'workstationCurrentCount',currentHoursKey:'workstationCurrentHours',targetCountKey:'workstationTargetCount',targetHoursKey:'workstationTargetHours',selected:list.includes('Automate reporting workstation power management')});
+  const ctPowerSaving=ctPower.saving, mriPowerSaving=mriPower.saving, workstationPowerSaving=workstationPower.saving;
+  const powerManagementSaving=rnd(legacyPowerdownSaving+ctPowerSaving+mriPowerSaving+workstationPowerSaving,2);
+
+  // Scheduling also reduces avoidable idle. When a new CT/MRI power-management target acts on
+  // the same opportunity, apply scheduling only to the remaining unmanaged fraction.
+  const schedulingSaving=modernScannerPowerSelected
+    ? rnd(fleet.reduce((s,eq)=>{
+        if(!hasScheduling||!IMAGING_MODALITIES.has(eq.modality))return s;
+        const pmExposure=eq.modality==='CT'?ctPower.exposure:eq.modality==='MRI'?mriPower.exposure:0;
+        const potential=Math.max(0,eq.idle_kw-eq.standby_kw)*Math.max(0,eq.avoidable_idle_h)*mult*scheduleFraction;
+        return s+potential*(1-pmExposure);
+      },0),2)
+    : legacySchedulingSaving;
+
   let serverSaving=0;
   if(list.includes('Consolidate servers'))serverSaving=rnd(serverPool*(INTERVENTIONS['Consolidate servers'].fraction||0),2);
 
@@ -663,7 +720,7 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
 
   const nonStorageLocalBase=Math.max(0,(base.carbonPools?.localKwh??(base.totals.kwh-currentStorage.kwh))-(stgCloud?0:currentStorage.kwh));
   const localOtherBase=Math.max(0,nonStorageLocalBase-serverPool);
-  const localOtherEnergySaving=Math.min(localOtherBase,scannerActiveSaving+powerdownSaving+schedulingSaving+aiLocalInferenceSaving);
+  const localOtherEnergySaving=Math.min(localOtherBase,scannerActiveSaving+powerManagementSaving+schedulingSaving+aiLocalInferenceSaving);
   const localOtherAfter=Math.max(0,localOtherBase-localOtherEnergySaving);
   const serverAfter=Math.max(0,serverPool-serverSaving);
   const serverMoved=list.includes('Move computation to lower-carbon regions');
@@ -685,7 +742,7 @@ function computeInterventions(names, region, timePeriod, equipment, customCi, cl
   const contrastBaseKg=base.resources.contrast.co2eKg, contrastSavedKg=rnd(contrastBaseKg*contrastFraction,1), contrastProjKg=rnd(Math.max(0,contrastBaseKg-contrastSavedKg),1);
   const embodiedFraction=1-list.reduce((f,n)=>f*(1-((INTERVENTIONS[n]?.scope3EmbPct??0)/100)),1);
   const embodiedBaseKg=base.scopes.scope3EmbKg, embodiedSavedKg=rnd(embodiedBaseKg*embodiedFraction,1), embodiedProjKg=rnd(Math.max(0,embodiedBaseKg-embodiedSavedKg),1);
-  return{selected:list,count:list.length,timePeriod,usesScanner:list.some(n=>SCANNER_STATE_INTERVENTIONS.has(n)),usesCloud:list.some(n=>CLOUD_INTERVENTIONS.has(n)),monthlyKwhSaved:rnd(kwhSaved/mult,1),baseline:{kwh:base.totals.kwh,co2:baselineCo2},projected:{kwh:projectedKwh,co2:projectedCo2},savings:{kwh:kwhSaved,co2:co2Saved,pctEnergy,pctCo2,co2Fraction:baselineCo2>0?co2Saved/baselineCo2:0},assumptions:{currentRenewablePct:rnd(currentRen*100,0),projectedRenewablePct:rnd(renewableTarget*100,0),scannerActiveSaving,schedulingSaving,powerdownSaving,serverSaving,aiInferenceSaving:rnd(aiLocalInferenceSaving+aiCloudInferenceSaving,2),storageSaving},contrast:{baselineCo2eKg:contrastBaseKg,savedCo2eKg:contrastSavedKg,projectedCo2eKg:contrastProjKg},embodied:{baselineCo2eKg:embodiedBaseKg,savedCo2eKg:embodiedSavedKg,projectedCo2eKg:embodiedProjKg}};
+  return{selected:list,count:list.length,timePeriod,usesScanner:list.some(n=>SCANNER_STATE_INTERVENTIONS.has(n)),usesCloud:list.some(n=>CLOUD_INTERVENTIONS.has(n)),monthlyKwhSaved:rnd(kwhSaved/mult,1),baseline:{kwh:base.totals.kwh,co2:baselineCo2},projected:{kwh:projectedKwh,co2:projectedCo2},savings:{kwh:kwhSaved,co2:co2Saved,pctEnergy,pctCo2,co2Fraction:baselineCo2>0?co2Saved/baselineCo2:0},assumptions:{currentRenewablePct:rnd(currentRen*100,0),projectedRenewablePct:rnd(renewableTarget*100,0),scannerActiveSaving,schedulingSaving,powerdownSaving:powerManagementSaving,ctPowerSaving,mriPowerSaving,workstationPowerSaving,serverSaving,aiInferenceSaving:rnd(aiLocalInferenceSaving+aiCloudInferenceSaving,2),storageSaving},contrast:{baselineCo2eKg:contrastBaseKg,savedCo2eKg:contrastSavedKg,projectedCo2eKg:contrastProjKg},embodied:{baselineCo2eKg:embodiedBaseKg,savedCo2eKg:embodiedSavedKg,projectedCo2eKg:embodiedProjKg}};
 }
 
 export {

@@ -29,6 +29,7 @@ import './styles/theme.css';
 // CEDARS_CHUNK_9R22_WALKTHROUGH_PREFILL_GATING_QA
 // CEDARS_CHUNK_9R23_COMBINED_WALKTHROUGH_REPORT_WORKFLOW_DARK
 // CEDARS_CHUNK_9R24_ECOLABEL_FAMILY_V2
+// CEDARS_CHUNK_9R25_POWER_MANAGEMENT_PARITY
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -96,6 +97,24 @@ const IMPROVE_INTERVENTION_META = {
     reason:'Driven by the gap between idle and standby energy in your entered fleet.',
     links:[['Brown et al., CARJ 2022','https://doi.org/10.1177/08465371221133074']],
   },
+  'Expand CT low-power / shutdown coverage': {
+    description:'Increase use of vendor-approved CT low-power or shutdown states during predictable non-use while preserving emergency coverage and restart, warm-up, calibration, and vendor requirements.',
+    category:'Power management', status:'Modeled',
+    reason:'Scales only the remaining CT avoidable-idle opportunity above the current power-management coverage recorded in the Profile.',
+    links:[['Brown et al., CARJ 2022','https://doi.org/10.1177/08465371221133074'],['Hehenkamp et al., AJR 2026','https://doi.org/10.2214/AJR.25.33951']],
+  },
+  'Expand MRI low-power coverage': {
+    description:'Increase use of the lowest vendor-approved MRI nonproductive power state during predictable non-use. “Off” does not mean fully de-energized; cooling and other subsystems can remain powered.',
+    category:'Power management', status:'Modeled',
+    reason:'Scales only the remaining MRI avoidable-idle opportunity above current coverage, using the lowest modeled nonproductive state for each MRI type.',
+    links:[['Woolen et al., Radiology 2023','https://doi.org/10.1148/radiol.230441']],
+  },
+  'Automate reporting workstation power management': {
+    description:'Expand automated sleep/shutdown coverage for radiology reporting workstations outside required operating hours.',
+    category:'Power management', status:'Modeled',
+    reason:'Scales only the remaining workstation avoidable-idle opportunity above the current automated power-management coverage.',
+    links:[['Walters et al., Clinical Radiology 2024','https://doi.org/10.1016/j.crad.2024.07.022']],
+  },
   'Reduce low-value imaging': {
     description:'Reduce imaging that is unlikely to add clinical value through appropriateness and ordering strategies.',
     category:'Active scanning', status:'Scenario estimate',
@@ -145,9 +164,9 @@ const IMPROVE_INTERVENTION_META = {
     links:[['Rockall et al., JACR 2025','https://doi.org/10.1016/j.jacr.2025.02.009']],
   },
   'Consolidate servers': {
-    description:'Consolidate under-used PACS/RIS or workstation compute through right-sizing or virtualization where reliability requirements permit.',
+    description:'Consolidate or right-size under-used PACS/RIS and server compute through virtualization or platform consolidation where reliability requirements permit.',
     category:'Compute', status:'Scenario estimate',
-    reason:'CEDARS tests a 20% reduction of the modeled PACS/RIS + workstation compute pool; replace with local metering for reporting of record.',
+    reason:'CEDARS tests a 20% reduction of the modeled PACS/RIS server-compute pool; reporting-workstation sleep/shutdown is modeled separately.',
     links:[['Doo et al., JACR 2024','https://doi.org/10.1016/j.jacr.2023.11.011']],
   },
   'Use smaller or more efficient AI models': {
@@ -216,6 +235,50 @@ const DEPARTMENT_WORKFLOW_METRICS = {
   store: {key:'retentionYears', label:'Archive retention window', unit:'years', min:0, max:30, step:1, help:'Enter the local retention policy if known. This value also updates the storage-retention assumption used by CEDARS.'},
 };
 
+const DEPARTMENT_POWER_MANAGEMENT = [
+  {
+    key:'ct', fleetKey:'ct', currentCountKey:'ctPowerManagedCount', currentHoursKey:'ctPowerManagedHours',
+    targetCountKey:'ctTargetCount', targetHoursKey:'ctTargetHours', intervention:'Expand CT low-power / shutdown coverage',
+    title:'CT scanners',
+    currentHelp:'Vendor-approved low-power or system-off use during predictable non-use.',
+    scenarioHelp:'Increase the share of CT scanners using a vendor-approved low-power or shutdown state when clinical availability, restart, warm-up, calibration, and vendor requirements permit.',
+  },
+  {
+    key:'mri', fleetKey:'mri', currentCountKey:'mriPowerManagedCount', currentHoursKey:'mriPowerManagedHours',
+    targetCountKey:'mriTargetCount', targetHoursKey:'mriTargetHours', intervention:'Expand MRI low-power coverage',
+    title:'MRI scanners',
+    currentHelp:'Lowest vendor-approved nonproductive power state; superconducting MRI cooling remains active even when the user-facing system is “off”.',
+    scenarioHelp:'Increase use of the lowest vendor-approved MRI power state during predictable non-use; do not interpret this as fully de-energizing the magnet.',
+  },
+  {
+    key:'workstation', fleetKey:'workstations', currentCountKey:'workstationPowerManagedCount', currentHoursKey:'workstationPowerManagedHours',
+    targetCountKey:'workstationTargetCount', targetHoursKey:'workstationTargetHours', intervention:'Automate reporting workstation power management',
+    title:'Reading workstations',
+    currentHelp:'Automated sleep/shutdown outside required reporting hours.',
+    scenarioHelp:'Expand automated sleep/shutdown coverage for reporting workstations outside required hours.',
+  },
+];
+const DEPARTMENT_POWER_INTERVENTIONS = new Set(DEPARTMENT_POWER_MANAGEMENT.map(item=>item.intervention));
+
+function departmentPowerCounts(equipment = {}) {
+  return {
+    ct: Math.max(0, Number(equipment.ct) || 0),
+    mri: ['mri_035t','mri_15t','mri_3t','mri_7t'].reduce((sum,key)=>sum + Math.max(0, Number(equipment[key]) || 0), 0),
+    workstations: Math.max(0, Number(equipment.workstations) || 0),
+  };
+}
+function boundedCoverageCount(value, total) {
+  const n=Number(value);
+  if(!Number.isFinite(n)) return 0;
+  return Math.max(0,Math.min(Math.max(0,total||0),n));
+}
+function boundedManagedHours(value) {
+  const raw=String(value ?? '').trim();
+  if(raw==='') return '';
+  const n=Number(raw);
+  if(!Number.isFinite(n)) return '';
+  return Math.max(0,Math.min(24,n));
+}
 const AI_IMPROVE_LIFECYCLE = {
   develop:[
     {key:'define',step:'1',title:'Define',subtitle:'Goal, task & compute budget'},
@@ -276,10 +339,10 @@ import {
 // Realistic department archetypes — a quick-start starting fleet; every count stays editable.
 // Illustrative sizes, not authoritative. Only non-zero devices listed; the rest reset to 0 on apply.
 const DEPARTMENT_PRESETS = [
-  {key:'community',  label:'Community hospital',  desc:'Small general hospital',            equipment:{mri_15t:1, ct:1, xray:2, ultrasound:2, mammography:1, pacs:1, workstations:6}, practices:['Use standby mode during inactive periods','Apply an imaging data-retention policy']},
-  {key:'regional',   label:'Regional hospital',   desc:'Mid-size hospital with IR',         equipment:{mri_15t:1, mri_3t:1, ct:2, fluoro:1, angio:1, xray:3, ultrasound:3, mammography:1, pacs:1, workstations:12}, practices:['Optimize scheduling','Use standby mode during inactive periods','Apply an imaging data-retention policy']},
-  {key:'academic',   label:'Academic center',     desc:'Large academic medical center',     equipment:{mri_15t:2, mri_3t:2, mri_7t:1, ct:4, petct:1, angio:2, fluoro:2, xray:5, ultrasound:6, mammography:2, pacs:2, workstations:30}, practices:['Optimize scheduling','Consolidate servers','Use standby mode during inactive periods','Apply an imaging data-retention policy']},
-  {key:'outpatient', label:'Outpatient imaging',  desc:'Outpatient / ambulatory centre',    equipment:{mri_15t:1, ct:1, xray:2, ultrasound:3, mammography:1, pacs:1, workstations:6}, practices:['Optimize scheduling','Reduce repeat scans','Use standby mode during inactive periods']},
+  {key:'community',  label:'Community hospital',  desc:'Small general hospital',            equipment:{mri_15t:1, ct:1, xray:2, ultrasound:2, mammography:1, pacs:1, workstations:6}, practices:['Apply an imaging data-retention policy']},
+  {key:'regional',   label:'Regional hospital',   desc:'Mid-size hospital with IR',         equipment:{mri_15t:1, mri_3t:1, ct:2, fluoro:1, angio:1, xray:3, ultrasound:3, mammography:1, pacs:1, workstations:12}, practices:['Optimize scheduling','Apply an imaging data-retention policy']},
+  {key:'academic',   label:'Academic center',     desc:'Large academic medical center',     equipment:{mri_15t:2, mri_3t:2, mri_7t:1, ct:4, petct:1, angio:2, fluoro:2, xray:5, ultrasound:6, mammography:2, pacs:2, workstations:30}, practices:['Optimize scheduling','Consolidate servers','Apply an imaging data-retention policy']},
+  {key:'outpatient', label:'Outpatient imaging',  desc:'Outpatient / ambulatory centre',    equipment:{mri_15t:1, ct:1, xray:2, ultrasound:3, mammography:1, pacs:1, workstations:6}, practices:['Optimize scheduling','Reduce repeat scans']},
   {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}, practices:['Consolidate servers','Apply an imaging data-retention policy']},
 ];
 
@@ -567,7 +630,7 @@ const META = {
   regions:        Object.keys(CARBON_INTENSITY),
   metricTypes:    ["Energy", "Carbon", "Water", "AI net impact"],
   timePeriods:    Object.keys(TIME_MULT),
-  interventions:  Object.keys(INTERVENTIONS),
+  interventions:  Object.keys(INTERVENTIONS).filter(name=>!INTERVENTIONS[name]?.legacyOnly),
   cloudProviders: Object.keys(CLOUD),
   scannerStates:  ["Active", "Idle", "Standby", "Off"],
   aiModels:       AI_MODEL_LIBRARY.map(m => m.label),
@@ -1363,17 +1426,12 @@ function drawLabelCard({
   ctx.fillText('CEDARS ECOLABEL', 16, 25);
 
   const tag = String(productTag || 'RESEARCH').toUpperCase();
-  ctx.font = 'bold 9px sans-serif';
-  const tagW = Math.ceil(ctx.measureText(tag).width) + 16;
-  ctx.fillStyle = '#3A6658';
-  ctx.beginPath(); ctx.roundRect(W - 16 - tagW, 11, tagW, 20, 10); ctx.fill();
-  ctx.fillStyle = '#EEF4F0';
-  ctx.fillText(tag, W - 8 - tagW, 25);
-
+  ctx.font = 'bold 8px sans-serif'; ctx.fillStyle = '#A8C7B7';
+  ctx.fillText(tag, 16, 42);
   ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#DDE8E1';
-  ctx.fillText(name || 'Untitled assessment', 16, 50);
-  ctx.font = '10px sans-serif'; ctx.fillStyle = '#BEC9C2';
-  ctx.fillText(contextLine || '', 16, 70);
+  ctx.fillText(name || 'Untitled assessment', 16, 59);
+  ctx.font = '9px sans-serif'; ctx.fillStyle = '#BEC9C2';
+  ctx.fillText(contextLine || '', 16, 75);
 
   const scoreY = HEADER_H;
   ctx.fillStyle = ratingBg;
@@ -1440,7 +1498,7 @@ function drawLabelCard({
   ctx.fillStyle = '#EEF4F0';
   ctx.beginPath(); ctx.roundRect(2, y, W-4, FOOTER_H, [0,0,11,11]); ctx.fill();
   ctx.fillStyle = '#2F6B57'; ctx.font = 'bold 8px sans-serif';
-  ctx.fillText('RESEARCH OUTPUT · NOT EXTERNAL CERTIFICATION', 14, y + 13);
+  ctx.fillText('RESEARCH OUTPUT · NOT A CERTIFICATION', 14, y + 13);
   ctx.font = '9px sans-serif'; ctx.fillStyle = '#55736A';
   ctx.fillText(footerText, 14, y + 25);
   return canvas;
@@ -1521,7 +1579,7 @@ function CedarsEcoLabelPreview({
       </div>
 
       <div className="cedarsEcoLabelFooter">
-        <span>RESEARCH OUTPUT · NOT EXTERNAL CERTIFICATION</span>
+        <span>RESEARCH OUTPUT · NOT A CERTIFICATION</span>
         <small>Estimated with CEDARS · {date} · CC BY 4.0</small>
       </div>
     </div>
@@ -1917,6 +1975,7 @@ function App() {
     setDeptModelChoice('');
     setProvenance({equipment:{}});
     setScenarioInterventions([]);
+    setScenarioPowerManagement({});
     setDeptWorkflowStage('order');
     setComparisonSelection(null);
     setComparisonDetailsOpen(true);
@@ -2012,6 +2071,7 @@ function App() {
   const [advEquipExpanded, setAdvEquipExpanded] = useState(false);
   const [deptSetupOpen, setDeptSetupOpen] = useState(true);
   const [scenarioInterventions, setScenarioInterventions] = useState(() => initCfg.activeInterventions || []);
+  const [scenarioPowerManagement, setScenarioPowerManagement] = useState({});
   const [ecoLabelMode, setEcoLabelMode] = useState(() => {
     if (typeof window === 'undefined') return 'department';
     return new URLSearchParams(window.location.search).get('label') === 'ai' ? 'ai' : 'department';
@@ -2149,6 +2209,13 @@ function App() {
   };
   const toggleScenarioIntervention = name => {
     if (deptLabel.activeInterventions.includes(name)) return;
+    const becomingProspective = !scenarioInterventions.includes(name);
+    const powerItem = DEPARTMENT_POWER_MANAGEMENT.find(item=>item.intervention===name);
+    if (becomingProspective && powerItem) {
+      const totals=departmentPowerCounts(settings.equipment);
+      const total=totals[powerItem.fleetKey]||0;
+      setScenarioPowerManagement(p=>({...p,[powerItem.targetCountKey]:String(p[powerItem.targetCountKey] ?? total)}));
+    }
     setScenarioInterventions(list =>
       list.includes(name) ? list.filter(x => x !== name) : [...list, name]
     );
@@ -2272,7 +2339,7 @@ function App() {
   const [contributeOpen, setContributeOpen] = useState(false);
 
   const currentAssessmentSnapshot = () => buildAssessmentSnapshot({
-    settings, scen, deptLabel, ecoLabel, ecoLabelTouched: false, cloudTracker, provenance, scenarioInterventions: prospectiveScenarioInterventions,
+    settings, scen, deptLabel, ecoLabel, ecoLabelTouched: false, cloudTracker, provenance, scenarioInterventions: prospectiveScenarioInterventions, scenarioPowerManagement,
     aiModels, activeAiModelId: scen.modelId, aiDeployments: deptLabel.aiTools,
     aiComparison: {candidates: benchModels},
     // Store the exact disclosure outputs currently shown in Report (& Share) so research
@@ -2365,6 +2432,7 @@ function App() {
     setCloudTracker(t => ({...t, ...(a.cloudTracker || {})}));
     setProvenance(a.provenance || {equipment:{}});
     setScenarioInterventions(a.scenarioInterventions || a.deptLabel?.activeInterventions || []);
+    setScenarioPowerManagement(a.scenarioPowerManagement || {});
     setDeptSetupOpen(false);
     setPage('landing');
   };
@@ -2386,6 +2454,7 @@ function App() {
       activeInterventions: [...(preset.practices || [])],
     }));
     setScenarioInterventions(list => list.filter(name => !(preset.practices || []).includes(name)));
+    setScenarioPowerManagement({});
   };
 
   const applyProcurementDemo = () => {
@@ -2772,9 +2841,23 @@ function App() {
   const storageCfg = {retentionYears: settings.storageRetentionYears, cloud: settings.storageCloud, reformats: settings.storageReformats, intensityCustom: settings.storageIntensityCustom, provider:settings.storageProvider, region:settings.storageRegion, cloudCi:settings.storageCloudCi, scope1AnnualKg:settings.scope1AnnualKg,
     patientTravelKm:settings.patientTravelKm, waterLitresAnnual:settings.waterLitresAnnual, paperKgAnnual:settings.paperKgAnnual, hazardousKgAnnual:settings.hazardousKgAnnual};
   const dash     = useMemo(() => computeDashboard(settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, storageCfg, settings.equipmentOverrides, provenance), [settings.region, settings.timePeriod, settings.equipment, settings.customCi, clinicalAdj, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.patientTravelKm, settings.waterLitresAnnual, settings.paperKgAnnual, settings.hazardousKgAnnual, settings.equipmentOverrides, provenance]);
+  const departmentPowerManagement = useMemo(() => ({
+    ctCurrentCount:(deptLabel.workflowMetrics||{}).ctPowerManagedCount ?? '',
+    ctCurrentHours:(deptLabel.workflowMetrics||{}).ctPowerManagedHours ?? '',
+    ctTargetCount:scenarioPowerManagement.ctTargetCount ?? '',
+    ctTargetHours:scenarioPowerManagement.ctTargetHours ?? '',
+    mriCurrentCount:(deptLabel.workflowMetrics||{}).mriPowerManagedCount ?? '',
+    mriCurrentHours:(deptLabel.workflowMetrics||{}).mriPowerManagedHours ?? '',
+    mriTargetCount:scenarioPowerManagement.mriTargetCount ?? '',
+    mriTargetHours:scenarioPowerManagement.mriTargetHours ?? '',
+    workstationCurrentCount:(deptLabel.workflowMetrics||{}).workstationPowerManagedCount ?? '',
+    workstationCurrentHours:(deptLabel.workflowMetrics||{}).workstationPowerManagedHours ?? '',
+    workstationTargetCount:scenarioPowerManagement.workstationTargetCount ?? '',
+    workstationTargetHours:scenarioPowerManagement.workstationTargetHours ?? '',
+  }), [deptLabel.workflowMetrics, scenarioPowerManagement]);
   // Deployment workload uses the department's pre-AI imaging volume and is always normalized to studies/month.
   const departmentStudiesPerMonth = Math.round((((dash.clinicalBasis?.imagingScans ?? dash.scopes.imagingScans) || 0)) / (TIME_MULT[settings.timePeriod] ?? 1));
-  const scenario = useMemo(() => computeInterventions(prospectiveScenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct), [prospectiveScenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.patientTravelKm, settings.waterLitresAnnual, settings.paperKgAnnual, settings.hazardousKgAnnual, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct]);
+  const scenario = useMemo(() => computeInterventions(prospectiveScenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct, departmentPowerManagement), [prospectiveScenarioInterventions, settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, settings.storageRetentionYears, settings.storageCloud, settings.storageReformats, settings.storageIntensityCustom, settings.storageProvider, settings.storageRegion, settings.storageCloudCi, settings.scope1AnnualKg, settings.patientTravelKm, settings.waterLitresAnnual, settings.paperKgAnnual, settings.hazardousKgAnnual, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct, departmentPowerManagement]);
   const ai       = useMemo(() => aiResultFor(scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides),
     [scen, settings.region, settings.customCi, settings.equipment, settings.equipmentOverrides]);
 
@@ -3852,7 +3935,7 @@ function App() {
 
           {deptProfileStage==='equipment' && (()=>{
             const stage=IMPROVE_WORKFLOW_STAGES.find(s=>s.key===deptWorkflowStage) || IMPROVE_WORKFLOW_STAGES[0];
-            const stagePractices=Object.keys(INTERVENTIONS).filter(name=>improveWorkflowStage(name)===deptWorkflowStage);
+            const stagePractices=Object.keys(INTERVENTIONS).filter(name=>improveWorkflowStage(name)===deptWorkflowStage && !INTERVENTIONS[name]?.legacyOnly && !DEPARTMENT_POWER_INTERVENTIONS.has(name) && name!=='Use smaller or more efficient AI models');
             const selectedPractices=stagePractices.filter(name=>deptLabel.activeInterventions.includes(name));
             const metric=DEPARTMENT_WORKFLOW_METRICS[deptWorkflowStage] || null;
             const metricValue=metric ? String((deptLabel.workflowMetrics || {})[metric.key] ?? '') : '';
@@ -3877,11 +3960,34 @@ function App() {
                 <section className="departmentWorkflowStageDetail">
                   <div className="departmentWorkflowStageDetailHeading"><span>CURRENT WORKFLOW</span><strong>{stage.title}</strong><small>{stage.subtitle}</small></div>
                   {metric&&<div className="workflowBaselineMetric">
-                    <div><span>OPTIONAL LOCAL METRIC</span><strong>{metric.label}</strong><p>{metric.help}</p></div>
+                    <span className="workflowBaselineMetricKicker">OPTIONAL LOCAL METRIC</span>
+                    <div className="workflowBaselineMetricCopy"><strong>{metric.label}</strong><p>{metric.help}</p></div>
                     <div className="workflowMetricControl">
                       <label><input type="number" min={metric.min} max={metric.max} step={metric.step} value={metricValue} onChange={e=>updateMetric(e.target.value)} placeholder="Unknown"/><span>{metric.unit}</span></label>
                       {metricValue!==''&&<input type="range" min={metric.min} max={metric.max} step={metric.step} value={Math.min(metric.max,Math.max(metric.min,Number(metricValue)||0))} onChange={e=>updateMetric(e.target.value)} aria-label={`${metric.label} ${metric.unit}`}/>}
                     </div>
+                  </div>}
+                  {deptWorkflowStage==='infrastructure'&&<div className="workflowPowerManagementProfile">
+                    <div className="workflowPowerManagementHeading">
+                      <div><span>POWER MANAGEMENT · CURRENT STATE · OPTIONAL</span><strong>Link power-management coverage to the equipment already entered in Context.</strong><p>Record what is actually implemented today. These values carry into Decision Workspace so prospective changes start from the current state; they do not change the current CEDARS Score by themselves.</p></div>
+                      <button type="button" className="inlineTextButton" onClick={()=>{setDeptProfileStage('context');setDeptSetupOpen(true);window.setTimeout(()=>document.getElementById('department-equipment')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Context equipment →</button>
+                    </div>
+                    <div className="workflowPowerManagementGrid">
+                      {DEPARTMENT_POWER_MANAGEMENT.map(item=>{
+                        const totals=departmentPowerCounts(settings.equipment); const total=totals[item.fleetKey]||0;
+                        const currentCount=boundedCoverageCount((deptLabel.workflowMetrics||{})[item.currentCountKey],total);
+                        const currentHours=boundedManagedHours((deptLabel.workflowMetrics||{})[item.currentHoursKey]);
+                        const pct=total>0?Math.round(currentCount/total*100):0;
+                        return <article key={item.key} className="workflowPowerManagementCard">
+                          <div className="workflowPowerManagementCardTitle"><div><strong>{item.title}</strong><small>{item.currentHelp}</small></div><div className="workflowPowerCoverage"><b>{total>0?`${pct}%`:'—'}</b><span>coverage</span></div></div>
+                          <div className="workflowPowerManagementFields">
+                            <label><span>Managed today</span><div><input type="number" min="0" max={total} step="1" disabled={total===0} value={(deptLabel.workflowMetrics||{})[item.currentCountKey]??''} onChange={e=>setDeptWorkflowMetric(item.currentCountKey,e.target.value)} placeholder={total>0?'0':'No devices'}/><em>of {total}</em></div></label>
+                            <label><span>Typical managed time <small>optional</small></span><div><input type="number" min="0" max="24" step="0.5" disabled={total===0} value={currentHours} onChange={e=>setDeptWorkflowMetric(item.currentHoursKey,e.target.value)} placeholder="Model default"/><em>h/day</em></div></label>
+                          </div>
+                        </article>;
+                      })}
+                    </div>
+                    <small className="workflowPowerManagementNote">CT and MRI are intentionally separated. CT may use rapid-reactivation low-power or system-off states depending on the platform. For superconducting MRI, “off” is still a powered state because cooling and other subsystems remain active; use the lowest vendor-approved state that preserves safe operation and required availability. Reading-workstation coverage refers to automated sleep/shutdown rather than manual user behavior. When managed hours are left blank, CEDARS uses the device model’s existing avoidable-idle assumption rather than inventing an overnight duration.</small>
                   </div>}
                   {deptWorkflowStage==='schedule'&&<div className="workflowScienceGuidance scheduling">
                     <span>HOW TO USE THIS STEP</span>
@@ -3911,7 +4017,7 @@ function App() {
                 <aside className="departmentWorkflowCurrentTally" aria-label="Current Department profile tally">
                   <div className="departmentWorkflowTallyHeader"><span>CURRENT PROFILE TALLY</span><strong>{stage.title}</strong></div>
                   <div className="departmentWorkflowTallyStage">
-                    {metric?<><span>{metric.label}</span><strong>{metricValue!==''?`${metricValue} ${metric.unit}`:'Not entered'}</strong></>:<><span>Local stage metric</span><strong>Not defined</strong></>}
+                    {deptWorkflowStage==='infrastructure'?(()=>{const totals=departmentPowerCounts(settings.equipment);const wm=deptLabel.workflowMetrics||{};return <><span>Power-management coverage</span><strong>CT {boundedCoverageCount(wm.ctPowerManagedCount,totals.ct)}/{totals.ct} · MRI {boundedCoverageCount(wm.mriPowerManagedCount,totals.mri)}/{totals.mri} · workstations {boundedCoverageCount(wm.workstationPowerManagedCount,totals.workstations)}/{totals.workstations}</strong></>;})():metric?<><span>{metric.label}</span><strong>{metricValue!==''?`${metricValue} ${metric.unit}`:'Not entered'}</strong></>:<><span>Local stage metric</span><strong>Not defined</strong></>}
                     {selectedPractices.length>0?<small>Already in place: {selectedPractices.join(' · ')}</small>:<small>No current practice from this stage is documented as implemented.</small>}
                   </div>
                   <div className="departmentWorkflowTallyMetrics">
@@ -5453,7 +5559,7 @@ function App() {
                                     <div className="aiWorkloadActions"><button type="button" disabled={!aiWorkloadScenario.studies} onClick={()=>setS('inferStudiesMonth',String(aiWorkloadScenario.studies))}>Use this workload in AI assessment</button><button type="button" className="download" onClick={()=>openAiChecklistItem('inference')}>Edit AI deployment details →</button>{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Edit Department Clinical AI use →</button>}</div>
                                   </div>}
               <div className="scoreResultCaveat ai"><SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/></div>
-                                </div>              <div className="profileResultPrimaryAction"><span>Current result complete. Next, test a prospective change or prepare the result.</span><button type="button" onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Decision Workspace →</button><button type="button" className="download" onClick={()=>{setEcoLabelMode('ai');setReportStudioTab('label');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Report &amp; Share →</button></div>
+                                </div>              <div className="profileResultPrimaryAction"><span>Current result complete. Report it directly or optionally test a prospective change first.</span><button type="button" className="download profileResultDecisionOptional" onClick={()=>{setEcoLabelMode('ai');setImproveAiStage(scen.aiRoute==='compare'||scen.ownMode==='spec'?'procure':'develop');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Decision Workspace <small>optional</small> →</button><button type="button" className="profileResultReportAction" onClick={()=>{setEcoLabelMode('ai');setReportStudioTab('label');setPage('report');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}>Report &amp; Share →</button></div>
                                 <details className="aiCalculationDetails">
                                   <summary>Calculation details &amp; assumptions <span>(expand to read more)</span></summary>
                                   <div className="aiCalculationGrid">
@@ -5523,8 +5629,8 @@ function App() {
             const price = getPrice(settings.region, settings.electricityPrice);
             const sym = currencySym(settings.region);
             const periodNoun = settings.timePeriod === 'Annual' ? 'year' : settings.timePeriod === 'Quarterly' ? 'quarter' : 'month';
-            const individual = Object.entries(INTERVENTIONS).map(([name,data])=>{
-              const result = computeInterventions([name], settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct);
+            const individual = Object.entries(INTERVENTIONS).filter(([,data])=>!data.legacyOnly).map(([name,data])=>{
+              const result = computeInterventions([name], settings.region, settings.timePeriod, settings.equipment, settings.customCi, scen.cloudProvider, scen.scannerState, storageCfg, settings.equipmentOverrides, clinicalAdj, deptLabel.renewablePct, departmentPowerManagement);
               const totalCo2 = rnd((result.savings.co2||0) + (result.embodied?.savedCo2eKg||0) + (result.contrast?.savedCo2eKg||0), 1);
               return {name,data,result,totalCo2,meta:IMPROVE_INTERVENTION_META[name]||{description:data.note,category:'Other',status:data.guidanceOnly?'Planning guidance':'Scenario estimate',reason:'Uses the current CEDARS intervention assumptions.',links:[]}};
             });
@@ -5536,7 +5642,7 @@ function App() {
             const activeStageMeta = IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveDeptStage) || IMPROVE_WORKFLOW_STAGES[0];
             const activeStageMetric = DEPARTMENT_WORKFLOW_METRICS[improveDeptStage] || null;
             const activeStageMetricRaw = activeStageMetric ? String((deptLabel.workflowMetrics || {})[activeStageMetric.key] ?? '') : '';
-            const activeStageCurrentPractices = (deptLabel.activeInterventions || []).filter(name=>improveWorkflowStage(name)===improveDeptStage);
+            const activeStageCurrentPractices = (deptLabel.activeInterventions || []).filter(name=>improveWorkflowStage(name)===improveDeptStage && !INTERVENTIONS[name]?.legacyOnly);
             const totalCarbonSaving = rnd((scenario.savings.co2||0)+(scenario.embodied.savedCo2eKg||0)+(scenario.contrast.savedCo2eKg||0),1);
             const periodCostSaving = scenario.savings.kwh * price;
             const statusClass = status => status === 'Modeled' ? 'modeled' : status === 'Planning guidance' ? 'guidance' : 'estimate';
@@ -5571,9 +5677,33 @@ function App() {
                       <button type="button" className={`improveInfrastructureBand ${improveDeptStage==='infrastructure'?'active':''}`} onClick={()=>setImproveDeptStage('infrastructure')}><span>+</span><div><strong>Infrastructure &amp; lifecycle</strong><small>Power management · hosting/servers · electricity supply · equipment lifetime · materials</small></div></button>
 
                       <div className="improveStageHeader"><span>WORKFLOW STAGE</span><strong>{IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveDeptStage)?.title}</strong><small>{IMPROVE_WORKFLOW_STAGES.find(s=>s.key===improveDeptStage)?.subtitle}</small></div>
-                      {(activeStageMetric||activeStageCurrentPractices.length>0)&&<div className="improveCurrentBaseline"><span>CURRENT PROFILE · CARRIED FORWARD</span>{activeStageMetric&&<strong>{activeStageMetric.label}: {activeStageMetricRaw!==''?`${activeStageMetricRaw} ${activeStageMetric.unit}`:'not entered'}</strong>}{activeStageCurrentPractices.length>0&&<small>Already in place: {activeStageCurrentPractices.join(' · ')}</small>}{activeStageMetric&&activeStageMetricRaw!==''&&<small>This is baseline context, not an automatic savings fraction. Prospective changes use their own stated scenario assumptions.</small>}</div>}
+                      {(activeStageMetric||activeStageCurrentPractices.length>0||improveDeptStage==='infrastructure')&&<div className="improveCurrentBaseline"><span>CURRENT PROFILE · CARRIED FORWARD</span>{improveDeptStage==='infrastructure'?(()=>{const totals=departmentPowerCounts(settings.equipment);const wm=deptLabel.workflowMetrics||{};return <><strong>Power management: CT {boundedCoverageCount(wm.ctPowerManagedCount,totals.ct)}/{totals.ct} · MRI {boundedCoverageCount(wm.mriPowerManagedCount,totals.mri)}/{totals.mri} · workstations {boundedCoverageCount(wm.workstationPowerManagedCount,totals.workstations)}/{totals.workstations}</strong><small>Coverage comes from the current Profile; prospective targets below are modeled only above this baseline.</small></>;})():<>{activeStageMetric&&<strong>{activeStageMetric.label}: {activeStageMetricRaw!==''?`${activeStageMetricRaw} ${activeStageMetric.unit}`:'not entered'}</strong>}{activeStageCurrentPractices.length>0&&<small>Already in place: {activeStageCurrentPractices.join(' · ')}</small>}{activeStageMetric&&activeStageMetricRaw!==''&&<small>This is baseline context, not an automatic savings fraction. Prospective changes use their own stated scenario assumptions.</small>}</>}</div>}
+                      {improveDeptStage==='infrastructure'&&<section className="improvePowerManagementPlanner">
+                        <div className="improvePowerManagementPlannerHeading"><span>POWER MANAGEMENT · PROSPECTIVE TARGET</span><strong>Increase coverage from the current Profile rather than assuming the whole fleet changes at once.</strong><p>CEDARS links denominators to Context. Select a prospective change, then set the target number of devices. Managed hours are optional; when blank, the existing device-specific avoidable-idle model is used.</p></div>
+                        <div className="improvePowerManagementPlannerGrid">
+                          {DEPARTMENT_POWER_MANAGEMENT.map(item=>{
+                            const totals=departmentPowerCounts(settings.equipment); const total=totals[item.fleetKey]||0;
+                            const currentCount=boundedCoverageCount((deptLabel.workflowMetrics||{})[item.currentCountKey],total);
+                            const currentHours=boundedManagedHours((deptLabel.workflowMetrics||{})[item.currentHoursKey]);
+                            const active=prospectiveScenarioInterventions.includes(item.intervention);
+                            const targetCount=active?boundedCoverageCount(scenarioPowerManagement[item.targetCountKey]??total,total):currentCount;
+                            const targetHours=active?boundedManagedHours(scenarioPowerManagement[item.targetHoursKey]):currentHours;
+                            const currentPct=total>0?Math.round(currentCount/total*100):0; const targetPct=total>0?Math.round(targetCount/total*100):0;
+                            return <article key={item.key} className={`improvePowerManagementTarget ${active?'active':''} ${total===0?'unavailable':''}`}>
+                              <label className="improvePowerManagementToggle"><input type="checkbox" checked={active} disabled={total===0} onChange={()=>toggleScenarioIntervention(item.intervention)}/><span><strong>{item.title}</strong><small>{item.scenarioHelp}</small></span></label>
+                              <div className="improvePowerManagementCurrent"><span>CURRENT</span><strong>{total>0?`${currentCount} of ${total} · ${currentPct}%`:'No devices in Context'}</strong><small>{currentCount>0?(currentHours!==''?`${currentHours} managed h/day`:'Device-model managed-hours default'):'No current coverage entered'}</small></div>
+                              <div className="improvePowerManagementTargetFields">
+                                <label><span>Target devices</span><div><input type="number" min={currentCount} max={total} step="1" disabled={!active||total===0} value={active?(scenarioPowerManagement[item.targetCountKey]??''):''} onChange={e=>setScenarioPowerManagement(p=>({...p,[item.targetCountKey]:e.target.value}))} placeholder={String(total)}/><em>of {total}</em></div></label>
+                                <label><span>Managed time <small>optional</small></span><div><input type="number" min="0" max="24" step="0.5" disabled={!active||total===0} value={active?(scenarioPowerManagement[item.targetHoursKey]??''):''} onChange={e=>setScenarioPowerManagement(p=>({...p,[item.targetHoursKey]:e.target.value}))} placeholder="Model default"/><em>h/day</em></div></label>
+                              </div>
+                              <div className="improvePowerManagementDelta"><span>TARGET</span><strong>{total>0?`${targetCount} of ${total} · ${targetPct}%`:'—'}</strong><small>{active?(targetHours!==''?`${targetHours} managed h/day · incremental coverage only`:'Device-model managed-hours default · incremental coverage only'):'Select to test a prospective increase'}</small></div>
+                            </article>;
+                          })}
+                        </div>
+                        <p className="improvePowerManagementPlannerNote">Modeled savings are bounded by each device type’s remaining avoidable-idle pool and power-state delta. Scheduling and power-management opportunities that act on the same idle hours are combined without double-counting. Local power logs or vendor-specific state measurements should replace defaults when available.</p>
+                      </section>}
                       <div className="improveChangeGrid">
-                        {individual.filter(row=>improveWorkflowStage(row.name)===improveDeptStage).map(row=>{
+                        {individual.filter(row=>improveWorkflowStage(row.name)===improveDeptStage && !DEPARTMENT_POWER_INTERVENTIONS.has(row.name)).map(row=>{
                           const currentPractice=currentPracticeSet.has(row.name);
                           const active=prospectiveScenarioInterventions.includes(row.name);
                           return <div key={row.name} className={`improveChangeCard ${active?'active':''} ${currentPractice?'currentPractice':''}`}>
@@ -5611,9 +5741,7 @@ function App() {
                     <div className="improveReceiptHeader"><span>SCENARIO TALLY</span><strong>{scenario.count} proposed change{scenario.count===1?'':'s'}</strong></div>
                     <div className="improveReceiptBaseline">
                       <span>CURRENT PROFILE · {activeStageMeta.title}</span>
-                      {activeStageMetric?<strong>{activeStageMetric.label}: {activeStageMetricRaw!==''?`${activeStageMetricRaw} ${activeStageMetric.unit}`:'not entered'}</strong>:<strong>No local metric defined for this stage</strong>}
-                      {activeStageCurrentPractices.length>0?<small>Already in place: {activeStageCurrentPractices.join(' · ')}</small>:<small>No current practice from this stage is documented as implemented.</small>}
-                      {activeStageMetric&&activeStageMetricRaw!==''&&<small>Carried forward as context only; it is not automatically converted into projected savings.</small>}
+                      {improveDeptStage==='infrastructure'?(()=>{const totals=departmentPowerCounts(settings.equipment);const wm=deptLabel.workflowMetrics||{};return <><strong>Power management: CT {boundedCoverageCount(wm.ctPowerManagedCount,totals.ct)}/{totals.ct} · MRI {boundedCoverageCount(wm.mriPowerManagedCount,totals.mri)}/{totals.mri} · workstations {boundedCoverageCount(wm.workstationPowerManagedCount,totals.workstations)}/{totals.workstations}</strong><small>Prospective power-management savings use only the target increase above this current coverage.</small></>;})():<>{activeStageMetric?<strong>{activeStageMetric.label}: {activeStageMetricRaw!==''?`${activeStageMetricRaw} ${activeStageMetric.unit}`:'not entered'}</strong>:<strong>No local metric defined for this stage</strong>}{activeStageCurrentPractices.length>0?<small>Already in place: {activeStageCurrentPractices.join(' · ')}</small>:<small>No current practice from this stage is documented as implemented.</small>}{activeStageMetric&&activeStageMetricRaw!==''&&<small>Carried forward as context only; it is not automatically converted into projected savings.</small>}</>}
                     </div>
                     {selectedRows.length>0 ? <div className="improveReceiptRows" aria-label="Proposed scenario changes">
                       {selectedRows.map(row=><div key={row.name} className="improveReceiptRow">
@@ -5689,14 +5817,14 @@ function App() {
         <main className={page==='ecolabel'?'resultsPage':`reportPage reportStudio${reportStudioTab.charAt(0).toUpperCase()}${reportStudioTab.slice(1)}`}>
           <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Decision Workspace' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}</div>
           <div className="researchAssessmentNotice">
-            <AlertTriangle size={16}/> <strong>CEDARS EcoLabels are research outputs — not external certification.</strong>
+            <AlertTriangle size={16}/> <strong>CEDARS EcoLabels are research outputs, not certifications.</strong>
           </div>
 
           <div className="reportProductTabsWrap">
               <div className="reportProductTabsHeading"><span>REPORT TYPE</span><strong>Choose the CEDARS product you are preparing</strong></div>
               <div className="reportProductTabs" role="tablist" aria-label="CEDARS reporting product">
-                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department EcoLabel</strong><small>CEDARS EcoLabel family · Department assessment</small></span>{ecoLabelMode==='department' && <b>Selected</b>}</button>
-                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}><Brain size={19}/><span><strong>AI Research Eco-label</strong><small>CEDARS EcoLabel family · AI assessment</small></span>{ecoLabelMode==='ai' && <b>Selected</b>}</button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department EcoLabel</strong><small>Radiology Department assessment</small></span>{ecoLabelMode==='department' && <b>Selected</b>}</button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}><Brain size={19}/><span><strong>AI Research Eco-label</strong><small>AI training &amp; deployment assessment</small></span>{ecoLabelMode==='ai' && <b>Selected</b>}</button>
               </div>
             </div>
             <div className="reportStudioLayout">
@@ -5705,8 +5833,8 @@ function App() {
               {reportStudioTab==='methods' && (
                 <div className={`reportMethodsLead reportUnifiedHeading ${(ecoLabelMode==='department' ? !departmentScoreReadiness.ready : !aiScoreReadiness.ready) ? 'draft' : ''}`}>
                   <div>
-                    <span>METHODS &amp; EVIDENCE</span>
-                    <h2>{ecoLabelMode==='department' ? 'Department reporting record' : 'AI reporting record'}</h2>
+                    <span>METHODS PARAGRAPH</span>
+                    <h2>{ecoLabelMode==='department' ? 'Department methods text' : 'AI methods text'}</h2>
                     <p>{ecoLabelMode==='department'
                       ? (departmentScoreReadiness.ready
                         ? 'Expand the reporting text and reproducibility sections below to review the assumptions, evidence, and fields behind the current Department result.'
@@ -5725,9 +5853,9 @@ function App() {
             <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
               <div className="reportStageHeading compact">
                 <div>
-                  <span>CEDARS ECOLABEL · DEPARTMENT</span>
-                  <h2>Department EcoLabel</h2>
-                  <p>Same CEDARS EcoLabel family as the AI research output, with results and context tailored to a Radiology Department assessment.</p>
+                  <h2>CEDARS EcoLabel</h2>
+                  <span className="reportEcoLabelProductType">DEPARTMENT</span>
+                  <p>Summary of the current Radiology Department assessment.</p>
                 </div>
               </div>
 
@@ -5745,7 +5873,7 @@ function App() {
                 ratingLabel={deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}
                 intensityText={deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e/study · ${deptLabelData.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate'}
                 coverageValue="Operational energy & carbon"
-                coverageDetail={`Extended estimates: ${deptLabelData.extendedCategories?.length || 0} · Not assessed: ${deptLabelData.notAssessedCategories?.length || 0}. These stay separate from the Score.`}
+                coverageDetail={<><b>{deptLabelData.extendedCategories?.length || 0}</b> extended estimates · <b>{deptLabelData.notAssessedCategories?.length || 0}</b> not assessed. These stay separate from the Score.</>}
                 headlineMetrics={[
                   {
                     label:'ANNUAL FOOTPRINT',
@@ -5961,12 +6089,12 @@ function App() {
           <section className="reportStageCard reportMaterialsStage" data-demo-target="ai-report-materials">
             <div className="reportStageHeading compact">
               <div>
-                <span>CEDARS ECOLABEL · AI RESEARCH</span>
-                <h2>AI Research Eco-label</h2>
-                <p>Same CEDARS EcoLabel family as the Department output, with results and context tailored to AI training and deployment.</p>
+                <h2>CEDARS EcoLabel</h2>
+                <span className="reportEcoLabelProductType">AI RESEARCH</span>
+                <p>Summary of the current AI training and deployment assessment.</p>
               </div>
             </div>
-            <div className="reportEcoLabelFamilyCopy"><strong>One CEDARS EcoLabel family.</strong> Department and AI outputs use the same plain-language structure while keeping the measurements appropriate to each assessment.</div>
+
           <div className="reportExportWorkspace" style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Compact on-page visual summary; reproducible detail remains in Methods / provenance above. */}
             <CedarsEcoLabelPreview

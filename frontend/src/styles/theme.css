@@ -2536,3 +2536,193 @@ html.dark #root .cedarsEcoLabelCard .cedarsEcoLabelRows>div:nth-child(even){back
   #root .cedarsEcoLabelFooter{align-items:flex-start;flex-direction:column}
   #root .cedarsEcoLabelFooter>small{text-align:left}
 }
+
+/* CEDARS_CHUNK_9R24_V3_PUBLIC_REPORT_DARK_WORKFLOW
+   Public report language, EcoLabel contrast parity, mirrored Result actions,
+   responsive shell, Workflow containment, and Department Digital + AI dark-mode completion. */
+
+/* CEDARS EcoLabel is the brand; Department / AI Research is subordinate. */
+#root .cedarsEcoLabelBrand{display:grid!important;justify-items:start!important;justify-content:start!important;gap:2px!important;margin-bottom:7px!important}
+#root .cedarsEcoLabelBrand>span{display:flex!important;align-items:center!important;gap:6px!important;font-size:15px!important;font-weight:900!important;letter-spacing:.025em!important;color:#FFFFFF!important}
+#root .cedarsEcoLabelBrand>b{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#A8C7B7!important;font-size:8px!important;font-weight:900!important;letter-spacing:.10em!important}
+
+/* Shared label component owns contrast so Department and AI cannot drift. */
+#root .cedarsEcoLabelCard{color:#1F2B26!important}
+#root .cedarsEcoLabelIdentity{color:#E4EEE8!important}
+#root .cedarsEcoLabelHeader>small{color:#C2D2C9!important}
+#root .cedarsEcoLabelSectionLabel,#root .cedarsEcoLabelCoverage>span,#root .cedarsEcoLabelSectionHeader,#root .cedarsEcoLabelHeadlineMetrics span{color:#52655D!important}
+#root .cedarsEcoLabelRating>small{color:#26352F!important;font-weight:650!important}
+#root .cedarsEcoLabelCoverage>strong{color:#1F2B26!important;font-weight:850!important}
+#root .cedarsEcoLabelCoverage>small{color:#40544B!important;font-size:9.5px!important;line-height:1.4!important;font-weight:650!important}
+#root .cedarsEcoLabelCoverage>small b{color:#1F2B26!important;font-weight:900!important}
+#root .cedarsEcoLabelHeadlineMetrics strong{color:#17251F!important;font-weight:900!important}
+#root .cedarsEcoLabelHeadlineMetrics small{color:#354940!important;font-size:10px!important;line-height:1.4!important;font-weight:800!important}
+#root .cedarsEcoLabelRows span{color:#4A5E55!important;font-weight:650!important}
+#root .cedarsEcoLabelRows strong{color:#17251F!important;font-weight:850!important}
+#root .cedarsEcoLabelFooter>span{color:#245641!important}
+#root .cedarsEcoLabelFooter>small{color:#45675B!important}
+
+/* Public Report headings are concise and user-facing. */
+#root .reportPage.reportStudioLabel .reportStageHeading.compact>div>span{color:var(--cedars-forest)!important}
+#root .reportPage.reportStudioLabel .reportStageHeading.compact h2{font-size:18px!important}
+#root .reportPage.reportStudioLabel .reportStageHeading.compact p{max-width:680px!important}
+#root .reportPage.reportStudioLabel .reportEcoLabelProductType{display:block!important;margin:2px 0 5px!important;font-size:8px!important;font-weight:900!important;letter-spacing:.10em!important;color:var(--cedars-forest)!important}
+
+/* Result handoff mirrors Department and AI: prospective is optional; reporting is primary. */
+#root .profileResultPrimaryAction{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:7px!important;flex-wrap:wrap!important;margin-top:10px!important}
+#root .profileResultPrimaryAction>span{margin-right:auto!important;min-width:220px!important;font-size:9.5px!important;color:var(--cedars-muted)!important}
+#root :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultDecisionOptional{background:transparent!important;border:1px dashed #7EA38C!important;color:var(--cedars-forest-deep)!important;box-shadow:none!important}
+#root :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultReportAction{background:#2F7658!important;border:1px solid #6E9C82!important;color:#FFFFFF!important;box-shadow:none!important;font-weight:850!important}
+#root :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultReportAction:hover{background:#3A8766!important;border-color:#91B8A0!important}
+#root.dark :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultDecisionOptional,html.dark #root :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultDecisionOptional{background:transparent!important;border-color:#79A98A!important;color:#DDF1E3!important}
+#root.dark :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultReportAction,html.dark #root :is(.profileResultTopActions,.profileResultPrimaryAction) .profileResultReportAction{background:#347F60!important;border-color:#8AC1A2!important;color:#FFFFFF!important}
+
+/* AI incomplete-deployment warning: warm attention surface, readable in both themes. */
+#root .aiInferenceScoreNotice{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:10px 0!important;padding:11px 12px!important;border:1px solid #D8C271!important;border-radius:8px!important;background:#FFF8E4!important;color:#564A23!important}
+#root .aiInferenceScoreNotice>div{min-width:0!important}
+#root .aiInferenceScoreNotice span{display:block!important;font-size:7.5px!important;font-weight:900!important;letter-spacing:.08em!important;color:#7D671F!important}
+#root .aiInferenceScoreNotice strong{display:block!important;margin-top:2px!important;font-size:11px!important;line-height:1.35!important;color:#4D411B!important}
+#root .aiInferenceScoreNotice p{margin:3px 0 0!important;font-size:9px!important;line-height:1.4!important;color:#6A5A29!important}
+#root .aiInferenceScoreNotice>button{flex:0 0 auto!important;white-space:nowrap!important}
+#root.dark .aiInferenceScoreNotice,html.dark #root .aiInferenceScoreNotice{background:#2B2619!important;border-color:#8A7742!important;color:#F2E7BC!important}
+#root.dark .aiInferenceScoreNotice span,html.dark #root .aiInferenceScoreNotice span{color:#E7CD6E!important}
+#root.dark .aiInferenceScoreNotice strong,html.dark #root .aiInferenceScoreNotice strong{color:#FFF4CF!important}
+#root.dark .aiInferenceScoreNotice p,html.dark #root .aiInferenceScoreNotice p{color:#DCCFA7!important}
+#root.dark .aiInferenceScoreNotice>button,html.dark #root .aiInferenceScoreNotice>button{background:#D5B553!important;border-color:#E0C36A!important;color:#211B0C!important}
+
+/* Current Workflow: text gets full width; controls do not squeeze descriptions into vertical columns. */
+#root .departmentWorkflowStageDetail{min-width:0!important;overflow:hidden!important;box-sizing:border-box!important}
+#root .workflowBaselineMetric{grid-template-columns:1fr!important;gap:9px!important;align-items:start!important;padding:12px 13px!important}
+#root .workflowBaselineMetric>div:first-child{width:auto!important;max-width:none!important;min-width:0!important}
+#root .workflowMetricControl{width:min(100%,260px)!important;max-width:260px!important;justify-self:start!important}
+#root .departmentCurrentPracticesHeading{display:grid!important;grid-template-columns:1fr!important;gap:2px!important;align-items:start!important;padding:2px 1px 4px!important}
+#root .departmentCurrentPracticesHeading>p{max-width:720px!important;line-height:1.4!important;overflow-wrap:anywhere!important}
+#root .departmentCurrentPracticeList>label,#root .departmentCurrentPracticeList>label>span{min-width:0!important;box-sizing:border-box!important}
+#root .departmentCurrentPracticeList>label{padding:9px 10px!important}
+#root .departmentCurrentPracticeList :is(strong,small){white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important}
+#root .departmentBaselineWorkflowMap,#root .improveWorkflowMap{min-width:0!important}
+#root .departmentBaselineWorkflowMap>button,#root .improveWorkflowMap>button{min-width:0!important;overflow:hidden!important}
+#root .departmentBaselineWorkflowMap>button :is(strong,small),#root .improveWorkflowMap>button :is(strong,small){white-space:normal!important;overflow-wrap:anywhere!important}
+
+/* Department Digital + AI: no classless inline white islands in dark mode. */
+#root.dark #department-clinical-ai-input,html.dark #root #department-clinical-ai-input{background:#0F1C16!important;border-color:#40584C!important;color:#E7EFEA!important}
+#root.dark #department-clinical-ai-input>.primaryInputSummary,html.dark #root #department-clinical-ai-input>.primaryInputSummary{background:#173126!important;border-color:#49695B!important;color:#F1F6F3!important}
+#root.dark #dash-clinicalai,html.dark #root #dash-clinicalai{background:#10231B!important;border-color:#416052!important;color:#E7EFEA!important}
+#root.dark #dash-clinicalai :is(.clinicalAiModelPickerCard,.departmentClinicalAiUseCard,.departmentClinicalAiContinue),html.dark #root #dash-clinicalai :is(.clinicalAiModelPickerCard,.departmentClinicalAiUseCard,.departmentClinicalAiContinue){background:#111C1A!important;border-color:#40584C!important;color:#E7EFEA!important}
+#root.dark #dash-clinicalai :is(div,section,label)[style*="background"],html.dark #root #dash-clinicalai :is(div,section,label)[style*="background"]{background:#111C1A!important;border-color:#40584C!important}
+#root.dark #dash-clinicalai :is(h2,h3,strong,label),html.dark #root #dash-clinicalai :is(h2,h3,strong,label){color:#F1F6F3!important}
+#root.dark #dash-clinicalai :is(.note,small,p),html.dark #root #dash-clinicalai :is(.note,small,p){color:#B8C9C1!important}
+#root.dark #dash-clinicalai :is(input,select,textarea),html.dark #root #dash-clinicalai :is(input,select,textarea){background:#0D1B15!important;border-color:#506B5C!important;color:#F1F6F3!important}
+#root.dark #dash-clinicalai option,html.dark #root #dash-clinicalai option{background:#0D1B15!important;color:#F1F6F3!important}
+#root .departmentClinicalAiContinue>button:last-child{background:#2F7658!important;border:1px solid #6E9C82!important;color:#FFFFFF!important;font-weight:850!important}
+#root.dark .departmentClinicalAiContinue>button:last-child,html.dark #root .departmentClinicalAiContinue>button:last-child{background:#347F60!important;border-color:#8AC1A2!important;color:#FFFFFF!important}
+
+/* Header: narrowed desktop windows reflow instead of clipping utilities. */
+@media(max-width:1180px){
+  #root .siteHeader{flex-wrap:wrap!important;align-items:center!important;gap:9px 14px!important;padding:12px 18px!important}
+  #root .siteHeader .brand{flex:1 1 300px!important;min-width:230px!important}
+  #root .siteHeader .brand img{width:54px!important;height:54px!important}
+  #root .siteHeader .headerUtilities{width:100%!important;flex:1 1 100%!important;min-width:0!important;display:flex!important;justify-content:flex-end!important;flex-wrap:wrap!important;gap:6px!important}
+  #root .siteHeader .utilityNav{margin-left:0!important;margin-right:auto!important;display:flex!important;flex-wrap:wrap!important;gap:4px!important}
+  #root .siteHeader .utilityNav button{padding:7px 9px!important}
+}
+@media(max-width:760px){
+  #root .siteHeader{padding:10px 12px!important}
+  #root .siteHeader .brand{flex-basis:100%!important}
+  #root .siteHeader .brand img{width:46px!important;height:46px!important}
+  #root .siteHeader .brand strong{font-size:20px!important}
+  #root .siteHeader .brand span{font-size:10px!important;line-height:1.3!important}
+  #root .siteHeader .headerUtilities{justify-content:flex-start!important}
+  #root .siteHeader .utilityNav{width:100%!important;flex:1 1 100%!important;justify-content:flex-start!important}
+  #root .siteHeader .utilityNav button{flex:1 1 auto!important;justify-content:center!important;min-width:0!important}
+}
+
+/* At narrower content widths, stack the current tally under the editable Workflow stage. */
+@media(max-width:1040px){
+  #root .departmentWorkflowStageWorkspace{grid-template-columns:1fr!important}
+  #root .departmentWorkflowCurrentTally{position:static!important;top:auto!important}
+}
+
+/* CEDARS_CHUNK_9R25_POWER_MANAGEMENT_PARITY
+   Current-state power-management coverage mirrors prospective Decision Workspace targets. */
+#root .workflowBaselineMetricKicker{display:block;font-size:7px;font-weight:900;letter-spacing:.09em;color:var(--cedars-forest)}
+#root .workflowBaselineMetricCopy{display:grid;gap:3px;min-width:0}
+#root .workflowBaselineMetricCopy>strong{font-size:12px;line-height:1.3;overflow-wrap:anywhere}
+#root .workflowBaselineMetricCopy>p{margin:0;max-width:680px;line-height:1.45;color:var(--cedars-muted)}
+#root .workflowMetricControl{margin-top:2px!important}
+
+#root .workflowPowerManagementProfile{display:grid;gap:10px;margin:10px 0 12px;padding:12px;border:1px solid #B9D2C1;border-radius:10px;background:#F4F8F5;min-width:0}
+#root .workflowPowerManagementHeading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;min-width:0}
+#root .workflowPowerManagementHeading>div{display:grid;gap:3px;min-width:0}
+#root .workflowPowerManagementHeading span,#root .improvePowerManagementPlannerHeading span{font-size:7px;font-weight:900;letter-spacing:.09em;color:#2F6B57}
+#root .workflowPowerManagementHeading strong,#root .improvePowerManagementPlannerHeading strong{font-size:12px;line-height:1.35;color:#254C40}
+#root .workflowPowerManagementHeading p,#root .improvePowerManagementPlannerHeading p{margin:0;max-width:760px;font-size:9px;line-height:1.45;color:#60756A}
+#root .workflowPowerManagementGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
+#root .workflowPowerManagementCard{display:grid;gap:9px;padding:10px;border:1px solid #C7D8CC;border-radius:9px;background:#FFFFFF;min-width:0}
+#root .workflowPowerManagementCardTitle{display:flex;justify-content:space-between;gap:9px;align-items:flex-start;min-width:0}
+#root .workflowPowerManagementCardTitle>div:first-child{display:grid;gap:3px;min-width:0}
+#root .workflowPowerManagementCardTitle strong{font-size:11px;line-height:1.3;color:#243F35}
+#root .workflowPowerManagementCardTitle small{font-size:8px!important;line-height:1.4;color:#667B70;overflow-wrap:anywhere}
+#root .workflowPowerCoverage{flex:0 0 auto;display:grid;justify-items:end}
+#root .workflowPowerCoverage b{font-size:16px;color:#2F6B57}
+#root .workflowPowerCoverage span{font-size:7px;color:#71847B}
+#root .workflowPowerManagementFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#root .workflowPowerManagementFields label,#root .improvePowerManagementTargetFields label{display:grid;gap:4px;min-width:0}
+#root .workflowPowerManagementFields label>span,#root .improvePowerManagementTargetFields label>span{font-size:7.5px;font-weight:800;color:#5D7167}
+#root .workflowPowerManagementFields label>span small,#root .improvePowerManagementTargetFields label>span small{font-size:7px!important;font-weight:600;color:#82938B}
+#root .workflowPowerManagementFields label>div,#root .improvePowerManagementTargetFields label>div{display:flex;align-items:center;gap:5px;min-width:0}
+#root .workflowPowerManagementFields input,#root .improvePowerManagementTargetFields input{width:100%;min-width:0;box-sizing:border-box}
+#root .workflowPowerManagementFields em,#root .improvePowerManagementTargetFields em{flex:0 0 auto;font-size:8px;font-style:normal;color:#6F8279}
+#root .workflowPowerManagementNote{font-size:8px!important;line-height:1.45;color:#61766B}
+
+#root .improvePowerManagementPlanner{display:grid;gap:10px;margin:10px 0 12px;padding:12px;border:1px solid #C9B565;border-radius:10px;background:#FFF9E9}
+#root .improvePowerManagementPlannerHeading{display:grid;gap:3px}
+#root .improvePowerManagementPlannerGrid{display:grid;gap:8px}
+#root .improvePowerManagementTarget{display:grid;grid-template-columns:minmax(190px,1.35fr) minmax(125px,.75fr) minmax(190px,1fr) minmax(125px,.75fr);gap:10px;align-items:center;padding:10px;border:1px solid #D8D0A9;border-radius:9px;background:#FFFFFF;min-width:0}
+#root .improvePowerManagementTarget.active{border-color:#7BA58C;box-shadow:inset 3px 0 0 #2F7658}
+#root .improvePowerManagementTarget.unavailable{opacity:.68}
+#root .improvePowerManagementToggle{display:flex;gap:8px;align-items:flex-start;min-width:0}
+#root .improvePowerManagementToggle>input{margin-top:2px;flex:0 0 auto}
+#root .improvePowerManagementToggle>span{display:grid;gap:3px;min-width:0}
+#root .improvePowerManagementToggle strong{font-size:10px;line-height:1.35;color:#263E35}
+#root .improvePowerManagementToggle small{font-size:8px!important;line-height:1.4;color:#65796F;overflow-wrap:anywhere}
+#root .improvePowerManagementCurrent,#root .improvePowerManagementDelta{display:grid;gap:2px;min-width:0}
+#root .improvePowerManagementCurrent>span,#root .improvePowerManagementDelta>span{font-size:7px;font-weight:900;letter-spacing:.08em;color:#7A6D35}
+#root .improvePowerManagementCurrent>strong,#root .improvePowerManagementDelta>strong{font-size:10px;color:#263E35}
+#root .improvePowerManagementCurrent>small,#root .improvePowerManagementDelta>small{font-size:7.5px!important;line-height:1.35;color:#6B7C74;overflow-wrap:anywhere}
+#root .improvePowerManagementTargetFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;min-width:0}
+#root .improvePowerManagementPlannerNote{margin:0;font-size:8px;line-height:1.45;color:#675D32}
+
+#root.dark .workflowPowerManagementProfile,html.dark #root .workflowPowerManagementProfile{background:#10231B;border-color:#3F6755}
+#root.dark .workflowPowerManagementCard,html.dark #root .workflowPowerManagementCard{background:#111C1A;border-color:#40584C}
+#root.dark .workflowPowerManagementHeading strong,html.dark #root .workflowPowerManagementHeading strong,
+#root.dark .workflowPowerManagementCardTitle strong,html.dark #root .workflowPowerManagementCardTitle strong{color:#F0F6F2}
+#root.dark .workflowPowerManagementHeading p,html.dark #root .workflowPowerManagementHeading p,
+#root.dark .workflowPowerManagementCardTitle small,html.dark #root .workflowPowerManagementCardTitle small,
+#root.dark .workflowPowerManagementNote,html.dark #root .workflowPowerManagementNote{color:#B7C8C0}
+#root.dark .workflowPowerManagementFields label>span,html.dark #root .workflowPowerManagementFields label>span,
+#root.dark .workflowPowerManagementFields em,html.dark #root .workflowPowerManagementFields em{color:#B7C8C0}
+
+#root.dark .improvePowerManagementPlanner,html.dark #root .improvePowerManagementPlanner{background:#2A2518;border-color:#897846}
+#root.dark .improvePowerManagementTarget,html.dark #root .improvePowerManagementTarget{background:#111C1A;border-color:#4C5C50}
+#root.dark .improvePowerManagementTarget.active,html.dark #root .improvePowerManagementTarget.active{border-color:#79A98A;box-shadow:inset 3px 0 0 #4C9B73}
+#root.dark .improvePowerManagementPlannerHeading strong,html.dark #root .improvePowerManagementPlannerHeading strong,
+#root.dark .improvePowerManagementToggle strong,html.dark #root .improvePowerManagementToggle strong,
+#root.dark .improvePowerManagementCurrent>strong,html.dark #root .improvePowerManagementCurrent>strong,
+#root.dark .improvePowerManagementDelta>strong,html.dark #root .improvePowerManagementDelta>strong{color:#F3F7F4}
+#root.dark .improvePowerManagementPlannerHeading p,html.dark #root .improvePowerManagementPlannerHeading p,
+#root.dark .improvePowerManagementToggle small,html.dark #root .improvePowerManagementToggle small,
+#root.dark .improvePowerManagementCurrent>small,html.dark #root .improvePowerManagementCurrent>small,
+#root.dark .improvePowerManagementDelta>small,html.dark #root .improvePowerManagementDelta>small{color:#C4D0CA}
+#root.dark .improvePowerManagementPlannerNote,html.dark #root .improvePowerManagementPlannerNote{color:#E0D3A4}
+
+@media(max-width:1050px){
+  #root .workflowPowerManagementGrid{grid-template-columns:1fr}
+  #root .improvePowerManagementTarget{grid-template-columns:1fr 1fr}
+}
+@media(max-width:700px){
+  #root .workflowPowerManagementHeading{display:grid}
+  #root .workflowPowerManagementFields{grid-template-columns:1fr}
+  #root .improvePowerManagementTarget{grid-template-columns:1fr}
+  #root .improvePowerManagementTargetFields{grid-template-columns:1fr}
+}
