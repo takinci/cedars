@@ -3430,8 +3430,8 @@ function App() {
           <section className="homeHero">
             <div className="homeHeroCopy">
               <p className="eyebrow">Radiology + AI + Planetary Health</p>
-              <h1>Quantifiable sustainability for clinical imaging (and AI) decisions.</h1>
-              <p className="homeHeroLead">Understand energy, carbon, and resource impacts of radiology (AI). Interactively simulate alternative decisions and view a methodology summary behind operational choices, with linked evidence.</p>
+              <h1>Quantifiable sustainability for clinical imaging and AI decisions.</h1>
+              <p className="homeHeroLead">Understand energy, carbon, and resource impacts of radiology and AI. Interactively simulate alternative decisions and view a methodology summary behind operational choices, with linked evidence.</p>
             </div>
           </section>
 
