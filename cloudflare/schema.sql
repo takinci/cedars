@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS contributions (
   interests TEXT,
   allow_acknowledgment INTEGER NOT NULL DEFAULT 0,
   allow_future_contact INTEGER NOT NULL DEFAULT 0,
-  consent_version TEXT NOT NULL
+  consent_version TEXT NOT NULL,
+  auth_provider TEXT,
+  auth_uid TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_contributions_created_at ON contributions(created_at);

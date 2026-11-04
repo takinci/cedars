@@ -1,5 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {X, Database, CheckCircle2, AlertTriangle} from 'lucide-react';
+import {X, Database, CheckCircle2, AlertTriangle, LogIn, LogOut, ShieldCheck} from 'lucide-react';
+import {firebaseConfigured, signInWithGoogle, signOutUser, onAuthChange, getCurrentIdToken} from './firebase.js';
 
 const blank = {name:'', institution:'', country:'', role:'', email:'', interests:'', acknowledge:false, contact:false, consent:false};
 const TURNSTILE_SCRIPT_ID = 'cedars-turnstile-script';
@@ -9,8 +10,24 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
   const [state, setState] = useState({status:'idle', message:''});
   const [turnstileToken, setTurnstileToken] = useState('');
   const [widgetError, setWidgetError] = useState('');
+  const [authUser, setAuthUser] = useState(null);
+  const [authError, setAuthError] = useState('');
   const turnstileEl = useRef(null);
   const widgetId = useRef(null);
+
+  // Google sign-in is an optional identity-verification step for this form only — CEDARS has no
+  // accounts, and the form still submits anonymously (free-text name/email) when skipped.
+  useEffect(() => {
+    if (!open || !firebaseConfigured) return undefined;
+    return onAuthChange(setAuthUser);
+  }, [open]);
+
+  const handleSignIn = async () => {
+    setAuthError('');
+    try { await signInWithGoogle(); }
+    catch (err) { setAuthError(err?.code === 'auth/popup-closed-by-user' ? '' : (err?.message || 'Google sign-in failed.')); }
+  };
+  const handleSignOut = async () => { try { await signOutUser(); } catch { /* best effort */ } };
 
   useEffect(() => {
     if (!open || !turnstileSiteKey || typeof window === 'undefined') return undefined;
@@ -78,18 +95,20 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
     if (!turnstileToken) return setState({status:'error',message:'Please complete the anti-spam verification before submitting.'});
     setState({status:'submitting',message:''});
     try {
+      const idToken = authUser ? await getCurrentIdToken() : '';
       const response = await fetch(endpoint, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           assessment: buildSnapshot(),
           contributor:{
-            name:form.name.trim(), institution:form.institution.trim(), country:form.country.trim(), role:form.role.trim(),
-            email:form.email.trim(), interests:form.interests.trim(),
+            name:(authUser?.displayName || form.name).trim(), institution:form.institution.trim(), country:form.country.trim(), role:form.role.trim(),
+            email:(authUser?.email || form.email).trim(), interests:form.interests.trim(),
           },
           permissions:{assessmentSharing:true, acknowledgment:!!form.acknowledge, futureContact:!!form.contact},
           consentVersion:'2026-09-20',
           turnstileToken,
+          idToken,
         }),
       });
       const body = await response.json().catch(()=>({}));
@@ -125,12 +144,29 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
         {state.message && <div style={{display:'flex',gap:8,alignItems:'center',background:state.status==='success'?'#e8f5e9':'#ffebee',color:state.status==='success'?'#1b5e20':'#b71c1c',padding:'10px 12px',borderRadius:12,fontSize:12,marginBottom:14}}>{state.status==='success'?<CheckCircle2 size={16}/>:<AlertTriangle size={16}/>} {state.message}</div>}
 
         {state.status!=='success' && <form onSubmit={submit}>
+          {firebaseConfigured && (
+            <div style={{marginBottom:14,padding:'10px 12px',border:'1px solid #c8e6c9',borderRadius:12,background:'#f3f9f3',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+              {authUser ? (
+                <>
+                  <ShieldCheck size={16} style={{color:'#2E7D32',flexShrink:0}}/>
+                  <span style={{fontSize:12,color:'#1b5e20',flex:1}}>Signed in as <strong>{authUser.displayName || authUser.email}</strong> — name and email below are verified via Google.</span>
+                  <button type="button" onClick={handleSignOut} style={{display:'flex',alignItems:'center',gap:6,background:'#eef4ee',color:'#455a64',padding:'6px 10px',borderRadius:10,fontSize:12}}><LogOut size={14}/> Sign out</button>
+                </>
+              ) : (
+                <>
+                  <span style={{fontSize:12,color:'#455a64',flex:1}}>Optionally sign in with Google to verify your identity instead of typing it below.</span>
+                  <button type="button" onClick={handleSignIn} style={{display:'flex',alignItems:'center',gap:6,background:'#2E7D32',color:'white',padding:'6px 10px',borderRadius:10,fontSize:12}}><LogIn size={14}/> Sign in with Google</button>
+                </>
+              )}
+              {authError && <div role="alert" style={{fontSize:11,color:'#b71c1c',width:'100%'}}>{authError}</div>}
+            </div>
+          )}
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}}>
-            <label>Name <span style={{fontSize:10,color:'#90a4ae'}}>optional</span><input value={form.name} onChange={e=>set('name',e.target.value)} /></label>
+            <label>Name <span style={{fontSize:10,color:'#90a4ae'}}>{authUser ? 'verified via Google' : 'optional'}</span><input value={authUser ? (authUser.displayName || '') : form.name} onChange={e=>set('name',e.target.value)} disabled={!!authUser} /></label>
             <label>Institution / organization <span style={{fontSize:10,color:'#90a4ae'}}>optional</span><input value={form.institution} onChange={e=>set('institution',e.target.value)} /></label>
             <label>Country <span style={{fontSize:10,color:'#90a4ae'}}>optional</span><input value={form.country} onChange={e=>set('country',e.target.value)} /></label>
             <label>Professional role / title <span style={{fontSize:10,color:'#90a4ae'}}>optional</span><input value={form.role} onChange={e=>set('role',e.target.value)} /></label>
-            <label>Email <span style={{fontSize:10,color:'#90a4ae'}}>optional</span><input type="email" value={form.email} onChange={e=>set('email',e.target.value)} /></label>
+            <label>Email <span style={{fontSize:10,color:'#90a4ae'}}>{authUser ? 'verified via Google' : 'optional'}</span><input type="email" value={authUser ? (authUser.email || '') : form.email} onChange={e=>set('email',e.target.value)} disabled={!!authUser} /></label>
           </div>
           <label style={{marginTop:12}}>How would you like to contribute, or what interests you about CEDARS? <span style={{fontSize:10,color:'#90a4ae'}}>optional</span>
             <textarea value={form.interests} onChange={e=>set('interests',e.target.value)} rows="3" style={{padding:12,border:'1px solid #c8e6c9',borderRadius:14,fontFamily:'inherit',resize:'vertical'}} />

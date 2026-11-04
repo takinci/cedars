@@ -4,6 +4,9 @@ compatibility_date = "2026-09-20"
 
 [vars]
 ALLOWED_ORIGINS = "https://cedarsleaf.com,https://www.cedarsleaf.com,https://takinci.github.io"
+# Optional — only needed if you enable Google sign-in for the Contribute form. Leave unset to
+# keep that form anonymous-only (see "Optional: Google sign-in" in README.md).
+# FIREBASE_PROJECT_ID = "your-firebase-project-id"
 
 [[d1_databases]]
 binding = "DB"
