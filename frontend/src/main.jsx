@@ -48,7 +48,8 @@ import { GuidedDemo, GUIDED_DEMOS } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
 import ContributionModal from './ContributionModal.jsx';
-import { buildAssessmentSnapshot, parseAssessmentText, saveAssessmentLocally, loadLocalAssessment, clearLocalAssessment, assessmentFilename } from './assessment.js';
+import { buildAssessmentSnapshot, validateAssessmentSnapshot, parseAssessmentText, saveAssessmentLocally, loadLocalAssessment, clearLocalAssessment, assessmentFilename } from './assessment.js';
+import { firebaseConfigured, onAuthChange, signInWithGoogle, signOutUser, saveAssessmentToCloud, loadAssessmentFromCloud } from './firebase.js';
 import { modelRecordFromScen, modelScenFromRecord, migrateLegacyAiState, toolFromDeployment } from './aiRecords.js';
 import { applyClinicalEffectEvidence, clinicalEffectBasisLabel, systemEffectsStatus } from './clinicalEffects.js';
 import { getDepartmentScoreReadiness, getAiScoreReadiness } from './scoreReadiness.js';
@@ -2109,6 +2110,21 @@ function App() {
   const [saveShareStatus, setSaveShareStatus] = useState(null);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
+  const [cloudUser, setCloudUser] = useState(null);
+  const [cloudSavedAt, setCloudSavedAt] = useState(null);
+
+  // Cross-device "continue later" save, separate from the research-contribution flow in
+  // ContributionModal.jsx — this one writes privately to the signed-in user's own account only
+  // (enforced by Firestore security rules), nothing is reviewed or collected by CEDARS.
+  useEffect(() => {
+    if (!firebaseConfigured) return undefined;
+    return onAuthChange(async user => {
+      setCloudUser(user);
+      if (!user) { setCloudSavedAt(null); return; }
+      try { const existing = await loadAssessmentFromCloud(); setCloudSavedAt(existing?.updatedAt || null); }
+      catch { setCloudSavedAt(null); }
+    });
+  }, []);
 
   const currentAssessmentSnapshot = () => buildAssessmentSnapshot({
     settings, scen, deptLabel, ecoLabel, ecoLabelTouched: false, cloudTracker, provenance, scenarioInterventions: prospectiveScenarioInterventions,
@@ -2473,6 +2489,38 @@ function App() {
     clearLocalAssessment();
     setLocalSavedAt(null);
     setSaveShareStatus({type:'success', text:'Deleted the locally saved browser copy. The current assessment remains open.'});
+  };
+
+  const cloudSignIn = async () => {
+    try { await signInWithGoogle(); }
+    catch (err) { if (err?.code !== 'auth/popup-closed-by-user') setSaveShareStatus({type:'error', text: err?.message || 'Google sign-in failed.'}); }
+  };
+
+  const cloudSignOut = async () => { await signOutUser(); setCloudSavedAt(null); };
+
+  const saveToCloud = async () => {
+    const snapshot = currentAssessmentSnapshot();
+    try {
+      const updatedAt = await saveAssessmentToCloud(snapshot);
+      setCloudSavedAt(updatedAt);
+      setSaveShareStatus({type:'success', text:'Saved to your Google account. Sign in with the same account on another device to continue — CEDARS does not review or collect this copy, it is private to your account.'});
+    } catch (err) {
+      setSaveShareStatus({type:'error', text: err?.message || 'Could not save to your account.'});
+    }
+  };
+
+  const restoreCloudSave = async () => {
+    try {
+      const result = await loadAssessmentFromCloud();
+      if (!result) return setSaveShareStatus({type:'error', text:'No assessment saved to this account was found.'});
+      const validated = validateAssessmentSnapshot(result.data);
+      if (!validated.ok) return setSaveShareStatus({type:'error', text: validated.error});
+      restoreAssessmentSnapshot(validated.value);
+      setCloudSavedAt(result.updatedAt || null);
+      setSaveShareStatus({type:'success', text:'Restored the assessment saved to your Google account.'});
+    } catch (err) {
+      setSaveShareStatus({type:'error', text: err?.message || 'Could not load from your account.'});
+    }
   };
 
   const downloadCedarsFile = () => {
@@ -3306,6 +3354,13 @@ function App() {
             linkCopied={shareLinkCopied}
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
+            cloudConfigured={firebaseConfigured}
+            cloudUser={cloudUser}
+            cloudSavedAt={cloudSavedAt}
+            onCloudSignIn={cloudSignIn}
+            onCloudSignOut={cloudSignOut}
+            onCloudSave={saveToCloud}
+            onCloudLoad={restoreCloudSave}
             demoOpen={!!GUIDED_DEMOS[guidedDemo?.kind]?.steps?.[guidedDemo?.step]?.openSaveMenu}
             reportMode={page==='report'}
           />
@@ -5975,6 +6030,13 @@ function App() {
             linkCopied={shareLinkCopied}
             onContribute={()=>setContributeOpen(true)}
             contributionConfigured={!!CONTRIBUTION_ENDPOINT && !!TURNSTILE_SITEKEY}
+            cloudConfigured={firebaseConfigured}
+            cloudUser={cloudUser}
+            cloudSavedAt={cloudSavedAt}
+            onCloudSignIn={cloudSignIn}
+            onCloudSignOut={cloudSignOut}
+            onCloudSave={saveToCloud}
+            onCloudLoad={restoreCloudSave}
           />
           {(()=>{
             const departmentReady = departmentScoreReadiness.ready;

@@ -1,5 +1,5 @@
 import React, {useRef, useState} from 'react';
-import {Save, Download, Upload, Share2, CheckCircle2, Database} from 'lucide-react';
+import {Save, Download, Upload, Share2, CheckCircle2, Database, LogIn, LogOut, CloudUpload, CloudDownload} from 'lucide-react';
 
 export default function SaveUtility({
   localSavedAt,
@@ -10,6 +10,13 @@ export default function SaveUtility({
   linkCopied,
   onContribute,
   contributionConfigured,
+  cloudConfigured,
+  cloudUser,
+  cloudSavedAt,
+  onCloudSignIn,
+  onCloudSignOut,
+  onCloudSave,
+  onCloudLoad,
   demoOpen = false,
   reportMode = null,
 }) {
@@ -56,6 +63,23 @@ export default function SaveUtility({
           <button type="button" onClick={()=>inputRef.current?.click()} role="menuitem">
             <Upload size={15}/><span><strong>Open CEDARS file</strong><small>Read locally; the file is not uploaded.</small></span>
           </button>
+          {cloudConfigured && (cloudUser ? (
+            <>
+              <button type="button" onClick={()=>{onCloudSave?.(); setOpen(false);}} role="menuitem">
+                <CloudUpload size={15}/><span><strong>Save to my Google account</strong><small>Private to your account; not reviewed or collected by CEDARS.</small></span>
+              </button>
+              <button type="button" onClick={()=>{onCloudLoad?.(); setOpen(false);}} role="menuitem" disabled={!cloudSavedAt}>
+                <CloudDownload size={15}/><span><strong>Restore my saved copy</strong><small>{cloudSavedAt ? `Saved ${new Date(cloudSavedAt).toLocaleString()}` : 'Nothing saved to this account yet.'}</small></span>
+              </button>
+              <button type="button" onClick={()=>{onCloudSignOut?.(); setOpen(false);}} role="menuitem">
+                <LogOut size={15}/><span><strong>Sign out</strong><small>Signed in as {cloudUser.displayName || cloudUser.email}</small></span>
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={()=>{onCloudSignIn?.(); setOpen(false);}} role="menuitem">
+              <LogIn size={15}/><span><strong>Sign in with Google</strong><small>Optional — save a private copy to continue on another device.</small></span>
+            </button>
+          ))}
           <div className="saveUtilityMenuTitle separated">Share / contribute</div>
           {!isReportMode && <button type="button" onClick={()=>{setShareConfirmOpen(true); setOpen(false);}} role="menuitem">
             <Share2 size={15}/><span><strong>{linkCopied ? 'Link copied' : 'Copy shareable CEDARS assessment link'}</strong><small>Reopens core calculator settings and supported CEDARS reference candidates. Custom candidate details and free-text comparison notes require a downloaded CEDARS file.</small></span>

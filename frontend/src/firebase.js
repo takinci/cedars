@@ -1,10 +1,16 @@
-// Optional Google sign-in for the "Contribute this assessment" flow (ContributionModal.jsx).
-// Verifies a contributor's identity instead of relying on a free-text name/email; CEDARS itself
-// has no accounts and still works fully anonymously when this isn't configured or isn't used.
-// The ID token this module produces is re-verified server-side by the Cloudflare Worker — the
-// client-side user object is for UI display only and must never be trusted on its own.
+// Optional Google sign-in, used in two independent places:
+//  1. The "Contribute this assessment" flow (ContributionModal.jsx) — verifies a contributor's
+//     identity server-side (by the Cloudflare Worker) instead of relying on free-text name/email.
+//  2. Cross-device "continue later" cloud save (main.jsx / SaveSharePanel.jsx / SaveUtility.jsx) —
+//     writes the current assessment to a Firestore document private to the signed-in user, via
+//     security rules (request.auth.uid == uid), so nobody else — including the CEDARS team — can
+//     read it. This is NOT the research-contribution path and is not reviewed or collected by
+//     anyone; it exists purely so the signed-in user can reopen their own work elsewhere.
+// CEDARS itself has no accounts and still works fully anonymously when sign-in isn't configured
+// or isn't used — both features degrade to their existing browser-local/anonymous behavior.
 import {initializeApp, getApps} from 'firebase/app';
 import {getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged} from 'firebase/auth';
+import {getFirestore, doc, setDoc, getDoc} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -17,6 +23,7 @@ export const firebaseConfigured = !!(firebaseConfig.apiKey && firebaseConfig.aut
 
 const app = firebaseConfigured ? (getApps()[0] || initializeApp(firebaseConfig)) : null;
 const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
 const googleProvider = new GoogleAuthProvider();
 
 export async function signInWithGoogle() {
@@ -39,4 +46,23 @@ export function onAuthChange(callback) {
 export async function getCurrentIdToken() {
   if (!auth?.currentUser) return '';
   return auth.currentUser.getIdToken();
+}
+
+// One cloud save slot per signed-in user — mirrors the existing single-slot "Save on this
+// device" model, just reachable from any device after signing in. Overwrites on each save.
+function cloudAssessmentRef() {
+  if (!db || !auth?.currentUser) throw new Error('Sign in with Google first.');
+  return doc(db, 'users', auth.currentUser.uid, 'assessment', 'current');
+}
+
+export async function saveAssessmentToCloud(snapshot) {
+  const updatedAt = new Date().toISOString();
+  await setDoc(cloudAssessmentRef(), {data: snapshot, updatedAt});
+  return updatedAt;
+}
+
+// Returns {data, updatedAt} or null if nothing has been saved yet for this user.
+export async function loadAssessmentFromCloud() {
+  const snap = await getDoc(cloudAssessmentRef());
+  return snap.exists() ? snap.data() : null;
 }
