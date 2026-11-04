@@ -2357,3 +2357,111 @@ html.dark #root .departmentClinicalAiUseCard{
   }
 }
 
+/* CEDARS_CHUNK_9R23_COMBINED_WALKTHROUGH_REPORT_WORKFLOW_DARK
+   Replacement 9R23: onboarding, report ordering, workflow science, containment, and dark-mode completion. */
+
+/* Evidence page: Methods at top-left; assessment CTA is a distinct right-side action. */
+#root .evidencePage .evidenceTopUtility{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;max-width:1040px;margin:0 auto 18px}
+#root .evidencePage .evidenceMethodsTop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;justify-self:start;padding:10px 12px;border:1px solid var(--cedars-border-strong);border-radius:9px;background:var(--cedars-panel);color:var(--cedars-ink);text-decoration:none;box-shadow:none}
+#root .evidencePage .evidenceMethodsTop>span{grid-column:1;font-size:7.5px;font-weight:900;letter-spacing:.09em;color:var(--cedars-info-deep)}
+#root .evidencePage .evidenceMethodsTop>strong{grid-column:1;font-size:11px;color:var(--cedars-ink)}
+#root .evidencePage .evidenceMethodsTop>svg{grid-column:2;grid-row:1/3;color:var(--cedars-info-deep)}
+#root .evidencePage .evidenceReadyBox{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid var(--cedars-role-action-line);border-radius:9px;background:var(--cedars-role-action-soft)}
+#root .evidencePage .evidenceReadyBox>span{font-size:8px;font-weight:900;letter-spacing:.09em;color:var(--cedars-role-action-strong)}
+#root .evidencePage .evidenceReadyBox .evidencePrimaryCta{margin:0!important;background:var(--cedars-role-action-strong)!important;border-color:var(--cedars-role-action-strong)!important;color:#fff!important;box-shadow:none!important;white-space:nowrap}
+#root .evidencePage .evidenceHeroControls{display:flex;justify-content:flex-start;margin-top:12px}
+#root .evidencePage .evidenceHeroControls .evidencePauseAll{background:transparent!important;color:var(--cedars-muted)!important;border:1px solid var(--cedars-border)!important;box-shadow:none!important}
+@media(max-width:700px){
+  #root .evidencePage .evidenceTopUtility{grid-template-columns:1fr}
+  #root .evidencePage .evidenceMethodsTop{width:100%;box-sizing:border-box}
+  #root .evidencePage .evidenceReadyBox{justify-content:space-between;flex-wrap:wrap}
+  #root .evidencePage .evidenceReadyBox .evidencePrimaryCta{white-space:normal;flex:1 1 220px;justify-content:center}
+}
+
+/* Walkthrough skip handoff genuinely points to the display control. */
+#root .walkthroughDockCoach.themeCoach{position:fixed!important;left:auto!important;right:18px!important;top:78px!important;bottom:auto!important;width:min(300px,calc(100vw - 36px))!important;box-sizing:border-box!important;z-index:2590!important}
+#root .walkthroughDockCoach.themeCoach i{left:auto!important;right:24px!important;top:-21px!important;bottom:auto!important}
+#root .themeToggle.walkthroughThemeTarget{position:relative!important;z-index:2595!important;box-shadow:0 0 0 4px rgba(224,195,106,.32),0 0 0 7px rgba(63,120,148,.18)!important}
+@media(prefers-reduced-motion:no-preference){#root .themeToggle.walkthroughThemeTarget{animation:cedarsThemeCoachPulse 1.25s ease-in-out 2}}
+@keyframes cedarsThemeCoachPulse{0%,100%{box-shadow:0 0 0 4px rgba(224,195,106,.25),0 0 0 7px rgba(63,120,148,.10)}50%{box-shadow:0 0 0 5px rgba(224,195,106,.48),0 0 0 10px rgba(63,120,148,.20)}}
+#root .guidedDemoPopoverTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+#root .guidedDemoPopoverTop .guidedDemoProgress{flex:1;min-width:0}
+#root .guidedDemoCloseStep{display:inline-flex!important;align-items:center;gap:4px;flex:0 0 auto;padding:5px 8px!important;border:1px solid #AEBFC9!important;border-radius:999px!important;background:transparent!important;color:#4F5A56!important;box-shadow:none!important;font-size:9.5px!important}
+#root.dark .guidedDemoCloseStep{border-color:#75643A!important;color:#F1E4B7!important;background:#211D13!important}
+@media(max-width:700px){
+  #root .themeToggleTooltip{position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 70px)!important;left:10px!important;right:10px!important;width:auto!important;max-width:none!important;box-sizing:border-box!important;max-height:calc(100vh - 90px)!important;overflow:auto!important}
+  #root .walkthroughDockCoach.themeCoach{top:calc(env(safe-area-inset-top,0px) + 76px)!important;left:10px!important;right:10px!important;width:auto!important;max-width:none!important}
+  #root .walkthroughDockCoach.themeCoach i{right:28px!important}
+  #root .guidedDemoCloseStep{min-height:34px!important}
+}
+
+/* AI worked examples: Load remains legible in dark mode. */
+#root .aiPage .aiExampleCard>b{color:#6A5218!important;font-weight:900!important;white-space:nowrap!important}
+#root.dark .aiPage .aiExampleCard>b,html.dark #root .aiPage .aiExampleCard>b{color:#FFE58A!important;font-weight:900!important;text-shadow:0 1px 0 rgba(0,0,0,.28)!important}
+#root.dark .aiPage .aiExampleCard:hover>b,html.dark #root .aiPage .aiExampleCard:hover>b{color:#FFF2B0!important}
+
+/* Workflow containment: nested controls never escape the stage card. */
+#root .departmentWorkflowStageWorkspace,#root .departmentWorkflowStageWorkspace>*,
+#root .departmentWorkflowStageDetail,#root .workflowBaselineMetric,#root .workflowMetricControl,
+#root .departmentCurrentPractices,#root .departmentCurrentPracticeList,#root .departmentCurrentPracticeList>label,
+#root .departmentStageHandoff,#root .departmentStageHandoff>*{min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+#root .departmentWorkflowStageDetail{overflow:hidden!important}
+#root .workflowBaselineMetric{grid-template-columns:minmax(0,1fr) minmax(180px,.72fr)!important}
+#root .departmentCurrentPracticeList strong,#root .departmentCurrentPracticeList small,
+#root .departmentStageHandoff :is(strong,p,small){overflow-wrap:anywhere!important}
+#root .departmentCurrentPracticeList.infrastructureGrid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+#root .departmentCurrentPracticeList.infrastructureGrid>label{padding:7px 8px!important}
+#root .workflowScienceGuidance{display:grid;gap:4px;margin:9px 0;padding:9px 10px;border:1px solid var(--cedars-role-info-line);border-left:3px solid var(--cedars-role-info);border-radius:7px;background:var(--cedars-role-info-soft);color:var(--cedars-ink)}
+#root .workflowScienceGuidance>span{font-size:7px;font-weight:900;letter-spacing:.09em;color:var(--cedars-role-info)}
+#root .workflowScienceGuidance>strong{font-size:10.5px;line-height:1.35;color:var(--cedars-ink)}
+#root .workflowScienceGuidance>p{margin:0;font-size:9px;line-height:1.45;color:var(--cedars-muted)}
+#root .workflowScienceGuidance>small{font-size:8px!important;line-height:1.4;color:var(--cedars-muted)!important}
+#root .workflowContextFields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
+#root .workflowContextFields>label{display:grid;gap:4px;min-width:0;padding:7px;border:1px solid var(--cedars-role-info-line);border-radius:6px;background:var(--cedars-panel)}
+#root .workflowContextFields>label>span{font-size:8px;font-weight:750;line-height:1.3;color:var(--cedars-ink)}
+#root .workflowContextFields input{width:100%!important;min-width:0!important;box-sizing:border-box!important}
+#root .departmentStageHandoff .departmentOptionalAction{background:transparent!important;border:1px dashed #7EA38C!important;box-shadow:none!important}
+#root.dark .departmentStageHandoff .departmentOptionalAction,html.dark #root .departmentStageHandoff .departmentOptionalAction{background:transparent!important;border:1px dashed #79A98A!important;color:#DDF1E3!important}
+@media(max-width:1100px){#root .departmentCurrentPracticeList.infrastructureGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:850px){
+  #root .workflowBaselineMetric{grid-template-columns:1fr!important}
+  #root .workflowContextFields{grid-template-columns:1fr!important}
+  #root .departmentCurrentPracticeList.infrastructureGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:560px){#root .departmentCurrentPracticeList.infrastructureGrid{grid-template-columns:1fr!important}}
+
+/* Result cost is context, not a total cost-of-care claim. */
+#root .scoreDataGrid .scoreCostCell small{display:block;margin-top:2px;font-size:7.5px!important;line-height:1.3;color:var(--cedars-muted)!important}
+
+/* Dark-mode completion: assessment controls and non-paper workflow surfaces must not remain white. */
+#root.dark :is(.departmentPage,.aiPage,.improvePage,.reportPage) :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),select,textarea),
+html.dark #root :is(.departmentPage,.aiPage,.improvePage,.reportPage) :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),select,textarea){
+  background:#111C1A!important;border-color:#52685E!important;color:#DDE7DF!important;box-shadow:none!important;color-scheme:dark
+}
+#root.dark :is(.departmentPage,.aiPage,.improvePage,.reportPage) option,
+html.dark #root :is(.departmentPage,.aiPage,.improvePage,.reportPage) option{background:#111C1A!important;color:#DDE7DF!important}
+#root.dark :is(.departmentWorkflowStageDetail,.workflowBaselineMetric,.workflowMetricControl>label,.departmentCurrentPracticeList>label,.workflowContextFields>label,.workflowScienceGuidance),
+html.dark #root :is(.departmentWorkflowStageDetail,.workflowBaselineMetric,.workflowMetricControl>label,.departmentCurrentPracticeList>label,.workflowContextFields>label,.workflowScienceGuidance){
+  background:#111C1A!important;border-color:#34483F!important;color:#DDE7DF!important
+}
+#root.dark .departmentCurrentPracticeList>label.active,html.dark #root .departmentCurrentPracticeList>label.active{background:#173025!important;border-color:#4F765F!important}
+#root.dark :is(.externalLinkDialog,.contributionDialog,.clearClinicalAiDialog),
+html.dark #root :is(.externalLinkDialog,.contributionDialog,.clearClinicalAiDialog){background:#111C1A!important;border:1px solid #52685E!important;color:#DDE7DF!important}
+#root.dark :is(.externalLinkDialog,.contributionDialog,.clearClinicalAiDialog) :is(h2,h3,strong),
+html.dark #root :is(.externalLinkDialog,.contributionDialog,.clearClinicalAiDialog) :is(h2,h3,strong){color:#F1FAEE!important}
+#root.dark .contributionTurnstilePanel,html.dark #root .contributionTurnstilePanel{background:#14201D!important;border-color:#52685E!important;color:#B0B5B9!important}
+#root.dark .sharedLinkWarning,html.dark #root .sharedLinkWarning{background:#2A2417!important;border-color:#8B733A!important;color:#F6EBC8!important}
+#root.dark .aiCarbonContext,html.dark #root .aiCarbonContext{background:#102926!important;border-color:#3D746D!important;color:#CDE4DF!important}
+#root.dark .storageCloudContext,html.dark #root .storageCloudContext{background:#111C1A!important;border-color:#34483F!important;color:#DDE7DF!important}
+#root.dark .reportPage .reportMethodsOptions table,html.dark #root .reportPage .reportMethodsOptions table{background:#111C1A!important;color:#DDE7DF!important}
+#root.dark .reportPage .reportMethodsOptions thead tr,html.dark #root .reportPage .reportMethodsOptions thead tr{background:#173025!important}
+#root.dark .reportPage .reportMethodsOptions :is(th,td),html.dark #root .reportPage .reportMethodsOptions :is(th,td){color:#DDE7DF!important;border-color:#34483F!important}
+#root.dark .evidencePage .evidenceMethodsTop,html.dark #root .evidencePage .evidenceMethodsTop{background:#111C1A!important;border-color:#52685E!important}
+#root.dark .evidencePage .evidenceReadyBox,html.dark #root .evidencePage .evidenceReadyBox{background:#14263B!important;border-color:#415F76!important}
+#root.dark .evidencePage .evidenceReadyBox>span,html.dark #root .evidencePage .evidenceReadyBox>span{color:#9BC8E0!important}
+#root.dark .externalLinkUrlBox,html.dark #root .externalLinkUrlBox{background:#14201D!important;border-color:#52685E!important;color:#DDE7DF!important}
+#root.dark .contributionNotice,html.dark #root .contributionNotice{background:#2A2417!important;border-color:#8B733A!important;color:#F6EBC8!important}
+#root.dark .contributionDialog :is(input,select,textarea),html.dark #root .contributionDialog :is(input,select,textarea){background:#111C1A!important;border-color:#52685E!important;color:#DDE7DF!important;color-scheme:dark}
+#root.dark .contributionDialog button[aria-label="Close"],html.dark #root .contributionDialog button[aria-label="Close"]{background:#203A2E!important;border-color:#52685E!important;color:#DDE7DF!important}
+#root.dark .contributionStatus.success,html.dark #root .contributionStatus.success{background:#173025!important;color:#CBE7D4!important}
+#root.dark .contributionStatus.error,html.dark #root .contributionStatus.error{background:#321A1A!important;color:#F0B7B7!important}

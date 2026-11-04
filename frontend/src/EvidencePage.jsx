@@ -153,12 +153,21 @@ export default function EvidencePage({onStart}) {
   const [pausedAll, setPausedAll] = React.useState(()=>typeof window!=='undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   return (
     <main className="evidencePage evidenceGalleryPage">
+      <div className="evidenceTopUtility">
+        <a className="evidenceMethodsTop" href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">
+          <span>METHODS &amp; SOURCES</span><strong>Open full Methods &amp; Sources</strong><ExternalLink size={14}/>
+        </a>
+        <aside className="evidenceReadyBox" aria-label="Start a CEDARS assessment">
+          <span>READY?</span>
+          <button type="button" className="evidencePrimaryCta" onClick={onStart}>Start a CEDARS assessment <ArrowRight size={16}/></button>
+        </aside>
+      </div>
+
       <section className="evidenceHero contentSurfaceInset">
         <span>EVIDENCE BEHIND CEDARS</span>
         <h1>A reading library for sustainable radiology and medical AI.</h1>
         <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions!</p>
-        <div className="evidenceHeroActions">
-          <button type="button" className="evidencePrimaryCta" onClick={onStart}>Start a CEDARS assessment <ArrowRight size={16}/></button>
+        <div className="evidenceHeroControls">
           <button type="button" className="evidencePauseAll" aria-pressed={pausedAll} onClick={()=>setPausedAll(value=>!value)}>{pausedAll?<Play size={14}/>:<Pause size={14}/>} {pausedAll?'Resume auto-advance':'Pause auto-advance'}</button>
         </div>
       </section>
@@ -166,11 +175,6 @@ export default function EvidencePage({onStart}) {
       <div className="evidenceLibraryGrid">
         {GROUPS.map((group,index)=><EvidenceCategory key={group.key} group={group} pausedAll={pausedAll} order={index}/>) }
       </div>
-
-      <section className="evidenceRegistryNote contentSurfaceInset">
-        <div><span>METHODS &amp; SOURCES</span><h2>Complete methods and source registry</h2><p>Calculation assumptions and citations used throughout CEDARS are maintained in <code>sources.md</code>.</p></div>
-        <a href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">Open full registry <ExternalLink size={14}/></a>
-      </section>
     </main>
   );
 }

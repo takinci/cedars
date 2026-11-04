@@ -34,16 +34,16 @@ export function ExternalLinkProvider({children}) {
     <Ctx.Provider value={value}>
       {children}
       {pending && (
-        <div role="dialog" aria-modal="true" aria-labelledby="extlink-title"
+        <div role="dialog" aria-modal="true" aria-labelledby="extlink-title" className="externalLinkBackdrop"
           style={{position:'fixed',inset:0,zIndex:30,background:'#102710aa',display:'grid',placeItems:'center',padding:18}}
           onMouseDown={e=>{if(e.target===e.currentTarget) setPending(null);}}>
-          <div style={{width:'min(440px, 100%)',background:'#fff',border:'1px solid #c8e6c9',borderRadius:16,padding:'22px 24px',boxSizing:'border-box',display:'flex',flexDirection:'column',gap:12,boxShadow:'0 12px 32px rgba(0,0,0,0.18)'}}>
+          <div className="externalLinkDialog" style={{width:'min(440px, 100%)',background:'#fff',border:'1px solid #c8e6c9',borderRadius:16,padding:'22px 24px',boxSizing:'border-box',display:'flex',flexDirection:'column',gap:12,boxShadow:'0 12px 32px rgba(0,0,0,0.18)'}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <ExtIcon size={20} style={{color:'#2E7D32'}}/>
               <h2 id="extlink-title" style={{margin:0,fontSize:17}}>You are leaving CEDARS</h2>
             </div>
             <p className="note" style={{margin:0,fontSize:13}}>This link opens an external site in a new tab:</p>
-            <div style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:12,background:'#f4f7f5',border:'1px solid #e0efe2',borderRadius:8,padding:'10px 12px',wordBreak:'break-all'}}>{pending.href}</div>
+            <div className="externalLinkUrlBox" style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:12,background:'#f4f7f5',border:'1px solid #e0efe2',borderRadius:8,padding:'10px 12px',wordBreak:'break-all'}}>{pending.href}</div>
             <p className="note" style={{margin:0,fontSize:12}}>CEDARS does not control external content. Nothing from your assessment is sent to the site you are visiting.</p>
             <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#455a64'}}>
               <input type="checkbox" checked={dontAsk} onChange={e=>setDontAsk(e.target.checked)} style={{accentColor:'#2E7D32'}}/>

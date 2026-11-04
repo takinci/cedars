@@ -19,18 +19,18 @@ export function DecisionWorkspaceSwitch({kind='department', summary}) {
   );
 }
 
-export function ReportStudioTabs({active='methods', onChange, kind='department'}) {
+export function ReportStudioTabs({active='label', onChange, kind='department'}) {
   const ai = kind === 'ai';
   const tabs = [
+    {key:'label', label:ai?'AI Research Eco-label':'Department EcoLabel', detail:ai?'Primary visual research summary.':'Presentation-ready visual summary.', icon:Leaf},
     {key:'methods', label:'Methods & evidence', detail:'Methods text, assumptions, provenance, and structured exports.', icon:FileText},
-    {key:'label', label:ai?'AI Research Label':'Department EcoLabel', detail:ai?'Optional visual research summary.':'Presentation-ready visual summary.', icon:Leaf},
     {key:'share', label:'Save & share', detail:'Working copy, portable file, and shareable link.', icon:Share2},
   ];
   const index=Math.max(0,tabs.findIndex(t=>t.key===active));
   const move=delta=>onChange(tabs[(index+delta+tabs.length)%tabs.length].key);
   return (
     <aside className="reportStudioRail" aria-label="Report and Share outputs">
-      <div className="reportStudioRailHeading"><span>REPORT &amp; SHARE</span><h2>Choose an output</h2><p>The selected output opens in the scrollable card beside this menu.</p></div>
+      <div className="reportStudioRailHeading"><span>REPORT &amp; SHARE</span><h2>Choose an output</h2><p>Eco-label first, then the methods and provenance behind it.</p></div>
       <div className="reportStudioRailButtons" role="tablist" aria-label="Report and Share output">
         {tabs.map((tab,i)=>{const Icon=tab.icon;const selected=active===tab.key;return <button type="button" role="tab" aria-selected={selected} key={tab.key} className={`${selected?'active':''} ${tab.key}`} onClick={()=>onChange(tab.key)}><span>0{i+1}</span><Icon size={17}/><strong>{tab.label}</strong><small>{tab.detail}</small></button>;})}
       </div>
