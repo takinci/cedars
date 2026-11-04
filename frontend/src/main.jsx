@@ -28,6 +28,7 @@ import './styles/theme.css';
 // CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
 // CEDARS_CHUNK_9R22_WALKTHROUGH_PREFILL_GATING_QA
 // CEDARS_CHUNK_9R23_COMBINED_WALKTHROUGH_REPORT_WORKFLOW_DARK
+// CEDARS_CHUNK_9R24_ECOLABEL_FAMILY_V2
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -1323,56 +1324,208 @@ function drawLeaf(ctx, x, y, size, filled, color) {
 // 16px vs 15px, row-value column 200 vs 210, footer text "CEDARS Score & Rating..." vs "CEDARS
 // ..."). Routing both through one function makes that kind of drift structurally impossible —
 // the two cards can now only differ in the data passed in (title, rows, colours), never in layout.
-function drawLabelCard({title, name, contextLine, scoreDisplay, leaves, ratingColor, ratingBg, ratingLabel, subtext, rows, footerText}) {
+function drawLabelCard({
+  productTag,
+  name,
+  contextLine,
+  scoreDisplay,
+  leaves,
+  ratingColor,
+  ratingBg,
+  ratingLabel,
+  subtext,
+  coverageValue,
+  coverageDetail,
+  keyResults = [],
+  contextRows = [],
+  footerText,
+}) {
   const W = 510;
-  const ROW_H = labelRowH(rows.length), HEADER_H = 72, BAND_H = 84, FOOTER_H = 28;
-  const H = HEADER_H + BAND_H + 4 + rows.length * ROW_H + 6 + FOOTER_H + 4;
+  const ROW_H = labelRowH(contextRows.length);
+  const HEADER_H = 84, SCORE_H = 96, COVERAGE_H = 58, SECTION_H = 22, KEY_ROW_H = 30, FOOTER_H = 32;
+  const H = HEADER_H + SCORE_H + COVERAGE_H + SECTION_H + keyResults.length * KEY_ROW_H + SECTION_H + contextRows.length * ROW_H + FOOTER_H + 8;
+
   const canvas = document.createElement('canvas');
-  canvas.width = W * 2; canvas.height = H * 2;
+  canvas.width = W * 2;
+  canvas.height = H * 2;
   const ctx = canvas.getContext('2d');
   ctx.scale(2, 2);
+
   ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.roundRect(0, 0, W, H, 14); ctx.fill();
   ctx.strokeStyle = ratingColor; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(1, 1, W-2, H-2, 13); ctx.stroke();
+
   ctx.fillStyle = '#254C40';
   ctx.beginPath(); ctx.roundRect(1, 1, W-2, HEADER_H, [13,13,0,0]); ctx.fill();
+
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 15px sans-serif';
-  ctx.fillText(title, 16, 26);
-  ctx.font = '13px sans-serif'; ctx.fillStyle = '#DDE8E1';
-  ctx.fillText(name, 16, 48);
+  ctx.fillText('CEDARS ECOLABEL', 16, 25);
+
+  const tag = String(productTag || 'RESEARCH').toUpperCase();
+  ctx.font = 'bold 9px sans-serif';
+  const tagW = Math.ceil(ctx.measureText(tag).width) + 16;
+  ctx.fillStyle = '#3A6658';
+  ctx.beginPath(); ctx.roundRect(W - 16 - tagW, 11, tagW, 20, 10); ctx.fill();
+  ctx.fillStyle = '#EEF4F0';
+  ctx.fillText(tag, W - 8 - tagW, 25);
+
+  ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#DDE8E1';
+  ctx.fillText(name || 'Untitled assessment', 16, 50);
   ctx.font = '10px sans-serif'; ctx.fillStyle = '#BEC9C2';
-  ctx.fillText(contextLine, 16, 66);
+  ctx.fillText(contextLine || '', 16, 70);
+
+  const scoreY = HEADER_H;
   ctx.fillStyle = ratingBg;
-  ctx.fillRect(2, HEADER_H, W-4, BAND_H);
-  // CEDARS Score (big number) + Rating (5 leaves — matches the UI's LeafRating component)
+  ctx.fillRect(2, scoreY, W-4, SCORE_H);
+  ctx.fillStyle = '#66716D'; ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('SCORE & RATING', 14, scoreY + 15);
+
   ctx.textAlign = 'center';
   ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = ratingColor;
-  ctx.fillText(scoreDisplay, 46, HEADER_H + 48);
+  ctx.fillText(scoreDisplay, 50, scoreY + 60);
   ctx.font = 'bold 9px sans-serif';
-  ctx.fillText('CEDARS SCORE', 46, HEADER_H + 64);
+  ctx.fillText('CEDARS SCORE', 50, scoreY + 76);
   ctx.textAlign = 'left';
-  for (let i = 0; i < 5; i++) drawLeaf(ctx, 100 + i*18, HEADER_H + 15, 16, i < leaves, i < leaves ? ratingColor : '#D8DEDA');
+  for (let i = 0; i < 5; i++) drawLeaf(ctx, 108 + i*18, scoreY + 28, 16, i < leaves, i < leaves ? ratingColor : '#D8DEDA');
   ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = ratingColor;
-  ctx.fillText(ratingLabel, 100, HEADER_H + 53);
+  ctx.fillText(ratingLabel, 108, scoreY + 66);
   ctx.font = '11px sans-serif'; ctx.fillStyle = '#25302D';
-  ctx.fillText(subtext, 100, HEADER_H + 70);
-  const rowTextY = ROW_H / 2 + 4; // baseline offset within a row — matches the old fixed +17 exactly at ROW_H=26
-  rows.forEach(([k, v], i) => {
-    const y = HEADER_H + BAND_H + 4 + i * ROW_H;
+  ctx.fillText(subtext, 108, scoreY + 83);
+
+  const coverageY = HEADER_H + SCORE_H;
+  ctx.fillStyle = '#F1F4F2';
+  ctx.fillRect(2, coverageY, W-4, COVERAGE_H);
+  ctx.fillStyle = '#66716D'; ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('WHAT THIS ASSESSMENT COVERS', 14, coverageY + 15);
+  ctx.fillStyle = '#25302D'; ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(String(coverageValue || 'See methods and provenance'), 14, coverageY + 34);
+  ctx.fillStyle = '#66716D'; ctx.font = '9px sans-serif';
+  ctx.fillText(String(coverageDetail || ''), 14, coverageY + 50);
+
+  let y = coverageY + COVERAGE_H;
+  ctx.fillStyle = '#EAF0EC';
+  ctx.fillRect(2, y, W-4, SECTION_H);
+  ctx.fillStyle = '#55736A'; ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('KEY RESULTS', 14, y + 15);
+  y += SECTION_H;
+
+  keyResults.forEach(([k,v], i) => {
+    ctx.fillStyle = i%2===0 ? '#ffffff' : '#F7F5EF';
+    ctx.fillRect(2, y, W-4, KEY_ROW_H);
+    ctx.fillStyle = '#66716D'; ctx.font = '11px sans-serif';
+    ctx.fillText(k, 14, y + 19);
+    ctx.fillStyle = '#25302D'; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(String(v), 210, y + 19);
+    y += KEY_ROW_H;
+  });
+
+  ctx.fillStyle = '#EAF0EC';
+  ctx.fillRect(2, y, W-4, SECTION_H);
+  ctx.fillStyle = '#55736A'; ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('CONTEXT', 14, y + 15);
+  y += SECTION_H;
+
+  const rowTextY = ROW_H / 2 + 4;
+  contextRows.forEach(([k, v], i) => {
     ctx.fillStyle = i%2===0 ? '#F7F5EF' : '#ffffff';
     ctx.fillRect(2, y, W-4, ROW_H);
     ctx.fillStyle = '#66716D'; ctx.font = '11px sans-serif';
-    ctx.fillText(k, 14, y+rowTextY);
+    ctx.fillText(k, 14, y + rowTextY);
     ctx.fillStyle = '#25302D'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(String(v), 210, y+rowTextY);
+    ctx.fillText(String(v), 210, y + rowTextY);
+    y += ROW_H;
   });
-  const footerY = HEADER_H + BAND_H + 4 + rows.length * ROW_H + 6;
+
   ctx.fillStyle = '#EEF4F0';
-  ctx.beginPath(); ctx.roundRect(2, footerY, W-4, FOOTER_H, [0,0,11,11]); ctx.fill();
-  ctx.fillStyle = '#2F6B57'; ctx.font = '10px sans-serif';
-  ctx.fillText(footerText, 14, footerY+18);
+  ctx.beginPath(); ctx.roundRect(2, y, W-4, FOOTER_H, [0,0,11,11]); ctx.fill();
+  ctx.fillStyle = '#2F6B57'; ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('RESEARCH OUTPUT · NOT EXTERNAL CERTIFICATION', 14, y + 13);
+  ctx.font = '9px sans-serif'; ctx.fillStyle = '#55736A';
+  ctx.fillText(footerText, 14, y + 25);
   return canvas;
+}
+
+function CedarsEcoLabelPreview({
+  kind,
+  productTag,
+  identity,
+  contextLine,
+  scoreDisplay='—',
+  scored=false,
+  leaves=0,
+  ratingColor='#2F6B57',
+  ratingBg='#EEF4F0',
+  ratingLabel='Not yet calculated',
+  intensityText='Complete the required inputs to calculate',
+  coverageValue='See methods and provenance',
+  coverageDetail='',
+  headlineMetrics=[],
+  rows=[],
+  date='',
+}) {
+  const legacyClass = kind === 'department' ? 'departmentEcoLabelPreview' : 'reportVisualCard';
+  return (
+    <div
+      className={`cedarsEcoLabelCard ${legacyClass} cedarsEcoLabelCard-${kind}`}
+      style={{'--eco-rating':ratingColor,'--eco-rating-bg':ratingBg}}
+      aria-label={`${productTag} CEDARS EcoLabel`}
+    >
+      <div className="cedarsEcoLabelHeader">
+        <div className="cedarsEcoLabelBrand">
+          <span><Leaf size={15}/> CEDARS ECOLABEL</span>
+          <b>{productTag}</b>
+        </div>
+        <strong className="cedarsEcoLabelIdentity">{identity || 'Untitled assessment'}</strong>
+        <small>{contextLine}</small>
+      </div>
+
+      <div className="cedarsEcoLabelScoreBand">
+        <div className="cedarsEcoLabelSectionLabel">SCORE &amp; RATING</div>
+        <div className="cedarsEcoLabelScore">
+          <strong>{scoreDisplay}</strong>
+          <span>CEDARS SCORE</span>
+        </div>
+        <div className="cedarsEcoLabelRating">
+          {scored
+            ? <LeafRating leaves={leaves} size={20} color={ratingColor}/>
+            : <div className="cedarsEcoLabelUnrated">NO OVERALL LEAF RATING</div>}
+          <strong>{ratingLabel}</strong>
+          <small>{intensityText}</small>
+        </div>
+      </div>
+
+      <div className="cedarsEcoLabelCoverage">
+        <span>WHAT THIS ASSESSMENT COVERS</span>
+        <strong>{coverageValue}</strong>
+        {coverageDetail && <small>{coverageDetail}</small>}
+      </div>
+
+      {headlineMetrics.length>0 && <>
+        <div className="cedarsEcoLabelSectionHeader">KEY RESULTS</div>
+        <div className="cedarsEcoLabelHeadlineMetrics">
+          {headlineMetrics.map(metric=><div key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+            {metric.detail && <small>{metric.detail}</small>}
+          </div>)}
+        </div>
+      </>}
+
+      <div className="cedarsEcoLabelSectionHeader">CONTEXT</div>
+      <div className="cedarsEcoLabelRows">
+        {rows.map(([k,v],i)=><div key={`${k}-${i}`}>
+          <span>{k}</span>
+          <strong>{v}</strong>
+        </div>)}
+      </div>
+
+      <div className="cedarsEcoLabelFooter">
+        <span>RESEARCH OUTPUT · NOT EXTERNAL CERTIFICATION</span>
+        <small>Estimated with CEDARS · {date} · CC BY 4.0</small>
+      </div>
+    </div>
+  );
 }
 
 function downloadCanvasPNG(canvas, filename) {
@@ -1387,29 +1540,33 @@ function downloadCanvasPNG(canvas, filename) {
 }
 
 function downloadDeptPNG(d) {
-  const rows = [
-    ['Annual electricity',   `${d.annualKwh.toLocaleString()} kWh`],
-    ['Annual CO₂e',    `${d.totalAnnualCo2.toLocaleString()} kgCO₂e`],
-    ...(d.clinicalToolCount > 0 ? [['Clinical AI', `${d.clinicalToolCount} deployed (in energy)`]] : []),
-    ['Studies / year',       d.annualStudies.toLocaleString()],
-    ['Energy per study',     `${d.kwhPerStudy} kWh`],
-    ...(d.utilPct != null ? [['Fleet utilisation', `${d.utilPct}% of configured fleet`]] : []),
-    ['Location-based grid CI', `${d.ci} kgCO₂e/kWh`],
-    ['Reported renewable share', `${d.renewablePct}% (disclosure only)`],
-    ['Grid region',          d.region],
-    ...(d.interventionCount > 0 ? [['Current practices', `${d.interventionCount} documented as implemented`]] : []),
-  ];
   const canvas = drawLabelCard({
-    title: 'CEDARS Department EcoLabel',
-    name: d.deptName,
-    contextLine: `${d.hospitalName ? d.hospitalName + ' \xb7 ' : ''}${d.region} \xb7 ${d.date}`,
-    scoreDisplay: String(d.score),
-    leaves: d.leaves, ratingColor: d.ratingColor, ratingBg: d.ratingBg, ratingLabel: d.ratingLabel,
-    subtext: `${d.co2PerStudy} kgCO₂e per imaging study`,
-    rows,
-    footerText: `CEDARS Score & Rating \xb7 ${d.date} \xb7 CC BY 4.0`,
+    productTag: 'DEPARTMENT',
+    name: d.deptName || 'Radiology Department',
+    contextLine: `${d.hospitalName ? d.hospitalName + ' · ' : ''}${d.region} · ${d.date}`,
+    scoreDisplay: d.hasData ? String(d.score) : '—',
+    leaves: d.hasData ? d.leaves : 0,
+    ratingColor: d.ratingColor,
+    ratingBg: d.ratingBg,
+    ratingLabel: d.hasData ? d.ratingLabel : 'Not yet calculated',
+    subtext: d.hasData ? `${d.co2PerStudy} kgCO₂e/study · ${d.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate',
+    coverageValue: 'Operational energy & carbon',
+    coverageDetail: 'Extended estimates and unassessed categories stay separate from the Score.',
+    keyResults: [
+      ['Annual footprint', d.totalAnnualCo2>0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
+      ['Per imaging study', d.hasData ? `${d.co2PerStudy} kgCO₂e · ${d.kwhPerStudy} kWh` : '—'],
+    ],
+    contextRows: [
+      ['Studies / year', d.annualStudies>0 ? d.annualStudies.toLocaleString() : '—'],
+      ['Grid region', d.region || '—'],
+      ['Grid carbon intensity', `${d.ci} kgCO₂e/kWh`],
+      ['Renewable share', `${d.renewablePct}% · disclosure only`],
+      ...(d.clinicalToolCount > 0 ? [['Clinical AI', `${d.clinicalToolCount} deployed · reflected in energy`]] : []),
+      ['Current practices', `${d.interventionCount || 0} documented as implemented`],
+    ],
+    footerText: `${d.date} · CC BY 4.0`,
   });
-  downloadCanvasPNG(canvas, `cedars_dept_label_${(d.deptName||'department').replace(/\W+/g,'_')}.png`);
+  downloadCanvasPNG(canvas, `cedars_department_ecolabel_${(d.deptName||'department').replace(/\W+/g,'_')}.png`);
 }
 
 function ecoReportRows(d) {
@@ -1454,52 +1611,56 @@ function generateEcoMarkdown(d) {
     '',
     ...(d.scoreStatus === 'training-unavailable' ? ['> Overall CEDARS Score not assigned: the training/pretraining footprint is unavailable. The inference result is reported separately; unknown is not treated as zero.', ''] : []),
     ...(d.scoreStatus === 'deployment-workload-missing' ? ['> Overall CEDARS Score not assigned: add deployment workload to combine one-time training with recurring inference.', ''] : []),
-    '> AI research EcoLabel generated with [CEDARS](https://cedarsleaf.com).',
+    '> CEDARS AI Research Eco-label generated with [CEDARS](https://cedarsleaf.com).',
     '> Reporting framework: Doo FX et al. *J Am Coll Radiol* 2024 · DOI 10.1016/j.jacr.2023.11.019; Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030. Full sources: cedarsleaf.com → sources.md.',
   ].join('\n');
 }
 
 function downloadEcoPNG(d) {
-  const rows = [
-    ['Task type',                d.taskType],
-    ['Architecture',             d.architecture],
-    ['Parameters',               d.paramsMillion],
-    [d.tokenWorkload ? 'Training / fine-tuning data' : 'Training dataset', d.datasetSize],
-    ...(d.epochs != null ? [[d.tokenWorkload ? 'Fine-tuning epochs' : 'Training epochs', String(d.epochs)]] : []),
-    [d.tokenWorkload ? 'Precision' : 'Input workload', d.tokenWorkload ? d.precision : `${d.inputResolution || '—'}px · ${d.dim || '—'} · ${d.precision}`],
-    ['Lifecycle coverage',       d.lifecycleCoverage],
-    ['GPU hardware',             d.trainingAvailable ? d.gpuHardware : d.trainingStatusLabel],
-    ['Training runs',            d.trainingAvailable ? `${d.numRuns} exp · ${d.totalGpuHours} GPU-h total` : d.trainingStatusLabel],
-    ['Energy / run',             d.trainingAvailable ? `${d.energyPerRunKwh} kWh (${PROVENANCE[d.trainProv]?.short.toLowerCase()})` : d.trainingStatusLabel],
-    ['Total training energy',    d.trainingAvailable ? `${d.totalEnergyKwh} kWh` : d.trainingStatusLabel],
-    ['Training CO₂e',            d.trainingAvailable ? `${d.trainCo2} kgCO₂e` : 'Not available'],
-    ['Training compute',         d.trainingAvailable ? `${d.trainingProvider} · ${d.trainingRegion || 'avg'} · ${d.trainingEffectiveCi} kgCO₂e/kWh` : d.trainingStatusLabel],
-    ['Inference compute',        `${d.inferenceProvider} · ${d.inferenceRegion || 'avg'} · ${d.inferenceEffectiveCi} kgCO₂e/kWh`],
-    ['Water footprint',          d.waterProv === 'not-assessed' ? 'Not assessed · not scored' : `${d.waterLitres.toLocaleString()} L${d.waterProv === 'screening' ? ' (screening)' : ''}`],
-    ...(d.perInferCo2g > 0 ? [['Inference / study', `${d.perInferCo2g} gCO₂e`]] : []),
-    ...(d.hasInference ? [
-      ['Deployment',        `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo`],
-      ...(d.graded ? [['Effective / study', `${d.effectivePerStudyG} gCO₂e (amortised)`]] : []),
-    ] : []),
-  ];
+  const modelLine = [d.architecture, d.paramsMillion].filter(Boolean).join(' · ') || '—';
+  const coverageValue = d.graded
+    ? 'Training + inference'
+    : d.scoreStatus === 'training-unavailable'
+      ? 'Inference assessed; training not available'
+      : d.scoreStatus === 'deployment-workload-missing'
+        ? 'Training assessed; expected deployment not complete'
+        : 'Partial AI lifecycle data';
+  const coverageDetail = d.graded
+    ? 'One-time training is combined with recurring inference across the expected deployment.'
+    : d.scoreStatus === 'training-unavailable'
+      ? 'Inference is reported separately; unavailable training is not treated as zero.'
+      : 'Complete the missing lifecycle inputs before interpreting an overall Score.';
+
   const canvas = drawLabelCard({
-    title: 'CEDARS AI Research EcoLabel',
-    name: d.projectName,
-    contextLine: `AI model footprint disclosure \xb7 ${d.date}`,
+    productTag: 'AI RESEARCH',
+    name: d.projectName || 'AI model',
+    contextLine: `${d.taskType || 'AI lifecycle assessment'} · ${d.date}`,
     scoreDisplay: d.graded ? `${d.score}` : '—',
-    leaves: d.graded ? d.leaves : 0, ratingColor: d.ratingColor, ratingBg: d.ratingBg,
-    ratingLabel: d.graded ? d.ratingLabel : 'Overall score not assigned',
+    leaves: d.graded ? d.leaves : 0,
+    ratingColor: d.ratingColor,
+    ratingBg: d.ratingBg,
+    ratingLabel: d.graded ? d.ratingLabel.replace('footprint','modeled carbon intensity') : 'Overall Score not assigned',
     subtext:
       d.graded ? `${d.effectivePerStudyG} gCO₂e/study · training + inference`
-        : d.scoreStatus === 'training-unavailable' ? `${d.perInferCo2g} gCO₂e/study inference · training unavailable`
-        : d.scoreStatus === 'deployment-workload-missing' ? `${d.perInferCo2g} gCO₂e/study inference · add deployment workload`
-        : d.hasData ? 'Complete lifecycle inputs to grade' : 'Enter training or inference data',
-    rows,
-    footerText: d.graded
-      ? `CEDARS modeled operational-intensity score · ${d.date} · CC BY 4.0`
-      : `Partial lifecycle coverage · overall score not assigned · ${d.date} · CC BY 4.0`,
+        : d.perInferCo2g>0 ? `${d.perInferCo2g} gCO₂e/study · inference reported separately`
+        : 'Complete lifecycle inputs to calculate an overall Score',
+    coverageValue,
+    coverageDetail,
+    keyResults: [
+      ['Training · one-time', d.trainingAvailable ? `${d.trainCo2} kgCO₂e · ${d.totalEnergyKwh} kWh` : d.trainingStatusLabel],
+      ['Inference · per study', d.perInferCo2g>0 ? `${d.perInferCo2g} gCO₂e/study` : '—'],
+    ],
+    contextRows: [
+      ['Task', d.taskType || '—'],
+      ['Model', modelLine],
+      ['Training compute', d.trainingAvailable ? `${d.trainingProvider || '—'} · ${d.trainingRegion || 'provider average'}` : d.trainingStatusLabel],
+      ['Inference compute', `${d.inferenceProvider || '—'} · ${d.inferenceRegion || 'provider average'}`],
+      ['Expected use', d.hasInference ? `${d.inferStudies.toLocaleString()} studies/month · ${d.deployMonths} months` : 'Not entered'],
+      ['Water', d.waterProv === 'not-assessed' ? 'Not assessed · not scored' : `${d.waterLitres.toLocaleString()} L${d.waterProv === 'screening' ? ' · screening estimate' : ''}`],
+    ],
+    footerText: `${d.date} · CC BY 4.0`,
   });
-  downloadCanvasPNG(canvas, `cedars_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
+  downloadCanvasPNG(canvas, `cedars_ai_research_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
 }
 
 const CHART_COLORS = ['#2F6B57','#4F7D95','#B58B45','#6F7782','#4F8A83','#956F5C'];
@@ -1565,7 +1726,7 @@ const SEO_PAGES = {
     canonical: SEO_BASE + '?page=report',
   },
   reportAi: {
-    title: 'Report AI Environmental Footprint | CEDARS AI Research EcoLabel',
+    title: 'Report AI Environmental Footprint | CEDARS AI Research Eco-label',
     description: 'Complete, export, and optionally share a reproducible CEDARS AI environmental disclosure covering training, inference, compute, deployment, performance, and water context.',
     canonical: SEO_BASE + '?page=report&label=ai',
   },
@@ -5528,14 +5689,14 @@ function App() {
         <main className={page==='ecolabel'?'resultsPage':`reportPage reportStudio${reportStudioTab.charAt(0).toUpperCase()}${reportStudioTab.slice(1)}`}>
           <div style={{marginBottom:8}}><h1 style={{margin:'0 0 6px'}}>{page==='ecolabel' ? 'Decision Workspace' : 'Report & Share'}</h1>{page==='report'&&<p className="note" style={{margin:'0 0 6px',fontSize:13}}>Prepare, save, or share the current result.</p>}</div>
           <div className="researchAssessmentNotice">
-            <AlertTriangle size={16}/> <strong>Research assessment — not (yet) an external certification.</strong>
+            <AlertTriangle size={16}/> <strong>CEDARS EcoLabels are research outputs — not external certification.</strong>
           </div>
 
           <div className="reportProductTabsWrap">
               <div className="reportProductTabsHeading"><span>REPORT TYPE</span><strong>Choose the CEDARS product you are preparing</strong></div>
               <div className="reportProductTabs" role="tablist" aria-label="CEDARS reporting product">
-                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department EcoLabel</strong><small>Radiology Department assessment</small></span>{ecoLabelMode==='department' && <b>Selected</b>}</button>
-                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}><Brain size={19}/><span><strong>AI Research Eco-label</strong><small>AI lifecycle assessment · Eco-label, methods &amp; provenance</small></span>{ecoLabelMode==='ai' && <b>Selected</b>}</button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='department'} className={ecoLabelMode==='department'?'active':''} onClick={()=>setEcoLabelMode('department')}><Activity size={19}/><span><strong>Department EcoLabel</strong><small>CEDARS EcoLabel family · Department assessment</small></span>{ecoLabelMode==='department' && <b>Selected</b>}</button>
+                <button type="button" role="tab" aria-selected={ecoLabelMode==='ai'} className={ecoLabelMode==='ai'?'active':''} onClick={()=>setEcoLabelMode('ai')}><Brain size={19}/><span><strong>AI Research Eco-label</strong><small>CEDARS EcoLabel family · AI assessment</small></span>{ecoLabelMode==='ai' && <b>Selected</b>}</button>
               </div>
             </div>
             <div className="reportStudioLayout">
@@ -5564,50 +5725,49 @@ function App() {
             <section className="reportStageCard reportMaterialsStage" data-demo-target="department-report-materials">
               <div className="reportStageHeading compact">
                 <div>
-                  <span>PREPARE YOUR CEDARS MATERIALS</span>
+                  <span>CEDARS ECOLABEL · DEPARTMENT</span>
                   <h2>Department EcoLabel</h2>
-                  <p>Download the presentation-ready EcoLabel. Methods text is kept in the separate Methods &amp; evidence output.</p>
+                  <p>Same CEDARS EcoLabel family as the AI research output, with results and context tailored to a Radiology Department assessment.</p>
                 </div>
               </div>
 
             <div className="reportLabelWorkspace" style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start',marginBottom:32}}>
-              <div className="departmentEcoLabelPreview" style={{background:'white',border:`2px solid ${deptLabelData.ratingColor}`,borderRadius:14,overflow:'hidden',minWidth:280,maxWidth:510,fontFamily:'Inter,sans-serif',boxShadow:'0 8px 30px #1b5e2020',flexShrink:0}}>
-                <div style={{background:'#1b5e20',padding:'14px 18px'}}>
-                  <div style={{color:'white',fontWeight:700,fontSize:16,display:'flex',alignItems:'center',gap:8}}><Leaf style={{width:16,height:16}}/> CEDARS Department EcoLabel</div>
-                  <div style={{color:'#A5D6A7',fontSize:13,marginTop:4}}>{deptLabelData.deptName}</div>
-                  <div style={{color:'#81C784',fontSize:11,marginTop:2}}>{deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}{deptLabelData.region} · {deptLabelData.date}</div>
-                </div>
-                <div className="departmentEcoLabelScoreBand" style={{background:deptLabelData.ratingBg,padding:'16px 18px',display:'flex',alignItems:'center',gap:18}}>
-                  <div style={{textAlign:'center',flexShrink:0}}>
-                    <div style={{fontSize:48,fontWeight:900,color:deptLabelData.ratingColor,lineHeight:1}}>{deptLabelData.hasData ? deptLabelData.score : '—'}</div>
-                    <div style={{fontSize:10,fontWeight:700,color:deptLabelData.ratingColor,letterSpacing:'0.04em'}}>CEDARS SCORE</div>
-                  </div>
-                  <div>
-                    <LeafRating leaves={deptLabelData.leaves} size={22} color={deptLabelData.ratingColor}/>
-                    <div style={{fontWeight:700,fontSize:15,color:deptLabelData.ratingColor,marginTop:4}}>{deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}</div>
-                    <div style={{fontSize:12,color:'#263238',marginTop:2}}>{deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e per imaging study` : 'Complete Department Context to calculate'}</div>
-                  </div>
-                </div>
-                {[
-                  ['Annual electricity',   deptLabelData.annualKwh>0 ? `${deptLabelData.annualKwh.toLocaleString()} kWh` : '—'],
-                  ['Annual CO₂e',         deptLabelData.totalAnnualCo2>0 ? `${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
-                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI', `${deptLabelData.clinicalToolCount} deployed (reflected in energy)`]] : []),
-                  ['Studies / year',       deptLabelData.annualStudies>0 ? deptLabelData.annualStudies.toLocaleString() : '—'],
-                  ['Energy per study',     deptLabelData.kwhPerStudy>0 ? `${deptLabelData.kwhPerStudy} kWh` : '—'],
-                  ...(deptLabelData.utilPct != null ? [['Fleet utilisation', `${deptLabelData.utilPct}% of configured fleet`]] : []),
-                  ['Effective grid CI',    `${deptLabelData.effectiveCi} kgCO₂e/kWh (${deptLabelData.renewablePct}% renewable)`],
-                  ['Grid region',          deptLabelData.region],
-                  ...(deptLabelData.interventionCount>0 ? [['Current practices', `${deptLabelData.interventionCount} documented as implemented`]] : []),
-                ].map(([k,v],i)=>(
-                  <div key={k} className="departmentEcoLabelDataRow" style={{display:'flex',justifyContent:'space-between',padding:'7px 18px',background:i%2===0?'#f1f8f1':'white',fontSize:13,gap:12}}>
-                    <span style={{color:'#607d66',flexShrink:0}}>{k}</span>
-                    <span style={{fontWeight:700,color:'#263238',textAlign:'right'}}>{v}</span>
-                  </div>
-                ))}
-                <div className="departmentEcoLabelFooter" style={{background:'#e8f5e9',padding:'8px 18px',fontSize:11,color:'#2E7D32'}}>
-                  Estimated with CEDARS · {deptLabelData.date} · CC BY 4.0
-                </div>
-              </div>
+              <CedarsEcoLabelPreview
+                kind="department"
+                productTag="DEPARTMENT"
+                identity={deptLabelData.deptName || 'Radiology Department'}
+                contextLine={`${deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}${deptLabelData.region || 'Region not set'} · ${deptLabelData.date}`}
+                scoreDisplay={deptLabelData.hasData ? String(deptLabelData.score) : '—'}
+                scored={deptLabelData.hasData}
+                leaves={deptLabelData.leaves}
+                ratingColor={deptLabelData.ratingColor}
+                ratingBg={deptLabelData.ratingBg}
+                ratingLabel={deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}
+                intensityText={deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e/study · ${deptLabelData.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate'}
+                coverageValue="Operational energy & carbon"
+                coverageDetail={`Extended estimates: ${deptLabelData.extendedCategories?.length || 0} · Not assessed: ${deptLabelData.notAssessedCategories?.length || 0}. These stay separate from the Score.`}
+                headlineMetrics={[
+                  {
+                    label:'ANNUAL FOOTPRINT',
+                    value:deptLabelData.totalAnnualCo2>0?`${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e`:'—',
+                    detail:deptLabelData.annualKwh>0?`${deptLabelData.annualKwh.toLocaleString()} kWh/year`:'Annual electricity not available',
+                  },
+                  {
+                    label:'PER IMAGING STUDY',
+                    value:deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e`:'—',
+                    detail:deptLabelData.kwhPerStudy>0?`${deptLabelData.kwhPerStudy} kWh/study`:'Energy/study not available',
+                  },
+                ]}
+                rows={[
+                  ['Studies / year',deptLabelData.annualStudies>0?deptLabelData.annualStudies.toLocaleString():'—'],
+                  ['Location',deptLabelData.region || '—'],
+                  ['Grid carbon intensity',`${deptLabelData.effectiveCi} kgCO₂e/kWh`],
+                  ['Renewable share',`${deptLabelData.renewablePct}% · disclosure only`],
+                  ...(deptLabelData.clinicalToolCount>0 ? [['Clinical AI',`${deptLabelData.clinicalToolCount} deployed · reflected in energy`]] : []),
+                  ['Current practices',`${deptLabelData.interventionCount || 0} documented as implemented`],
+                ]}
+                date={deptLabelData.date}
+              />
 
               <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
             <details className="reportStageCard reportReviewCompact reportLabelReadiness">
@@ -5696,7 +5856,7 @@ function App() {
               </div>
             </details>
                 <button className="download" onClick={()=>downloadDeptPNG(deptLabelData)} disabled={deptLabelData.annualStudies===0}>
-                  <Download/> Download PNG badge
+                  <Download/> Download EcoLabel (PNG)
                 </button>
 
                 <p className="note reportLabelUseNote" style={{maxWidth:220,fontSize:12,margin:0}}>Use the PNG EcoLabel in sustainability reports, posters, presentations, or other communication materials. Methods text is kept in the Methods &amp; evidence output.</p>
@@ -5801,92 +5961,73 @@ function App() {
           <section className="reportStageCard reportMaterialsStage" data-demo-target="ai-report-materials">
             <div className="reportStageHeading compact">
               <div>
-                <span>OPTIONAL VISUAL SUMMARY</span>
+                <span>CEDARS ECOLABEL · AI RESEARCH</span>
                 <h2>AI Research Eco-label</h2>
-                <p>Download the optional visual label here. Methods text and provenance are kept in the separate Methods &amp; evidence output.</p>
+                <p>Same CEDARS EcoLabel family as the Department output, with results and context tailored to AI training and deployment.</p>
               </div>
             </div>
-            <div className="reportOptionalVisualHeading"><span>OPTIONAL VISUAL SUMMARY · EXPERIMENTAL</span><strong>CEDARS AI Research Eco-label</strong><small>A compact communication aid for posters, slides, model documentation, or exploratory reporting; not an external certification.</small></div>
+            <div className="reportEcoLabelFamilyCopy"><strong>One CEDARS EcoLabel family.</strong> Department and AI outputs use the same plain-language structure while keeping the measurements appropriate to each assessment.</div>
           <div className="reportExportWorkspace" style={{display:'flex', gap:28, flexWrap:'wrap', alignItems:'flex-start', marginBottom:32}}>
             {/* Compact on-page visual summary; reproducible detail remains in Methods / provenance above. */}
-            <div className="reportVisualCard" style={{background:'white', border:'2px solid #2E7D32', borderRadius:14, overflow:'hidden', minWidth:280, maxWidth:510, fontFamily:'Inter,sans-serif', boxShadow:'0 8px 30px #1b5e2020', flexShrink:0}}>
-              <div style={{background:'#1b5e20', padding:'14px 18px'}}>
-                <div style={{color:'white', fontWeight:700, fontSize:16, display:'flex', alignItems:'center', gap:8}}>
-                  <Leaf style={{width:16,height:16}}/> CEDARS AI Research Eco-label
-                </div>
-                <div style={{color:'#A5D6A7', fontSize:13, marginTop:4}}>{ecoLabelData.projectName}</div>
-                <div style={{color:'#81C784', fontSize:11, marginTop:2}}>Experimental visual summary · {ecoLabelData.date}</div>
-              </div>
-              <div style={{background:ecoLabelData.ratingBg, padding:'16px 18px', display:'flex', alignItems:'center', gap:18}}>
-                <div style={{textAlign:'center', flexShrink:0}}>
-                  <div style={{fontSize:44, fontWeight:900, color:ecoLabelData.ratingColor, lineHeight:1}}>{ecoLabelData.graded ? ecoLabelData.score : '\u2014'}</div>
-                  <div style={{fontSize:10, fontWeight:700, color:ecoLabelData.ratingColor, letterSpacing:'0.04em'}}>OVERALL CEDARS SCORE</div>
-                  {!ecoLabelData.graded&&<div className="aiExportQualifier">NOT ASSIGNED &middot; partial lifecycle coverage</div>}
-                </div>
-                <div>
-                  {ecoLabelData.graded ? <LeafRating leaves={ecoLabelData.leaves} size={20} color={ecoLabelData.ratingColor}/> : <div style={{fontSize:11,fontWeight:800,color:'#607d66'}}>No overall leaf rating</div>}
-                  <div style={{fontWeight:700, fontSize:14, color:ecoLabelData.ratingColor, marginTop:4}}>{ecoLabelData.graded?ecoLabelData.ratingLabel.replace('footprint','modeled carbon intensity'):'Partial lifecycle coverage'}</div>
-                  <div style={{fontSize:11, color:'#263238', marginTop:2}}>
-                    {ecoLabelData.graded ? `${ecoLabelData.effectivePerStudyG} gCO\u2082e / study \u00b7 training + inference`
-                      : ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO\u2082e / study \u00b7 inference reported separately`
-                      : 'Complete lifecycle inputs to calculate an overall score'}
-                  </div>
-                </div>
-              </div>
-              {/* Two-phase headline: one-time training vs marginal per-study inference */}
-              <div style={{display:'flex', borderBottom:'1px solid #eef7ee'}}>
-                <div style={{flex:1, padding:'12px 18px', borderRight:'1px solid #eef7ee'}}>
-                  <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Training &middot; one-time</div>
-                  <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO\u2082e` : ecoLabelData.trainingStatusLabel}</div>
-                  <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalGpuHours} GPU-h${ecoLabelData.trainFlights>0 ? ` \u00b7 \u2248 ${ecoLabelData.trainFlights} short-haul flights` : ''}` : 'Training footprint unavailable.'}</div>
-                </div>
-                <div style={{flex:1, padding:'12px 18px'}}>
-                  <div style={{fontSize:10, fontWeight:700, color:'#607d66', textTransform:'uppercase', letterSpacing:'0.04em'}}>Inference · per study</div>
-                  <div style={{fontSize:20, fontWeight:800, color:'#263238', marginTop:2}}>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e` : '—'}</div>
-                  <div style={{fontSize:11, color:'#607d66'}}>{ecoLabelData.tokenMode && ecoLabelData.tokensPerStudy>0 ? `${ecoLabelData.tokensPerStudy.toLocaleString()} tokens/study` : 'marginal · recurring'}</div>
-                </div>
-              </div>
-              {ecoLabelData.graded && (
-                <div style={{padding:'10px 18px', background:'#f1f8f1', fontSize:12, color:'#37474f'}}>
-                  Over {ecoLabelData.lifetimeInferences.toLocaleString()} studies ({ecoLabelData.deployMonths} mo): training adds {ecoLabelData.trainPerStudyG} g/study → <strong>{ecoLabelData.effectivePerStudyG} gCO₂e/study effective</strong>
-                  {ecoLabelData.breakEvenStudies!=null && <> · training = lifetime inference at ~{ecoLabelData.breakEvenStudies.toLocaleString()} studies</>}
-                </div>
-              )}
-              {[
-                ['Task type',                ecoLabelData.taskType],
-                ['Architecture',             ecoLabelData.architecture],
-                ['Parameters',               ecoLabelData.paramsMillion],
-                [ecoLabelData.tokenWorkload ? 'Training / fine-tuning data' : 'Training dataset', ecoLabelData.datasetSize],
-                ...(ecoLabelData.epochs != null ? [[ecoLabelData.tokenWorkload ? 'Fine-tuning epochs' : 'Training epochs', String(ecoLabelData.epochs)]] : []),
-                ['Precision',                ecoLabelData.precision],
-                ...(!ecoLabelData.tokenWorkload && ecoLabelData.inputResolution ? [['Input workload', `${ecoLabelData.inputResolution}px · ${ecoLabelData.dim}${ecoLabelData.slices ? ` · ${ecoLabelData.slices} slice${ecoLabelData.slices===1?'':'s'} / passes` : ''}`]] : []),
-                ['Lifecycle coverage',       ecoLabelData.lifecycleCoverage],
-                ['GPU hardware',             ecoLabelData.trainingAvailable ? ecoLabelData.gpuHardware : ecoLabelData.trainingStatusLabel],
-                ['Training runs',            ecoLabelData.trainingAvailable ? `${ecoLabelData.numRuns} experiment${ecoLabelData.numRuns > 1 ? 's' : ''}` : ecoLabelData.trainingStatusLabel],
-                ['Total GPU-hours',          ecoLabelData.trainingAvailable ? `${ecoLabelData.totalGpuHours} h` : ecoLabelData.trainingStatusLabel],
-                ['Energy per run',           ecoLabelData.trainingAvailable ? `${ecoLabelData.energyPerRunKwh} kWh (${PROVENANCE[ecoLabelData.trainProv]?.label.toLowerCase()}${ecoLabelData.trainTool ? ', ' + ecoLabelData.trainTool : ''})` : ecoLabelData.trainingStatusLabel],
-                ['Total training energy',    ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh over ${ecoLabelData.numRuns} run${ecoLabelData.numRuns===1?'':'s'}` : ecoLabelData.trainingStatusLabel],
-                ...(ecoLabelData.vsReferenceRatio != null ? [['Training efficiency', `${ecoLabelData.vsReferenceRatio}× reference (${ecoLabelData.kwhReference.toLocaleString()} kWh typical for this architecture/size)`]] : []),
-                ['Training CO₂e',            ecoLabelData.trainingAvailable ? `${ecoLabelData.trainCo2} kgCO₂e` : 'Not available'],
-                ['Training compute',         ecoLabelData.trainingAvailable ? `${ecoLabelData.trainingProvider} · ${ecoLabelData.trainingRegion || 'provider average'} · ${ecoLabelData.trainingEffectiveCi} kgCO₂e/kWh` : ecoLabelData.trainingStatusLabel],
-                ['Inference compute',        `${ecoLabelData.inferenceProvider} · ${ecoLabelData.inferenceRegion || 'provider average'} · ${ecoLabelData.inferenceEffectiveCi} kgCO₂e/kWh · PUE ${ecoLabelData.pue}`],
-                ['Water footprint',          ecoLabelData.waterProv==='not-assessed' ? 'Not assessed · reported separately; not scored' : `${ecoLabelData.waterLitres.toLocaleString()} L${ecoLabelData.waterProv==='screening' ? ' · screening estimate' : ''}`],
-                ...(ecoLabelData.hasInference ? [['Monthly inference', `${ecoLabelData.inferStudies.toLocaleString()} studies · ${ecoLabelData.inferMonthlyKwh} kWh · ${ecoLabelData.inferCo2Month} kgCO₂e`]] : []),
-              ].map(([k, v], i) => (
-                <div key={k} style={{display:'flex', justifyContent:'space-between', padding:'7px 18px', background: i%2===0 ? '#f1f8f1' : 'white', fontSize:13, gap:12}}>
-                  <span style={{color:'#607d66', flexShrink:0}}>{k}</span>
-                  <span style={{fontWeight:700, color:'#263238', textAlign:'right'}}>{v}</span>
-                </div>
-              ))}
-              <div style={{background:'#e8f5e9', padding:'8px 18px', fontSize:11, color:'#2E7D32'}}>
-                Estimated with CEDARS · {ecoLabelData.date} · CC BY 4.0
-              </div>
-            </div>
+            <CedarsEcoLabelPreview
+              kind="ai"
+              productTag="AI RESEARCH"
+              identity={ecoLabelData.projectName || 'AI model'}
+              contextLine={`${ecoLabelData.taskType || 'AI lifecycle assessment'} · ${ecoLabelData.date}`}
+              scoreDisplay={ecoLabelData.graded ? String(ecoLabelData.score) : '—'}
+              scored={ecoLabelData.graded}
+              leaves={ecoLabelData.leaves}
+              ratingColor={ecoLabelData.ratingColor}
+              ratingBg={ecoLabelData.ratingBg}
+              ratingLabel={ecoLabelData.graded ? ecoLabelData.ratingLabel.replace('footprint','modeled carbon intensity') : 'Overall Score not assigned'}
+              intensityText={
+                ecoLabelData.graded ? `${ecoLabelData.effectivePerStudyG} gCO₂e/study · training + inference`
+                  : ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study · inference reported separately`
+                  : 'Complete lifecycle inputs to calculate an overall Score'
+              }
+              coverageValue={
+                ecoLabelData.graded
+                  ? 'Training + inference'
+                  : ecoLabelData.scoreStatus==='training-unavailable'
+                    ? 'Inference assessed; training not available'
+                    : ecoLabelData.scoreStatus==='deployment-workload-missing'
+                      ? 'Training assessed; expected deployment not complete'
+                      : 'Partial AI lifecycle data'
+              }
+              coverageDetail={
+                ecoLabelData.graded
+                  ? `One-time training is combined with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
+                  : ecoLabelData.scoreStatus==='training-unavailable'
+                    ? 'Inference is reported separately; unavailable training is not treated as zero.'
+                    : 'Complete the missing lifecycle inputs before interpreting an overall Score.'
+              }
+              headlineMetrics={[
+                {
+                  label:'TRAINING · ONE-TIME',
+                  value:ecoLabelData.trainingAvailable?`${ecoLabelData.trainCo2} kgCO₂e`:ecoLabelData.trainingStatusLabel,
+                  detail:ecoLabelData.trainingAvailable?`${ecoLabelData.totalEnergyKwh} kWh · ${ecoLabelData.totalGpuHours} GPU-h`:'Unknown is not treated as zero.',
+                },
+                {
+                  label:'INFERENCE · PER STUDY',
+                  value:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study`:'—',
+                  detail:ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month · ${ecoLabelData.inferMonthlyKwh} kWh/month`:'Add representative deployment workload.',
+                },
+              ]}
+              rows={[
+                ['Task',ecoLabelData.taskType || '—'],
+                ['Model',[ecoLabelData.architecture,ecoLabelData.paramsMillion].filter(Boolean).join(' · ') || '—'],
+                ['Training compute',ecoLabelData.trainingAvailable?`${ecoLabelData.trainingProvider || '—'} · ${ecoLabelData.trainingRegion || 'provider average'}`:ecoLabelData.trainingStatusLabel],
+                ['Inference compute',`${ecoLabelData.inferenceProvider || '—'} · ${ecoLabelData.inferenceRegion || 'provider average'}`],
+                ['Expected use',ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month · ${ecoLabelData.deployMonths} months`:'Not entered'],
+                ['Water',ecoLabelData.waterProv==='not-assessed'?'Not assessed · not scored':`${ecoLabelData.waterLitres.toLocaleString()} L${ecoLabelData.waterProv==='screening'?' · screening estimate':''}`],
+              ]}
+              date={ecoLabelData.date}
+            />
 
             {/* Actions */}
             <div style={{display:'flex', flexDirection:'column', gap:12, paddingTop:8}}>
               <button className="download" onClick={()=>downloadEcoPNG(ecoLabelData)}>
-                <Download/> Download visual summary (PNG)
+                <Download/> Download Eco-label (PNG)
               </button>
               <p className="note reportVisualSummaryNote">Use this optional visual summary in presentations, posters, model documentation, or exploratory reporting.</p>
               <div style={{marginTop:8}}>
