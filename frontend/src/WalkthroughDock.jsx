@@ -1,12 +1,13 @@
 // CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
 // CEDARS_CHUNK_9R16_SEMANTIC_COLOR_WALKTHROUGH_AI_ENTRY
+// CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY
 import React, {useEffect, useState} from 'react';
 import {Activity, Brain, X} from 'lucide-react';
 
 const JOURNEYS = [
-  {key:'leader',icon:Activity,label:'Radiology Department',detail:'Profile current operations and Digital + AI, interpret Result, test scenarios, then report.'},
-  {key:'procure',icon:Brain,label:'Clinical AI evaluation',detail:'Compare or assess AI, carry the selected system into Profile, then test deployment choices.'},
-  {key:'developer',icon:Brain,label:'AI development',detail:'Measure Training and Deployment, interpret Result, test prospective changes, then report.'},
+  {key:'leader',icon:Activity,label:'Radiology Department',detail:'Build the current Department Profile, interpret its EcoLabel, test prospective changes, then report.'},
+  {key:'procure',icon:Brain,label:'Clinical AI evaluation',detail:'Compare candidates or assess one AI system, document its lifecycle, interpret the EcoLabel, then test deployment choices.'},
+  {key:'developer',icon:Brain,label:'AI development',detail:'Measure or estimate Training and Deployment, interpret lifecycle impact, test changes, then report.'},
 ];
 
 function JourneyButtons({onStart, compact=false}) {
@@ -43,7 +44,7 @@ export function FirstVisitWalkthroughPrompt({onStart,onSkip}) {
       <button type="button" className="firstVisitWalkthroughClose" onClick={skip} aria-label="Skip walkthrough"><X size={18}/></button>
       <span className="firstVisitWalkthroughKicker">FIRST VISIT · GUIDED WALKTHROUGH</span>
       <h2 id="first-visit-walkthrough-title">See how CEDARS works before you start</h2>
-      <p>Follow an illustrative assessment step by step. The walkthrough is read-only until you choose to keep an example.</p>
+      <p>Follow an illustrative assessment step by step: build the current Profile, interpret the EcoLabel, test a prospective change, and see how the result is reported. The walkthrough is read-only until you choose to keep the example.</p>
       <JourneyButtons onStart={start}/>
       <button type="button" className="firstVisitWalkthroughSkip" onClick={skip}>Skip for now</button>
     </section>
@@ -93,6 +94,6 @@ export default function WalkthroughDock({onStart,showHint=false,onDismissHint}) 
     <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)dismissCoach();}} aria-expanded={open}>
       <span>GUIDED WALKTHROUGH</span><strong>Explore CEDARS</strong><b aria-hidden="true">{open?'×':'→'}</b>
     </button>
-    {open&&<div className="walkthroughDockPanel"><p>Read-only examples that show where to click, what the scientific boundaries mean, and how to interpret the result.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
+    {open&&<div className="walkthroughDockPanel"><p>Read-only examples that show what CEDARS can do, where to click, how to interpret the result, and how current state stays separate from prospective changes.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
   </aside>;
 }

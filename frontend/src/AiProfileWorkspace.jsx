@@ -1,6 +1,7 @@
 // CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION
 // CEDARS_CHUNK_9J_AI_RESULT_CONSOLIDATION
 // CEDARS_CHUNK_9G_PROFILE_RESULT_CONSOLIDATION
+// CEDARS_CHUNK_9R26_WORKFLOW_ECOLABEL_UNIFICATION
 import React from 'react';
 import StageCarousel from './StageCarousel.jsx';
 
@@ -44,7 +45,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     else if(section==='inference') requested='inference';
     else if(section==='review') requested='review';
     else if(section==='context') requested='context';
-    else if(section==='water') requested=ecoLabelData.hasData?'review':earliestPermittedStage();
+    else if(section==='water') requested='inference';
     setProfileStage(current=>{
       const candidate=requested||current;
       return stagePermitted(candidate) ? candidate : earliestPermittedStage();
@@ -67,7 +68,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     else if(key==='context') onSection('context');
   };
   const contextGroupLabel=developMode?'MODEL & WORKLOAD CONTEXT':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
-  const contextFlow='Context → training → deployment → Result (EcoLabel). Validation and optional water disclosure stay attached to the same profile.';
+  const contextFlow='Context → Training → Deployment → Result (EcoLabel). Validation stays with Context; workflow effects and optional water disclosure stay with Deployment.';
 
   const openAndScroll=id=>{
     const node=document.getElementById(id);
@@ -98,16 +99,14 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
           <span>{contextGroupLabel}</span>
           <NavButton label={developMode?'1 · Task / workload':'1 · Clinical purpose'} meta={purposeDone?null:developMode?'Choose workload type':'Define task and intended use'} done={purposeDone} onClick={()=>{setProfileStage('context');openAndScroll('ai-model-record');}} tone="clinical"/>
           <NavButton label={developMode?'2 · Evaluation & validation':'2 · Performance & validation'} meta={performanceDone?null:compareMode?'Needed before candidate ranking':performanceStarted?'Finish evidence context':developMode?'Supporting context':'Optional unless needed clinically'} done={performanceDone} attention={performanceAttention} onClick={()=>{setProfileStage('context');openAndScroll('ai-performance-section');}} tone="evidence"/>
-          {!developMode&&<NavButton label="3 · Workflow & downstream effects" meta={effectsBasis==='none'?'Review local effects':effectsBasis==='published'?'External evidence documented':effectsBasis==='scenario'?'Prospective effect · Decision Workspace':null} done={effectsDone} attention={false} onClick={()=>{setProfileStage('context');openAndScroll('ai-effects-section');}} tone="clinical"/>}
+
         </div>
         <div className="aiProfileNavGroup">
           <span>LIFECYCLE</span>
           <NavButton label="Training / development" meta={trainingDone?null:'Needs training status'} done={trainingDone} active={section==='training'} onClick={()=>lifecycle('training','ai-training-section')} tone="lifecycle"/>
           <NavButton label="Inference & deployment" meta={inferenceDone?null:'Needs deployment inputs'} done={inferenceDone} active={section==='inference'} onClick={()=>lifecycle('inference','ai-inference-section')} tone="lifecycle"/>
-        </div>
-        <div className="aiProfileNavGroup">
-          <span>RESOURCES</span>
-          <NavButton label="Water disclosure" meta={boundaryDone?null:'Review water use'} done={boundaryDone} active={section==='water'} onClick={()=>{setProfileStage('review');lifecycle('water','ai-water-section');}} tone="boundary"/>
+          {!developMode&&<NavButton label="Workflow effects · optional" meta={effectsBasis==='none'?'Review local effects':effectsBasis==='published'?'External evidence documented':effectsBasis==='scenario'?'Prospective effect · Decision Workspace':null} done={effectsDone} attention={false} onClick={()=>lifecycle('inference','ai-effects-section')} tone="clinical"/>}
+          <NavButton label="Water disclosure · optional" meta={boundaryDone?null:'Review water use'} done={boundaryDone} attention={false} active={false} onClick={()=>lifecycle('inference','ai-water-section')} tone="boundary"/>
         </div>
       </nav>
       <button type="button" className={`aiProfileReviewAction ${reviewDone?'complete':''}`} onClick={()=>setProfileStage('review')}>

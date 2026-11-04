@@ -94,8 +94,8 @@ export const REFS = {
   'green-algorithms': {
     authors: 'Lannelongue L, Grealey J, Inouye M',
     title: 'Green Algorithms: quantifying the carbon footprint of computation',
-    venue: 'arXiv', year: 2020, cite: '2020; arXiv:2007.07610 (journal version: Adv Sci 2021)',
-    doi: '10.48550/arXiv.2007.07610', verified: '2026-10-04',
+    venue: 'Adv Sci', year: 2021, cite: '2021;8(12):2100707',
+    doi: '10.1002/advs.202100707', verified: '2026-11-04',
   },
   'cloud-carbon-footprint': {
     authors: 'Thoughtworks',
@@ -111,9 +111,9 @@ export const REFS = {
   },
   'ai-energy-score': {
     authors: 'Salesforce, Hugging Face, Cohere, Carnegie Mellon University',
-    title: 'AI Energy Score — benchmark and 1–5 star label for AI model energy efficiency',
-    venue: 'Hugging Face', year: 2025, cite: 'launched Feb 2025',
-    url: 'https://www.salesforce.com/news/stories/ai-energy-score/', verified: '2026-10-04',
+    title: 'AI Energy Score — benchmark for AI model energy efficiency',
+    venue: 'Hugging Face', year: 2025, cite: 'launched 2025; maintained benchmark',
+    url: 'https://huggingface.github.io/AIEnergyScore/', verified: '2026-11-04',
   },
   'boavizta': {
     authors: 'Boavizta',

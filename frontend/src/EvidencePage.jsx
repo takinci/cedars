@@ -1,3 +1,5 @@
+// CEDARS_CHUNK_9R26_WORKFLOW_ECOLABEL_UNIFICATION
+// CEDARS_CHUNK_9R27_VISUAL_LANGUAGE_PARITY
 import React from 'react';
 // CEDARS_CHUNK_9R14B_UNIVERSAL_DARK_EVIDENCE
 // CEDARS_CHUNK_9R15_EVIDENCE_LAYERING
@@ -153,22 +155,21 @@ export default function EvidencePage({onStart}) {
   const [pausedAll, setPausedAll] = React.useState(()=>typeof window!=='undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   return (
     <main className="evidencePage evidenceGalleryPage">
-      <div className="evidenceTopUtility">
-        <a className="evidenceMethodsTop" href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">
-          <span>METHODS &amp; SOURCES</span><strong>Open full Methods &amp; Sources</strong><ExternalLink size={14}/>
-        </a>
-        <aside className="evidenceReadyBox" aria-label="Start a CEDARS assessment">
-          <span>READY?</span>
-          <button type="button" className="evidencePrimaryCta" onClick={onStart}>Start a CEDARS assessment <ArrowRight size={16}/></button>
-        </aside>
-      </div>
-
       <section className="evidenceHero contentSurfaceInset">
         <span>EVIDENCE BEHIND CEDARS</span>
         <h1>A reading library for sustainable radiology and medical AI.</h1>
         <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions!</p>
-        <div className="evidenceHeroControls">
-          <button type="button" className="evidencePauseAll" aria-pressed={pausedAll} onClick={()=>setPausedAll(value=>!value)}>{pausedAll?<Play size={14}/>:<Pause size={14}/>} {pausedAll?'Resume auto-advance':'Pause auto-advance'}</button>
+
+        <div className="evidenceHeroActionRow" aria-label="Evidence page actions">
+          <a className="evidenceMethodsTop evidenceHeroAction" href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">
+            <ExternalLink size={14}/><span>METHODS &amp; SOURCES</span><strong>Open full Methods &amp; Sources</strong>
+          </a>
+          <button type="button" className="evidencePauseAll evidenceHeroAction evidencePauseAllTop" aria-pressed={pausedAll} onClick={()=>setPausedAll(value=>!value)}>
+            {pausedAll?<Play size={14}/>:<Pause size={14}/>}<span>{pausedAll?'Resume auto-advance':'Pause auto-advance'}</span>
+          </button>
+          <button type="button" className="evidencePrimaryCta evidenceHeroStart" onClick={onStart}>
+            <span>READY?</span><strong>Start a CEDARS assessment</strong><ArrowRight size={16}/>
+          </button>
         </div>
       </section>
 
