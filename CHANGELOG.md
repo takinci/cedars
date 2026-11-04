@@ -30,6 +30,8 @@ This changelog is organized by **product/scientific area**, not by internal patc
 
 ## Persistence, privacy & deployment
 
+- **2026-11-04 — Optional Google sign-in can verify contributor identity.** Research contribution can use Google sign-in to verify a contributor's name/email server-side; anonymous/free-text contribution remains available when sign-in is not used. This is separate from private cross-device cloud save.
+
 - **2026-11-04 — Optional private Google-account save added.** A signed-in user can reopen a private Firestore working copy across devices; this remains separate from research contribution. Representative commit: [`473f72b6`](https://github.com/takinci/cedars/commit/473f72b6674e31ca5664d43a73a4a4b0d66de45b).
 - **Current architecture — Browser-local remains the default.** Local save, calculations, portable `.cedars.json` import/export, and normal assessment use do not require research contribution; contribution remains an explicit review-and-submit action.
 - **Current schema — Portable assessments use schema v3.** Earlier schemas remain readable through migration logic without inventing newly required local inputs.
@@ -45,6 +47,8 @@ This changelog is organized by **product/scientific area**, not by internal patc
 - **2026-11-01 — Sustainability and Evidence pages consolidated.** The public narrative and reading library were reorganized around practical radiology/AI sustainability questions with clearer source presentation. Representative commits: [`d6bd8ccc`](https://github.com/takinci/cedars/commit/d6bd8ccc5a76825f733c760329979085c1b24fe6), [`a00feb09`](https://github.com/takinci/cedars/commit/a00feb09381852787dd464b88f7e6845e21128e9).
 
 ## Detailed history
+
+- **Repository planning:** actionable future work is tracked in GitHub Issues; scientific limitations remain in `METHODS.md` / `sources.md`, while completed user-facing changes remain summarized here.
 
 This file intentionally records **user-facing and scientific decision points**, not every implementation checkpoint. For exact file-level changes, intermediate fixes, and authorship, use the repository's Git history.
 
