@@ -18,6 +18,8 @@
 - Input provenance labels for advanced equipment overrides.
 - Optional research-contribution modal with separate consent, acknowledgment, and future-contact permissions.
 - Cloudflare Worker + D1 deployment scaffold for optional research contributions.
+- Optional Google sign-in on the research-contribution form: verifies the contributor's name/email server-side instead of relying on free text; anonymous free-text submission remains the default when sign-in isn't used.
+- Optional Google-account cloud save (Firestore), separate from research contribution: a signed-in user can save a private, per-account copy of their in-progress assessment and reopen it on another device. Nothing here is reviewed or collected by CEDARS; **Save on this device** remains the no-account default.
 
 ### Changed
 - Repository planning now uses GitHub Issues for concrete future work rather than a static ROADMAP file; scientific limitations remain documented in METHODS/sources and completed user-facing changes in this changelog.

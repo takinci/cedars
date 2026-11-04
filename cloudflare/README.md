@@ -73,21 +73,9 @@ The frontend is intentionally safe-by-default: if `VITE_CEDARS_CONTRIBUTE_URL` i
 
 By default the **Contribute this assessment** form accepts a free-text name and email, same as before. A contributor can optionally sign in with Google instead, so the stored name/email is a verified identity rather than self-reported text. This is purely additive — sign-in is never required to submit, and CEDARS still has no accounts anywhere else in the app.
 
-1. Create a project at https://console.firebase.google.com (Analytics is optional; decline it unless you specifically want it).
-2. Register a web app for the project (the `</>` icon) — no Firebase Hosting needed, CEDARS keeps using GitHub Pages. Firebase shows a `firebaseConfig` object; these values are public client identifiers, not secrets.
-3. **Authentication -> Get started -> Sign-in method -> Add new provider -> Google** -> enable it.
-4. **Authentication -> Settings -> Authorized domains** -> add `cedarsleaf.com` and `takinci.github.io`.
-5. Add these four **GitHub repository variables** (Variables tab, same as `VITE_CEDARS_CONTRIBUTE_URL`):
+This feature shares one Firebase project with an unrelated feature, the cross-device cloud-save option in **Save & Share** — see [`firebase/README.md`](../firebase/README.md) for the Firebase Console setup (project creation, enabling the Google provider, authorized domains, the four `VITE_FIREBASE_*` GitHub variables). The remaining steps below are specific to this Worker.
 
-   ```text
-   VITE_FIREBASE_API_KEY
-   VITE_FIREBASE_AUTH_DOMAIN
-   VITE_FIREBASE_PROJECT_ID
-   VITE_FIREBASE_APP_ID
-   ```
-
-   Leaving these unset keeps the sign-in button hidden and the form fully anonymous, same as today.
-6. The Worker independently re-verifies the Google ID token server-side (it never trusts the browser's claimed identity) — it needs to know which Firebase project to expect tokens from. Set it as a plain Worker variable (not a secret — a project ID isn't sensitive) in `wrangler.toml`:
+1. The Worker independently re-verifies the Google ID token server-side (it never trusts the browser's claimed identity) — it needs to know which Firebase project to expect tokens from. Set it as a plain Worker variable (not a secret — a project ID isn't sensitive) in `wrangler.toml`:
 
    ```toml
    [vars]
@@ -95,7 +83,7 @@ By default the **Contribute this assessment** form accepts a free-text name and 
    ```
 
    then `npx wrangler deploy`.
-7. Run the schema migration against the live database (safe to run even if already applied — D1 doesn't support `ADD COLUMN IF NOT EXISTS`, so only run each line once):
+2. Run the schema migration against the live database (safe to run even if already applied — D1 doesn't support `ADD COLUMN IF NOT EXISTS`, so only run each line once):
 
    ```bash
    npx wrangler d1 execute cedars-contributions --remote --command="ALTER TABLE contributions ADD COLUMN auth_provider TEXT;"
