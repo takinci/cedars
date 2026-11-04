@@ -20,9 +20,9 @@
 
 > **Research software · active development**
 >
-> CEDARS is an open research platform. A manuscript describing CEDARS has been **submitted for peer review**. The software, interface, defaults, and methods remain under active development and may evolve as validation and evidence improve. The CEDARS Score and EcoLabel are research outputs, **not an external certification**.
+> CEDARS is an open research platform. A manuscript describing CEDARS has been **submitted for peer review**. The software, interface, defaults, and methods remain under active development and may evolve as validation and evidence improve. The CEDARS Score and EcoLabel are CEDARS-generated assessment and reporting outputs; interpretation should retain the documented methods, assumptions, and provenance.
 
-**Live application:** [cedarsleaf.com](https://cedarsleaf.com)  
+**Live application:** [cedarsleaf.com](https://cedarsleaf.com)
 **About the CEDARS Collaborative:** [international collaborators, institutions, and project background →](https://cedarsleaf.com/?page=about)
 
 CEDARS is a multi-person, multi-institutional, international collaboration spanning radiology, clinical AI, sustainability, and health systems. Collaborator affiliations identify contributors and do not imply institutional endorsement or sponsorship.
@@ -45,10 +45,10 @@ Within **Profile**, the Department and AI pathways use parallel four-stage struc
 |---|---|
 | **Context** — region, equipment, workload, energy baseline | **Context** — clinical purpose, model/task context, comparison or assessment setup |
 | **Workflow** — how imaging care is delivered today | **Training** — development/training inputs and compute context |
-| **Digital + AI** — optional local informatics/Clinical AI use | **Deployment** — inference workload, compute location, and deployment assumptions |
-| **Result** — current footprint and Score interpretation | **Result** — current lifecycle result and coverage |
+| **Clinical AI** — optional local informatics/Clinical AI use | **Deployment** — inference workload, compute location, and deployment assumptions |
+| **Result (EcoLabel)** — current footprint, Score, and EcoLabel | **Result (EcoLabel)** — current lifecycle result, coverage, and EcoLabel |
 
-The **CEDARS Score is interpreted with the current Result**. EcoLabels and the optional AI Research Label are reporting outputs prepared in **Report & Share**, not separate top-level workflow stages.
+The **CEDARS Score is interpreted with Result (EcoLabel)**. The Department EcoLabel and AI Research EcoLabel preview the current assessed result in Profile and are carried forward as the same reporting product in **Report & Share**.
 
 No account or installation is required for the public site. An optional Google sign-in lets a user save a private copy of their assessment and continue it on another device — see [Saving, sharing, and privacy](#saving-sharing-and-privacy).
 
@@ -67,11 +67,11 @@ The technical model is described once; local Department use is configured separa
 
 ### Radiology Department
 
-The Department Profile follows **Context → Workflow → Digital + AI (optional) → Result**. CEDARS can estimate and contextualize equipment energy, utilization, energy/carbon per study, electricity emissions, modeled Scope 3 categories, storage/archiving, Clinical AI, contrast-media and resource indicators, and current workflow practices. Local measured values can replace defaults where supported.
+The Department Profile follows **Context → Workflow → Clinical AI (optional) → Result (EcoLabel)**. CEDARS can estimate and contextualize equipment energy, utilization, energy/carbon per study, electricity emissions, modeled Scope 3 categories, storage/archiving, Clinical AI, contrast-media and resource indicators, and current workflow practices. Local measured values can replace defaults where supported.
 
 ### AI Model & Informatics
 
-The AI Profile follows **Context → Training → Deployment → Result**. CEDARS starts from three user intentions: assess one AI system already selected or in use, compare like-for-like candidates, or assess a model being developed/evaluated. The underlying record supports single-task imaging AI, LLM/foundation-model and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an optional **AI Research Label**. CEDARS does not predict model performance.
+The AI Profile follows **Context → Training → Deployment → Result (EcoLabel)**. CEDARS starts from three user intentions: assess one AI system already selected or in use, compare like-for-like candidates, or assess a model being developed/evaluated. The underlying record supports single-task imaging AI, LLM/foundation-model and agentic workloads; separate training and inference compute contexts; provenance; deployment-volume and amortized per-study reporting; and an optional **AI Research EcoLabel**. CEDARS does not predict model performance.
 
 ### Decision Workspace
 
@@ -82,10 +82,10 @@ The Decision Workspace separates the **current Profile** from **prospective scen
 Reporting is organized around:
 
 1. **Reporting details & reproducibility**
-2. **CEDARS materials** — including the Department EcoLabel and optional AI Research Label
+2. **CEDARS materials** — including the Department EcoLabel and optional AI Research EcoLabel
 3. **Preserve or share**
 
-Outputs include research labels, reporting text, structured methods/reproducibility fields, and portable assessment files. CEDARS labels are research outputs, not external certification.
+Outputs include research labels, reporting text, structured methods/reproducibility fields, and portable assessment files. CEDARS labels are assessment and reporting outputs generated from the documented CEDARS record.
 
 ---
 
@@ -132,7 +132,7 @@ The calculation logic is kept in testable modules rather than duplicated in the 
 | `calc.js` | CEDARS Score/Rating and regional carbon/cost helpers |
 | `model.js` | Department fleet, dashboard, clinical effects, storage, and intervention calculations |
 | `urlstate.js` | Validation and encode/decode of shareable calculator state |
-| `ailabel.js` | AI model record → AI Research Label calculations and reporting fields |
+| `ailabel.js` | AI model record → AI Research EcoLabel calculations and reporting fields |
 | `aiRecords.js` | Canonical AI model records and Department-use persistence |
 
 Vitest regression tests pin fixed inputs to known outputs, and the production build runs through GitHub Actions before deployment. `package-lock.json` is committed for reproducible dependency resolution.

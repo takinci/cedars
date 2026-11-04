@@ -1,64 +1,57 @@
 # Changelog
-- Replaced observer/anchor-based stage navigation with controlled horizontal stage carousels for Department and AI Profile, preventing page-jump feedback loops while preserving back/forward stage navigation. Added a one-time post-skip walkthrough coach mark, simplified the Home workflow into an informational “What you’ll do” overview, and made Profile stages discrete rather than vertically stacked.
 
-## Unreleased
+This changelog is organized by **product/scientific area**, not by internal patch number. Within each area, consequential decision points are listed **most recent first**. Git history remains the detailed implementation audit trail.
 
-### Added
-- Repository-level **`METHODS.md`** and **`docs/DESIGN_SYSTEM.md`**, with explicit scientific/evidence/design ownership; `sources.md` now includes evidence-role, identifier, synchronization, and maintenance rules for future updates.
-- **AI Model & Informatics entry step**: *Compare candidate models* (procure/deploy) vs *Assess my own model* (develop), with three ways in for developers (measured numbers · Help me measure · estimate from specification) and a *See an example* band.
-- **Help me measure** tool chooser: three questions about the compute setup recommend an open-source energy-measurement tool and name the CEDARS field it fills; tool list verified October 2026, with a feedback notice.
-- Provenance tags (*Measured / Estimated / Literature*) on the AI model record; optional water inputs (site WUE, grid water intensity) with a screening fallback that is stated on the label.
-- Inline references with DOI link-outs (`refs.js`) and an external-link notice dialog.
-- Four worked AI examples (measured CXR classifier, vendor-API report LLM, mAIstro multi-agent workflow, RoentGen synthetic CXR), reproducible by link.
-- `ai.test.js` reference tests pinning the AI model grade and label to known outputs.
-- Public **About CEDARS** page and collaborator grid.
-- Browser-only **Save on this device only** workflow with restore/delete controls.
-- Versioned portable `.cedars.json` assessment files with local import/export.
-- Explicit **Copy shareable link** action.
-- Input provenance labels for advanced equipment overrides.
-- Optional research-contribution modal with separate consent, acknowledgment, and future-contact permissions.
-- Cloudflare Worker + D1 deployment scaffold for optional research contributions.
-- Optional Google sign-in on the research-contribution form: verifies the contributor's name/email server-side instead of relying on free text; anonymous free-text submission remains the default when sign-in isn't used.
-- Optional Google-account cloud save (Firestore), separate from research contribution: a signed-in user can save a private, per-account copy of their in-progress assessment and reopen it on another device. Nothing here is reviewed or collected by CEDARS; **Save on this device** remains the no-account default.
+## EcoLabel & reporting
 
-### Changed
-- Repository planning now uses GitHub Issues for concrete future work rather than a static ROADMAP file; scientific limitations remain documented in METHODS/sources and completed user-facing changes in this changelog.
-- Guided onboarding now prompts first-time visitors to start or skip a walkthrough, keeps a bright dark walkthrough launcher available throughout the assessment, gives quick starts/examples the same high-contrast illustrative treatment, and adds horizontal scroll-snap stage cards across the major workflow pages so the active section is visually explicit.
-- Finishing-pass interaction hierarchy makes **Profile → Decision Workspace → Report & Share** prominent on Home; aligns the parallel Department and AI Profile rails; unifies walkthroughs, quick-start templates, and worked examples under one illustrative visual language; surfaces AI examples as a persistent utility rather than a workflow step; promotes the radiology workflow as the primary Department decision navigator; compacts the experimental AI visual summary; opens Methods-ready text by default for research reporting; and makes the global header action read **Save / Share** on the Report step.
-- Workflow architecture now separates AI examples from the primary pathway, returns Profile → AI model to the AI start screen without deleting saved data, renames stage 2 to **Results**, simplifies development-profile requirements to workload/lifecycle inputs, makes AI Improve lifecycle-driver-first, gates model-specific Improve until a comparison candidate is selected, and makes methods/provenance the primary AI research-report output while keeping the AI Research Label as an optional experimental visual summary.
-- Production UI pass clarifies pathway progression and escape routes, separates optional worked examples from required AI steps, simplifies candidate-comparison status, improves Score selected-state contrast, groups AI Improve recommendations by clinical/evidence readiness, footprint completeness, and environmental opportunities, compacts repeated system-effects messaging, and restructures Report & Share for publication-oriented export and preservation workflows.
-- Navigation now follows **Profile → Decision Workspace → Report & Share**. Department Profile uses **Context → Workflow → Digital + AI (optional) → Result**; AI Profile uses **Context → Training → Deployment → Result**. The **Sustainability Profile** is the shared current-state object, the CEDARS Score is interpreted with Result, prospective changes remain in Decision Workspace, and EcoLabel/Research Label generation lives in Report & Share.
-- AI Model & Informatics opens directly from Home rather than routing through a separate location-only page; shared local context remains editable, while AI compute/deployment context is handled inside the AI workflow.
-- Department/AI profile identity is now preserved explicitly when switching pathways or opening Report & Share, preventing a stale product selection from carrying into the wrong report.
-- Improve remains prospective: projected score changes do not overwrite the current Sustainability Profile. AI profiles with quantified partial-lifecycle data can be reported transparently without assigning an overall Score when required lifecycle phases are unavailable.
-- Interface simplification raises small text sizes, flattens card-heavy styling, shortens AI entry copy, restores explicit local/AI-compute location tags, and keeps the viewport stable when switching models, loading examples, or selecting a candidate.
-- Workflow/evidence cleanup keeps Department and AI model selectors inside Build Profile while balancing the four-stage rail, shows unassigned scores with dashes instead of 0 leaves, collapses full reference lists by default, consolidates single-model AI inputs into one Sustainability Profile editor, and keeps detailed calculations with Results.
-- AI Sustainability Profile editing is summary-first: model/project name is optional, clinical task is separated from optional technical presets, validation performance is separated from clinical/workflow effects, lifecycle inputs are edited one section at a time, and reporting completeness stays visible in a compact bottom bar. Reference presets no longer populate clinical evidence.
-- AI Model & Informatics now starts from two work-context lanes: **evaluating/using AI in clinical care** versus **developing/materially retraining AI**. The clinical lane then asks whether to assess one system or compare candidates; both lanes ask the AI family only after the work context is clear. Role examples explicitly include clinicians, radiology leaders, procurement, administrators, informatics/IT, governance, sustainability teams, researchers, and ML engineers.
-- Guided walkthroughs are reduced to three role-aligned journeys: Department/operations, clinical AI evaluation/use, and AI development/retraining. Published LLM, vendor-hosted LLM, agentic, synthetic-imaging, and measured-classifier records remain loadable examples rather than separate workflows. The guidance panel stays anchored to the right on desktop/tablet and to the bottom on mobile while the spotlight moves.
-- Candidate comparison keeps essential inputs, side-by-side results, and model selection in one decision workflow.
-- Sitewide visual hierarchy is tightened after the workflow redesign: denser cards and accordions, clearer result-versus-input emphasis, stronger keyboard focus states, and improved tablet/mobile behavior.
-- Department device duty-cycle profiles are normalized to the average calendar month (730.5 h) before annualization; this removes the prior 31-day-month overcount while preserving each device's relative state mix.
-- Avoidable-idle accounting now measures only the recoverable power-state delta; MRI/CT full-shutdown uses the named Off state, PET-CT is excluded from full shutdown, and overlapping idle interventions are not double-counted.
-- PACS/RIS application-server power is explicitly separated from long-term archive storage. Server consolidation is now a transparent 20% scenario estimate on the modeled PACS/RIS + workstation compute pool rather than a cloud-PUE-derived saving.
-- DICOM transfer uses modality-specific study sizes instead of one 0.3 GB/study average; everyday-equivalency factors are centralized in the model layer.
-- Equipment overrides now carry their actual provenance into dashboard/export rows; user-entered values are no longer automatically labeled measured.
-- Renewable electricity percentages are disclosure-only in the location-based carbon inventory; they no longer linearly reduce Department, AI, or cloud carbon factors. The renewable intervention is planning guidance until a separate market-based factor is implemented.
-- Homepage profile selection is the primary entry decision; later stages follow the same four-stage assessment journey instead of competing as separate starting points.
-- The AI pathway keeps the name **AI Model & Informatics** (the earlier plan to rename it *AI Footprint* was reversed for clarity against the Department pathway); README and docs now match the interface.
-- The AI Research Label is now a view of the single AI model record rather than a separately-edited copy; the former "mirror until edited" behaviour and its drift are gone. Training energy per run is the model's own figure (measured, GPU-hours, or literature) times the number of runs.
-- Header score badge is pathway-aware: it shows the AI model's score in the AI pathway, the Department score elsewhere.
-- Department water, paper, generic hazardous waste, patient travel, and staff commute are no longer auto-promoted from weak generic proxies. They default to **Not assessed** and require local inputs before appearing as reported extended estimates; historical proxy calculations remain screening references only.
-- Staff count is no longer inferred from scanner/device counts for commute accounting.
-- Department reporting now distinguishes the **Core quantified** operational score boundary from **Extended estimates** and **Not assessed** categories; extended Scope 1/3 and resource estimates do not alter the CEDARS Score.
-- Deployed `Clinical AI tools` terminology is simplified to **Clinical AI**.
-- AI task-family templates no longer seed scan-time or avoided-imaging benefits; clinical-effect fields now default to zero and require an explicit evidence basis.
-- Only locally observed or locally validated clinical effects may reduce the current AI footprint; published external effects and scenario assumptions remain visible but are not credited to the current result.
-- Removed the categorical rebound-risk label and the deployment-volume-dependent performance/monthly-kWh ratio; candidate comparison now uses separate performance and environmental-intensity dimensions plus the existing Pareto view.
-- Non-default shareable URLs now carry a `v=3` state marker for the revised Department boundary semantics. The pre-v2 AI migration still restores the historical 12% avoided-imaging default as scenario-only disclosure, while v2/v3 links are never misclassified as legacy AI state.
-- Portable `.cedars.json` assessments use schema v3; schema-v1/v2 files remain readable and are migrated without inventing new local weak-proxy inputs.
-- EcoLabel now states: **Research assessment — not (yet) an external certification.**
-- Privacy language now distinguishes browser-local use from explicit research contribution.
+- **2026-11-04 — One CEDARS EcoLabel family.** Department and AI Research EcoLabels now use the same shell, palette, leaf-scale grammar, coverage hierarchy, key-result structure, assessment-context rows, and provenance footer. Result (EcoLabel) and Report & Share render the same reporting object rather than parallel visual products.
+- **2026-11-04 — Coverage is explicit rather than implied.** Department Result distinguishes the operational Score boundary, categories assessed beyond the Score, and categories not assessed; compact counts disclose the actual category names. Missing lifecycle phases in AI remain visible and are not treated as zero.
+- **2026-11-04 — Result interpretation is parallel.** Department and AI Results both include an “Interpret the result / Put this result in everyday terms” layer. AI distinguishes per-study intensity from deployment-period total impact so scale comparisons do not blur those two questions.
+- **2026-11-04 — Report & Share order stabilized.** EcoLabel is the first reporting product, followed by Methods/evidence and Save & share. Public copy emphasizes CEDARS-generated assessment provenance rather than repetitive certification disclaimers.
+- **2026-10-31 to 2026-11-02 — Research reporting hierarchy established.** Methods/provenance, current-state Results, prospective Decision Workspace outputs, and save/share actions were separated into distinct roles. Representative commits: [`3372166e`](https://github.com/takinci/cedars/commit/3372166e998f87c99efb231c3c631e7ba5edf596), [`1e88f6c6`](https://github.com/takinci/cedars/commit/1e88f6c69b417f168067964aef62d39ca7c7f90f).
 
-### Preserved
-- Existing calculation modules and URL-hash calculator behavior are intentionally unchanged by these site/persistence updates.
+## Assessment workflows
+
+- **2026-11-04 — Workflow and Decision Workspace now use one stage/lever grammar.** Current practices and prospective changes use the same causal stage mapping; an already-implemented practice is carried forward rather than credited twice. The Process / interpret AI-efficiency lever is visible on both sides and requires a recorded local Clinical AI use before Department modeling.
+- **2026-11-04 — Electricity-cost context now follows the baseline into decisions.** Workflow shows the current estimated electricity-cost baseline; Decision Workspace shows baseline and projected electricity cost plus estimated savings from the same configured/default tariff. These are electricity-only estimates, not total cost-of-care claims.
+- **2026-11-04 — Current-state power management made explicit.** Department Workflow records CT, MRI, and reporting-workstation power-management coverage separately; Decision Workspace models only the incremental current-to-target opportunity. Representative commit: [`960134b`](https://github.com/takinci/cedars/commit/960134bbb379fd48d99323e5cfaacc50e33d7116).
+- **2026-11-04 — Department Profile finalized as Context → Workflow → Clinical AI (optional) → Result (EcoLabel).** “Digital + AI” was renamed **Clinical AI** to distinguish local deployment/use from the separate AI Model & Informatics record.
+- **2026-11-04 — AI Profile finalized as Context → Training → Deployment → Result (EcoLabel).** Performance/validation remains optional Context evidence; workflow/downstream effects and optional resource disclosures belong to Deployment; technical assumptions remain separate estimation inputs.
+- **2026-11-03 — Gating and progression strengthened.** Required Context inputs control later Department stages, while walkthrough examples satisfy the same gate rather than bypassing it. AI lifecycle progression and return/escape routes were similarly clarified. Representative commits: [`e8397693`](https://github.com/takinci/cedars/commit/e83976936b52caa8225af2b246af4f6379dffa32), [`753beb9d`](https://github.com/takinci/cedars/commit/753beb9d2b86f3bae2aca4c0cc03ffe05c2a79c5).
+- **2026-10-31 — Controlled stage navigation replaced observer/anchor-driven progression.** This removed page-jump feedback loops and established the discrete Profile-stage model used by both pathways. Representative commit: [`b255887e`](https://github.com/takinci/cedars/commit/b255887eea4eb76d70b46c61028532480b7fbde9).
+
+## Evidence, methods & scientific assumptions
+
+- **2026-11-04 — Evidence registry reconciled with current CEDARS behavior.** `METHODS.md` documents the governing workflow/boundary logic; `sources.md` records evidence roles, source scope, numerical defaults, limitations, and maintained tool-version snapshots.
+- **2026-11-04 — Measurement-tool provenance made reproducible.** “Help me measure” distinguishes direct telemetry, usage/specification estimates, external benchmarks, and embodied-hardware data. Version-specific CEDARS reference snapshots are retained even when newer upstream releases are observed.
+- **2026-11-04 — Water remains a separate disclosure.** Department water requires appropriate local data for reporting; the generic 1.8 L/kWh value is only a screening reference. AI water distinguishes optional compute-site/grid inputs from screening/not-assessed states and does not enter the current carbon-and-energy Score.
+- **2026-11-04 — Clinical quality remains a gate, not a compensatory weight.** Candidate comparison keeps clinical/performance suitability and environmental intensity as separate dimensions; lower environmental burden cannot mathematically offset an unsuitable clinical option.
+- **2026-11-03 — Documentation ownership formalized.** Scientific logic, evidence/default provenance, and presentation rules were separated across `METHODS.md`, `sources.md`, and `docs/DESIGN_SYSTEM.md`. Representative commits: [`9490cb7e`](https://github.com/takinci/cedars/commit/9490cb7eb58527761b64378c6b6e946c2d518d28), [`00475d1b`](https://github.com/takinci/cedars/commit/00475d1b2e761c970843967b4aaba202c307a00d).
+
+## Persistence, privacy & deployment
+
+- **2026-11-04 — Optional Google sign-in can verify contributor identity.** Research contribution can use Google sign-in to verify a contributor's name/email server-side; anonymous/free-text contribution remains available when sign-in is not used. This is separate from private cross-device cloud save.
+
+- **2026-11-04 — Optional private Google-account save added.** A signed-in user can reopen a private Firestore working copy across devices; this remains separate from research contribution. Representative commit: [`473f72b6`](https://github.com/takinci/cedars/commit/473f72b6674e31ca5664d43a73a4a4b0d66de45b).
+- **Current architecture — Browser-local remains the default.** Local save, calculations, portable `.cedars.json` import/export, and normal assessment use do not require research contribution; contribution remains an explicit review-and-submit action.
+- **Current schema — Portable assessments use schema v3.** Earlier schemas remain readable through migration logic without inventing newly required local inputs.
+
+## UX, accessibility & guided use
+
+- **2026-11-04 — Walkthroughs and final public copy reconciled with the release workflow.** The three guided journeys now explain the sequence in plain language as **current Profile → Result (EcoLabel) and interpretation → prospective Decision Workspace → EcoLabel/Methods/Save & share**. Report & Share is walked in the same order as the UI, homepage AI wording is task-oriented rather than jargon-list based, and report selectors consistently use “output” terminology.
+
+- **2026-11-04 — Department Workflow containment finalized.** Editable blue cards and current-practice controls are explicitly box-sized within the stage workspace so they cannot paint outside the parent border at desktop or responsive widths.
+- **2026-11-04 — Visual-language parity pass.** Blue denotes editable/action surfaces; dark-mode contrast and label readability were normalized; Department/AI stage footers use parallel action layouts; responsive cards reflow instead of clipping.
+- **2026-11-04 — Evidence library actions consolidated.** Methods & Sources, pause/resume, and Start assessment are grouped beneath the Evidence introduction rather than competing with the page heading.
+- **2026-11-03 — Walkthroughs aligned to real workflows.** Guided journeys cover Department operations, clinical AI evaluation/use, and AI development/retraining; illustrative examples remain optional and dismissible. Representative commits: [`5b1e9178`](https://github.com/takinci/cedars/commit/5b1e917825546672a9276d708140e35c0d88d9a5), [`dfa9374d`](https://github.com/takinci/cedars/commit/dfa9374de477701da1cf5be7fe68bb300b4e4f1d).
+- **2026-11-01 — Sustainability and Evidence pages consolidated.** The public narrative and reading library were reorganized around practical radiology/AI sustainability questions with clearer source presentation. Representative commits: [`d6bd8ccc`](https://github.com/takinci/cedars/commit/d6bd8ccc5a76825f733c760329979085c1b24fe6), [`a00feb09`](https://github.com/takinci/cedars/commit/a00feb09381852787dd464b88f7e6845e21128e9).
+
+## Detailed history
+
+- **Repository planning:** actionable future work is tracked in GitHub Issues; scientific limitations remain in `METHODS.md` / `sources.md`, while completed user-facing changes remain summarized here.
+
+This file intentionally records **user-facing and scientific decision points**, not every implementation checkpoint. For exact file-level changes, intermediate fixes, and authorship, use the repository's Git history.
+
+<!-- CEDARS_CHUNK_9R30_FINAL_WORKFLOW_COST_LINKAGE -->
+
+<!-- CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY -->

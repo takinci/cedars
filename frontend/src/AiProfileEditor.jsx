@@ -1,6 +1,8 @@
+// CEDARS_CHUNK_9R26_WORKFLOW_ECOLABEL_UNIFICATION
+// CEDARS_CHUNK_9R27_VISUAL_LANGUAGE_PARITY
 import React from 'react';
 import {ExternalLink, Ref} from './Refs.jsx';
-import { BarChart3, Zap, Repeat2, MessageSquare, CalendarRange, Activity, Box, Clock, Cpu, Database, Gauge, Layers, Repeat, Target, Workflow } from 'lucide-react';
+import { BarChart3, Zap, Repeat2, MessageSquare, CalendarRange, Activity, Box, Clock, Cpu, Database, Gauge, Layers, Repeat, Target, Workflow, Droplets } from 'lucide-react';
 
 const METRIC_EXAMPLES = {
   Classification:['AUROC','Sensitivity / specificity','PPV / F1 / MCC','Calibration'],
@@ -70,7 +72,7 @@ export default function AiProfileEditor({
     ? 'Start with the workload CEDARS needs to characterize the model lifecycle. Project naming, research-objective prose, and technical presets are optional metadata or helpers; they are not required to estimate the footprint.'
     : comparing
       ? 'Define the shared clinical need and a comparable validation basis before environmental ranking. Clinical suitability is a gate, not a weighted offset against environmental performance.'
-      : 'Document the clinical purpose and available validation for the selected or deployed model. Workflow effects are recorded separately below.';
+      : 'Document the clinical purpose and available validation for the selected or deployed model. Performance and validation stay as optional evidence context; deployment effects are recorded in Deployment.';
 
   const openContext=id=>{
     const node=document.getElementById(id);
@@ -79,7 +81,7 @@ export default function AiProfileEditor({
   };
 
   return <>
-    <section id="ai-model-record" className={`inputSummary aiProfileIdentity ${developing?'development':'clinical'}`} data-demo-target="ai-model-record">
+    {section==='context'&&<section id="ai-model-record" className={`inputSummary aiProfileIdentity ${developing?'development':'clinical'}`} data-demo-target="ai-model-record">
       <div className="aiContextSectionHeading">
         <span className="aiContextSectionIcon"><Target size={19}/></span>
         <div><h2>{contextTitle}</h2><p className="note">{contextNote}</p></div>
@@ -137,32 +139,7 @@ export default function AiProfileEditor({
         </div>
       </details>
 
-      {!developing ? <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure">
-        <summary className="aiIconSummary">
-          <Workflow size={16} className="aiDisclosureIcon"/>
-          <span><strong>3 · Workflow effects</strong><small>Optional deployment context for downstream changes in care or workflow that may alter resource use.</small></span>
-          <b>{clinicalEffectStatus}</b>
-        </summary>
-        <div className="aiProfileDisclosureBody">
-          <div className="aiWorkflowEffectsIntro"><strong>What changes after the AI is introduced?</strong>{scen.clinicalWorkflowStage&&<span className="aiWorkflowStageChip">Primary stage: {{order:'Order / triage',schedule:'Schedule / prepare',acquire:'Acquire / scan',process:'Process / interpret',store:'Follow-up / store',cross:'Cross-cutting'}[scen.clinicalWorkflowStage]}</span>}<p>Consider effects across the clinical pathway, including detection or triage time, scheduling, scan duration or repeats, radiologist reading time, downstream imaging or follow-up, and patient-facing outcomes. Faster or cheaper workflows can also increase total use, so demand and rebound matter.</p></div>
-          <div className="aiWorkflowEffectPath" aria-label="Workflow effects to consider">
-            {[['1','Order / triage','appropriateness · detection'],['2','Schedule','priority · turnaround'],['3','Acquire','scan time · repeats · contrast'],['4','Process / interpret','reading time · compute'],['5','Follow-up','downstream imaging · demand / rebound']].map(([n,label,meta])=><div key={label}><b>{n}</b><span><strong>{label}</strong><small>{meta}</small></span></div>)}
-          </div>
-          <p className="note">Use local observations or a locally validated estimate when you have one. Published evidence can document a plausible effect without automatically crediting it to the current footprint; hypothetical changes belong in Decision Workspace.</p>
-          <div className="grid grid3 aiWorkflowEffectsGrid">
-            <label>Primary workflow stage<select value={scen.clinicalWorkflowStage||''} onChange={e=>setS('clinicalWorkflowStage',e.target.value)}><option value="">— Not specified —</option><option value="order">Order / need</option><option value="schedule">Schedule / prepare</option><option value="acquire">Acquire</option><option value="process">Process / interpret</option><option value="store">Store / follow-up</option><option value="cross">Cross-cutting / multiple stages</option></select></label>
-            <label>Evidence basis<select value={scen.clinicalEffectBasis} onChange={e=>setS('clinicalEffectBasis',e.target.value)}><option value="none">No downstream effect credited</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence (report only)</option><option value="scenario">Scenario assumption (Improve only)</option></select></label>
-            <label>Scan-time reduction (%)<input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)}/></label>
-            <label>Low-value imaging avoided (%)<input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)}/></label>
-          </div>
-          <label className="aiWorkflowEffectsNote">Other workflow or patient-pathway effects <span className="aiOptionalTag">optional</span><textarea rows="3" value={scen.workflowEffectsNote||''} onChange={e=>setS('workflowEffectsNote',e.target.value)} placeholder="e.g. median triage-to-notification time, radiologist reading time, downstream imaging, follow-up, patient outcome, or observed change in demand"/></label>
-          <p className="note">When an AI model is attached to a specific Radiology Department use, review the affected Department workflow as well so local operational effects are not treated as model properties.</p>
-        </div>
-      </details> : <div className="aiDevelopWorkflowNote">
-        <span>DEPLOYMENT-STAGE CONTEXT</span>
-        <strong>Workflow effects come later</strong>
-        <p>Do not assume scan-time, utilization, or downstream-care effects while the model is still being developed. Add locally observed or validated workflow effects after a deployment context is defined; prospective assumptions belong in Improve.</p>
-      </div>}
+
 
       <details id="ai-technical-section" className="aiProfileDisclosure aiTechnicalDisclosure">
         <summary className="aiIconSummary">
@@ -189,8 +166,8 @@ export default function AiProfileEditor({
           {!tokenWorkload&&<label>Input size (pixels per side)<input type="number" min="1" value={scen.resolution} onChange={e=>setS('resolution',e.target.value)} placeholder="e.g. 512"/></label>}
         </div>
       </details>
-      <div className="aiProfileStepNav aiContextStepNav"><button type="button" onClick={onChangeTask}>← Change AI task</button><span>Context describes the use or development task. Compute geography was set at the AI start and can be overridden by lifecycle phase later.</span><button type="button" onClick={()=>onSection('training')}>Next: Training →</button></div>
-    </section>
+      <div className="aiProfileStepNav aiContextStepNav"><button type="button" onClick={onChangeTask}>← Change AI task</button><button type="button" onClick={()=>onSection('training')}>Next: Training →</button></div>
+    </section>}
 
     {section!=='context'&&<section className="aiContextBand aiPhaseContextBand" aria-label="Clinical and AI compute context">
       <div className="aiClinicalContext"><span>CLINICAL CONTEXT</span><strong>{localRegion||'Not set'}</strong><small>Where care is being assessed; this does not define where AI compute runs.</small></div>
@@ -229,12 +206,7 @@ export default function AiProfileEditor({
       <p className="note">Reported renewable share is disclosure-only in the location-based result; it does not automatically reduce the grid factor.</p>
     </section>}
 
-    <div className="aiLifecycleIntro"><h3>Lifecycle</h3><p>Training precedes recurring inference and deployment. A phase may be unavailable, but the lifecycle order does not change.</p></div>
-    <div className="aiLifecycleSequence" role="group" aria-label="AI lifecycle profile sections">
-      <button type="button" className={`aiLifecycleSummaryCard ${section==='training'?'active':''}`} aria-pressed={section==='training'} onClick={()=>onSection('training')}><span>1 · TRAINING</span><strong>{ecoLabelData.trainingAvailable?`${ecoLabelData.energyPerRunKwh} kWh / run`:(ecoLabelData.trainingStatusLabel||'Not quantified')}</strong><small>Compute: {trainingCompute}</small><b>{section==='training'?'Editing':'Edit →'}</b></button>
-      <span className="aiLifecycleArrow" aria-hidden="true">→</span>
-      <button type="button" className={`aiLifecycleSummaryCard ${section==='inference'?'active':''}`} aria-pressed={section==='inference'} onClick={()=>onSection('inference')}><span>2 · INFERENCE &amp; DEPLOYMENT</span><strong>{ecoLabelData.inferKwhPerStudy>0?`${ecoLabelData.inferKwhPerStudy} kWh / study`:'Add inference energy'}</strong><small>{ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies / month`:'Deployment workload not entered'} · compute: {inferenceCompute}</small><b>{section==='inference'?'Editing':'Edit →'}</b></button>
-    </div>
+
 
     {section==='training'&&<section id="ai-training-section" className="aiLifecycleEditor" data-demo-target="ai-training-section">
       <h2>Training</h2>
@@ -258,7 +230,7 @@ export default function AiProfileEditor({
         <div><span>TRAINING COMPUTE CONTEXT</span><strong>{trainingCompute}</strong><small>Where training runs belongs to this phase and may differ from deployment.</small></div>
         <button type="button" className="download" onClick={()=>openComputeDialog('training')}>Edit training compute →</button>
       </div>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>{onSection('context');openContext('ai-model-record');}}>← Clinical context</button><button type="button" onClick={()=>onSection('inference')}>Next: inference &amp; deployment →</button></div>
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>{onSection('context');openContext('ai-model-record');}}>← Context</button><button type="button" onClick={()=>onSection('inference')}>Next: Deployment →</button></div>
     </section>}
 
     {section==='inference'&&<section id="ai-inference-section" className="aiLifecycleEditor" data-demo-target="ai-inference-section">
@@ -275,24 +247,61 @@ export default function AiProfileEditor({
         <div><span>INFERENCE / DEPLOYMENT COMPUTE</span><strong>{inferenceCompute}</strong><small>Recurring deployment compute belongs to this phase and can differ from training.</small></div>
         <button type="button" className="download" onClick={()=>openComputeDialog('inference')}>Edit inference compute →</button>
       </div>
-      <div className="aiDeploymentEffectsLink">
-        <div><span>WORKFLOW &amp; DOWNSTREAM EFFECTS</span><strong>{clinicalEffectStatus==='No downstream effect credited'?'Review what this AI changes in care':clinicalEffectStatus}</strong><small>Scan time, detection and triage, reading time, downstream imaging, follow-up, patient outcomes, and demand may all matter even when they are not yet quantified.</small></div>
-        <button type="button" className="download" onClick={()=>openContext('ai-effects-section')}>Review workflow effects →</button>
+      <div className="aiDeploymentEffectsLink aiDeploymentAccordionIntro">
+        <div><span>DEPLOYMENT CONTEXT · OPTIONAL</span><strong>Document effects and resources only when they are relevant to this deployment.</strong><small>Workflow/downstream effects and water are separate disclosures. They do not need to compete with the core inference inputs above.</small></div>
       </div>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('training')}>← Training</button><button type="button" className="download" onClick={()=>onSection('water')}>Water disclosure (optional)</button><button type="button" onClick={()=>onSection('review')}>Next: Result →</button></div>
-    </section>}
 
-    <section className="aiBoundarySummary">
-      <div><span>OPTIONAL RESOURCE DISCLOSURE</span><strong>Water: {ecoLabelData.waterProv==='not-assessed'?'not assessed':ecoLabelData.waterProv==='screening'?'screening estimate':'inputs entered'}</strong><small>Water is reported separately from the carbon-and-energy Score. Review it when relevant; unknown is never treated as zero.</small></div>
-      <button type="button" className="download" onClick={()=>onSection('water')}>Review water disclosure →</button>
-    </section>
+      {!developing ? <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure aiDeploymentDisclosure">
+        <summary className="aiIconSummary">
+          <Workflow size={16} className="aiDisclosureIcon"/>
+          <span><strong>Workflow &amp; downstream effects</strong><small>Optional context for changes in care or workflow that may alter resource use.</small></span>
+          <b>{clinicalEffectStatus}</b>
+        </summary>
+        <div className="aiProfileDisclosureBody">
+          <div className="aiWorkflowEffectsIntro"><strong>What changes after the AI is introduced?</strong>{scen.clinicalWorkflowStage&&<span className="aiWorkflowStageChip">Primary stage: {{order:'Order / triage',schedule:'Schedule / prepare',acquire:'Acquire / scan',process:'Process / interpret',store:'Follow-up / store',cross:'Cross-cutting'}[scen.clinicalWorkflowStage]}</span>}<p>Consider effects across the clinical pathway, including detection or triage time, scheduling, scan duration or repeats, radiologist reading time, downstream imaging or follow-up, and patient-facing outcomes. Faster or cheaper workflows can also increase total use, so demand and rebound matter.</p></div>
+          <div className="aiWorkflowEffectPath" aria-label="Workflow effects to consider">
+            {[['1','Order / triage','appropriateness · detection'],['2','Schedule','priority · turnaround'],['3','Acquire','scan time · repeats · contrast'],['4','Process / interpret','reading time · compute'],['5','Follow-up','downstream imaging · demand / rebound']].map(([n,label,meta])=><div key={label}><b>{n}</b><span><strong>{label}</strong><small>{meta}</small></span></div>)}
+          </div>
+          <p className="note">Use local observations or a locally validated estimate when you have one. Published evidence can document a plausible effect without automatically crediting it to the current footprint; hypothetical changes belong in Decision Workspace.</p>
+          <div className="grid grid3 aiWorkflowEffectsGrid">
+            <label>Primary workflow stage<select value={scen.clinicalWorkflowStage||''} onChange={e=>setS('clinicalWorkflowStage',e.target.value)}><option value="">— Not specified —</option><option value="order">Order / need</option><option value="schedule">Schedule / prepare</option><option value="acquire">Acquire</option><option value="process">Process / interpret</option><option value="store">Store / follow-up</option><option value="cross">Cross-cutting / multiple stages</option></select></label>
+            <label>Evidence basis<select value={scen.clinicalEffectBasis} onChange={e=>setS('clinicalEffectBasis',e.target.value)}><option value="none">No downstream effect credited</option><option value="observed-local">Observed locally</option><option value="validated-local">Locally validated estimate</option><option value="published">Published external evidence (report only)</option><option value="scenario">Scenario assumption (Improve only)</option></select></label>
+            <label>Scan-time reduction (%)<input type="number" min="0" max="100" value={scen.scanTimeReductPct} onChange={e=>setS('scanTimeReductPct',e.target.value)}/></label>
+            <label>Low-value imaging avoided (%)<input type="number" min="0" max="100" value={scen.lowValueReductPct} onChange={e=>setS('lowValueReductPct',e.target.value)}/></label>
+          </div>
+          <label className="aiWorkflowEffectsNote">Other workflow or patient-pathway effects <span className="aiOptionalTag">optional</span><textarea rows="3" value={scen.workflowEffectsNote||''} onChange={e=>setS('workflowEffectsNote',e.target.value)} placeholder="e.g. median triage-to-notification time, radiologist reading time, downstream imaging, follow-up, patient outcome, or observed change in demand"/></label>
+          <p className="note">When an AI model is attached to a specific Radiology Department use, review the affected Department workflow as well so local operational effects are not treated as model properties.</p>
+        </div>
+      </details> : <details id="ai-effects-section" className="aiProfileDisclosure aiEffectsDisclosure aiDeploymentDisclosure">
+        <summary className="aiIconSummary">
+          <Workflow size={16} className="aiDisclosureIcon"/>
+          <span><strong>Workflow effects after deployment</strong><small>Optional future deployment context; do not assume a clinical effect while the model is still being developed.</small></span>
+          <b>Optional</b>
+        </summary>
+        <div className="aiProfileDisclosureBody">
+          <p className="note">Add locally observed or validated workflow effects after a deployment context is defined. Prospective assumptions belong in Decision Workspace rather than the current Profile.</p>
+        </div>
+      </details>}
 
-    {section==='water'&&<section id="ai-water-section" className="aiLifecycleEditor" data-demo-target="ai-water-section">
-      <h2>Water use disclosure</h2><p className="note">Water is a separate optional disclosure. Enter site/grid values when known; otherwise use the screening estimate or mark water as not assessed.</p>
-      <div className="grid grid3"><label>On-site cooling water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label><label>Electricity-generation water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label><label>Water reporting<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use screening estimate ({waterPerKwh} L/kWh)</option><option value="notassessed">Mark water as not assessed</option></select></label></div>
-      <p className="note">Water is reported separately and does not currently affect the carbon-and-energy CEDARS Score.<Ref id="li-thirsty-2023" order={refsOrder}/></p>
-      <button type="button" className="download" onClick={onContribute}>Contribute water evidence →</button>
-      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('inference')}>← Deployment</button><button type="button" onClick={()=>onSection('review')}>Done — view Result →</button></div>
+      <details id="ai-water-section" className="aiProfileDisclosure aiWaterDisclosure aiDeploymentDisclosure">
+        <summary className="aiIconSummary">
+          <Droplets size={16} className="aiDisclosureIcon"/>
+          <span><strong>Water use disclosure</strong><small>Optional resource disclosure; reported separately from the carbon-and-energy Score.</small></span>
+          <b>{ecoLabelData.waterProv==='not-assessed'?'Not assessed':ecoLabelData.waterProv==='screening'?'Screening estimate':'Inputs entered'}</b>
+        </summary>
+        <div className="aiProfileDisclosureBody">
+          <p className="note">Enter site/grid values when known; otherwise use the screening estimate or mark water as not assessed. Unknown is not treated as zero.</p>
+          <div className="grid grid3">
+            <label>On-site cooling water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOnsite} onChange={e=>setEco('wueOnsite',e.target.value)} placeholder="e.g. 0.45"/></label>
+            <label>Electricity-generation water (L/kWh)<input type="number" min="0" step="0.01" value={ecoLabel.wueOffsite} onChange={e=>setEco('wueOffsite',e.target.value)} placeholder="by grid"/></label>
+            <label>Water reporting<select value={ecoLabel.waterMode} onChange={e=>setEco('waterMode',e.target.value)}><option value="screening">Use screening estimate ({waterPerKwh} L/kWh)</option><option value="notassessed">Mark water as not assessed</option></select></label>
+          </div>
+          <p className="note">Water remains a separate disclosure and does not currently affect the carbon-and-energy CEDARS Score.<Ref id="li-thirsty-2023" order={refsOrder}/></p>
+          <button type="button" className="download" onClick={onContribute}>Contribute water evidence →</button>
+        </div>
+      </details>
+
+      <div className="aiProfileStepNav"><button type="button" onClick={()=>onSection('training')}>← Training</button><button type="button" onClick={()=>onSection('review')}>Next: Result (EcoLabel) →</button></div>
     </section>}
 
     {computeDialogOpen&&<div className="aiComputeDialogBackdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setComputeDialogOpen(false);}}>

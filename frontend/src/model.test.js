@@ -225,3 +225,29 @@ describe('final accounting and intervention integrity',()=>{
   it('does not turn a reported renewable percentage into a location-based Scope 2 credit',()=>{const zero=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},0);const full=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},100);expect(zero.savings.co2).toBeCloseTo(0,1);expect(full.savings.co2).toBeCloseTo(0,1);expect(full.baseline.co2).toBeCloseTo(zero.baseline.co2,1);});
   it('fleet-scaled interventions do not erase a tiny department footprint via fixed kWh constants',()=>{const x=computeInterventions(['Reduce low-value imaging','Shorten protocols','Optimize scheduling'],'Germany','Monthly',{ultrasound:1},undefined,'AWS','Standby');expect(x.savings.pctEnergy).toBeLessThan(60);expect(x.projected.kwh).toBeGreaterThan(0);});
 });
+
+describe('power-management coverage scaling',()=>{
+  it('scales CT savings to the incremental current-to-target coverage rather than the whole fleet',()=>{
+    const full=computeInterventions(['Expand CT low-power / shutdown coverage'],'Germany','Monthly',{ct:4},undefined,'Local compute','Standby',{},{},{},0,{ctCurrentCount:0,ctTargetCount:4});
+    const half=computeInterventions(['Expand CT low-power / shutdown coverage'],'Germany','Monthly',{ct:4},undefined,'Local compute','Standby',{},{},{},0,{ctCurrentCount:1,ctTargetCount:3});
+    expect(full.assumptions.ctPowerSaving).toBeGreaterThan(0);
+    expect(half.assumptions.ctPowerSaving).toBeCloseTo(full.assumptions.ctPowerSaving*0.5,2);
+  });
+  it('models MRI and workstation power management separately',()=>{
+    const mri=computeInterventions(['Expand MRI low-power coverage'],'Germany','Monthly',{mri_15t:1},undefined,'Local compute','Standby',{},{},{},0,{mriCurrentCount:0,mriTargetCount:1});
+    const ws=computeInterventions(['Automate reporting workstation power management'],'Germany','Monthly',{workstations:10},undefined,'Local compute','Standby',{},{},{},0,{workstationCurrentCount:0,workstationTargetCount:10});
+    expect(mri.assumptions.mriPowerSaving).toBeGreaterThan(0);
+    expect(ws.assumptions.workstationPowerSaving).toBeGreaterThan(0);
+  });
+  it('keeps PACS/server consolidation separate from workstation shutdown',()=>{
+    const wsOnly=computeInterventions(['Consolidate servers'],'Germany','Monthly',{workstations:10},undefined,'Local compute','Standby');
+    expect(wsOnly.assumptions.serverSaving).toBe(0);
+  });
+  it('does not double-count the full CT idle opportunity when scheduling and power management overlap',()=>{
+    const power=computeInterventions(['Expand CT low-power / shutdown coverage'],'Germany','Monthly',{ct:1},undefined,'Local compute','Standby',{},{},{},0,{ctCurrentCount:0,ctTargetCount:1});
+    const schedule=computeInterventions(['Optimize scheduling'],'Germany','Monthly',{ct:1});
+    const both=computeInterventions(['Expand CT low-power / shutdown coverage','Optimize scheduling'],'Germany','Monthly',{ct:1},undefined,'Local compute','Standby',{},{},{},0,{ctCurrentCount:0,ctTargetCount:1});
+    expect(both.assumptions.schedulingSaving).toBeLessThanOrEqual(schedule.assumptions.schedulingSaving);
+    expect(both.savings.kwh).toBeGreaterThanOrEqual(power.savings.kwh);
+  });
+});

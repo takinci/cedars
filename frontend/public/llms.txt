@@ -7,11 +7,9 @@ Source code: https://github.com/takinci/cedars
 
 ## Primary workflows
 
-- Input: set shared Assessment Context first, then continue to a Radiology Department or AI Model & Informatics workflow.
-- AI Model & Informatics: compare at least two like-for-like candidates for procurement/deployment under one workload and compute context, or assess one model in detail with measured, measurement-assisted, or specification-based inputs and worked examples.
-- Score & EcoLabel: calculate a CEDARS Score and generate a Department EcoLabel or AI Research Label.
-- Improve: model prospective interventions and projected environmental, operational, financial, and clinical effects.
-- Report (& Share): complete a reproducible disclosure, generate reporting outputs, and optionally create a reproducible link or contribute an assessment to CEDARS research.
+- Profile: document the current Radiology Department or AI Model & Informatics assessment. Department Profile follows Context → Workflow → Clinical AI (optional) → Result (EcoLabel); AI Profile follows Context → Training → Deployment → Result (EcoLabel).
+- Decision Workspace: model prospective changes without overwriting the current Profile.
+- Report & Share: carry forward the same Department EcoLabel or AI Research EcoLabel, then review Methods/evidence and save or share the assessment.
 
 ## Key topics
 
@@ -19,4 +17,4 @@ Radiology sustainability; medical imaging environmental footprint; medical AI en
 
 ## Important notes
 
-CEDARS is a research and estimation tool, not an external certification. Literature defaults are editable and local or measured values should be used when available. Normal calculator use remains browser-local; research contribution is an explicit optional action.
+CEDARS is a research and estimation tool. Literature defaults are editable and local or measured values should be used when available. Normal calculator use remains browser-local; research contribution is an explicit optional action.

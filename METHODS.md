@@ -6,7 +6,7 @@ CEDARS (Carbon, Energy Diagnostics and Reporting for Sustainability) is a resear
 
 This document defines the **scientific and methodological logic** of CEDARS. Numerical defaults, source-specific evidence, validation/benchmark studies, and assumption provenance are governed in [`sources.md`](./sources.md). The interface should implement this framework without altering its meaning; presentation rules are defined in [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md).
 
-CEDARS is research software under active development. Its Score and EcoLabel are research reporting outputs, not external certification.
+CEDARS is research software under active development. Its Score and EcoLabel are CEDARS-generated assessment and reporting outputs whose interpretation depends on the documented methods, assumptions, and provenance.
 
 ---
 
@@ -98,17 +98,29 @@ This structure is descriptive, not prescriptive. A modeled environmental opportu
 
 Equipment energy is modeled from the available fleet, operating states, time allocation, and user/local overrides. Storage, informatics, contrast, embodied impacts, and other categories are included only where the implemented model and evidence support them. Weak generic proxies should not be promoted to current reported values merely to make the inventory appear complete.
 
+Power-management coverage for CT, MRI, and reporting workstations is part of the **current Profile** when it is documented locally. Prospective power-management scenarios are modeled from the incremental gap between current and target coverage rather than re-crediting the whole fleet. CT, MRI, and workstations remain separate because their safe low-power states and operational constraints differ.
+
+Department **Workflow** and **Decision Workspace** use the same causal stage map and intervention identifiers. A practice documented as already implemented is carried forward as current-state context and is not credited again as prospective savings. The Process / interpret AI-efficiency lever is shown in both places but requires a recorded local Clinical AI use before it can be modeled as a Department change.
+
+Electricity cost is contextual rather than a total cost-of-care estimate. It is calculated from modeled electricity × the configured or regional-default electricity price. Workflow shows the current estimated electricity-cost baseline; Decision Workspace carries forward that same baseline and shows projected electricity cost and estimated electricity savings for the prospective scenario.
+
 Current Department Score boundaries, default values, and benchmark limitations are specified in [`sources.md`](./sources.md).
 
 ---
 
 ## 6. AI lifecycle methodology
 
-The AI lifecycle is represented directionally:
+The public AI Profile follows the lifecycle:
 
-**Purpose / evaluation context → Training / development → Inference / deployment → monitoring and reporting**
+**Context → Training → Deployment → Result (EcoLabel)**
+
+This sequence is both a user workflow and a scientific separation of concerns. **Context** records clinical purpose, model/task identity, and optional performance/validation evidence. **Training** records one-time development or fine-tuning burden. **Deployment** records recurring inference workload, deployment compute context, and optional workflow/downstream-effect and water disclosures. **Result (EcoLabel)** summarizes what the available lifecycle record supports without treating unavailable phases as zero.
 
 Training scientifically precedes inference, but the two phases may occur on different hardware, in different compute locations, under different facility overheads, and under different organizational control. Their compute contexts should therefore be represented separately when they differ.
+
+### Context and performance evidence
+
+Clinical purpose and performance/validation evidence provide interpretation and governance context. They are not substituted for environmental measurements, and CEDARS does not predict clinical performance. Environmental comparison is meaningful only among systems that meet the relevant clinical and operational requirements.
 
 ### Training / development
 
@@ -116,11 +128,15 @@ Training is a development-phase burden. Where direct energy measurement or defen
 
 ### Inference / deployment
 
-Inference is a recurring deployment burden. Per-use energy may be measured directly or estimated from supported workload and hardware assumptions. For LLM/multimodal/agentic systems, workload may be better represented by calls, tokens, model/serving choices, and orchestration than by a single image-model forward-pass abstraction.
+Inference is a recurring deployment burden. Per-use energy may be measured directly or estimated from supported workload and hardware assumptions. For LLM, multimodal, and agentic systems, workload may be better represented by calls, tokens, model/serving choices, and orchestration than by a single image-model forward-pass abstraction.
+
+Workflow and downstream effects belong to the deployment context because they arise from use in care rather than from the model artifact alone. Published external evidence may contextualize these effects, but only locally observed or locally validated effects may alter the current modeled footprint. Prospective assumptions remain in the Decision Workspace.
+
+Water is an optional resource disclosure within Deployment. It is reported separately from the current carbon-and-energy Score; unavailable water data remain explicitly not assessed rather than being treated as zero.
 
 ### Compute context
 
-Clinical location and compute location are distinct. A radiology department may be in one region while model training or inference occurs in another cloud or datacenter region. CEDARS should not infer one from the other.
+Clinical location and compute location are distinct. A radiology department may be in one region while model training or inference occurs in another cloud or datacenter region. Training and deployment may also use different providers or regions. CEDARS should not infer one location from another.
 
 ---
 
@@ -185,8 +201,10 @@ Current implementation principles include:
 
 The current equations, boundaries, reference ranges, and their limitations are documented in [`sources.md`](./sources.md). Where anchors remain heuristic rather than empirically calibrated, that limitation is part of the method and must remain visible.
 
-The EcoLabel is a structured research reporting output derived from the assessment record. It is **not an external certification**.
+The EcoLabel is a structured CEDARS-generated assessment summary derived from the assessment record; interpretation depends on its stated coverage, assumptions, and provenance.
 
+
+The **Department EcoLabel** and **AI Research EcoLabel** use the same reporting grammar—Score and Rating, what the assessment covers, key results, assessment context, and provenance—while retaining domain-specific metrics. They are generated from the same assessment record used for Methods and reproducibility reporting.
 ---
 
 ## 11. Reproducibility and reporting
@@ -221,3 +239,5 @@ When changing a calculation, default, boundary, Score interpretation, or evidenc
 5. record the change in [`CHANGELOG.md`](./CHANGELOG.md) when it affects users or reported outputs.
 
 The method should evolve through explicit revisions rather than accumulating undocumented exceptions in the interface or calculation code.
+
+<!-- CEDARS_CHUNK_9R30_FINAL_WORKFLOW_COST_LINKAGE -->

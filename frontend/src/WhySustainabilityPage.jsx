@@ -22,15 +22,15 @@ export function DecisionWorkspaceSwitch({kind='department', summary}) {
 export function ReportStudioTabs({active='label', onChange, kind='department'}) {
   const ai = kind === 'ai';
   const tabs = [
-    {key:'label', label:ai?'AI Research Eco-label':'Department EcoLabel', detail:ai?'Primary visual research summary.':'Presentation-ready visual summary.', icon:Leaf},
-    {key:'methods', label:'Methods & evidence', detail:'Methods text, assumptions, provenance, and structured exports.', icon:FileText},
+    {key:'label', label:'CEDARS EcoLabel', detail:ai?'AI Research summary and downloadable label.':'Department summary and downloadable label.', icon:Leaf},
+    {key:'methods', label:'Methods paragraph', detail:'Methods text and evidence for structured export.', icon:FileText},
     {key:'share', label:'Save & share', detail:'Working copy, portable file, and shareable link.', icon:Share2},
   ];
   const index=Math.max(0,tabs.findIndex(t=>t.key===active));
   const move=delta=>onChange(tabs[(index+delta+tabs.length)%tabs.length].key);
   return (
     <aside className="reportStudioRail" aria-label="Report and Share outputs">
-      <div className="reportStudioRailHeading"><span>REPORT &amp; SHARE</span><h2>Choose an output</h2><p>Eco-label first, then the methods and provenance behind it.</p></div>
+      <div className="reportStudioRailHeading"><span>REPORT &amp; SHARE</span><h2>Choose an output</h2><p>Choose the summary, methods text, or save/share output you need.</p></div>
       <div className="reportStudioRailButtons" role="tablist" aria-label="Report and Share output">
         {tabs.map((tab,i)=>{const Icon=tab.icon;const selected=active===tab.key;return <button type="button" role="tab" aria-selected={selected} key={tab.key} className={`${selected?'active':''} ${tab.key}`} onClick={()=>onChange(tab.key)}><span>0{i+1}</span><Icon size={17}/><strong>{tab.label}</strong><small>{tab.detail}</small></button>;})}
       </div>

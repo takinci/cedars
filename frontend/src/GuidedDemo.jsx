@@ -1,6 +1,7 @@
 // CEDARS_CHUNK_9Q5_TRANSACTION_SAFE_THEME_WALKTHROUGH
 // CEDARS_CHUNK_9R16_SEMANTIC_COLOR_WALKTHROUGH_AI_ENTRY
 // CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION
+// CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY
 import React, {useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {Activity, Brain, RotateCcw, X} from 'lucide-react';
 
@@ -17,60 +18,232 @@ const SAVE_SHARE_STEP = {
 
 export const GUIDED_DEMOS = {
   leader: {
-    title: 'Department operations and Digital + AI',
+    title: 'Radiology Department and Clinical AI',
     shortTitle: 'Department walkthrough',
     icon: Activity,
-    description: 'See how to describe a radiology department, distinguish the current state from prospective changes, interpret the Score boundary, and preserve a reproducible result.',
+    description: 'Build the current Department Profile, see the EcoLabel, test prospective changes, and prepare a reproducible report.',
     steps: [
-      {target:'[data-demo-target="home-department"]', kicker:'PROFILE', title:'Start with the radiology department', body:'Choose this path when you want to understand a radiology service: its equipment, imaging activity, storage, resources, workflow, and any AI used locally.', actionHint:'Next opens an illustrative Department Profile with a grid region, Regional hospital fleet, and example current practices already loaded. You do not need to type anything.'},
-      {target:'[data-demo-target="leader-regional-preset"]', kicker:'PROFILE - CONTEXT', title:'Review the current Department baseline', body:'Context is the minimum information CEDARS needs before later stages can be interpreted: grid region, equipment/energy, and imaging workload. This walkthrough has already loaded an illustrative United States context and Regional hospital fleet so you can see the complete flow.', actionHint:'In a real assessment, Workflow, Digital + AI, and Result (EcoLabel) stay locked until these required Context inputs are complete. The walkthrough satisfies the same gate rather than bypassing it.'},
-      {target:'#department-workflow-profile', kicker:'PROFILE - WORKFLOW', title:'Describe how care is delivered today', body:'Workflow records what is already true today across the imaging pathway. The walkthrough also loads a few illustrative current practices so the current-state record is meaningful.'},
-      {target:'.departmentWorkflowCurrentTally', kicker:'PROFILE - CURRENT STATE', title:'Keep today’s state separate from future changes', body:'The Current Profile Tally summarizes what is documented as true now: current practices, local workflow metrics, energy, and carbon intensity. Selecting a prospective intervention later does not silently rewrite this baseline.', actionHint:'Profile describes today; Decision Workspace asks what could change.'},
-      {target:'[data-demo-target="leader-clinical-ai-example"]', kicker:'PROFILE - DIGITAL + AI · OPTIONAL', title:'Add Digital + AI only when it is part of current care', body:'Digital + AI is optional. If the Department uses no local Clinical AI, continue directly to Result (EcoLabel). If it does, document those uses here; the shared technical model record remains in AI Model & Informatics.', actionHint:'Illustrative Clinical AI examples load automatically when you continue.'},
-      {target:'#department-score-panel', kicker:'PROFILE - RESULT (ECOLABEL)', title:'Review the current assessed result', body:'Result (EcoLabel) summarizes the current footprint supported by the information entered and shows a Score when enough information is available. Missing or unassessed information remains explicit rather than being treated as zero.'},
-      {target:'.footprintBoundaryGrid', kicker:'PROFILE - INTERPRETATION', title:'Know what the Score includes—and what it does not', body:'CEDARS separates the scored operational energy/carbon boundary from extended estimates and categories that were not assessed. The Score is therefore not a complete life-cycle assessment, clinical-quality score, or claim that every environmental impact has been measured.', actionHint:'Interpret the boundary before comparing Scores or reporting the result.'},
-      {target:'[data-demo-target="department-improve-state"]', extraTargets:['[data-demo-target="department-improve-workspace"]'], kicker:'DECISION WORKSPACE · OPTIONAL', title:'Test a prospective change without rewriting the Profile', body:'Decision Workspace is optional. It keeps the current Profile fixed while you explore modeled changes, so proposed savings do not silently become part of today’s assessed state.'},
-      {target:'[data-demo-target="department-report-reproducibility"]', kicker:'REPORT & SHARE - REPRODUCIBILITY', title:'Carry assumptions and coverage with the result', body:'A useful sustainability result needs its denominator, grid context, boundary, current practices, and unassessed categories. CEDARS keeps those fields beside the result so another reader can understand what was—and was not—measured or modeled.'},
-      {target:'[data-demo-target="department-report-materials"]', kicker:'REPORT & SHARE - ECOLABEL', title:'Prepare the Department EcoLabel', body:'The Department EcoLabel is the primary visual CEDARS reporting output. It should travel with the underlying methods and reproducibility information; it is not external certification.'},
+      {
+        target:'[data-demo-target="home-department"]',
+        kicker:'PROFILE',
+        title:'Start with the radiology department',
+        body:'Choose this path when you want to understand the environmental footprint of a radiology service as a whole—not just one scanner or one AI model. CEDARS connects equipment, imaging volume, workflow, infrastructure, and any Clinical AI used locally.',
+        actionHint:'Next opens an illustrative Department Profile. Demo data are prefilled so you can focus on the sequence rather than data entry.',
+      },
+      {
+        target:'[data-demo-target="leader-regional-preset"]',
+        kicker:'PROFILE - CONTEXT',
+        title:'Establish the current baseline',
+        body:'Context answers the basic question: what service exists today? Record the grid/location, equipment or energy baseline, and imaging workload before interpreting later results.',
+        actionHint:'In a real assessment, Workflow, optional Clinical AI, and Result (EcoLabel) stay locked until these required Context inputs are complete.',
+      },
+      {
+        target:'#department-workflow-profile',
+        kicker:'PROFILE - WORKFLOW',
+        title:'Describe how care is delivered today',
+        body:'Workflow records current operations across Order / need, Schedule / prepare, Acquire, Process / interpret, Store / follow-up, and Infrastructure & lifecycle. Current practices belong here only when they are already implemented.',
+        actionHint:'The same workflow stages appear later in Decision Workspace, so today’s practices and proposed changes stay directly linked.',
+      },
+      {
+        target:'.departmentWorkflowCurrentTally',
+        kicker:'PROFILE - CURRENT STATE',
+        title:'See the current Profile tally',
+        body:'The tally summarizes what is true now: current practices, local workflow measures, workload, operational energy, estimated electricity cost, and carbon intensity. This is the baseline CEDARS carries forward.',
+        actionHint:'Profile describes today. Decision Workspace asks what could change without rewriting today’s record.',
+      },
+      {
+        target:'[data-demo-target="leader-clinical-ai-example"]',
+        kicker:'PROFILE - CLINICAL AI · OPTIONAL',
+        title:'Add Clinical AI only when it is used locally',
+        body:'Clinical AI is optional in the Department Profile. If none is deployed locally, continue to Result (EcoLabel). If AI is used, record its local use here so its compute and supported workflow effects can be represented in the Department assessment.',
+        actionHint:'The model’s detailed technical record still lives in AI Model & Informatics; the Department stage records how that model is actually used in this service.',
+      },
+      {
+        target:'#department-score-panel',
+        kicker:'PROFILE - RESULT (ECOLABEL)',
+        title:'Review the current assessed result',
+        body:'Result (EcoLabel) summarizes the current Department assessment in the shared CEDARS EcoLabel format: Score and Rating when supported, what the assessment covers, key results, assessment context, and provenance.',
+        actionHint:'Categories assessed outside the Score or not assessed remain visible instead of being silently treated as zero.',
+      },
+      {
+        target:'.scoreEverydayPanel',
+        kicker:'PROFILE - INTERPRET THE RESULT',
+        title:'Put the result in everyday terms',
+        body:'CEDARS can translate the footprint into familiar comparisons and lets you choose whether those examples explain the scored operational footprint or a broader set of assessed carbon categories. These comparisons are for scale and interpretation—not carbon offsets.',
+        actionHint:'Use the coverage information beside the result to see which categories were included, assessed separately, or not assessed.',
+      },
+      {
+        target:'[data-demo-target="department-improve-state"]',
+        extraTargets:['[data-demo-target="department-improve-workspace"]'],
+        kicker:'DECISION WORKSPACE · OPTIONAL',
+        title:'Test a possible change',
+        body:'Decision Workspace keeps the current Profile fixed and asks “what if?” using the same workflow stages. Compare the baseline with a prospective scenario for energy, carbon, and estimated electricity cost without turning a proposed change into current practice.',
+        actionHint:'Practices already documented in the Profile are carried forward and are not credited again as new savings.',
+      },
+      {
+        target:'[data-demo-target="department-report-materials"]',
+        kicker:'REPORT & SHARE - ECOLABEL',
+        title:'Carry the same EcoLabel into reporting',
+        body:'Report & Share starts with the Department EcoLabel you already reviewed in Result. It is the same assessment summary—not a new calculation—and can be used as the visual reporting output.',
+      },
+      {
+        target:'[data-demo-target="department-report-reproducibility"]',
+        kicker:'REPORT & SHARE - METHODS',
+        title:'Keep the methods with the result',
+        body:'Methods and reproducibility information explain how the result was produced: denominator, grid context, current practices, assumptions, evidence provenance, and assessment coverage. Keep this context with the EcoLabel when the result is reported or shared.',
+      },
       {...SAVE_SHARE_STEP},
     ],
   },
+
   procure: {
-    title: 'Evaluate or use clinical AI',
+    title: 'Evaluate or use Clinical AI',
     shortTitle: 'Clinical AI walkthrough',
     icon: Activity,
-    description: 'See how to compare clinically acceptable AI systems, document incomplete vendor lifecycle information, interpret coverage, and report the selected system.',
+    description: 'Compare or assess a Clinical AI system, document what is known about its lifecycle, interpret the EcoLabel, test deployment choices, and report the result.',
     steps: [
-      {target:'[data-demo-target="home-ai"]', kicker:'PROFILE', title:'Start with AI Model & Informatics', body:'Choose this path when the question is about an AI system itself rather than the whole radiology department.', actionHint:'Next opens the AI start screen.'},
-      {target:'[data-demo-target="ai-compare-lane"]', kicker:'PROFILE - CONTEXT', title:'Choose the path that matches your decision', body:'Use Compare candidates when two or more systems address the same clinical need. If one model is already selected, Assess one model is the more direct path.', actionHint:'Next opens an illustrative comparison with enough shared clinical and workload context to compare the candidates.'},
-      {target:'.aiComparisonModalSection', kicker:'PROFILE - CONTEXT · COMPARISON', title:'Make the comparison clinically fair first', body:'Compare systems that address the same intended use, endpoint, and validation context. Clinical suitability is the gate: lower environmental impact cannot make a clinically unacceptable system acceptable.'},
-      {target:'.aiComparisonModalResults', kicker:'PROFILE - CONTEXT · CANDIDATE COMPARISON', title:'Keep clinical performance and environmental intensity separate', body:'Candidate comparison is a temporary Context sub-workspace, not a second Profile. CEDARS shows reported clinical performance and environmental intensity as separate decision dimensions; Pareto-efficient does not mean clinically recommended.', actionHint:'Next carries illustrative candidate A into the standard AI Profile and opens Training.'},
-      {target:'#ai-training-section', kicker:'PROFILE - TRAINING', title:'Record what is known about vendor training', body:'Training still comes before Deployment, even when a vendor does not disclose its training energy. In this illustrative example, CEDARS records training as not disclosed rather than treating the missing value as zero.', actionHint:'Unavailable is not zero. Documenting the gap allows transparent partial-lifecycle reporting.'},
-      {target:'#ai-inference-section', kicker:'PROFILE - DEPLOYMENT', title:'Describe recurring deployment', body:'The selected illustrative candidate includes per-study inference energy and an expected monthly workload. Deployment is separate from training because it repeats over time and may use different infrastructure.'},
-      {target:'#ai-score-panel', kicker:'PROFILE - RESULT (ECOLABEL)', title:'See what the available lifecycle data support', body:'Result (EcoLabel) reports the lifecycle information the data can support. Because vendor training is unavailable in this example, CEDARS can report inference without pretending an unknown training footprint is zero.'},
-      {target:'.aiScoreBasisBar', kicker:'PROFILE - INTERPRETATION', title:'Interpret lifecycle coverage before the number', body:'Training is a one-time cost; inference recurs with each use. When both are known, training can be amortized across expected deployment. When a required phase is unavailable, coverage—not false precision—determines what CEDARS can report.', actionHint:'The environmental result is not a clinical-value score. Clinical performance and patient-care suitability remain separate requirements.'},
-      {target:'[data-demo-target="ai-improve-workspace"]', kicker:'DECISION WORKSPACE', title:'Try a deployment change without rewriting the Profile', body:'Explore choices such as hosting, workload, serving configuration, or monitoring while keeping the current AI Profile fixed for comparison.'},
-      {target:'[data-demo-target="ai-report-reproducibility"]', kicker:'REPORT & SHARE - REPRODUCIBILITY', title:'Preserve provenance and lifecycle gaps', body:'The scientific record is the assumptions, compute context, provenance, workload, and explicit lifecycle coverage. Partial disclosure is reportable when the missing phase is clearly identified; it should not be silently imputed as zero.'},
-      {target:'[data-demo-target="ai-report-materials"]', kicker:'REPORT & SHARE - ECOLABEL', title:'Prepare the AI Research Eco-label', body:'The AI Research Eco-label is a compact visual research summary. Methods, provenance, and lifecycle coverage remain the primary scientific record; the Eco-label is not external certification.'},
+      {
+        target:'[data-demo-target="home-ai"]',
+        kicker:'PROFILE',
+        title:'Start with AI Model & Informatics',
+        body:'Choose this path when the question is about an AI system itself—such as selecting, procuring, or evaluating a model—rather than the footprint of the whole radiology department.',
+        actionHint:'Next opens the AI start screen.',
+      },
+      {
+        target:'[data-demo-target="ai-compare-lane"]',
+        kicker:'PROFILE - CONTEXT',
+        title:'Choose the decision you are making',
+        body:'Compare candidates when two or more systems address the same clinical need. If one model is already selected or deployed, assess that model directly instead.',
+        actionHint:'Next opens an illustrative candidate comparison using the same clinical task and workload context.',
+      },
+      {
+        target:'.aiComparisonModalSection',
+        kicker:'PROFILE - CONTEXT · COMPARISON',
+        title:'Make the clinical comparison fair first',
+        body:'Compare systems only when the intended use, relevant endpoint, and validation context are meaningfully comparable. Clinical suitability is the gate: lower environmental impact cannot make an unsuitable system acceptable.',
+      },
+      {
+        target:'.aiComparisonModalResults',
+        kicker:'PROFILE - CONTEXT · CANDIDATE COMPARISON',
+        title:'Keep clinical performance and environmental intensity separate',
+        body:'CEDARS shows clinical evidence and environmental intensity as separate decision dimensions. A model can be environmentally efficient without being the right clinical choice, and “Pareto-efficient” does not mean clinically recommended.',
+        actionHint:'Next carries one illustrative candidate into the standard AI Profile.',
+      },
+      {
+        target:'#ai-training-section',
+        kicker:'PROFILE - TRAINING',
+        title:'Record what is known about training',
+        body:'Training is a one-time lifecycle phase. Vendor training information may be incomplete; when it is unavailable, CEDARS records the gap rather than treating unknown training energy as zero.',
+        actionHint:'Transparent partial information is preferable to false completeness.',
+      },
+      {
+        target:'#ai-inference-section',
+        kicker:'PROFILE - DEPLOYMENT',
+        title:'Describe recurring deployment',
+        body:'Deployment records the energy per use, expected workload, compute context, and relevant local workflow effects. It is separate from training because inference repeats over time and may run on different infrastructure.',
+      },
+      {
+        target:'#ai-score-panel',
+        kicker:'PROFILE - RESULT (ECOLABEL)',
+        title:'See what the available lifecycle data support',
+        body:'Result (EcoLabel) uses the same CEDARS EcoLabel family as the Department pathway. It reports only what the available lifecycle record supports; unavailable training is not silently converted to zero.',
+      },
+      {
+        target:'.aiEverydayPanel',
+        kicker:'PROFILE - INTERPRET THE RESULT',
+        title:'Interpret per-use and deployment impact',
+        body:'CEDARS can show the result per study and over the expected deployment period. When training is available it can be combined with recurring inference; when training is unavailable, the known deployment footprint is clearly labeled as partial.',
+        actionHint:'Everyday comparisons help explain scale. Clinical performance and patient-care suitability remain separate requirements.',
+      },
+      {
+        target:'[data-demo-target="ai-improve-workspace"]',
+        kicker:'DECISION WORKSPACE',
+        title:'Test a deployment choice',
+        body:'Explore prospective changes such as workload, hosting, serving configuration, compute location, or monitoring while keeping the current AI Profile fixed for comparison.',
+      },
+      {
+        target:'[data-demo-target="ai-report-materials"]',
+        kicker:'REPORT & SHARE - ECOLABEL',
+        title:'Carry the AI Research EcoLabel into reporting',
+        body:'Report & Share starts with the same AI Research EcoLabel you reviewed in Result. It is a compact summary of the current lifecycle assessment, not a separate recalculation.',
+      },
+      {
+        target:'[data-demo-target="ai-report-reproducibility"]',
+        kicker:'REPORT & SHARE - METHODS',
+        title:'Preserve provenance and lifecycle gaps',
+        body:'Keep the assumptions, measurement or estimation method, compute context, workload, and explicit lifecycle coverage with the result. Partial disclosure is reportable when the missing phase is clearly identified.',
+      },
       {...SAVE_SHARE_STEP},
     ],
   },
+
   developer: {
     title: 'Develop or retrain AI',
     shortTitle: 'AI development walkthrough',
     icon: Brain,
-    description: 'See how to measure Training and Deployment separately, interpret intensity and lifecycle coverage, test changes, and preserve reproducible measurement details.',
+    description: 'Measure or estimate training and deployment, interpret lifecycle impact, test prospective changes, and preserve a reproducible AI environmental record.',
     steps: [
-      {target:'[data-demo-target="home-ai"]', kicker:'PROFILE', title:'Start with AI Model & Informatics', body:'Choose this path when your team is building, adapting, fine-tuning, or materially retraining an AI model.'},
-      {target:'[data-demo-target="ai-develop-lane"]', kicker:'PROFILE - CONTEXT', title:'Choose Develop / train / fine-tune', body:'This tells CEDARS that you need to describe both one-time training and recurring deployment. Those phases can use different hardware, providers, and locations.'},
-      {target:'[data-demo-target="measure-chooser"]', kicker:'PROFILE - MEASUREMENT', title:'Measure energy when you can', body:'CEDARS helps match the compute setup to practical measurement approaches. Measured energy should take precedence over workload-based estimates when it is available, and the measurement source should stay attached to the result.'},
-      {target:'[data-demo-target="ai-training-section"]', kicker:'PROFILE - TRAINING', title:'Describe the training work', body:'Training is a one-time lifecycle phase. Enter measured energy when available; otherwise CEDARS can estimate from the workload and hardware information provided. Repeated experiments or fine-tuning runs matter and should not disappear from the accounting.'},
-      {target:'[data-demo-target="ai-inference-section"]', kicker:'PROFILE - DEPLOYMENT', title:'Then describe recurring use', body:'Record energy per use together with the expected deployment workload and compute context. Deployment is separate because inference repeats over time and can occur in a different location from training.'},
-      {target:'#ai-score-panel', kicker:'PROFILE - RESULT (ECOLABEL)', title:'Review the result supported by your data', body:'CEDARS combines only the lifecycle information supported by the record. Missing phases stay visible. Water and other non-scored impacts remain separate disclosures rather than being forced into the carbon-and-energy Score.'},
-      {target:'.aiScoreBasisBar', kicker:'PROFILE - INTERPRETATION', title:'Distinguish intensity from total impact', body:'Amortizing one-time training across more uses can lower carbon intensity per study even while total inference emissions rise with scale. Both questions matter. The CEDARS Score reflects modeled operational carbon intensity, not overall clinical quality or total societal value.'},
-      {target:'[data-demo-target="ai-improve-workspace"]', kicker:'DECISION WORKSPACE', title:'Test a possible lifecycle change', body:'Explore changes to experimentation, model settings, serving, compute location, or monitoring without changing the current Profile until something is actually implemented.'},
-      {target:'[data-demo-target="ai-report-reproducibility"]', kicker:'REPORT & SHARE - REPRODUCIBILITY', title:'Keep the measurement details with the result', body:'Export assumptions, measurement source, compute context, workload, and provenance so another team can understand or reproduce the environmental accounting later.'},
-      {target:'[data-demo-target="ai-report-materials"]', kicker:'REPORT & SHARE - ECOLABEL', title:'Prepare the AI Research Eco-label', body:'The AI Research Eco-label can help communicate the result in slides, posters, or model documentation. Reproducibility fields and methods remain the primary scientific record, and the Eco-label is not external certification.'},
+      {
+        target:'[data-demo-target="home-ai"]',
+        kicker:'PROFILE',
+        title:'Start with AI Model & Informatics',
+        body:'Choose this path when your team is building, adapting, fine-tuning, or materially retraining an AI model.',
+      },
+      {
+        target:'[data-demo-target="ai-develop-lane"]',
+        kicker:'PROFILE - CONTEXT',
+        title:'Choose Develop / train / fine-tune',
+        body:'Start by defining the clinical purpose and model/task context. CEDARS then keeps one-time Training separate from recurring Deployment because the phases may use different hardware, providers, and locations.',
+      },
+      {
+        target:'[data-demo-target="measure-chooser"]',
+        kicker:'PROFILE - MEASUREMENT',
+        title:'Measure energy when you can',
+        body:'CEDARS helps match your compute setup to practical measurement approaches. Directly measured energy should take precedence over workload-based estimates when feasible, and the measurement source stays attached to the result.',
+      },
+      {
+        target:'[data-demo-target="ai-training-section"]',
+        kicker:'PROFILE - TRAINING',
+        title:'Describe the training work',
+        body:'Record one-time development energy, including materially relevant experiments, fine-tuning, repeats, or retraining. Use measured energy when available; otherwise CEDARS can estimate from the workload and hardware information you provide.',
+      },
+      {
+        target:'[data-demo-target="ai-inference-section"]',
+        kicker:'PROFILE - DEPLOYMENT',
+        title:'Then describe recurring use',
+        body:'Record energy per use together with expected workload and deployment compute context. This phase repeats over time, so a small per-use footprint can still become important at large scale.',
+      },
+      {
+        target:'#ai-score-panel',
+        kicker:'PROFILE - RESULT (ECOLABEL)',
+        title:'Review the result supported by the record',
+        body:'Result (EcoLabel) combines only the lifecycle information supported by your inputs. Missing phases stay visible, and water or other separately reported resources are not forced into the carbon-and-energy Score.',
+      },
+      {
+        target:'.aiEverydayPanel',
+        kicker:'PROFILE - INTERPRET THE RESULT',
+        title:'Distinguish intensity from total impact',
+        body:'CEDARS lets you view the footprint per study and over the expected deployment period. Amortizing one-time training across more uses can lower per-study intensity even while total inference emissions rise as use grows.',
+        actionHint:'Both views answer useful but different questions; neither is a clinical-quality score.',
+      },
+      {
+        target:'[data-demo-target="ai-improve-workspace"]',
+        kicker:'DECISION WORKSPACE',
+        title:'Test a possible lifecycle change',
+        body:'Explore prospective changes to experimentation, model settings, serving, compute location, workload, or monitoring without changing the current Profile until something is actually implemented.',
+      },
+      {
+        target:'[data-demo-target="ai-report-materials"]',
+        kicker:'REPORT & SHARE - ECOLABEL',
+        title:'Carry the AI Research EcoLabel into reporting',
+        body:'Use the same AI Research EcoLabel from Result as the compact visual summary for a manuscript, poster, model card, presentation, or technical report.',
+      },
+      {
+        target:'[data-demo-target="ai-report-reproducibility"]',
+        kicker:'REPORT & SHARE - METHODS',
+        title:'Keep the measurement details with the result',
+        body:'Preserve assumptions, measurement or estimation source, compute context, workload, and provenance so another reader can understand or reproduce the environmental accounting.',
+      },
       {...SAVE_SHARE_STEP},
     ],
   },
@@ -98,14 +271,14 @@ function walkthroughSafeTop() {
 
 export function GuidedDemoLauncher({onStart}) {
   const journeys = [
-    {key:'leader', icon:Activity, eyebrow:'DEPARTMENT', title:'Radiology department', audience:'Operations, equipment, resources, and locally deployed clinical AI.', detail:'Profile → Decision Workspace → Report & Share.'},
-    {key:'procure', icon:Brain, eyebrow:'CLINICAL AI', title:'Clinical AI evaluation', audience:'Candidate comparison, procurement, deployment, and use of externally developed AI.', detail:'AI profile → Decision Workspace → Report & Share.'},
-    {key:'developer', icon:Brain, eyebrow:'AI DEVELOPMENT', title:'AI development', audience:'Training, fine-tuning, measurement, validation, and lifecycle reporting.', detail:'AI profile → Decision Workspace → Report & Share.'},
+    {key:'leader', icon:Activity, eyebrow:'DEPARTMENT', title:'Radiology department', audience:'Understand a radiology service as a whole, including equipment, workflow, resources, and local Clinical AI.', detail:'Current Profile → EcoLabel → prospective changes → report.'},
+    {key:'procure', icon:Brain, eyebrow:'CLINICAL AI', title:'Clinical AI evaluation', audience:'Compare candidates or assess one selected/deployed AI system using clinical and environmental context.', detail:'Clinical context → lifecycle → EcoLabel → deployment choices → report.'},
+    {key:'developer', icon:Brain, eyebrow:'AI DEVELOPMENT', title:'AI development', audience:'Measure or estimate training and deployment for a model you build, fine-tune, or retrain.', detail:'Measure → lifecycle → EcoLabel → prospective changes → report.'},
   ];
   return (
     <details className="guidedDemoLauncher" aria-labelledby="guided-demo-title">
       <summary>
-        <span className="guidedDemoLauncherSummaryCopy"><span>GUIDED WALKTHROUGHS</span><strong id="guided-demo-title">See CEDARS with illustrative data</strong><small>Follow a Department, clinical-AI, or AI-development example without changing your current assessment.</small></span>
+        <span className="guidedDemoLauncherSummaryCopy"><span>GUIDED WALKTHROUGHS</span><strong id="guided-demo-title">See CEDARS with illustrative data</strong><small>Each example shows the current Profile, how to interpret its EcoLabel, how to test prospective changes, and how to report or save the result—without changing your assessment.</small></span>
         <span className="guidedDemoLauncherSummaryAction">Explore walkthroughs →</span>
       </summary>
       <div className="guidedDemoLauncherBody">

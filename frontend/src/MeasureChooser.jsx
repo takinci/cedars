@@ -2,9 +2,9 @@ import React, {useMemo, useState} from 'react';
 import {ExternalLink, Ref, ReferenceList} from './Refs.jsx';
 import {REFS, refUrl} from './refs.js';
 
-// Tool list verified 2026-10-04. Categories follow Doo et al., JACR 2024, Fig. 3 (energy
-// measurement via hardware sensors · usage modelling from logs · power/energy modelling from a
-// specification), refreshed for tools that have appeared or stalled since.
+// CEDARS tool-reference snapshot reviewed 2026-11-04. Keep versioned statuses when CEDARS has
+// reviewed a specific release; sources.md separately records newer upstream releases observed.
+// Doo et al., JACR 2024 provides the radiology-informatics measurement/accounting framework.
 export const MEASURE_TOOLS = [
   {
     id: 'codecarbon', name: 'CodeCarbon', ref: 'codecarbon', status: 'v3.2.9 · July 2026 · MIT licence',
@@ -225,7 +225,7 @@ export function MeasureChooser({scen, onUse, onDone}) {
             </div>
           )}
           {hidden.length > 0 && <details className="measureOtherTools"><summary>Other tools in the guide · {hidden.length} <span>(expand to read more)</span></summary><div>{hidden.map(t => <span key={t.id}>{t.name.split(' (')[0]}</span>)}</div></details>}
-          <p className="measureUpdated">Tool guide updated October 2026 · methods and sources remain available below.</p>
+          <p className="measureUpdated">CEDARS tool-reference snapshot reviewed November 2026 · exact versions and upstream freshness checks are documented in sources.md.</p>
         </div>
       </div>
       <ReferenceList ids={MEASURE_REFS} compact/>

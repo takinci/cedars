@@ -20,11 +20,12 @@ function memoryStorage() {
 
 describe('CEDARS assessment persistence', () => {
   it('builds and parses a versioned assessment snapshot', () => {
-    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'}, scen:{modelKey:'cad', modelId:'model-a'}, disclosure:{department:{score:72}}, scenarioInterventions:['Turn MRI/CT scanners off overnight'], savedAt:'2026-09-20T00:00:00.000Z'});
+    const snapshot = buildAssessmentSnapshot({settings:{region:'Switzerland'}, scen:{modelKey:'cad', modelId:'model-a'}, disclosure:{department:{score:72}}, scenarioInterventions:['Expand CT low-power / shutdown coverage'], scenarioPowerManagement:{ctTargetCount:'2',ctTargetHours:'12'}, savedAt:'2026-09-20T00:00:00.000Z'});
     expect(snapshot.format).toBe('CEDARS');
     expect(snapshot.schemaVersion).toBe(3);
     expect(snapshot.assessment.disclosure.department.score).toBe(72);
-    expect(snapshot.assessment.scenarioInterventions).toEqual(['Turn MRI/CT scanners off overnight']);
+    expect(snapshot.assessment.scenarioInterventions).toEqual(['Expand CT low-power / shutdown coverage']);
+    expect(snapshot.assessment.scenarioPowerManagement).toEqual({ctTargetCount:'2',ctTargetHours:'12'});
     expect(snapshot.assessment.activeAiModelId).toBe('model-a');
     expect(snapshot.assessment.aiModels['model-a']).toBeTruthy();
     expect(parseAssessmentText(JSON.stringify(snapshot))).toEqual({ok:true, value:snapshot});
