@@ -1,12 +1,13 @@
 import React, {useRef, useState} from 'react';
 // CEDARS_CHUNK_9R14_REPORT_DARKMODE_COMPLETION
-import {Save, Download, Upload, Share2, Database, Trash2} from 'lucide-react';
+import {Save, Download, Upload, Share2, Database, Trash2, LogIn, LogOut, CloudUpload, CloudDownload} from 'lucide-react';
 
 const buttonStyle = {justifyContent:'center',minHeight:44};
 
 export default function SaveSharePanel({
   localSavedAt, status, onSaveLocal, onRestoreLocal, onClearLocal, onDownload,
   onOpenFile, onCopyLink, linkCopied, onContribute, contributionConfigured,
+  cloudConfigured, cloudUser, cloudSavedAt, onCloudSignIn, onCloudSignOut, onCloudSave, onCloudLoad,
 }) {
   const inputRef = useRef(null);
   const [shareConfirmOpen, setShareConfirmOpen] = useState(false);
@@ -35,6 +36,30 @@ export default function SaveSharePanel({
           </div>
         </div>
       </div>
+
+      {cloudConfigured && (
+        <div className="reportShareGroup">
+          <div className="reportShareGroupHeading"><span>CONTINUE ON ANOTHER DEVICE</span><h3>Sign in to pick up where you left off</h3></div>
+          <div className="reportShareCard">
+            <div className="reportShareCardTitle">{cloudUser ? <CloudUpload size={18}/> : <LogIn size={18}/>} {cloudUser ? 'Save to your Google account' : 'Sign in with Google'}</div>
+            <p>{cloudUser
+              ? <>Signed in as <strong>{cloudUser.displayName || cloudUser.email}</strong>. Saving here writes privately to your own account only — CEDARS does not review or collect this copy, and nobody else can read it. This is separate from <em>Contribute this assessment</em> below, which is a deliberate, consent-based research submission.</>
+              : 'Optional. Signing in with Google lets you save a private copy to your own account and reopen it on any other device — no one at CEDARS reviews or collects it. If you would rather keep everything local, use "Save on this device" above instead.'}</p>
+            {cloudUser ? (
+              <>
+                <div className="reportShareActions">
+                  <button onClick={onCloudSave} style={buttonStyle}><CloudUpload size={15}/> Save to my account</button>
+                  <button className="download" onClick={onCloudLoad} style={buttonStyle} disabled={!cloudSavedAt}><CloudDownload size={15}/> Restore my saved copy</button>
+                  <button className="download" onClick={onCloudSignOut} style={buttonStyle}><LogOut size={15}/> Sign out</button>
+                </div>
+                {cloudSavedAt && <div className="reportShareSaved">Saved copy: {new Date(cloudSavedAt).toLocaleString()}</div>}
+              </>
+            ) : (
+              <button onClick={onCloudSignIn} style={buttonStyle}><LogIn size={15}/> Sign in with Google</button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="reportShareGroup">
         <div className="reportShareGroupHeading"><span>SHARE WITH OTHERS</span><h3>Copy a shareable CEDARS assessment link</h3></div>

@@ -37,6 +37,79 @@ function validEmail(value) {
 }
 
 
+// Verifies a Firebase Auth (Google sign-in) ID token server-side, without the Firebase Admin SDK
+// (which needs Node APIs unavailable in the Workers runtime) and without any npm dependency —
+// plain fetch + the native Web Crypto API, matching this file's existing zero-dependency style.
+// See https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
+const FIREBASE_JWK_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
+let cachedFirebaseJwks = null, cachedFirebaseJwksAt = 0;
+
+function base64UrlToBytes(b64url) {
+  const b64 = String(b64url).replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 ? 4 - (b64.length % 4) : 0;
+  const bin = atob(b64 + '='.repeat(pad));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+function base64UrlToJson(b64url) {
+  return JSON.parse(new TextDecoder().decode(base64UrlToBytes(b64url)));
+}
+
+async function getFirebaseJwks() {
+  if (cachedFirebaseJwks && Date.now() - cachedFirebaseJwksAt < 3_600_000) return cachedFirebaseJwks;
+  const response = await fetch(FIREBASE_JWK_URL);
+  if (!response.ok) throw new Error(`JWKS fetch failed (${response.status})`);
+  cachedFirebaseJwks = await response.json();
+  cachedFirebaseJwksAt = Date.now();
+  return cachedFirebaseJwks;
+}
+
+async function verifyFirebaseIdToken(idToken, env) {
+  if (!env.FIREBASE_PROJECT_ID) return {ok:false, error:'Google sign-in verification is not configured.'};
+  if (!idToken || typeof idToken !== 'string' || idToken.length > 4096) return {ok:false, error:'Invalid sign-in token.'};
+  const parts = idToken.split('.');
+  if (parts.length !== 3) return {ok:false, error:'Malformed sign-in token.'};
+  const [headerB64, payloadB64, sigB64] = parts;
+
+  let header, payload;
+  try { header = base64UrlToJson(headerB64); payload = base64UrlToJson(payloadB64); }
+  catch { return {ok:false, error:'Malformed sign-in token.'}; }
+  if (header.alg !== 'RS256') return {ok:false, error:'Unsupported sign-in token algorithm.'};
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof payload.exp !== 'number' || payload.exp < now) return {ok:false, error:'Sign-in token has expired.'};
+  if (typeof payload.iat !== 'number' || payload.iat > now + 60) return {ok:false, error:'Sign-in token is not yet valid.'};
+  if (payload.aud !== env.FIREBASE_PROJECT_ID) return {ok:false, error:'Sign-in token audience mismatch.'};
+  if (payload.iss !== `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`) return {ok:false, error:'Sign-in token issuer mismatch.'};
+  if (!payload.sub || typeof payload.sub !== 'string') return {ok:false, error:'Sign-in token missing subject.'};
+
+  let jwks;
+  try { jwks = await getFirebaseJwks(); }
+  catch { return {ok:false, error:'Could not fetch sign-in verification keys.'}; }
+  const jwk = (jwks.keys || []).find(k => k.kid === header.kid);
+  if (!jwk) return {ok:false, error:'Sign-in token key not recognized.'};
+
+  let cryptoKey;
+  try { cryptoKey = await crypto.subtle.importKey('jwk', jwk, {name:'RSASSA-PKCS1-v1_5', hash:'SHA-256'}, false, ['verify']); }
+  catch { return {ok:false, error:'Could not import sign-in verification key.'}; }
+
+  let signatureValid;
+  try {
+    signatureValid = await crypto.subtle.verify(
+      'RSASSA-PKCS1-v1_5', cryptoKey, base64UrlToBytes(sigB64), new TextEncoder().encode(`${headerB64}.${payloadB64}`),
+    );
+  } catch { return {ok:false, error:'Sign-in token signature check failed.'}; }
+  if (!signatureValid) return {ok:false, error:'Sign-in token signature is invalid.'};
+
+  return {
+    ok:true, uid:payload.sub,
+    email: typeof payload.email === 'string' ? payload.email : '',
+    emailVerified: payload.email_verified === true,
+    name: typeof payload.name === 'string' ? payload.name : '',
+  };
+}
+
 async function verifyTurnstile(token, env) {
   if (!env.TURNSTILE_SECRET_KEY) return {ok:false, error:'Turnstile is not configured.'};
   if (!token || typeof token !== 'string' || token.length > 2048) return {ok:false, error:'Anti-spam verification is required.'};
@@ -172,7 +245,19 @@ export default {
     const turnstile = await verifyTurnstile(body?.turnstileToken, env);
     if (!turnstile.ok) return json(request, env, {error:turnstile.error}, 403);
 
-    const email = trim(contributor.email, 320);
+    // A submitted idToken is a client claim of a verified Google identity — re-verify it here
+    // rather than trusting the contributor.name/email fields the client sent alongside it, which
+    // are otherwise free text. No idToken at all means an anonymous submission, same as before.
+    let verifiedIdentity = null;
+    const idToken = typeof body?.idToken === 'string' ? body.idToken : '';
+    if (idToken) {
+      const authResult = await verifyFirebaseIdToken(idToken, env);
+      if (!authResult.ok) return json(request, env, {error:authResult.error}, 401);
+      verifiedIdentity = authResult;
+    }
+
+    const contributorName = trim(verifiedIdentity?.name || contributor.name, 300);
+    const email = trim(verifiedIdentity ? verifiedIdentity.email : contributor.email, 320);
     if (!validEmail(email)) return json(request, env, {error:'Invalid email address.'}, 400);
     if (permissions.futureContact && !email) return json(request, env, {error:'Email is required when future contact is requested.'}, 400);
 
@@ -186,15 +271,16 @@ export default {
         INSERT INTO contributions (
           id, created_at, schema_version, app_version, assessment_json,
           name, institution, country, professional_role, email, interests,
-          allow_acknowledgment, allow_future_contact, consent_version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          allow_acknowledgment, allow_future_contact, consent_version,
+          auth_provider, auth_uid
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         submissionId,
         createdAt,
         Number(assessment.schemaVersion || 0),
         trim(assessment.appVersion, 100),
         assessmentJson,
-        trim(contributor.name, 300),
+        contributorName,
         trim(contributor.institution, 500),
         trim(contributor.country, 200),
         trim(contributor.role, 300),
@@ -203,6 +289,8 @@ export default {
         permissions.acknowledgment ? 1 : 0,
         permissions.futureContact ? 1 : 0,
         trim(body.consentVersion, 100),
+        verifiedIdentity ? 'google' : null,
+        verifiedIdentity ? trim(verifiedIdentity.uid, 200) : null,
       ).run();
     } catch (error) {
       console.error('CEDARS contribution insert failed', error);
@@ -218,7 +306,7 @@ export default {
         createdAt,
         schemaVersion: Number(assessment.schemaVersion || 0),
         appVersion: trim(assessment.appVersion, 100),
-        name: trim(contributor.name, 300),
+        name: contributorName,
         institution: trim(contributor.institution, 500),
         country: trim(contributor.country, 200),
         professionalRole: trim(contributor.role, 300),
@@ -227,6 +315,7 @@ export default {
         allowAcknowledgment: !!permissions.acknowledgment,
         allowFutureContact: !!permissions.futureContact,
         consentVersion: trim(body.consentVersion, 100),
+        authProvider: verifiedIdentity ? 'google' : '',
         ...compactAssessmentSummary(assessment),
       };
       ctx.waitUntil(mirrorToGoogleSheets(sheetRecord, env).catch(error => {

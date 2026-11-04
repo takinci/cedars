@@ -69,6 +69,31 @@ The frontend is intentionally safe-by-default: if `VITE_CEDARS_CONTRIBUTE_URL` i
 - Users are instructed not to submit patient-identifiable information.
 - Allowed browser origins are restricted by `ALLOWED_ORIGINS`.
 
+## Optional: Google sign-in for verified contributor identity
+
+By default the **Contribute this assessment** form accepts a free-text name and email, same as before. A contributor can optionally sign in with Google instead, so the stored name/email is a verified identity rather than self-reported text. This is purely additive — sign-in is never required to submit, and CEDARS still has no accounts anywhere else in the app.
+
+This feature shares one Firebase project with an unrelated feature, the cross-device cloud-save option in **Save & Share** — see [`firebase/README.md`](../firebase/README.md) for the Firebase Console setup (project creation, enabling the Google provider, authorized domains, the four `VITE_FIREBASE_*` GitHub variables). The remaining steps below are specific to this Worker.
+
+1. The Worker independently re-verifies the Google ID token server-side (it never trusts the browser's claimed identity) — it needs to know which Firebase project to expect tokens from. Set it as a plain Worker variable (not a secret — a project ID isn't sensitive) in `wrangler.toml`:
+
+   ```toml
+   [vars]
+   FIREBASE_PROJECT_ID = "your-firebase-project-id"
+   ```
+
+   then `npx wrangler deploy`.
+2. Run the schema migration against the live database (safe to run even if already applied — D1 doesn't support `ADD COLUMN IF NOT EXISTS`, so only run each line once):
+
+   ```bash
+   npx wrangler d1 execute cedars-contributions --remote --command="ALTER TABLE contributions ADD COLUMN auth_provider TEXT;"
+   npx wrangler d1 execute cedars-contributions --remote --command="ALTER TABLE contributions ADD COLUMN auth_uid TEXT;"
+   ```
+
+   A fresh database created from the current `schema.sql` already includes these columns.
+
+When a contributor signs in, the Worker overrides the submitted name/email with the verified Google profile (ignoring whatever was typed in those fields) and records `auth_provider='google'` plus the stable Google `auth_uid`, so a repeat contributor can later be recognized by UID without storing anything beyond what Google already verified. No token is ever persisted — only its result.
+
 ## Exporting data
 
 Use Wrangler/D1 tooling to query or export the database. Keep exports out of the public repository.

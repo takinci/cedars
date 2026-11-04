@@ -50,7 +50,7 @@ Within **Profile**, the Department and AI pathways use parallel four-stage struc
 
 The **CEDARS Score is interpreted with Result (EcoLabel)**. The Department EcoLabel and AI Research EcoLabel preview the current assessed result in Profile and are carried forward as the same reporting product in **Report & Share**.
 
-No account or installation is required for the public site.
+No account or installation is required for the public site. An optional Google sign-in lets a user save a private copy of their assessment and continue it on another device — see [Saving, sharing, and privacy](#saving-sharing-and-privacy).
 
 ### Two related AI concepts
 
@@ -109,12 +109,15 @@ Normal calculator use is browser-local by default.
 
 | Option | Purpose |
 |---|---|
-| **Save on this device** | Browser-local working copy |
+| **Save on this device** | Browser-local working copy; no account |
 | **Complete CEDARS file** | Portable, versioned `.cedars.json` assessment for backup or exact transfer |
 | **Reproducible link** | Compact calculator / selected AI-profile configuration; useful for reproducibility, but not a complete multi-model or free-text backup |
+| **Continue on another device** | Optional Google sign-in; saves a private copy to the signed-in user's own account only |
 | **Contribute this assessment** | Optional research submission after explicit review and consent |
 
 A reproducible URL is **not private**: anyone with the full link can open the encoded configuration. Names, email addresses, consent choices, and patient-identifiable information are not intentionally placed in the shareable URL.
+
+**Continue on another device** is separate from research contribution and is not reviewed or collected by CEDARS — it exists only so a signed-in user can reopen their own work elsewhere, enforced by Firestore security rules restricted to that user's own account (see [`firebase/README.md`](./firebase/README.md)). It does not require research-contribution consent and nothing saved this way is sent to the research-contribution backend.
 
 Research contribution is separate from normal saving and sharing. A contribution is transmitted only when the user explicitly reviews and submits the contribution form; normal calculations, local saves, portable-file import/export, and shareable links remain browser-side.
 
@@ -167,6 +170,7 @@ Current frontend stack includes React 18, Vite 8, Chart.js, Lucide React, and Vi
 - [`CITATION.cff`](./CITATION.cff) — software citation metadata
 - [About the CEDARS Collaborative](https://cedarsleaf.com/?page=about) — collaborators, institutions, and project background
 - [`cloudflare/README.md`](./cloudflare/README.md) — optional research-contribution backend
+- [`firebase/README.md`](./firebase/README.md) — optional Google sign-in (verified contributor identity and cross-device cloud save)
 - [GitHub Issues](https://github.com/takinci/cedars/issues) — bugs, feedback, and feature suggestions
 
 The public **About CEDARS** page lists current collaborators. Displayed affiliations identify collaborators and do not imply institutional review, endorsement, or sponsorship.

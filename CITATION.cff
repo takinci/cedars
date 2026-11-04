@@ -37,8 +37,8 @@ keywords:
   - artificial intelligence
   - ecolabel
 license: Apache-2.0
-version: "1.0.0"
-date-released: "2026-07-23"
+version: "1.1.0"
+date-released: "2026-11-04"
 # ── A manuscript describing CEDARS has been submitted for peer review. Once published, add the preferred citation below. ──
 # preferred-citation:
 #   type: article
