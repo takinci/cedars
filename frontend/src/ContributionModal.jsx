@@ -126,8 +126,8 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="contribute-title" style={{position:'fixed',inset:0,zIndex:20,background:'#102710aa',display:'grid',placeItems:'center',padding:18}} onMouseDown={e=>{if(e.target===e.currentTarget) onClose();}}>
-      <div style={{width:'min(720px,100%)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:24,padding:24,boxShadow:'0 30px 90px #0005'}}>
+    <div role="dialog" aria-modal="true" aria-labelledby="contribute-title" className="contributionBackdrop" style={{position:'fixed',inset:0,zIndex:20,background:'#102710aa',display:'grid',placeItems:'center',padding:18}} onMouseDown={e=>{if(e.target===e.currentTarget) onClose();}}>
+      <div className="contributionDialog" style={{width:'min(720px,100%)',maxHeight:'90vh',overflowY:'auto',background:'white',borderRadius:24,padding:24,boxShadow:'0 30px 90px #0005'}}>
         <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
           <Database style={{color:'#2E7D32',flexShrink:0}}/>
           <div style={{flex:1}}>
@@ -137,11 +137,11 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
           <button aria-label="Close" onClick={onClose} style={{background:'#eef4ee',color:'#455a64',padding:8,borderRadius:12}}><X size={18}/></button>
         </div>
 
-        <div style={{display:'flex',gap:8,background:'#fff8e1',border:'1px solid #ffe082',padding:'10px 12px',borderRadius:12,fontSize:12,color:'#6d4c41',lineHeight:1.45,marginBottom:16}}>
+        <div className="contributionNotice" style={{display:'flex',gap:8,background:'#fff8e1',border:'1px solid #ffe082',padding:'10px 12px',borderRadius:12,fontSize:12,color:'#6d4c41',lineHeight:1.45,marginBottom:16}}>
           <AlertTriangle size={16} style={{flexShrink:0,marginTop:1}}/> Do not submit patient names, medical record numbers, dates of birth, clinical records, or other patient-identifiable information.
         </div>
 
-        {state.message && <div style={{display:'flex',gap:8,alignItems:'center',background:state.status==='success'?'#e8f5e9':'#ffebee',color:state.status==='success'?'#1b5e20':'#b71c1c',padding:'10px 12px',borderRadius:12,fontSize:12,marginBottom:14}}>{state.status==='success'?<CheckCircle2 size={16}/>:<AlertTriangle size={16}/>} {state.message}</div>}
+        {state.message && <div className={`contributionStatus ${state.status}`} style={{display:'flex',gap:8,alignItems:'center',background:state.status==='success'?'#e8f5e9':'#ffebee',color:state.status==='success'?'#1b5e20':'#b71c1c',padding:'10px 12px',borderRadius:12,fontSize:12,marginBottom:14}}>{state.status==='success'?<CheckCircle2 size={16}/>:<AlertTriangle size={16}/>} {state.message}</div>}
 
         {state.status!=='success' && <form onSubmit={submit}>
           {firebaseConfigured && (
@@ -178,7 +178,7 @@ export default function ContributionModal({open, onClose, endpoint, turnstileSit
             <label style={{display:'flex',flexDirection:'row',alignItems:'flex-start',gap:9,color:'#263238',fontWeight:600}}><input type="checkbox" checked={form.contact} onChange={e=>set('contact',e.target.checked)} style={{marginTop:2}}/> CEDARS may contact me about future research, validation, publication, or collaborative activities.</label>
           </div>
 
-          <div style={{marginTop:16,padding:'10px 12px',border:'1px solid #e0e0e0',borderRadius:12,background:'#fafafa'}}>
+          <div className="contributionTurnstilePanel" style={{marginTop:16,padding:'10px 12px',border:'1px solid #e0e0e0',borderRadius:12,background:'#fafafa'}}>
             <div ref={turnstileEl}/>
             {widgetError && <div role="alert" style={{fontSize:12,color:'#b71c1c',marginTop:6,lineHeight:1.45}}>{widgetError}</div>}
             <div style={{fontSize:10,color:'#78909c',marginTop:5}}>Anti-spam verification is provided by Cloudflare Turnstile.</div>

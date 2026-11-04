@@ -52,16 +52,47 @@ export function FirstVisitWalkthroughPrompt({onStart,onSkip}) {
 
 export default function WalkthroughDock({onStart,showHint=false,onDismissHint}) {
   const [open,setOpen]=useState(false);
+  const [coachStep,setCoachStep]=useState('dock');
+
+  useEffect(()=>{
+    if (showHint) setCoachStep('dock');
+  },[showHint]);
+
+  useEffect(()=>{
+    if (typeof document === 'undefined') return undefined;
+    const target=document.querySelector('[data-demo-target="theme-toggle"]');
+    if (!target) return undefined;
+    const active=showHint && coachStep==='theme';
+    target.classList.toggle('walkthroughThemeTarget',active);
+    if (active) {
+      const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+      window.setTimeout(()=>target.scrollIntoView({behavior:reduced?'auto':'smooth',block:'nearest',inline:'nearest'}),0);
+    }
+    return ()=>target.classList.remove('walkthroughThemeTarget');
+  },[showHint,coachStep]);
+
+  const dismissCoach=()=>{
+    setCoachStep('dock');
+    onDismissHint?.();
+  };
+
   return <aside className={`walkthroughDock ${open?'open':''} ${showHint?'showHint':''}`} aria-label="Guided walkthroughs">
-    {showHint&&<div className="walkthroughDockCoach" role="status">
-      <strong>Need the tour again?</strong>
-      <span>Use Explore CEDARS anytime. Next, we will show you where to switch between light and dark mode.</span>
-      <i aria-hidden="true">↓</i>
-      <button type="button" onClick={onDismissHint}>Next</button>
+    {showHint&&<div className={`walkthroughDockCoach ${coachStep==='theme'?'themeCoach':''}`} role="status" aria-live="polite">
+      {coachStep==='dock'?<>
+        <strong>Walkthroughs stay available here</strong>
+        <span>Explore CEDARS opens the three read-only example journeys whenever you want them.</span>
+        <i aria-hidden="true">↓</i>
+        <button type="button" onClick={()=>setCoachStep('theme')}>Show display control →</button>
+      </>:<>
+        <strong>Light / Dark is in the top bar</strong>
+        <span>The highlighted control changes only how CEDARS is displayed; it does not change assessment inputs or calculations. Its help text also explains the display-energy note.</span>
+        <i aria-hidden="true">↑</i>
+        <button type="button" onClick={dismissCoach}>Got it</button>
+      </>}
     </div>}
-    <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)onDismissHint?.();}} aria-expanded={open}>
+    <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)dismissCoach();}} aria-expanded={open}>
       <span>GUIDED WALKTHROUGH</span><strong>Explore CEDARS</strong><b aria-hidden="true">{open?'×':'→'}</b>
     </button>
-    {open&&<div className="walkthroughDockPanel"><p>Read-only examples that show where to click and what each step means.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
+    {open&&<div className="walkthroughDockPanel"><p>Read-only examples that show where to click, what the scientific boundaries mean, and how to interpret the result.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
   </aside>;
 }

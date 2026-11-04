@@ -67,7 +67,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     else if(key==='context') onSection('context');
   };
   const contextGroupLabel=developMode?'MODEL & WORKLOAD CONTEXT':compareMode?'CLINICAL COMPARISON':'CLINICAL USE CONTEXT';
-  const contextFlow='Context → training → deployment → result. Validation and optional water disclosure stay attached to the same profile.';
+  const contextFlow='Context → training → deployment → Result (EcoLabel). Validation and optional water disclosure stay attached to the same profile.';
 
   const openAndScroll=id=>{
     const node=document.getElementById(id);
@@ -86,7 +86,7 @@ export default function AiProfileWorkspace({scen, ecoLabel, ecoLabelData, sectio
     {key:'context',title:'Context',detail:purposeDone?'Purpose / workload set':'Purpose, task and evaluation'},
     {key:'training',title:'Training',detail:trainingDone?'Documented':'Add status or measurement',disabled:!purposeDone,lockedLabel:'Complete Context first'},
     {key:'inference',title:'Deployment',detail:inferenceDone?'Inference / use documented':'Inference, hosting and expected use',disabled:!trainingDone,lockedLabel:'Document Training first'},
-    {key:'review',title:'Result',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`,disabled:!ecoLabelData.hasData,lockedLabel:'Complete required lifecycle inputs'},
+    {key:'review',title:'Result (EcoLabel)',detail:reviewDone?`${checklistDone}/${checklistTotal} complete`:`${checklistDone}/${checklistTotal} documented`,disabled:!ecoLabelData.hasData,lockedLabel:'Complete required lifecycle inputs'},
   ];
 
   return <div className="aiProfileWorkspace aiProfileWorkspaceCarousel" data-ai-stage={profileStage}>
