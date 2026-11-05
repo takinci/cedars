@@ -16,7 +16,7 @@
 // CEDARS_CHUNK_9R15C_SEMANTIC_DARKMODE_REFINEMENT
 // CEDARS_CHUNK_9R17_REQUIRED_CONTEXT_STEPPER_COLOR_AUDIT
 // CEDARS_CHUNK_9R18_DECISION_HANDOFF_LABEL_ABOUT_GUIDANCE
-import React, {useState, useMemo, useEffect, Suspense} from 'react';
+import React, {useState, useMemo, useEffect, useRef, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, Tooltip, Legend} from 'chart.js';
@@ -51,6 +51,7 @@ import { REFS, refUrl } from './refs.js';
 import { labelFromScen, computeAiLabel, LABEL_TO_SCEN, migrateLegacyLabel, PROVENANCE } from './ailabel.js';
 import { AiEntryStep, AiRouteStrip, AiDeploymentContext, AiExamplesUtility, AI_ENTRY_REFS } from './AiEntry.jsx';
 import { MeasureChooser } from './MeasureChooser.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
 import AiProfileEditor from './AiProfileEditor.jsx';
 import AiProfileWorkspace from './AiProfileWorkspace.jsx';
 import AiImproveWorkspace from './AiImproveWorkspace.jsx';
@@ -1912,6 +1913,12 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
 // ── App ───────────────────────────────────────────────────────────────────────
 /* CEDARS_CHUNK_9G_PROFILE_RESULT_CONSOLIDATION */
 /* CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION */
+// Pages with no assessment-product chrome (header "Clear"/Score pill, WorkflowRail, first-visit
+// walkthrough prompt) — standalone informational pages plus the Home/landing page itself.
+const CHROME_HIDDEN_PAGES = ['landing','why','evidence','ecolabel-method','about'];
+// Every valid top-level `page` value, shared by the initial-load reader and the browser
+// Back/Forward (`popstate`) handler so both resolve an untrusted/stale `?page=` value identically.
+const PAGE_WHITELIST = ['landing','input','dashboard','ai','ecolabel','scenario','report','why','evidence','ecolabel-method','about'];
 function App() {
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -1935,13 +1942,17 @@ function App() {
     if (typeof window === 'undefined') return 'landing';
     const requested = new URLSearchParams(window.location.search).get('page');
     if (requested === 'ecolabel') return 'scenario';
-    return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','evidence','ecolabel-method','about'].includes(requested) ? requested : 'landing';
+    return PAGE_WHITELIST.includes(requested) ? requested : 'landing';
   });
+  // Starts true so the very first render's URL-sync (below) replaces the already-loaded entry
+  // rather than pushing a spurious duplicate; consumed (set back to false) by that same effect.
+  const navSuppressRef = useRef(true);
   const [reportStudioTab, setReportStudioTab] = useState('label');
   useEffect(()=>{ if(page!=='report') setReportStudioTab('label'); },[page]);
   const [guidedDemo, setGuidedDemo] = useState(null);
   const [guidedDemoSaved, setGuidedDemoSaved] = useState(null);
   const [guidedDemoReturnView, setGuidedDemoReturnView] = useState(null);
+  const [walkthroughDockOpenSignal, setWalkthroughDockOpenSignal] = useState(0);
   // Assessment Context is the shared first step when a visitor starts from Home. Keep the
   // intended pathway in session state so the page can offer a clear Continue / Return action
   // without changing reproducible direct links such as ?page=ai or ?page=dashboard.
@@ -1970,13 +1981,34 @@ function App() {
 
 
   // Keep top-level views directly linkable without introducing a router. The calculator state stays
-  // in the URL fragment; `?page=about` (etc.) only identifies the visible view.
+  // in the URL fragment; `?page=about` (etc.) only identifies the visible view. Each genuine page
+  // change pushes one history entry so the browser's native Back/Forward can step through them;
+  // navSuppressRef opts specific transitions (initial mount, popstate itself, guided-demo stepping)
+  // out of creating a new entry, using replaceState instead — see the popstate effect below.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     if (page === 'landing') url.searchParams.delete('page'); else url.searchParams.set('page', page);
-    history.replaceState(null, '', url.pathname + (url.search || '') + (url.hash || ''));
+    const target = url.pathname + (url.search || '') + (url.hash || '');
+    if (navSuppressRef.current) { navSuppressRef.current = false; history.replaceState({cedarsPage: page}, '', target); }
+    else history.pushState({cedarsPage: page}, '', target);
   }, [page]);
+
+  // Browser Back/Forward for top-level page navigation. Scoped to `page` only — it never touches
+  // the settings/scenario hash, which has its own independent replaceState effect below and is
+  // unaffected by which history entry is current.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = event => {
+      const requested = event.state?.cedarsPage ?? new URLSearchParams(window.location.search).get('page');
+      const next = requested === 'ecolabel' ? 'scenario' : (PAGE_WHITELIST.includes(requested) ? requested : 'landing');
+      navSuppressRef.current = true;
+      if (guidedDemo) { exitGuidedDemo(); return; }
+      setPage(next);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [guidedDemo]);
 
   // Decode a shared link once: the full configuration (settings + equipment + scenario +
   // interventions) is restored into the relevant state objects below.
@@ -2613,6 +2645,10 @@ function App() {
   };
 
   const prepareGuidedDemoStep = (kind, stepIndex) => {
+    // Every demo step's setPage(...) call below should replace the current history entry, not
+    // push a new one — otherwise 11-12 steps per demo would each add a Back-able entry, fighting
+    // the walkthrough's own in-dialog Back/Next buttons.
+    navSuppressRef.current = true;
     if (kind === 'leader') {
       if (stepIndex === 0) {
         setPage('landing');
@@ -2793,6 +2829,7 @@ const startGuidedDemo = kind => {
   };
 
   const exitGuidedDemo = () => {
+    navSuppressRef.current = true;
     const snapshot = guidedDemoSaved;
     const view = guidedDemoReturnView;
     setGuidedDemo(null);
@@ -2811,6 +2848,11 @@ const startGuidedDemo = kind => {
       setAiExampleLoaded(view.aiExampleLoaded);
       setPage(view.page);
     }
+  };
+
+  const backToJourneyChooser = () => {
+    exitGuidedDemo();
+    setWalkthroughDockOpenSignal(s => s + 1);
   };
 
   const keepGuidedDemoExample = () => {
@@ -3781,10 +3823,10 @@ const startGuidedDemo = kind => {
             demoOpen={!!GUIDED_DEMOS[guidedDemo?.kind]?.steps?.[guidedDemo?.step]?.openSaveMenu}
             reportMode={page==='report'}
           />
-          {!['landing','why','evidence','ecolabel-method','about'].includes(page) && <button type="button" className="headerClearAssessment" title="Clear the current assessment inputs" onClick={()=>{if(window.confirm('Clear this CEDARS assessment and start over? This resets the current Department and AI inputs in this browser tab. Saved or downloaded copies are not deleted.'))resetToHome();}}><Trash2 size={14}/> <span>Clear</span></button>}
+          {!CHROME_HIDDEN_PAGES.includes(page) && <button type="button" className="headerClearAssessment" title="Clear the current assessment inputs" onClick={()=>{if(window.confirm('Clear this CEDARS assessment and start over? This resets the current Department and AI inputs in this browser tab. Saved or downloaded copies are not deleted.'))resetToHome();}}><Trash2 size={14}/> <span>Clear</span></button>}
           {/* Ambient CEDARS Score is a persistent status slot on assessment pages. */}
           {(() => {
-            const showScoreSlot=!['landing','why','evidence','ecolabel-method','about'].includes(page);
+            const showScoreSlot=!CHROME_HIDDEN_PAGES.includes(page);
             if(!showScoreSlot) return null;
             const aiProduct=page==='ai'||(page==='input'&&inputTarget==='ai')||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai');
             const b=aiProduct?ecoLabelData:deptLabelData;
@@ -3813,7 +3855,7 @@ const startGuidedDemo = kind => {
       </header>
 
       {rejectedSharedFields.length>0&&<div className="sharedLinkWarning" style={{maxWidth:1200,margin:'8px auto',padding:'9px 12px',background:'#fff3e0',border:'1px solid #ffcc80',borderRadius:10,color:'#8d4b00',fontSize:12}}><strong>Some settings in this shared link were invalid and were ignored.</strong> Review the assessment before using its results. Ignored fields: {rejectedSharedFields.join(', ')}.</div>}
-      {!['landing','why','evidence','ecolabel-method','about'].includes(page) && (
+      {!CHROME_HIDDEN_PAGES.includes(page) && (
         <WorkflowRail
           page={page}
           setupActive={(page==='dashboard'&&deptSetupOpen)||(page==='ai'&&!scen.aiRoute)}
@@ -3837,8 +3879,8 @@ const startGuidedDemo = kind => {
       )}
 
       {!guidedDemo && <>
-        {!['why','evidence','about'].includes(page) && <FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/>}
-        <WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)}/>
+        {!CHROME_HIDDEN_PAGES.includes(page) && <FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/>}
+        <WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)} openSignal={walkthroughDockOpenSignal}/>
       </>}
 
       {/* ── Home / Live Calculator ── */}
@@ -3856,9 +3898,9 @@ const startGuidedDemo = kind => {
             <div className="homeStartHeading">
               <h2 id="cedars-start-title">Choose where to begin</h2>
             </div>
-            <div className="homeStartGrid">
-              <button type="button" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
-              <button type="button" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Assess, compare, or develop clinical AI—and understand the footprint of training and day-to-day use.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
+            <div className="homeStartGrid" role="tablist" aria-label="Choose where to begin">
+              <button type="button" role="tab" aria-selected="false" data-demo-target="home-department" className="homeStartChoice department" onClick={()=>{setEcoLabelMode('department');setDeptProfileStage('context');setPage('dashboard');setDeptSetupOpen(true);window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Activity size={20}/><span><em className="homeStartType">CARE ENVIRONMENT</em><strong>Radiology Department</strong><small>Equipment, imaging activity, storage, resources, and AI as it is deployed locally.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
+              <button type="button" role="tab" aria-selected="false" data-demo-target="home-ai" className="homeStartChoice ai" onClick={()=>{setEcoLabelMode('ai');setAiExampleLoaded('');setS('aiRoute','');setPage('ai');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}><Brain size={20}/><span><em className="homeStartType">AI SYSTEM</em><strong>AI Model &amp; Informatics</strong><small>Assess, compare, or develop clinical AI—and understand the footprint of training and day-to-day use.</small></span><span className="homeStartArrow" aria-hidden="true">→</span></button>
             </div>
             <div className="homeFlowHeading">CEDARS WORKFLOW</div>
                         <div className="homeFlow homeFlowThreeStage" aria-label="CEDARS assessment overview">
@@ -3967,6 +4009,7 @@ const startGuidedDemo = kind => {
               {key:'review',title:'Result (EcoLabel)',detail:'Current footprint, Score & EcoLabel',disabled:!departmentScoreReadiness.ready,lockedLabel:'Complete Context first'},
             ]}
           />
+          <ErrorBoundary label="Department setup">
           <div className="departmentSetup">
             <button type="button" className="departmentSetupSummary" onClick={()=>setDeptSetupOpen(v=>!v)} aria-expanded={deptSetupOpen}>
               <Activity size={18} style={{color:'#2E7D32',flexShrink:0}}/>
@@ -4205,6 +4248,7 @@ const startGuidedDemo = kind => {
               </div>
             )}
           </div>
+          </ErrorBoundary>
 
           {deptProfileStage==='equipment' && (()=>{
             const stage=IMPROVE_WORKFLOW_STAGES.find(s=>s.key===deptWorkflowStage) || IMPROVE_WORKFLOW_STAGES[0];
@@ -6681,6 +6725,7 @@ const startGuidedDemo = kind => {
         onRestart={restartGuidedDemo}
         onExit={exitGuidedDemo}
         onKeepExample={keepGuidedDemoExample}
+        onBackToChooser={backToJourneyChooser}
       />}
 
       {page!=='landing' && !guidedDemo && (

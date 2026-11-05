@@ -4,16 +4,35 @@
 import React, {useEffect, useState} from 'react';
 import {Activity, Brain, X} from 'lucide-react';
 
+// Two primary choices, matching Home's two entry buttons exactly. The AI choice expands to its
+// two sub-journeys in place rather than offering 3 flat choices — avoids the mismatch where Home
+// shows 2 entry points but the walkthrough prompt/dock used to offer a 3rd.
 const JOURNEYS = [
   {key:'leader',icon:Activity,label:'Radiology Department',detail:'Build the current Department Profile, interpret its EcoLabel, test prospective changes, then report.'},
-  {key:'procure',icon:Brain,label:'Clinical AI evaluation',detail:'Compare candidates or assess one AI system, document its lifecycle, interpret the EcoLabel, then test deployment choices.'},
-  {key:'developer',icon:Brain,label:'AI development',detail:'Measure or estimate Training and Deployment, interpret lifecycle impact, test changes, then report.'},
+  {key:'ai-chooser',icon:Brain,label:'AI Model & Informatics',detail:'Evaluate, compare, or develop a clinical AI system, interpret its lifecycle EcoLabel, then report.'},
+];
+const AI_SUB_JOURNEYS = [
+  {key:'procure',label:'Evaluate or use a model',detail:'Compare candidates or assess one AI system, document its lifecycle, interpret the EcoLabel, then test deployment choices.'},
+  {key:'developer',label:'Develop or retrain',detail:'Measure or estimate Training and Deployment, interpret lifecycle impact, test changes, then report.'},
 ];
 
 function JourneyButtons({onStart, compact=false}) {
+  const [aiOpen,setAiOpen]=useState(false);
   return <div className={compact?'walkthroughJourneyList compact':'walkthroughJourneyList'}>
     {JOURNEYS.map(journey=>{
       const Icon=journey.icon;
+      if (journey.key==='ai-chooser') {
+        return <React.Fragment key={journey.key}>
+          <button type="button" onClick={()=>setAiOpen(v=>!v)} aria-expanded={aiOpen}>
+            <Icon size={17}/><span><strong>{journey.label}</strong>{!compact&&<small>{journey.detail}</small>}</span><b aria-hidden="true">{aiOpen?'×':'→'}</b>
+          </button>
+          {aiOpen&&AI_SUB_JOURNEYS.map(sub=>
+            <button type="button" key={sub.key} style={{marginLeft:16}} onClick={()=>onStart(sub.key)}>
+              <span><strong>{sub.label}</strong>{!compact&&<small>{sub.detail}</small>}</span><b aria-hidden="true">→</b>
+            </button>
+          )}
+        </React.Fragment>;
+      }
       return <button type="button" key={journey.key} onClick={()=>onStart(journey.key)}>
         <Icon size={17}/><span><strong>{journey.label}</strong>{!compact&&<small>{journey.detail}</small>}</span><b aria-hidden="true">→</b>
       </button>;
@@ -51,13 +70,20 @@ export function FirstVisitWalkthroughPrompt({onStart,onSkip}) {
   </div>;
 }
 
-export default function WalkthroughDock({onStart,showHint=false,onDismissHint}) {
+export default function WalkthroughDock({onStart,showHint=false,onDismissHint,openSignal=0}) {
   const [open,setOpen]=useState(false);
   const [coachStep,setCoachStep]=useState('dock');
 
   useEffect(()=>{
     if (showHint) setCoachStep('dock');
   },[showHint]);
+
+  // Fires when the walkthrough's own "Back" exits step 0 — reopens the journey chooser so
+  // backing out of the first step isn't a dead end (mounts fresh each time, since the dock only
+  // renders while no demo is active).
+  useEffect(()=>{
+    if (openSignal) setOpen(true);
+  },[openSignal]);
 
   useEffect(()=>{
     if (typeof document === 'undefined') return undefined;

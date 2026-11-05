@@ -156,7 +156,7 @@ export function GuidedDemoLauncher({onStart}) {
   );
 }
 
-export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, onKeepExample}) {
+export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, onKeepExample, onBackToChooser}) {
   const demo = GUIDED_DEMOS[kind];
   const step = demo?.steps?.[stepIndex];
   const [rect, setRect] = useState(null);
@@ -265,11 +265,18 @@ export function GuidedDemo({kind, stepIndex, onStepChange, onRestart, onExit, on
     {rect&&<div className="guidedDemoSpotlight" aria-hidden="true" style={{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}/>}
     <section ref={dialogRef} tabIndex={-1} className="guidedDemoPopover" role="dialog" aria-modal="true" aria-label={`${demo.title} guided walkthrough`} style={popoverStyle}>
       <div className="guidedDemoPopoverTop"><div className="guidedDemoProgress"><span>{stepIndex+1} of {demo.steps.length}{kickerLabel?` · ${kickerLabel}`:''}</span><span>{stepIndex+1}/{demo.steps.length}</span></div><button type="button" className="guidedDemoCloseStep" onClick={onExit} aria-label="Exit guided walkthrough"><X size={13}/> Exit demo</button></div>
+      <div role="tablist" aria-label="Walkthrough steps" style={{display:'flex',gap:4,flexWrap:'wrap',margin:'6px 0 10px'}}>
+        {demo.steps.map((s,i)=>
+          <button type="button" key={i} role="tab" aria-selected={i===stepIndex} aria-label={`Go to step ${i+1}: ${s.kicker||s.title}`}
+            onClick={()=>onStepChange(i)}
+            style={{width:i===stepIndex?18:8,height:8,borderRadius:4,padding:0,border:'none',background:i===stepIndex?'#2E7D32':i<stepIndex?'#A5D6A7':'#E0E0E0',cursor:'pointer',transition:'width .15s,background .15s'}}/>
+        )}
+      </div>
       <h3>{step.title}</h3>
       {step.bullets?.length?<ul className="guidedDemoBullets">{step.bullets.map((item,i)=><li key={i}>{item}</li>)}</ul>:step.body?<p>{step.body}</p>:null}
       {(step.nextHint||step.actionHint)&&<div className="guidedDemoActionHint">{step.nextHint||step.actionHint}</div>}
       {targetMissing&&<div className="guidedDemoTargetWarning">CEDARS is still preparing this demo view. You can continue or go back.</div>}
-      <div className="guidedDemoActions"><button type="button" className="guidedDemoSecondary" disabled={stepIndex===0} onClick={()=>onStepChange(stepIndex-1)}>Back</button>{!last?<button type="button" onClick={()=>onStepChange(stepIndex+1)}>Next step →</button>:<><button type="button" className="guidedDemoSecondary" onClick={onExit}>Return to my assessment</button><button type="button" onClick={onKeepExample}>Explore this example</button></>}</div>
+      <div className="guidedDemoActions"><button type="button" className="guidedDemoSecondary" onClick={()=>{if(stepIndex===0)onBackToChooser?.();else onStepChange(stepIndex-1);}}>Back</button>{!last?<button type="button" onClick={()=>onStepChange(stepIndex+1)}>Next step →</button>:<><button type="button" className="guidedDemoSecondary" onClick={onExit}>Return to my assessment</button><button type="button" onClick={onKeepExample}>Explore this example</button></>}</div>
     </section>
   </div>;
 }
