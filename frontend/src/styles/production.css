@@ -631,13 +631,21 @@ footer>div:last-child a{font-size:11.5px!important}
 .walkthroughJourneyList b{color:#F0C66A;font-size:14px}
 .firstVisitWalkthroughSkip{margin-top:15px;background:transparent!important;color:#E5EFE9!important;border:1px solid rgba(255,255,255,.28)!important;font-weight:650!important}
 
-/* Persistent walkthrough launcher on non-home pages. */
-.walkthroughDock{position:fixed;left:18px;bottom:18px;z-index:500;width:230px}
-.walkthroughDockToggle{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 18px;text-align:left;background:#173F34!important;color:#fff!important;border:2px solid #9FE0BD!important;border-radius:9px!important;padding:9px 11px!important;box-shadow:0 12px 28px rgba(18,45,37,.18)!important}
-.walkthroughDockToggle>span{grid-column:1;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#F0C66A}
-.walkthroughDockToggle>strong{grid-column:1;font-size:12.5px;color:#fff}
-.walkthroughDockToggle>b{grid-column:2;grid-row:1/3;align-self:center;color:#F0C66A;font-size:16px}
-.walkthroughDockPanel{margin-top:6px;padding:9px;background:#173F34;border:2px solid #9FE0BD;border-radius:9px;box-shadow:0 16px 34px rgba(18,45,37,.22)}
+/* Persistent walkthrough launcher on non-home pages. Collapsed to an icon-only circle by
+   default on both desktop and mobile — expands to its full labelled size only on hover/focus,
+   or while the journey panel is open (so it doesn't look broken mid-interaction). This keeps it
+   out of the way (including of the footer links it used to cover on mobile) until wanted. */
+.walkthroughDock{position:fixed;left:18px;bottom:18px;z-index:500;width:auto}
+.walkthroughDockToggle{width:46px;height:46px;padding:0!important;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;text-align:left;background:#173F34!important;color:#fff!important;border:2px solid #9FE0BD!important;border-radius:50%!important;box-shadow:0 12px 28px rgba(18,45,37,.18)!important;transition:width .18s ease,border-radius .18s ease,padding .18s ease}
+.walkthroughDockIcon{flex:0 0 auto;color:#F0C66A}
+.walkthroughDockToggle>span,.walkthroughDockToggle>strong,.walkthroughDockToggle>b{display:none}
+.walkthroughDock:hover .walkthroughDockToggle,.walkthroughDock.open .walkthroughDockToggle,.walkthroughDockToggle:focus-visible{
+  width:230px;display:grid;grid-template-columns:18px minmax(0,1fr) 18px;align-items:center;gap:8px;border-radius:9px!important;padding:9px 11px!important;
+}
+.walkthroughDock:hover .walkthroughDockToggle>span,.walkthroughDock.open .walkthroughDockToggle>span,.walkthroughDockToggle:focus-visible>span{display:block;grid-column:2;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#F0C66A}
+.walkthroughDock:hover .walkthroughDockToggle>strong,.walkthroughDock.open .walkthroughDockToggle>strong,.walkthroughDockToggle:focus-visible>strong{display:block;grid-column:2;font-size:12.5px;color:#fff}
+.walkthroughDock:hover .walkthroughDockToggle>b,.walkthroughDock.open .walkthroughDockToggle>b,.walkthroughDockToggle:focus-visible>b{display:block;grid-column:3;color:#F0C66A;font-size:16px}
+.walkthroughDockPanel{width:230px;margin-top:6px;padding:9px;background:#173F34;border:2px solid #9FE0BD;border-radius:9px;box-shadow:0 16px 34px rgba(18,45,37,.22)}
 .walkthroughDockPanel>p{margin:0 0 7px;color:#D7E9DF;font-size:10px}
 .walkthroughJourneyList.compact{grid-template-columns:1fr;gap:5px}
 .walkthroughJourneyList.compact>button{padding:8px 9px!important;align-items:center}
@@ -654,11 +662,9 @@ footer>div:last-child a{font-size:11.5px!important}
   .homeStartChoice{min-height:96px!important;padding:16px!important}
   .homeStartChoice+ .homeStartChoice{border-left:0!important;border-top:1px solid var(--cedars-border)!important}
   .sectionStageDeck{margin-top:9px}
-  .walkthroughDock{left:10px;right:10px;bottom:10px;width:auto}
-  /* The dock above is full-width and fixed to the viewport bottom at this width, so it never
-     scrolls away — without this, it permanently covers the footer's links once scrolled into
-     view. Reserve clearance instead of letting the two fight for the same space. */
-  .siteFooter{padding-bottom:90px!important}
+  /* The dock is small (icon-only) by default now, but still fixed and never scrolls away — keep
+     a little footer clearance as a safety margin for whenever it's expanded (open/hovered). */
+  .siteFooter{padding-bottom:70px!important}
   .firstVisitWalkthrough{padding:20px 16px}.firstVisitWalkthrough h2{font-size:24px}
 }
 

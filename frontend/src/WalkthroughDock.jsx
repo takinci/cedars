@@ -2,7 +2,7 @@
 // CEDARS_CHUNK_9R16_SEMANTIC_COLOR_WALKTHROUGH_AI_ENTRY
 // CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY
 import React, {useEffect, useState} from 'react';
-import {Activity, Brain, X} from 'lucide-react';
+import {Activity, Brain, Compass, X} from 'lucide-react';
 
 // Two primary choices, matching Home's two entry buttons exactly. The AI choice expands to its
 // two sub-journeys in place rather than offering 3 flat choices — avoids the mismatch where Home
@@ -117,7 +117,8 @@ export default function WalkthroughDock({onStart,showHint=false,onDismissHint,op
         <button type="button" onClick={dismissCoach}>Got it</button>
       </>}
     </div>}
-    <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)dismissCoach();}} aria-expanded={open}>
+    <button type="button" className="walkthroughDockToggle" onClick={()=>{setOpen(v=>!v);if(showHint)dismissCoach();}} aria-expanded={open} aria-label="Guided walkthrough">
+      <Compass size={18} className="walkthroughDockIcon"/>
       <span>GUIDED WALKTHROUGH</span><strong>Explore CEDARS</strong><b aria-hidden="true">{open?'×':'→'}</b>
     </button>
     {open&&<div className="walkthroughDockPanel"><p>Read-only examples that show what CEDARS can do, where to click, how to interpret the result, and how current state stays separate from prospective changes.</p><JourneyButtons onStart={kind=>{setOpen(false);onStart?.(kind);}} compact/></div>}
