@@ -4,6 +4,8 @@ This changelog is organized by **product/scientific area**, not by internal patc
 
 ## EcoLabel & reporting
 
+- **2026-11-04 — Footprint Score framing and public EcoLabel Method added.** The existing numerical Score is now named the **CEDARS Footprint Score**; leaf labels describe footprint magnitude rather than implying peer rank or mitigation effort. The v1 Department and AI anchors are explicitly provisional research anchors, and a public EcoLabel Method page explains the equation, boundaries, Improvement Potential, service context, and future calibration.
+
 - **2026-11-04 — One CEDARS EcoLabel family.** Department and AI Research EcoLabels now use the same shell, palette, leaf-scale grammar, coverage hierarchy, key-result structure, assessment-context rows, and provenance footer. Result (EcoLabel) and Report & Share render the same reporting object rather than parallel visual products.
 - **2026-11-04 — Coverage is explicit rather than implied.** Department Result distinguishes the operational Score boundary, categories assessed beyond the Score, and categories not assessed; compact counts disclose the actual category names. Missing lifecycle phases in AI remain visible and are not treated as zero.
 - **2026-11-04 — Result interpretation is parallel.** Department and AI Results both include an “Interpret the result / Put this result in everyday terms” layer. AI distinguishes per-study intensity from deployment-period total impact so scale comparisons do not blur those two questions.
@@ -11,6 +13,8 @@ This changelog is organized by **product/scientific area**, not by internal patc
 - **2026-10-31 to 2026-11-02 — Research reporting hierarchy established.** Methods/provenance, current-state Results, prospective Decision Workspace outputs, and save/share actions were separated into distinct roles. Representative commits: [`3372166e`](https://github.com/takinci/cedars/commit/3372166e998f87c99efb231c3c631e7ba5edf596), [`1e88f6c6`](https://github.com/takinci/cedars/commit/1e88f6c69b417f168067964aef62d39ca7c7f90f).
 
 ## Assessment workflows
+
+- **2026-11-04 — Decision Workspace context made action-oriented.** Current workflow observations such as potentially avoidable imaging are carried into the relevant prospective stage as decision context without being automatically converted into savings; combined scenarios explain overlap in plain language and the dead before/after scroll button was removed.
 
 - **2026-11-04 — Workflow and Decision Workspace now use one stage/lever grammar.** Current practices and prospective changes use the same causal stage mapping; an already-implemented practice is carried forward rather than credited twice. The Process / interpret AI-efficiency lever is visible on both sides and requires a recorded local Clinical AI use before Department modeling.
 - **2026-11-04 — Electricity-cost context now follows the baseline into decisions.** Workflow shows the current estimated electricity-cost baseline; Decision Workspace shows baseline and projected electricity cost plus estimated savings from the same configured/default tariff. These are electricity-only estimates, not total cost-of-care claims.
@@ -38,6 +42,8 @@ This changelog is organized by **product/scientific area**, not by internal patc
 
 ## UX, accessibility & guided use
 
+- **2026-11-04 — Guided walkthrough targeting made deterministic.** Stale targets were removed, targets are awaited before scrolling/highlighting, the guide card moves away from the highlighted region, walkthrough copy is bullet-based, and the final save step teaches no-login local/file options versus optional private Google save without opening an overlapping header menu.
+
 - **2026-11-04 — Walkthroughs and final public copy reconciled with the release workflow.** The three guided journeys now explain the sequence in plain language as **current Profile → Result (EcoLabel) and interpretation → prospective Decision Workspace → EcoLabel/Methods/Save & share**. Report & Share is walked in the same order as the UI, homepage AI wording is task-oriented rather than jargon-list based, and report selectors consistently use “output” terminology.
 
 - **2026-11-04 — Department Workflow containment finalized.** Editable blue cards and current-practice controls are explicitly box-sized within the stage workspace so they cannot paint outside the parent border at desktop or responsive widths.
@@ -55,3 +61,5 @@ This file intentionally records **user-facing and scientific decision points**, 
 <!-- CEDARS_CHUNK_9R30_FINAL_WORKFLOW_COST_LINKAGE -->
 
 <!-- CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY -->
+
+<!-- CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD -->

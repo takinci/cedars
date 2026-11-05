@@ -37,6 +37,7 @@ import './styles/theme.css';
 // CEDARS_CHUNK_9R29_RECONCILED_RESULTS_EVIDENCE
 // CEDARS_CHUNK_9R30_FINAL_WORKFLOW_COST_LINKAGE
 // CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY
+// CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD
 import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
@@ -53,6 +54,7 @@ import { AI_EXAMPLES, VOLUME_ESTIMATES } from './aiExamples.js';
 import AboutPage from './AboutPage.jsx';
 import WhySustainabilityPage, {DecisionWorkspaceSwitch, ReportStudioTabs} from './WhySustainabilityPage.jsx';
 import EvidencePage from './EvidencePage.jsx';
+import EcoLabelMethodPage from './EcoLabelMethodPage.jsx';
 import { GuidedDemo, GUIDED_DEMOS } from './GuidedDemo.jsx';
 import SaveSharePanel from './SaveSharePanel.jsx';
 import SaveUtility from './SaveUtility.jsx';
@@ -286,6 +288,17 @@ function boundedManagedHours(value) {
   const n=Number(raw);
   if(!Number.isFinite(n)) return '';
   return Math.max(0,Math.min(24,n));
+}
+
+function DepartmentServiceContext({equipment={},annualStudies=0,onMethod}) {
+  const counts=departmentPowerCounts(equipment), advanced=counts.ct+counts.mri;
+  if(advanced<=0)return null;
+  return <section className="ecoResultContextCard serviceContextCard"><span>SERVICE CONTEXT · REFERENCE ONLY</span><strong>{advanced===1?'Single-unit CT/MRI service':'Multi-unit CT/MRI service'}</strong><div className="serviceContextMetrics"><b>CT {counts.ct}</b><b>MRI {counts.mri}</b>{Number(annualStudies)>0&&<b>{Number(annualStudies).toLocaleString()} total studies/year</b>}</div><small>CMII 2022–2023 reported academic-site averages of 2.14 CT and 2.00 MRI units/site, versus 1.21 CT and 1.23 MRI units/site in community settings. CEDARS does not infer practice type from fleet size, and this context does not change the v1 Footprint Score.</small>{onMethod&&<button type="button" className="inlineTextButton" onClick={onMethod}>Why this is context, not scoring →</button>}</section>;
+}
+
+function ImprovementPotentialSummary({kind='department',scenarioCount=0,reductionPct=null,currentScore=null,potentialScore=null,onOpen}) {
+  const pct=Number(reductionPct), modeled=kind==='department'&&scenarioCount>0&&Number.isFinite(pct), scoreReady=Number.isFinite(Number(currentScore))&&Number.isFinite(Number(potentialScore));
+  return <section className="ecoResultContextCard improvementPotentialCard"><span>IMPROVEMENT POTENTIAL · SEPARATE FROM THE SCORE</span><strong>{modeled?`${pct}% lower operational carbon in the selected scenario`:'Not yet expressed as a second rating'}</strong><small>{modeled?`${scoreReady?`Footprint Score ${currentScore} → ${potentialScore}. `:''}This is a prospective modeled change, not the current EcoLabel result.`:kind==='department'?'Use Decision Workspace to test feasible changes against the current Profile. CEDARS v1 does not invent a percent-of-all-opportunity denominator.':'AI lifecycle changes are explored in Decision Workspace. CEDARS v1 keeps improvement opportunity separate from the current AI Footprint Score.'}</small>{onOpen&&<button type="button" className="inlineTextButton" onClick={onOpen}>Open Decision Workspace →</button>}</section>;
 }
 const AI_IMPROVE_LIFECYCLE = {
   develop:[
@@ -1306,7 +1319,7 @@ function downloadCloudCSV(result, tracker) {
   URL.revokeObjectURL(url);
 }
 
-// ── CEDARS Score & Rating ─────────────────────────────────────────────────────
+// ── CEDARS Footprint Score & Rating ─────────────────────────────────────────────────────
 // Standardised environmental disclosure, after Energy Star / EU Energy Label A–G
 // (Regulation EU 2021/341): a continuous 0–100 Score paired with a categorical
 // 1–5 leaf Rating. Higher Score = lower footprint. Rating bands per Table 3.
@@ -1322,7 +1335,7 @@ function generateDeptText(d) {
     `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e using the location-based grid factor (${d.ci} kgCO₂e/kWh; grid region: ${d.region}). Reported renewable electricity share was ${d.renewablePct}% and was not used to reduce the location-based result. ` +
     (d.clinicalToolCount > 0 ? ` This figure reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''}, whose net compute and clinical savings are included in the department energy above.` : '') +
     ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
-    ` The CEDARS Score boundary is operational energy-related carbon per imaging study; extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score.` +
+    ` The CEDARS Footprint Score boundary is operational energy-related carbon per imaging study; extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score.` +
     (d.extendedCategories?.length ? ` Extended estimates reported separately: ${d.extendedCategories.join(', ')}.` : '') +
     (d.notAssessedCategories?.length ? ` Not assessed: ${d.notAssessedCategories.join(', ')}.` : '') +
     (d.interventionCount > 0 ? ` The department reports ${d.interventionCount} sustainability practice${d.interventionCount > 1 ? 's' : ''} as currently implemented.` : '') +
@@ -1392,7 +1405,7 @@ function drawLeaf(ctx, x, y, size, filled, color) {
 
 // Single shared renderer for both PNG label cards. Both cards previously duplicated this whole
 // layout with small, easy-to-drift inconsistencies (score font 40px vs 38px, leaf-row spacing
-// 16px vs 15px, row-value column 200 vs 210, footer text "CEDARS Score & Rating..." vs "CEDARS
+// 16px vs 15px, row-value column 200 vs 210, footer text "CEDARS Footprint Score & Rating..." vs "CEDARS
 // ..."). Routing both through one function makes that kind of drift structurally impossible —
 // the two cards can now only differ in the data passed in (title, rows, colours), never in layout.
 function drawLabelCard({
@@ -1445,13 +1458,13 @@ function drawLabelCard({
   ctx.fillStyle = ratingBg;
   ctx.fillRect(2, scoreY, W-4, SCORE_H);
   ctx.fillStyle = '#66716D'; ctx.font = 'bold 8px sans-serif';
-  ctx.fillText('SCORE & RATING', 14, scoreY + 15);
+  ctx.fillText('FOOTPRINT SCORE & RATING', 14, scoreY + 15);
 
   ctx.textAlign = 'center';
   ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = ratingColor;
   ctx.fillText(scoreDisplay, 50, scoreY + 60);
   ctx.font = 'bold 9px sans-serif';
-  ctx.fillText('CEDARS SCORE', 50, scoreY + 76);
+  ctx.fillText('FOOTPRINT SCORE', 50, scoreY + 76);
   ctx.textAlign = 'left';
   for (let i = 0; i < 5; i++) drawLeaf(ctx, 108 + i*18, scoreY + 28, 16, i < leaves, i < leaves ? ratingColor : '#D8DEDA');
   ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = ratingColor;
@@ -1530,6 +1543,7 @@ function CedarsEcoLabelPreview({
   headlineMetrics=[],
   rows=[],
   date='',
+  onMethod=null,
 }) {
   const legacyClass = kind === 'department' ? 'departmentEcoLabelPreview' : 'aiEcoLabelPreview';
   return (
@@ -1548,15 +1562,16 @@ function CedarsEcoLabelPreview({
       </div>
 
       <div className="cedarsEcoLabelScoreBand">
-        <div className="cedarsEcoLabelSectionLabel">SCORE &amp; RATING</div>
+        <div className="cedarsEcoLabelSectionLabel">FOOTPRINT SCORE &amp; RATING</div>
         <div className="cedarsEcoLabelScore">
           <strong>{scoreDisplay}</strong>
-          <span>CEDARS SCORE</span>
+          <span>FOOTPRINT SCORE</span>
         </div>
         <div className="cedarsEcoLabelRating">
           <LeafRating leaves={scored ? leaves : 0} size={20} color="#2F6B57"/>
           <strong>{ratingLabel}</strong>
           <small>{intensityText}</small>
+          {onMethod&&<button type="button" className="cedarsEcoLabelMethodLink" onClick={onMethod}>How is this Score calculated? →</button>}
         </div>
       </div>
 
@@ -1666,7 +1681,7 @@ function ecoReportRows(d) {
       ...(d.graded ? [['Effective CO₂e / study', `${d.effectivePerStudyG} gCO₂e (training amortised + inference)`]] : []),
       ...(d.breakEvenStudies != null ? [['Break-even (training = inference)', `~${d.breakEvenStudies.toLocaleString()} studies`]] : []),
     ] : []),
-    ['**CEDARS Score**',         d.graded ? `**${d.score} / 100** (modeled operational intensity · training + inference)` : d.scoreStatus === 'training-unavailable' ? '**Not assigned** — training/pretraining footprint unavailable' : d.scoreStatus === 'deployment-workload-missing' ? '**Not assigned** — add deployment workload' : '—'],
+    ['**CEDARS Footprint Score**',         d.graded ? `**${d.score} / 100** (modeled operational intensity · training + inference)` : d.scoreStatus === 'training-unavailable' ? '**Not assigned** — training/pretraining footprint unavailable' : d.scoreStatus === 'deployment-workload-missing' ? '**Not assigned** — add deployment workload' : '—'],
     ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**` : 'Not assigned'],
     ['Estimated with',           `CEDARS · ${d.date}`],
   ];
@@ -1679,8 +1694,8 @@ function generateEcoMarkdown(d) {
     '|:---|:---|',
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
     '',
-    ...(d.scoreStatus === 'training-unavailable' ? ['> Overall CEDARS Score not assigned: the training/pretraining footprint is unavailable. The inference result is reported separately; unknown is not treated as zero.', ''] : []),
-    ...(d.scoreStatus === 'deployment-workload-missing' ? ['> Overall CEDARS Score not assigned: add deployment workload to combine one-time training with recurring inference.', ''] : []),
+    ...(d.scoreStatus === 'training-unavailable' ? ['> Overall CEDARS Footprint Score not assigned: the training/pretraining footprint is unavailable. The inference result is reported separately; unknown is not treated as zero.', ''] : []),
+    ...(d.scoreStatus === 'deployment-workload-missing' ? ['> Overall CEDARS Footprint Score not assigned: add deployment workload to combine one-time training with recurring inference.', ''] : []),
     '> CEDARS AI Research EcoLabel generated with [CEDARS](https://cedarsleaf.com).',
     '> Reporting framework: Doo FX et al. *J Am Coll Radiol* 2024 · DOI 10.1016/j.jacr.2023.11.019; Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030. Full sources: cedarsleaf.com → sources.md.',
   ].join('\n');
@@ -1868,7 +1883,7 @@ function App() {
     if (typeof window === 'undefined') return 'landing';
     const requested = new URLSearchParams(window.location.search).get('page');
     if (requested === 'ecolabel') return 'scenario';
-    return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','evidence','about'].includes(requested) ? requested : 'landing';
+    return ['landing','input','dashboard','ai','ecolabel','scenario','report','why','evidence','ecolabel-method','about'].includes(requested) ? requested : 'landing';
   });
   const [reportStudioTab, setReportStudioTab] = useState('label');
   useEffect(()=>{ if(page!=='report') setReportStudioTab('label'); },[page]);
@@ -3629,6 +3644,7 @@ const startGuidedDemo = kind => {
             <button className={page==='landing'?'on':''} onClick={()=>setPage('landing')}>Home</button>
             <button className={page==='why'?'on':''} onClick={()=>setPage('why')}>Why sustainability?</button>
             <button className={page==='evidence'?'on':''} onClick={()=>setPage('evidence')}>Evidence</button>
+            <button className={page==='ecolabel-method'?'on':''} onClick={()=>setPage('ecolabel-method')}>EcoLabel Method</button>
             <button className={page==='about'?'on':''} onClick={()=>setPage('about')}>About</button>
           </nav>
                     <span className="themeToggleWrap">
@@ -3669,10 +3685,10 @@ const startGuidedDemo = kind => {
             demoOpen={!!GUIDED_DEMOS[guidedDemo?.kind]?.steps?.[guidedDemo?.step]?.openSaveMenu}
             reportMode={page==='report'}
           />
-          {!['landing','why','evidence','about'].includes(page) && <button type="button" className="headerClearAssessment" title="Clear the current assessment inputs" onClick={()=>{if(window.confirm('Clear this CEDARS assessment and start over? This resets the current Department and AI inputs in this browser tab. Saved or downloaded copies are not deleted.'))resetToHome();}}><Trash2 size={14}/> <span>Clear</span></button>}
+          {!['landing','why','evidence','ecolabel-method','about'].includes(page) && <button type="button" className="headerClearAssessment" title="Clear the current assessment inputs" onClick={()=>{if(window.confirm('Clear this CEDARS assessment and start over? This resets the current Department and AI inputs in this browser tab. Saved or downloaded copies are not deleted.'))resetToHome();}}><Trash2 size={14}/> <span>Clear</span></button>}
           {/* Ambient CEDARS Score is a persistent status slot on assessment pages. */}
           {(() => {
-            const showScoreSlot=!['landing','why','evidence','about'].includes(page);
+            const showScoreSlot=!['landing','why','evidence','ecolabel-method','about'].includes(page);
             if(!showScoreSlot) return null;
             const aiProduct=page==='ai'||(page==='input'&&inputTarget==='ai')||(['ecolabel','scenario','report'].includes(page)&&ecoLabelMode==='ai');
             const b=aiProduct?ecoLabelData:deptLabelData;
@@ -3684,13 +3700,13 @@ const startGuidedDemo = kind => {
                   className={`ambientScoreButton ${bHas?'':'empty'}`}
                   onClick={()=>{if(bHas)goToScore(aiProduct?'ai':'department');}}
                   aria-disabled={!bHas||undefined}
-                  title={bHas?(aiProduct?'Current AI model score — open current result':'Current Department score — open current result'):(aiProduct?'AI Score not assigned yet':'CEDARS Score not calculated yet')}
+                  title={bHas?(aiProduct?'Current AI model score — open current result':'Current Department score — open current result'):(aiProduct?'AI Footprint Score not assigned yet':'Footprint Score not calculated yet')}
                   style={{display:'inline-flex',alignItems:'center',gap:7,background:bHas?b.ratingBg:'#E9EEEB',border:`1.5px solid ${bHas?b.ratingColor:'#AAB5AF'}`,borderRadius:16,padding:'5px 12px 5px 10px',cursor:bHas?'pointer':'default',boxShadow:'none',flexShrink:0}}
                 >
                   <Leaf size={17} fill={bHas?b.ratingColor:'none'} color={scoreColor}/>
                   <span style={{fontSize:18,fontWeight:900,color:scoreColor,lineHeight:1}}>{bHas?b.score:'—'}</span>
                   <span style={{display:'flex',flexDirection:'column',lineHeight:1.1,textAlign:'left'}}>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:scoreColor}}>{aiProduct?'AI SCORE':'CEDARS SCORE'}</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:scoreColor}}>{aiProduct?'AI FOOTPRINT':'FOOTPRINT SCORE'}</span>
                     <span className="ambientScoreStatus" style={{fontSize:10,color:bHas?'#37474f':'#78867F'}}>{bHas?`${b.leaves}/5 leaves`:(aiProduct?'not assigned':'not scored yet')}</span>
                   </span>
                 </button>
@@ -3701,7 +3717,7 @@ const startGuidedDemo = kind => {
       </header>
 
       {rejectedSharedFields.length>0&&<div className="sharedLinkWarning" style={{maxWidth:1200,margin:'8px auto',padding:'9px 12px',background:'#fff3e0',border:'1px solid #ffcc80',borderRadius:10,color:'#8d4b00',fontSize:12}}><strong>Some settings in this shared link were invalid and were ignored.</strong> Review the assessment before using its results. Ignored fields: {rejectedSharedFields.join(', ')}.</div>}
-      {!['landing','why','evidence','about'].includes(page) && (
+      {!['landing','why','evidence','ecolabel-method','about'].includes(page) && (
         <WorkflowRail
           page={page}
           setupActive={(page==='dashboard'&&deptSetupOpen)||(page==='ai'&&!scen.aiRoute)}
@@ -4158,7 +4174,7 @@ const startGuidedDemo = kind => {
           {/* ── Headline footprint: result first, methods second ── */}
           <section id="department-overview" className="footprintHero departmentFootprintHero workflowAnchor" aria-labelledby="department-footprint-title">
             <div className="footprintHeroHeader">
-              <div><span>{deptProfileStage==='review'?'PROFILE REVIEW · CURRENT RESULT':'PROFILE · CURRENT FOOTPRINT'}</span><h2 id="department-footprint-title">Department operational footprint</h2><p>Headline operational energy and carbon from the current setup. Extended estimates stay separate from the CEDARS Score boundary.</p></div>
+              <div><span>{deptProfileStage==='review'?'PROFILE REVIEW · CURRENT RESULT':'PROFILE · CURRENT FOOTPRINT'}</span><h2 id="department-footprint-title">Department operational footprint</h2><p>Headline operational energy and carbon from the current setup. Extended estimates stay separate from the CEDARS Footprint Score boundary.</p></div>
               <div className="footprintHeroPrimary"><small>Operational carbon {dash.totals.label}</small><strong>{fmtCo2(dash.totals.co2Kg)}</strong></div>
             </div>
             <div className="footprintMetricGrid">
@@ -4191,7 +4207,7 @@ const startGuidedDemo = kind => {
                   ratingLabel={deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}
                   intensityText={deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e/study · ${deptLabelData.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate'}
                   coverageValue="Operational energy & carbon"
-                  coverageDetail="The Score reflects the operational energy-and-carbon boundary. Additional assessed categories are reported separately."
+                  coverageDetail="The Footprint Score reflects the operational energy-and-carbon boundary. Additional assessed categories are reported separately."
                   coverageGroups={[
                     {label:`${deptLabelData.extendedCategories?.length || 0} assessed beyond Score`,items:deptLabelData.extendedCategories || []},
                     {label:`${deptLabelData.notAssessedCategories?.length || 0} not assessed`,items:deptLabelData.notAssessedCategories || []},
@@ -4216,9 +4232,12 @@ const startGuidedDemo = kind => {
                     ['Clinical / operational context',`${deptLabelData.interventionCount || 0} current practice${deptLabelData.interventionCount===1?'':'s'} · ${deptLabelData.clinicalToolCount || 0} Clinical AI use${deptLabelData.clinicalToolCount===1?'':'s'}`],
                   ]}
                   date={deptLabelData.date}
+                  onMethod={()=>setPage('ecolabel-method')}
                 />
                 <div className="profileEcoLabelSupport">
                   <SystemEffectsCallout kind="department" onReview={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
+                  <DepartmentServiceContext equipment={settings.equipment} annualStudies={deptLabelData.annualStudies} onMethod={()=>setPage('ecolabel-method')}/>
+                  <ImprovementPotentialSummary kind="department" scenarioCount={scenario.count} reductionPct={scenario.savings.pctCo2} currentScore={deptLabelData.hasData?deptLabelData.score:null} potentialScore={deptLabelData.hasData?deptLabelData.potentialScore:null} onOpen={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
                 </div>
               </div>
 
@@ -4233,7 +4252,7 @@ const startGuidedDemo = kind => {
                               <div>
                                 <div className="scoreScopeQuestion">Which footprint should these examples explain?</div>
                                 <div className="scoreScopeToggle" role="group" aria-label="Footprint used for everyday equivalents">
-                                  <button type="button" aria-pressed={equivScope==='scope2'} className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}><span className="scoreScopeIndicator" aria-hidden="true"/><span><strong>Scored footprint</strong><small>Operational energy-related carbon · CEDARS Score boundary</small></span></button>
+                                  <button type="button" aria-pressed={equivScope==='scope2'} className={equivScope==='scope2'?'on':''} onClick={()=>setEquivScope('scope2')}><span className="scoreScopeIndicator" aria-hidden="true"/><span><strong>Scored footprint</strong><small>Operational energy-related carbon · CEDARS Footprint Score boundary</small></span></button>
                                   <button type="button" aria-pressed={equivScope==='all'} className={equivScope==='all'?'on':''} onClick={()=>setEquivScope('all')}><span className="scoreScopeIndicator" aria-hidden="true"/><span><strong>Operational + assessed extended carbon</strong><small>Broader context using categories quantified in this assessment</small></span></button>
                                 </div>
                                 <div className="scoreScopeExplain">{equivScope==='scope2' ? <>Uses only the carbon included in the Department CEDARS Score.</> : <>Adds quantified direct and extended carbon categories for a broader footprint view; categories not assessed remain excluded.</>}</div>
@@ -4455,7 +4474,7 @@ const startGuidedDemo = kind => {
           {dashOpen['carbon'] && (
           <section id="dash-carbon" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>2. Carbon emissions — GHG Protocol scopes</h2>
-            <p className="note" style={{marginBottom:12}}>GHG scopes and the CEDARS Score boundary are related but not identical. The Score uses operational energy-related carbon per study; extended Scope 1/3 categories are disclosed separately. Patient travel and staff commute are <strong>not assessed</strong> until local inputs are entered. All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
+            <p className="note" style={{marginBottom:12}}>GHG scopes and the CEDARS Footprint Score boundary are related but not identical. The Score uses operational energy-related carbon per study; extended Scope 1/3 categories are disclosed separately. Patient travel and staff commute are <strong>not assessed</strong> until local inputs are entered. All {dash.totals.label}. Framework: Doo et al. JACR 2024.</p>
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14,background:'#f1f8f1',borderRadius:12,padding:'8px 16px',flexWrap:'wrap'}}>
               <span style={{fontSize:12,color:'#607d66',fontWeight:700}}>Optional local travel inputs</span>
               <label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Patient avg round trip <input type="number" min="0" step="1" value={settings.patientTravelKm} onChange={e=>set('patientTravelKm',e.target.value)} placeholder="blank" style={{width:70,padding:'4px 8px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:12,background:'white'}}/> km</label>
@@ -5683,7 +5702,7 @@ const startGuidedDemo = kind => {
                         }
                         coverageDetail={
                           ecoLabelData.graded
-                            ? `Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
+                            ? `Footprint Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
                             : ecoLabelData.scoreStatus==='training-unavailable'
                               ? 'Inference is reported separately; an overall Score is not assigned while required training data are unavailable.'
                               : 'Complete the missing lifecycle inputs before interpreting an overall Score.'
@@ -5708,9 +5727,11 @@ const startGuidedDemo = kind => {
                           ['Clinical / operational context',ecoLabelData.taskType || '—'],
                         ]}
                         date={ecoLabelData.date}
+                        onMethod={()=>setPage('ecolabel-method')}
                       />
                       <div className="profileEcoLabelSupport">
                         <SystemEffectsCallout kind="ai" onReview={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
+                        <ImprovementPotentialSummary kind="ai" currentScore={ecoLabelData.graded?ecoLabelData.score:null} onOpen={()=>{setEcoLabelMode('ai');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
                       </div>
                     </div>
                     <div className="aiResultInterpretation">
@@ -5836,7 +5857,7 @@ const startGuidedDemo = kind => {
             </div>
           )}
 
-          {ecoLabelMode==='department' && <section className="decisionCompareHero department" aria-label="Current Department result and prospective scenario">
+          {ecoLabelMode==='department' && <section className="decisionCompareHero department" data-demo-target="department-decision-compare" aria-label="Current Department result and prospective scenario">
             <div className="decisionCompareHeroHeading"><div><span>BASELINE → PROSPECTIVE</span><h2>Compare the current profile with a scenario</h2></div><div className="decisionCompareHeroActions"><button type="button" className="download" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);setDeptProfileStage('equipment');}}>Edit current profile</button><button type="button" onClick={()=>{setReportStudioTab('label');setPage('report');}}>Report &amp; Share →</button></div></div>
             <div className="decisionComparePanels">
               <article className="decisionCompareCard baseline"><span>CURRENT PROFILE</span><strong>{deptLabelData.hasData?`Score ${deptLabelData.score}`:'Result incomplete'}</strong><small>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e/study · current assessed state`:'Complete the Department baseline before interpreting a score.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.baseline.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.baseline.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{deptLabelData.annualStudies>0?deptLabelData.annualStudies.toLocaleString():'—'}</b><em>studies/year</em></div><div><b>{fmtMoney(scenario.baseline.kwh*getPrice(settings.region,settings.electricityPrice),currencySym(settings.region))}</b><em>est. electricity cost</em></div></div></article>
@@ -5933,7 +5954,7 @@ const startGuidedDemo = kind => {
                           return <div key={row.name} className={`improveChangeCard ${active?'active':''} ${currentPractice?'currentPractice':''} ${unavailable?'unavailable':''}`}>
                             <label className="improveChangeSelect">
                               {currentPractice?<span className="improveCurrentPracticeMark" aria-hidden="true">✓</span>:<input type="checkbox" checked={active} disabled={unavailable} onChange={()=>toggleScenarioIntervention(row.name)}/>}
-                              <span><strong>{row.name}</strong><small>{row.meta.description}</small>{unavailable&&<small className="improveRequirement">Add a local Clinical AI use to the Profile before modeling this Department change.</small>}</span>
+                              <span><strong>{row.name}</strong><small>{row.meta.description}</small>{row.name==='Reduce low-value imaging'&&activeStageMetricRaw!==''&&<small className="improveLocalContext">Current local estimate: {activeStageMetricRaw}% potentially avoidable / low-value imaging. CEDARS keeps that observation as context; the prospective scenario uses its stated reduction assumption rather than automatically treating the full {activeStageMetricRaw}% as removable.</small>}{unavailable&&<small className="improveRequirement">Add a local Clinical AI use to the Profile before modeling this Department change.</small>}</span>
                             </label>
                             <div className="improveBadges">{currentPractice&&<span className="improveStatus current">Already in current Profile</span>}{unavailable&&<span className="improveStatus unavailable">Needs Clinical AI</span>}<span className={`improveStatus ${statusClass(row.meta.status)}`}>{row.meta.status}</span><span>{row.meta.category}</span></div>
                             <div className="improveStandalone"><span>{currentPractice?'Current state':unavailable?'Profile prerequisite':row.meta.status==='Planning guidance'?'How it affects CEDARS':'Standalone effect'}</span><strong>{currentPractice?'Already documented in the current Profile; CEDARS will not apply it again as prospective savings.':unavailable?'Add Clinical AI under the Department Profile first; CEDARS will then use the recorded local deployment as the baseline for this scenario.':impactText(row)}</strong></div>
@@ -5965,7 +5986,7 @@ const startGuidedDemo = kind => {
                     <div className="improveReceiptHeader"><span>SCENARIO TALLY</span><strong>{scenario.count} proposed change{scenario.count===1?'':'s'}</strong></div>
                     <div className="improveReceiptBaseline">
                       <span>CURRENT PROFILE · {activeStageMeta.title}</span>
-                      {improveDeptStage==='infrastructure'?(()=>{const totals=departmentPowerCounts(settings.equipment);const wm=deptLabel.workflowMetrics||{};return <><strong>Power management: CT {boundedCoverageCount(wm.ctPowerManagedCount,totals.ct)}/{totals.ct} · MRI {boundedCoverageCount(wm.mriPowerManagedCount,totals.mri)}/{totals.mri} · workstations {boundedCoverageCount(wm.workstationPowerManagedCount,totals.workstations)}/{totals.workstations}</strong><small>Prospective power-management savings use only the target increase above this current coverage.</small></>;})():<>{activeStageMetric?<strong>{activeStageMetric.label}: {activeStageMetricRaw!==''?`${activeStageMetricRaw} ${activeStageMetric.unit}`:'not entered'}</strong>:<strong>No local metric defined for this stage</strong>}{activeStageCurrentPractices.length>0?<small>Already in place: {activeStageCurrentPractices.join(' · ')}</small>:<small>No current practice from this stage is documented as implemented.</small>}{activeStageMetric&&activeStageMetricRaw!==''&&<small>Carried forward as context only; it is not automatically converted into projected savings.</small>}</>}
+                      {improveDeptStage==='infrastructure'?(()=>{const totals=departmentPowerCounts(settings.equipment);const wm=deptLabel.workflowMetrics||{};return <><strong>Power management: CT {boundedCoverageCount(wm.ctPowerManagedCount,totals.ct)}/{totals.ct} · MRI {boundedCoverageCount(wm.mriPowerManagedCount,totals.mri)}/{totals.mri} · workstations {boundedCoverageCount(wm.workstationPowerManagedCount,totals.workstations)}/{totals.workstations}</strong><small>Prospective power-management savings use only the target increase above this current coverage.</small></>;})():<>{activeStageMetric?<strong>{activeStageMetric.label}: {activeStageMetricRaw!==''?`${activeStageMetricRaw} ${activeStageMetric.unit}`:'not entered'}</strong>:<strong>No local metric defined for this stage</strong>}{activeStageCurrentPractices.length>0?<small>Already in place: {activeStageCurrentPractices.join(' · ')}</small>:<small>No current practice from this stage is documented as implemented.</small>}{activeStageMetric&&activeStageMetricRaw!==''&&<small>{improveDeptStage==='order'?`Local estimate recorded. CEDARS does not count the ${activeStageMetricRaw}% as a saving unless you explicitly test a prospective change below.`:'Used as baseline context; it does not become a savings estimate automatically.'}</small>}</>}
                       <div className="improveReceiptBaselineCost"><span>EST. BASELINE ELECTRICITY COST</span><strong>{fmtMoney(baselinePeriodCost,sym)} / {periodNoun}</strong><small>Electricity only · configured/default tariff</small></div>
                     </div>
                     {selectedRows.length>0 ? <div className="improveReceiptRows" aria-label="Proposed scenario changes">
@@ -5981,15 +6002,14 @@ const startGuidedDemo = kind => {
                       <strong className="money">{scenario.count>0?`≈ ${fmtMoney(projectedPeriodCost,sym)} projected · ${fmtMoney(periodCostSaving,sym)} saved / ${periodNoun}`:'—'}</strong>
                       {scenario.count>0&&<div className="improveReceiptPills"><span>{scenario.savings.pctEnergy}% energy</span><span>{scenario.savings.pctCo2}% operational carbon</span></div>}
                     </div>
-                    <p className="improveReceiptNote">This tally updates as you add or remove prospective changes. The <strong>combined scenario</strong> is the authoritative total because CEDARS accounts for overlapping energy pools rather than simply adding every row.</p>
-                    <button type="button" disabled={scenario.count===0} onClick={()=>document.getElementById('improve-before-after')?.scrollIntoView({behavior:'smooth',block:'start'})}>Compare before &amp; after ↓</button>
+                    <p className="improveReceiptNote"><strong>Your scenario updates as you add or remove changes.</strong> When two changes affect the same source of energy use, CEDARS counts the shared savings only once.</p>
                   </aside>
                 </div>
               </section>
 
               <details className="decisionComparisonDetails">
                 <summary>Chart &amp; calculation details</summary>
-                <div className="decisionComparisonDetailsBody"><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label><div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario} options={chartScenarioOptions}/></Suspense></section></div><p className="note">The comparison above is authoritative. This chart uses the same combined intervention engine and keeps overlapping energy pools from being double-counted.</p></div>
+                <div className="decisionComparisonDetailsBody"><label>Electricity price ({sym}/kWh)<input type="number" min="0" step="0.01" value={settings.electricityPrice} onChange={e=>set('electricityPrice',e.target.value)} placeholder={String(ELECTRICITY_PRICE[settings.region]?.price??0.20)}/></label><div className="charts improveChart"><section><h3>Before vs after</h3><Suspense fallback={<div style={{height:200}}/>}><Bar data={chartScenario} options={chartScenarioOptions}/></Suspense></section></div><p className="note">This chart uses the same combined scenario calculation shown above. When changes affect the same underlying energy use, shared savings are counted once.</p></div>
               </details>
 
               <div className="prospectiveOnlyNote"><strong>Prospective scenario only.</strong><span>Changes tested here do not alter the current Department Profile. After implementation, update the affected Profile inputs and CEDARS will recalculate the current result.</span></div>
@@ -6097,7 +6117,7 @@ const startGuidedDemo = kind => {
                 ratingLabel={deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}
                 intensityText={deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e/study · ${deptLabelData.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate'}
                 coverageValue="Operational energy & carbon"
-                coverageDetail="The Score reflects the operational energy-and-carbon boundary. Additional assessed categories are reported separately."
+                coverageDetail="The Footprint Score reflects the operational energy-and-carbon boundary. Additional assessed categories are reported separately."
                   coverageGroups={[
                     {label:`${deptLabelData.extendedCategories?.length || 0} assessed beyond Score`,items:deptLabelData.extendedCategories || []},
                     {label:`${deptLabelData.notAssessedCategories?.length || 0} not assessed`,items:deptLabelData.notAssessedCategories || []},
@@ -6122,6 +6142,7 @@ const startGuidedDemo = kind => {
                   ['Clinical / operational context',`${deptLabelData.interventionCount || 0} current practice${deptLabelData.interventionCount===1?'':'s'} · ${deptLabelData.clinicalToolCount || 0} Clinical AI use${deptLabelData.clinicalToolCount===1?'':'s'}`],
                 ]}
                 date={deptLabelData.date}
+                onMethod={()=>setPage('ecolabel-method')}
               />
 
               <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
@@ -6142,7 +6163,7 @@ const startGuidedDemo = kind => {
                   ['annual electricity', deptLabelData.annualKwh>0],
                   ['grid region', !!deptLabelData.region],
                   ['annual carbon footprint', deptLabelData.totalAnnualCo2>0],
-                  ['CEDARS Score & Rating', deptLabelData.hasData],
+                  ['CEDARS Footprint Score & Rating', deptLabelData.hasData],
                 ];
                 const missing = checks.filter(([,ok])=>!ok).map(([name])=>name);
                 return missing.length===0
@@ -6216,7 +6237,7 @@ const startGuidedDemo = kind => {
 
                 <p className="note reportLabelUseNote" style={{maxWidth:220,fontSize:12,margin:0}}>Use the PNG EcoLabel in sustainability reports, posters, presentations, or other communication materials. Methods text is kept in the Methods &amp; evidence output.</p>
                 <div style={{marginTop:8}}>
-                  <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
+                  <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Footprint Score band:</p>
                   {CEDARS_RATINGS.map(r=>(
                     <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:deptLabelData.leaves===r.leaves?700:400,color:deptLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
                       <LeafRating leaves={r.leaves} size={12} color={r.color}/>
@@ -6257,7 +6278,7 @@ const startGuidedDemo = kind => {
                   ['6', 'Current sustainability practices', d.interventionCount > 0 ? `${d.interventionCount} documented as implemented` : 'none reported', d.interventionCount > 0, 'Current state'],
                   ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
                   ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
-                  ['9', 'CEDARS Score boundary', d.scoreBoundaryLabel, true, 'Boundary'],
+                  ['9', 'CEDARS Footprint Score boundary', d.scoreBoundaryLabel, true, 'Boundary'],
                   ['10', 'Extended estimates reported separately', d.extendedCategories.length ? d.extendedCategories.join(' · ') : 'none', true, 'Boundary'],
                   ['11', 'Not assessed', d.notAssessedCategories.length ? d.notAssessedCategories.join(' · ') : 'none', d.notAssessedCategories.length===0, 'Boundary'],
                 ];
@@ -6351,7 +6372,7 @@ const startGuidedDemo = kind => {
               }
               coverageDetail={
                 ecoLabelData.graded
-                  ? `Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
+                  ? `Footprint Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
                   : ecoLabelData.scoreStatus==='training-unavailable'
                     ? 'Inference is reported separately; an overall Score is not assigned while required training data are unavailable.'
                     : 'Complete the missing lifecycle inputs before interpreting an overall Score.'
@@ -6376,6 +6397,7 @@ const startGuidedDemo = kind => {
                 ['Clinical / operational context',ecoLabelData.taskType || '—'],
               ]}
               date={ecoLabelData.date}
+              onMethod={()=>setPage('ecolabel-method')}
             />
 
             {/* Actions */}
@@ -6385,7 +6407,7 @@ const startGuidedDemo = kind => {
               </button>
               <p className="note reportVisualSummaryNote">Use this optional visual summary in presentations, posters, model documentation, or exploratory reporting.</p>
               <div style={{marginTop:8}}>
-                <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Score band:</p>
+                <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Footprint Score band:</p>
                 {CEDARS_RATINGS.map(r=>(
                   <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:ecoLabelData.leaves===r.leaves?700:400,color:ecoLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
                     <LeafRating leaves={r.leaves} size={12} color={r.color}/>
@@ -6498,7 +6520,9 @@ const startGuidedDemo = kind => {
 
       {page==='why' && <WhySustainabilityPage onStart={()=>setPage('landing')} onEvidence={()=>setPage('evidence')}/>}
 
-      {page==='evidence' && <EvidencePage onStart={()=>setPage('landing')}/>}
+      {page==='evidence' && <EvidencePage onStart={()=>setPage('landing')} onMethod={()=>setPage('ecolabel-method')}/>}
+
+      {page==='ecolabel-method' && <EcoLabelMethodPage onEvidence={()=>setPage('evidence')} onStart={()=>setPage('landing')}/>}
 
       {page==='about' && <AboutPage/>}
 

@@ -188,23 +188,43 @@ Clinical, safety, legal, privacy, reliability, and operational requirements cons
 
 ---
 
-## 10. CEDARS Score and EcoLabel
+## 10. CEDARS Footprint Score, Rating, improvement potential, and EcoLabel
 
-The CEDARS Score is intended to summarize a defined environmental-intensity result **within a stated boundary**, not the total sustainability of a department or AI system.
+The **CEDARS Footprint Score** summarizes a defined environmental-intensity result **within a stated boundary**. It does not represent the total sustainability of a department or AI system, and it is not a behavior/compliance score.
 
 Current implementation principles include:
 
 - a scored context uses a defined carbon-intensity quantity rather than a tunable weighted composite of unrelated environmental domains;
+- the Department and AI pathways use domain-specific intensity units and v1 anchor ranges;
 - categories outside the scored boundary remain separately disclosed;
-- reference ranges and anchors must be labeled according to their actual validation status; and
-- missing lifecycle phases or categories must not be treated as zero to obtain a score.
+- missing lifecycle phases or categories are not treated as zero to obtain a score;
+- the 1–5 leaf **Footprint Rating** is a categorical display of the same 0–100 Footprint Score, not a second calculation; and
+- v1 anchors and Rating bands are explicitly **provisional research anchors**, not empirically calibrated peer percentiles.
 
-The current equations, boundaries, reference ranges, and their limitations are documented in [`sources.md`](./sources.md). Where anchors remain heuristic rather than empirically calibrated, that limitation is part of the method and must remain visible.
+The current equations, boundaries, reference ranges, and their limitations are documented in [`sources.md`](./sources.md). A Score of 75, for example, must not be interpreted as “better than 75% of peers” unless a future validated percentile-based method is explicitly introduced.
+
+### Improvement Potential
+
+**Improvement Potential** is kept separate from the current Footprint Score. In Decision Workspace, a user-selected prospective scenario can show modeled changes in energy, operational carbon, electricity cost, and the potential Footprint Score. Where changes affect overlapping energy/resource pools, the combined scenario calculation prevents double-counting.
+
+CEDARS v1 does **not** assign a second 0–100 improvement score or claim to know what fraction of every locally feasible sustainability opportunity has already been captured. Such a construct would require a validated opportunity denominator and local feasibility model.
+
+Current-profile workflow observations (for example, a local estimate of potentially avoidable imaging) may inform the relevant Decision Workspace lever, but they are not automatically converted into projected savings. A prospective target must be tested explicitly and remain clinically appropriate.
+
+### Service and peer context
+
+Entered fleet and workload data may be used to display **descriptive service context**. External datasets such as the 2022–2023 Canadian Medical Imaging Inventory can provide reference values for units/site and examinations/site or unit. These are contextual benchmarks only.
+
+CEDARS does **not** infer academic/community/hybrid practice status from scanner count alone, and external service-size references do not alter the v1 Footprint Score. Practice type, organizational structure, case mix, teaching role, and service complexity overlap and cannot be reconstructed reliably from fleet size.
+
+Future peer normalization should be introduced only after validation against sufficiently large real-world Department and AI datasets, with transparent handling of modality mix, service scale, geography/grid context, and AI task family.
+
+### EcoLabel
 
 The EcoLabel is a structured CEDARS-generated assessment summary derived from the assessment record; interpretation depends on its stated coverage, assumptions, and provenance.
 
+The **Department EcoLabel** and **AI Research EcoLabel** use the same reporting grammar—Footprint Score and Rating, what the assessment covers, key results, assessment context, and provenance—while retaining domain-specific metrics. They are generated from the same assessment record used for Methods and reproducibility reporting.
 
-The **Department EcoLabel** and **AI Research EcoLabel** use the same reporting grammar—Score and Rating, what the assessment covers, key results, assessment context, and provenance—while retaining domain-specific metrics. They are generated from the same assessment record used for Methods and reproducibility reporting.
 ---
 
 ## 11. Reproducibility and reporting

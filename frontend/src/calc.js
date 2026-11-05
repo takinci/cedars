@@ -39,20 +39,21 @@ export const getCI = (region, customCi) => {
 export const getPrice = (region, override) => { const o=Number(override); if(Number.isFinite(o)&&o>0)return o; return Object.prototype.hasOwnProperty.call(ELECTRICITY_PRICE,region)?ELECTRICITY_PRICE[region].price:0.20; };
 export const currencySym = region => Object.prototype.hasOwnProperty.call(ELECTRICITY_PRICE,region)?ELECTRICITY_PRICE[region].sym:'€';
 
-// Rating bands = equal quintiles of the 0–100 Score (80/60/40/20). The non-linearity lives in
-// the (log-scale) Score itself, so the bands stay even. Provisional, open to consensus revision.
+// CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD
+// Footprint Rating bands = equal quintiles of the 0–100 Footprint Score (80/60/40/20).
+// These are v1 provisional research bands; they are not empirical peer percentiles.
 export const CEDARS_RATINGS = [
-  {leaves:5, min:80, label:'Very low footprint',      color:'#1b5e20', bg:'#e6f4ed', desc:'Carbon-aware design, clean energy, efficient hardware lifecycle.'},
-  {leaves:4, min:60, label:'Low footprint',           color:'#2b6e2c', bg:'#eaf3d8', desc:'Low footprint with good mitigation.'},
-  {leaves:3, min:40, label:'Moderate footprint',      color:'#7a6a00', bg:'#fbf6d6', desc:'Moderate footprint; clear room to improve.'},
-  {leaves:2, min:20, label:'Above-average footprint', color:'#8a4a00', bg:'#fdeccc', desc:'Above-average footprint; mitigation recommended.'},
-  {leaves:1, min:0,  label:'High footprint',          color:'#9b1515', bg:'#fbe0e0', desc:'High footprint / limited mitigation.'},
+  {leaves:5, min:80, label:'Very low footprint', color:'#1b5e20', bg:'#e6f4ed', desc:'Very low Footprint Score band on the v1 provisional scale.'},
+  {leaves:4, min:60, label:'Low footprint',      color:'#2b6e2c', bg:'#eaf3d8', desc:'Low Footprint Score band on the v1 provisional scale.'},
+  {leaves:3, min:40, label:'Moderate footprint', color:'#7a6a00', bg:'#fbf6d6', desc:'Moderate Footprint Score band on the v1 provisional scale.'},
+  {leaves:2, min:20, label:'Elevated footprint', color:'#8a4a00', bg:'#fdeccc', desc:'Elevated Footprint Score band on the v1 provisional scale.'},
+  {leaves:1, min:0,  label:'High footprint',     color:'#9b1515', bg:'#fbe0e0', desc:'High Footprint Score band on the v1 provisional scale.'},
 ];
 export function cedarsRating(score) {
   return CEDARS_RATINGS.find(r => score >= r.min) ?? CEDARS_RATINGS[CEDARS_RATINGS.length - 1];
 }
 
-// Footprint intensity → 0–100 Score on a log scale: lo → 100 (greenest), hi → 0 (worst).
+// Footprint intensity → 0–100 CEDARS Footprint Score on a log scale: lo → 100 (greenest), hi → 0 (worst).
 export function cedarsScore(value, lo, hi) {
   const raw=Number(value); if(!Number.isFinite(raw)||raw<0)return 0; const x=Math.max(raw,1e-6); if(x<=lo)return 100; if(x>=hi)return 0; return Math.round(100*(Math.log10(hi)-Math.log10(x))/(Math.log10(hi)-Math.log10(lo)));
 }

@@ -8,8 +8,15 @@ Source code: https://github.com/takinci/cedars
 ## Primary workflows
 
 - Profile: document the current Radiology Department or AI Model & Informatics assessment. Department Profile follows Context → Workflow → Clinical AI (optional) → Result (EcoLabel); AI Profile follows Context → Training → Deployment → Result (EcoLabel).
-- Decision Workspace: model prospective changes without overwriting the current Profile.
+- Decision Workspace: model prospective changes without overwriting the current Profile; Improvement Potential remains separate from the current Footprint Score.
 - Report & Share: carry forward the same Department EcoLabel or AI Research EcoLabel, then review Methods/evidence and save or share the assessment.
+
+## EcoLabel method
+
+- CEDARS uses a domain-specific **Footprint Score** plus 1–5 leaf Footprint Rating.
+- Current Department and AI anchor ranges are **v1 provisional research anchors**, not empirical peer percentiles.
+- Service/fleet references are contextual and do not currently alter the Score.
+- The public **EcoLabel Method** page explains scoring, boundaries, Improvement Potential, and future calibration.
 
 ## Key topics
 

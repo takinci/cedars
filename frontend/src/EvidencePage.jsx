@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD
 // CEDARS_CHUNK_9R26_WORKFLOW_ECOLABEL_UNIFICATION
 // CEDARS_CHUNK_9R27_VISUAL_LANGUAGE_PARITY
 import React from 'react';
@@ -151,14 +152,14 @@ function EvidenceCategory({group, pausedAll=false, order=0}) {
   );
 }
 
-export default function EvidencePage({onStart}) {
+export default function EvidencePage({onStart,onMethod}) {
   const [pausedAll, setPausedAll] = React.useState(()=>typeof window!=='undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   return (
     <main className="evidencePage evidenceGalleryPage">
       <section className="evidenceHero contentSurfaceInset">
         <span>EVIDENCE BEHIND CEDARS</span>
         <h1>A reading library for sustainable radiology and medical AI.</h1>
-        <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions!</p>
+        <p>Curated research and insights on sustainable radiology and medical AI. We welcome suggestions! {onMethod&&<button type="button" className="evidenceInlineMethod" onClick={onMethod}>EcoLabel Method →</button>}</p>
 
         <div className="evidenceHeroActionRow" aria-label="Evidence page actions">
           <a className="evidenceMethodsTop evidenceHeroAction" href="https://github.com/takinci/cedars/blob/main/sources.md" target="_blank" rel="noreferrer">

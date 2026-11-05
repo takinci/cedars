@@ -14,7 +14,8 @@ export default function SaveSharePanel({
   const copyShareableAssessmentLink = () => { setShareConfirmOpen(false); onCopyLink(); };
 
   return (
-    <section id="save-share" className="reportShareSection">
+    <section id="save-share" className="reportShareSection" data-demo-target="report-save-share-panel">
+      {/* CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD */}
       <div className="reportStageHeading compact reportUnifiedHeading reportShareHeading"><div><span>SAVE &amp; SHARE</span><h2>Preserve or share your assessment</h2><p>Saving, transferring, and sharing are separate choices. Normal CEDARS use stays browser-local.</p></div></div>
 
       {status && <div className={`saveShareStatus ${status.type==='error'?'error':'success'}`}>{status.text}</div>}
