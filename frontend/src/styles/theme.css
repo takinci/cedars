@@ -2389,7 +2389,13 @@ html.dark #root .departmentClinicalAiUseCard{
 #root .guidedDemoCloseStep{display:inline-flex!important;align-items:center;gap:4px;flex:0 0 auto;padding:5px 8px!important;border:1px solid #AEBFC9!important;border-radius:999px!important;background:transparent!important;color:#4F5A56!important;box-shadow:none!important;font-size:9.5px!important}
 #root.dark .guidedDemoCloseStep{border-color:#75643A!important;color:#F1E4B7!important;background:#211D13!important}
 @media(max-width:700px){
-  #root .themeToggleTooltip{position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 70px)!important;left:10px!important;right:10px!important;width:auto!important;max-width:none!important;box-sizing:border-box!important;max-height:calc(100vh - 90px)!important;overflow:auto!important}
+  /* Stay anchored below the toggle button (inherited position:absolute;top:calc(100% + 9px) from
+     the base rule) instead of switching to position:fixed near the top of the screen — fixed
+     positioning put this above the sticky header's own z-index, so it rendered on top of the
+     button that opens it. Once opened via a tap (which leaves :focus-within set, since there's no
+     mouse-leave to clear it on touch), it then blocked every further tap on that button. Only
+     widen/constrain it here so it still fits a narrow viewport without overflowing. */
+  #root .themeToggleTooltip{right:-10px;width:min(280px,calc(100vw - 20px));max-width:none;box-sizing:border-box;max-height:calc(100vh - 90px);overflow:auto}
   #root .walkthroughDockCoach.themeCoach{top:calc(env(safe-area-inset-top,0px) + 76px)!important;left:10px!important;right:10px!important;width:auto!important;max-width:none!important}
   #root .walkthroughDockCoach.themeCoach i{right:28px!important}
   #root .guidedDemoCloseStep{min-height:34px!important}
