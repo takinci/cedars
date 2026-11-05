@@ -94,7 +94,7 @@ input::placeholder,textarea::placeholder{color:#8A938F!important;opacity:1!impor
 .walkthroughDockToggle{background:var(--cedars-forest-deep)!important;color:#fff!important;border:1px solid #607B68!important;box-shadow:0 10px 24px rgba(27,28,30,.16)!important}.walkthroughDockToggle>span{color:#D6C38F!important}.walkthroughDockToggle>strong{color:#fff!important}.walkthroughDockToggle>b{color:#D6C38F!important}.walkthroughDockPanel{background:var(--cedars-panel)!important;border:1px solid var(--cedars-border-strong)!important;box-shadow:0 14px 34px rgba(27,28,30,.18)!important}.walkthroughDockPanel>p{color:var(--cedars-muted)!important}
 .guidedDemoBanner{background:#162439!important;border:1px solid #6C8AA0!important;color:#F1FAEE!important;box-shadow:0 8px 28px rgba(27,28,30,.18)!important}.guidedDemoBanner strong{color:#F1FAEE!important}.guidedDemoBanner span{color:#CFDCE3!important}.guidedDemoBanner button:last-child{background:#111C1A!important;color:#DDE7DF!important;border-color:#52685E!important}
 .guidedDemoPopover{background:#F8F6EF!important;border:1px solid #AEBFC9!important;color:var(--cedars-ink)!important;box-shadow:0 20px 60px rgba(27,28,30,.22)!important}.guidedDemoPopover h3{color:var(--cedars-ink)!important}.guidedDemoPopover p{color:#4F5A56!important}.guidedDemoProgress{color:var(--cedars-info-deep)!important}.guidedDemoActionHint{background:var(--cedars-info-soft)!important;color:var(--cedars-info-deep)!important}.guidedDemoTargetWarning{color:#856B34!important}.guidedDemoActions .guidedDemoSecondary{background:#fff!important;color:var(--cedars-info-deep)!important;border-color:#BFCED7!important}.guidedDemoActions button:not(.guidedDemoSecondary){background:var(--cedars-info-deep)!important;color:#fff!important;border-color:var(--cedars-info-deep)!important;box-shadow:none!important}
-@media(min-width:761px){.guidedDemoPopover{right:18px!important;left:auto!important;top:78px!important;bottom:auto!important;transform:none!important;max-height:calc(100vh - 96px)!important;overflow:auto!important}}
+@media(min-width:761px){.guidedDemoPopover{max-height:calc(100vh - var(--cedars-walkthrough-safe-top,96px) - 16px)!important;overflow:auto!important}}
 
 /* ---------- Footer ---------- */
 footer.siteFooter{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:8px!important;padding:28px 20px 30px!important;background:#111214!important;border-top:1px solid #2D3230!important;text-align:center!important;color:#E8E2D6!important}
@@ -3303,3 +3303,347 @@ html.dark #root .departmentStageHandoff .departmentOptionalAction small{
 #root .ecoMethodSection{margin-top:18px;padding:20px;border:1px solid var(--cedars-border);border-radius:16px;background:var(--cedars-surface)}#root .ecoMethodSectionHead h2{margin:4px 0 14px;font-size:21px;color:var(--cedars-forest-deep)}#root .ecoMethodObjectGrid,#root .ecoMethodTwoCol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}#root .ecoMethodFormula{display:grid;gap:6px;margin-top:12px;padding:13px;border-radius:12px;background:var(--cedars-info-soft);border:1px solid var(--cedars-info-line)}#root .ecoMethodFormula code{display:block;overflow-x:auto;padding:8px;border-radius:8px;background:var(--cedars-panel);font-size:11px}#root .ecoMethodFormula p,#root .ecoMethodNote{margin:0;color:var(--cedars-muted);font-size:10.5px;line-height:1.5}#root .ecoMethodCaution{display:grid;gap:4px;margin-top:12px;padding:12px;border:1px dashed var(--cedars-role-guide-line);border-radius:12px;background:var(--cedars-role-guide-soft)}#root .ecoMethodCaution strong{color:var(--cedars-forest-deep);font-size:12px}#root .ecoMethodCaution span{color:var(--cedars-muted);font-size:10.5px;line-height:1.5}
 #root .ecoMethodBands{display:grid;gap:5px}#root .ecoMethodBands>div{display:grid;grid-template-columns:90px 90px 1fr;gap:10px;padding:8px 10px;border-radius:9px;background:var(--cedars-panel);font-size:11px}#root .ecoMethodTwoCol>div{padding:14px;border:1px solid var(--cedars-border);border-radius:12px;background:var(--cedars-panel)}#root .ecoMethodTwoCol strong{color:var(--cedars-forest-deep)}#root .ecoMethodTwoCol p{margin:5px 0 0;color:var(--cedars-muted);font-size:11px;line-height:1.5}#root .ecoMethodReferenceTable{display:grid;gap:1px;margin:12px 0;background:var(--cedars-border);border:1px solid var(--cedars-border);border-radius:12px;overflow:hidden}#root .ecoMethodReferenceTable>div{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:8px;padding:9px 10px;background:var(--cedars-panel);font-size:10.5px}#root .ecoMethodReferenceTable>.head{background:var(--cedars-forest-deep);color:#fff;font-weight:800}#root .ecoMethodList{margin:0;padding-left:20px;display:grid;gap:7px;color:var(--cedars-muted);font-size:11px;line-height:1.5}#root .ecoMethodFuture{margin-top:18px;padding:20px;border:1px solid var(--cedars-role-guide-line);border-radius:16px;background:var(--cedars-role-guide-soft)}#root .ecoMethodFuture h2{margin:4px 0 7px;color:var(--cedars-forest-deep)}#root .ecoMethodFuture p{color:var(--cedars-muted);font-size:11px;line-height:1.55}#root .ecoMethodFuture>div{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#root .ecoMethodFuture a{color:var(--cedars-forest-deep);font-weight:800;font-size:10.5px}
 @media(max-width:820px){#root .ecoMethodPage{padding:22px 14px 54px}#root .ecoMethodHero h1{font-size:28px}#root .ecoMethodQuestions,#root .ecoMethodObjectGrid,#root .ecoMethodTwoCol{grid-template-columns:1fr}#root .ecoMethodReferenceTable>div{grid-template-columns:1.3fr repeat(3,.8fr);font-size:9px}}@media(max-width:560px){#root .ecoMethodReferenceTable{overflow-x:auto}#root .ecoMethodReferenceTable>div{min-width:620px}#root .ecoMethodBands>div{grid-template-columns:70px 70px 1fr}}
+
+/* CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL
+   Department service-reference context and public method explanation. */
+#root .departmentReferenceContext{margin:12px 0 14px;padding:14px;border:1px solid #B9D2C1;border-radius:11px;background:#F4F8F5;min-width:0}
+#root .departmentReferenceContextHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
+#root .departmentReferenceContextHead>div{display:grid;gap:3px;min-width:0}
+#root .departmentReferenceContextHead>span,#root .departmentReferenceVolumeHead>span{font-size:8px;font-weight:900;letter-spacing:.09em;color:#2F6B57}
+#root .departmentReferenceContextHead h3{margin:0;font-size:15px;color:#254C40}
+#root .departmentReferenceContextHead p{margin:0;max-width:760px;font-size:10px;line-height:1.45;color:#60756A}
+#root .departmentReferenceContextGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#root .departmentReferenceContextGrid label{display:grid;gap:5px;min-width:0;font-size:9px;font-weight:800;color:#52685E}
+#root .departmentReferenceContextGrid select,#root .departmentReferenceContextGrid input{width:100%;min-width:0;box-sizing:border-box}
+#root .departmentReferenceVolumeDetails{margin-top:10px;border:1px solid #D7E4DA;border-radius:9px;background:#fff;overflow:hidden}
+#root .departmentReferenceVolumeDetails>summary{cursor:pointer;list-style:none;padding:10px 11px;font-size:10px;font-weight:850;color:#2F6B57}
+#root .departmentReferenceVolumeDetails>summary::-webkit-details-marker{display:none}
+#root .departmentReferenceVolumeDetails>summary:before{content:'▸';display:inline-block;width:15px;color:#78909C}
+#root .departmentReferenceVolumeDetails[open]>summary:before{content:'▾'}
+#root .departmentReferenceVolumeBody{padding:0 11px 11px;border-top:1px solid #E7EEE8}
+#root .departmentReferenceVolumeHead{display:grid;gap:3px;padding:10px 0}
+#root .departmentReferenceVolumeHead p{margin:0;font-size:9.5px;line-height:1.45;color:#60756A}
+#root .departmentReferenceVolumeGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+#root .departmentReferenceVolumeGrid label{display:grid;gap:4px;font-size:8px;font-weight:800;color:#5D7167}
+#root .departmentReferenceVolumeGrid input{width:100%;min-width:0;box-sizing:border-box}
+#root .departmentReferenceContextNote{margin:9px 0 0!important;font-size:9.5px!important;line-height:1.5!important;color:#60756A!important}
+#root .ecoMethodThreeStep{grid-template-columns:repeat(3,minmax(0,1fr))}
+#root .ecoMethodStepNumber{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#E8F2EB;color:#2F6B57;font-size:10px;font-weight:900;margin-bottom:6px}
+#root .ecoMethodReferenceExample{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0}
+#root .ecoMethodReferenceExample>div{display:grid;gap:4px;padding:12px;border:1px solid #DCE7DF;border-radius:9px;background:#FAFCFA}
+#root .ecoMethodReferenceExample>div.reference{background:#EAF3D3;border-color:#B8CF8A}
+#root .ecoMethodReferenceExample span{font-size:9px;color:#60756A}
+#root .ecoMethodReferenceExample strong{font-size:15px;color:#254C40}
+#root .ecoMethodTechnicalDetails{margin-top:12px;border:1px solid #DCE7DF;border-radius:9px;background:#FAFCFA;overflow:hidden}
+#root .ecoMethodTechnicalDetails>summary{cursor:pointer;padding:10px 12px;font-size:10px;font-weight:850;color:#2F6B57}
+#root .ecoMethodTechnicalDetails>div{padding:0 12px 12px}
+#root .ecoMethodTechnicalDetails p{font-size:10px;line-height:1.55}
+#root .ecoMethodTechnicalDetails code{overflow-wrap:anywhere}
+#root .ecoMethodPracticeBands{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+#root .ecoMethodPracticeBands span{padding:5px 8px;border-radius:999px;background:#EEF4F0;border:1px solid #D0DFD4;font-size:9px;font-weight:800;color:#365E50}
+#root.dark .departmentReferenceContext{background:#111C1A!important;border-color:#425A4E!important}
+#root.dark .departmentReferenceContextHead h3,#root.dark .departmentReferenceContextGrid label{color:#E8EEE9!important}
+#root.dark .departmentReferenceContextHead p,#root.dark .departmentReferenceVolumeHead p,#root.dark .departmentReferenceContextNote{color:#B0B5B9!important}
+#root.dark .departmentReferenceVolumeDetails{background:#14201D!important;border-color:#425A4E!important}
+#root.dark .ecoMethodReferenceExample>div,#root.dark .ecoMethodTechnicalDetails{background:#111C1A!important;border-color:#425A4E!important}
+#root.dark .ecoMethodReferenceExample>div.reference{background:#203A2E!important;border-color:#79B18C!important}
+#root.dark .ecoMethodReferenceExample strong,#root.dark .ecoMethodTechnicalDetails summary{color:#E8EEE9!important}
+#root.dark .ecoMethodPracticeBands span{background:#172820!important;border-color:#425A4E!important;color:#DDE7DF!important}
+@media(max-width:900px){#root .departmentReferenceContextGrid{grid-template-columns:repeat(2,minmax(0,1fr))}#root .departmentReferenceVolumeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){#root .departmentReferenceContextGrid,#root .departmentReferenceVolumeGrid,#root .ecoMethodThreeStep,#root .ecoMethodReferenceExample{grid-template-columns:1fr}}
+
+/* CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
+   Service-boundary discoverability, zoom-safe shell, report/decision reflow, and dark walkthrough contrast. */
+
+/* EcoLabel Method: the three-question band is layout only, never a white inherited <section>. */
+#root .ecoMethodQuestions{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important}
+#root.dark .ecoMethodQuestions,html.dark #root .ecoMethodQuestions{background:transparent!important}
+
+/* Service-reference context: primary contextual inputs are visible before grid/carbon assumptions. */
+#root .departmentReferenceContext{scroll-margin-top:18px!important}
+#root .departmentReferenceContextHead>div>span{font-size:8px!important;font-weight:900!important;letter-spacing:.09em!important;color:var(--cedars-forest)!important}
+#root .departmentReferenceContextGrid .fieldOptional{font-size:8px!important;font-weight:650!important;color:var(--cedars-muted)!important}
+#root .departmentReferenceContextGrid .fieldHelp{font-size:8.5px!important;font-weight:500!important;line-height:1.35!important;color:var(--cedars-muted)!important}
+#root .departmentReferenceWarning{display:grid!important;grid-template-columns:18px minmax(0,1fr)!important;gap:7px!important;align-items:start!important;margin-top:9px!important;padding:9px 10px!important;border:1px solid #D6B95F!important;border-left:3px solid #B99028!important;border-radius:8px!important;background:#FFF8DF!important;color:#5B4A17!important;font-size:9px!important;line-height:1.4!important}
+#root .departmentReferenceWarning strong{color:#5B4A17!important}
+#root .departmentContextBridgeNote{font-size:9.5px!important;line-height:1.45!important;margin:9px 1px 12px!important;color:var(--cedars-muted)!important}
+#root.dark .departmentReferenceWarning,html.dark #root .departmentReferenceWarning{background:#332B16!important;border-color:#8B733A!important;color:#F0DE9D!important}
+#root.dark .departmentReferenceWarning strong,html.dark #root .departmentReferenceWarning strong{color:#FFF0B7!important}
+
+/* Guided walkthrough: all textual layers stay legible on the warm dark-mode guide surface. */
+#root.dark .guidedDemoBullets,html.dark #root .guidedDemoBullets{color:#F1E5BF!important}
+#root.dark .guidedDemoBullets li,html.dark #root .guidedDemoBullets li{color:#F1E5BF!important}
+#root.dark .guidedDemoBullets li::marker,html.dark #root .guidedDemoBullets li::marker{color:#E6C866!important}
+#root.dark .guidedDemoTargetWarning,html.dark #root .guidedDemoTargetWarning{color:#F0D98A!important}
+#root.dark .guidedDemoCloseStep,html.dark #root .guidedDemoCloseStep{color:#F4E7BC!important;border-color:#8B733A!important}
+
+/* Header: browser zoom changes the CSS viewport; reflow compactly and stop being sticky once wrapping is needed. */
+#root .siteHeader{box-sizing:border-box!important;width:100%!important;min-width:0!important;padding:clamp(8px,1vw,12px) clamp(12px,2vw,24px)!important;gap:clamp(8px,1.4vw,18px)!important;align-items:center!important}
+#root .siteHeader .brand{min-width:0!important;flex:0 1 auto!important;gap:9px!important}
+#root .siteHeader .brand img{width:clamp(34px,3.2vw,44px)!important;height:clamp(34px,3.2vw,44px)!important;flex:0 0 auto!important}
+#root .siteHeader .brand strong{font-size:clamp(17px,1.55vw,22px)!important;line-height:1.05!important}
+#root .siteHeader .brand span{font-size:clamp(8.5px,.78vw,10.5px)!important;line-height:1.25!important;white-space:normal!important}
+#root .siteHeader .headerUtilities{min-width:0!important;flex:1 1 auto!important;width:auto!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;flex-wrap:nowrap!important}
+#root .siteHeader .utilityNav{min-width:0!important;flex:1 1 auto!important;display:flex!important;justify-content:flex-end!important;gap:2px!important;flex-wrap:nowrap!important;overflow-x:auto!important;overscroll-behavior-inline:contain!important;scrollbar-width:none!important}
+#root .siteHeader .utilityNav::-webkit-scrollbar{display:none!important}
+#root .siteHeader .utilityNav button{flex:0 0 auto!important;white-space:nowrap!important;padding:6px 7px!important;font-size:clamp(9px,.75vw,10.5px)!important;line-height:1.1!important}
+#root .siteHeader :is(.themeToggle,.saveUtilityButton,.headerClearAssessment){flex:0 0 auto!important;white-space:nowrap!important;min-height:32px!important;padding:6px 8px!important;font-size:10px!important;border-radius:7px!important}
+#root .siteHeader .ambientScoreButton{padding:4px 8px!important;border-radius:8px!important;gap:5px!important}
+#root .siteHeader .ambientScoreButton>svg{width:15px!important;height:15px!important}
+#root .siteHeader .ambientScoreButton>span:nth-of-type(1){font-size:15px!important}
+
+/* Keep the three workflow milestones in one compact row; narrow screens may scroll it rather than making it three tall rows. */
+#root .workflowRailWrap{overflow-x:auto!important;overscroll-behavior-inline:contain!important;scrollbar-width:thin!important}
+#root .workflowRail.threeStageRail{grid-template-columns:repeat(3,minmax(185px,1fr))!important;min-width:min(620px,100%)!important}
+
+/* Reflow earlier than the old 720/900px rules; this is what browser zoom needs. */
+@media(max-width:1180px){
+  #root .siteHeader{position:static!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:start!important}
+  #root .siteHeader .brand{width:100%!important;max-width:520px!important}
+  #root .siteHeader .headerUtilities{width:100%!important;min-width:0!important;display:flex!important;flex-wrap:nowrap!important;justify-content:flex-start!important}
+  #root .siteHeader .utilityNav{justify-content:flex-start!important}
+  #root .improveWorkspaceGrid{grid-template-columns:1fr!important}
+  #root .improveReceipt{position:static!important;top:auto!important}
+  #root .improveWorkflowMap{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  #root .improveWorkflowMap>svg{display:none!important}
+  #root .reportStudioLayout{grid-template-columns:1fr!important}
+  #root .reportStudioRail{max-height:none!important}
+  #root .reportStudioRailButtons{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+  #root .siteHeader{padding:8px 10px!important;gap:7px!important}
+  #root .siteHeader .brand{flex-basis:auto!important}
+  #root .siteHeader .brand img{width:36px!important;height:36px!important}
+  #root .siteHeader .brand strong{font-size:18px!important}
+  #root .siteHeader .headerUtilities{display:grid!important;grid-template-columns:minmax(0,1fr) repeat(4,max-content)!important;align-items:center!important;gap:4px!important}
+  #root .siteHeader .utilityNav{width:100%!important;min-width:0!important;grid-column:1!important;justify-content:flex-start!important}
+  #root .siteHeader .utilityNav button{flex:0 0 auto!important;padding:6px 7px!important;font-size:9px!important}
+  #root .siteHeader .ambientScoreStatus{display:none!important}
+  #root .siteHeader .ambientScoreButton>span:last-child{display:none!important}
+  #root .workflowRail.threeStageRail{min-width:590px!important}
+  #root .reportStudioRailButtons{grid-template-columns:1fr!important}
+  #root .improveWorkflowMap{grid-template-columns:1fr!important}
+}
+@media(max-width:520px){
+  #root .siteHeader .brand span{display:none!important}
+  #root .siteHeader .headerUtilities{grid-template-columns:repeat(4,max-content)!important;justify-content:start!important}
+  #root .siteHeader .utilityNav{grid-column:1/-1!important;grid-row:1!important}
+  #root .siteHeader .themeToggleWrap,#root .siteHeader .saveUtility,#root .siteHeader .headerClearAssessment,#root .siteHeader .ambientScoreGroup{grid-row:2!important}
+  #root .siteHeader .headerClearAssessment span{display:none!important}
+  #root .departmentReferenceContextGrid,#root .departmentReferenceVolumeGrid{grid-template-columns:1fr!important}
+}
+
+/* CEDARS_CHUNK_9R32E_ECOLABEL_PATHS_PRACTICE_CONTEXT
+   Plain-language practice context + infographic-first two-path EcoLabel Method. */
+
+/* Practice & service context: blue means editable; derived context stays structural/green-neutral. */
+#root .departmentReferenceContext{background:var(--cedars-role-structure-raised)!important;border-color:var(--cedars-role-structure-line)!important}
+#root .departmentReferenceContextHead>div>span{color:var(--cedars-forest)!important}
+#root .departmentReferenceContextGrid{align-items:stretch!important}
+#root .departmentReferenceContextGrid>.departmentContextEditable,
+#root .departmentReferenceVolumeGrid>.departmentContextEditable{box-sizing:border-box!important;min-width:0!important;padding:9px 10px!important;border:1px solid var(--cedars-role-action-line)!important;border-left:3px solid var(--cedars-role-action)!important;border-radius:8px!important;background:var(--cedars-role-action-soft)!important;color:var(--cedars-ink)!important}
+#root .departmentReferenceContextGrid>.departmentContextEditable :is(input,select),
+#root .departmentReferenceVolumeGrid>.departmentContextEditable input{background:var(--cedars-role-action-soft)!important;border-color:var(--cedars-role-action-line)!important;color:var(--cedars-ink)!important}
+#root .departmentContextDerived{box-sizing:border-box;min-width:0;display:grid;align-content:center;gap:3px;padding:9px 10px;border:1px solid var(--cedars-role-structure-line);border-left:3px solid var(--cedars-forest);border-radius:8px;background:var(--cedars-role-structure);color:var(--cedars-ink)}
+#root .departmentContextDerived>span{font-size:7.5px;font-weight:900;letter-spacing:.08em;color:var(--cedars-forest)}
+#root .departmentContextDerived>strong{font-size:11px;line-height:1.3;color:var(--cedars-ink)}
+#root .departmentContextDerived>small{font-size:8.3px!important;line-height:1.35;color:var(--cedars-muted)!important}
+#root.dark .departmentReferenceContextGrid>.departmentContextEditable,html.dark #root .departmentReferenceContextGrid>.departmentContextEditable,
+#root.dark .departmentReferenceVolumeGrid>.departmentContextEditable,html.dark #root .departmentReferenceVolumeGrid>.departmentContextEditable{background:var(--cedars-role-action-soft)!important;border-color:var(--cedars-role-action-line)!important;color:#EEF5F8!important}
+#root.dark .departmentContextDerived,html.dark #root .departmentContextDerived{background:var(--cedars-role-structure)!important;border-color:var(--cedars-role-structure-line)!important;color:#EEF5F1!important}
+
+/* EcoLabel Method: infographic first, equal Department / AI emphasis, technical prose collapsed. */
+#root .ecoMethodInfographicPage{display:grid;gap:16px}
+#root .ecoMethodFlow{margin:0;padding:18px;border:1px solid var(--cedars-border);border-radius:16px;background:transparent;box-shadow:none}
+#root .ecoMethodFlowStart{width:min(360px,100%);margin:0 auto;display:grid;gap:3px;padding:11px 14px;text-align:center;border:1px solid var(--cedars-border);border-radius:12px;background:var(--cedars-panel)}
+#root .ecoMethodFlowStart>span,#root .ecoMethodConverge span{font-size:8px;font-weight:900;letter-spacing:.09em;color:var(--cedars-muted)}
+#root .ecoMethodFlowStart>strong{font-size:15px;color:var(--cedars-ink)}
+#root .ecoMethodFlowArrow{display:grid;place-items:center;height:34px;color:var(--cedars-muted)}
+#root .ecoMethodPathGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#root .ecoMethodPath{min-width:0;padding:15px;border:1px solid var(--cedars-border);border-radius:14px;background:var(--cedars-panel)}
+#root .ecoMethodPath.department{border-top:4px solid var(--cedars-forest)}
+#root .ecoMethodPath.ai{border-top:4px solid var(--cedars-info)}
+#root .ecoMethodPathTitle{display:flex;align-items:center;gap:9px;margin-bottom:11px}.ecoMethodPathTitle>svg{flex:0 0 auto}
+#root .ecoMethodPath.department .ecoMethodPathTitle>svg{color:var(--cedars-forest)}#root .ecoMethodPath.ai .ecoMethodPathTitle>svg{color:var(--cedars-info)}
+#root .ecoMethodPathTitle div{display:grid;gap:2px}.ecoMethodPathTitle span{font-size:8px;font-weight:900;letter-spacing:.08em;color:var(--cedars-muted)}.ecoMethodPathTitle strong{font-size:14px;color:var(--cedars-ink)}
+#root .ecoMethodPathSteps{display:grid;gap:6px}
+#root .ecoMethodPathSteps>div{display:grid;grid-template-columns:25px minmax(0,1fr);gap:8px;align-items:start;padding:8px;border:1px solid var(--cedars-border);border-radius:9px;background:var(--cedars-surface)}
+#root .ecoMethodPathSteps b{display:grid;place-items:center;width:23px;height:23px;border-radius:50%;font-size:9px;background:var(--cedars-control);color:var(--cedars-ink)}
+#root .ecoMethodPathSteps span{display:grid;gap:2px}.ecoMethodPathSteps strong{font-size:10.5px;color:var(--cedars-ink)}.ecoMethodPathSteps small{font-size:8.7px!important;line-height:1.35;color:var(--cedars-muted)!important}
+#root .ecoMethodPathResult{display:flex;align-items:center;gap:8px;margin-top:9px;padding:10px;border-radius:9px}
+#root .ecoMethodPath.department .ecoMethodPathResult{background:var(--cedars-sage-soft);border:1px solid var(--cedars-border)}
+#root .ecoMethodPath.ai .ecoMethodPathResult{background:var(--cedars-info-soft);border:1px solid var(--cedars-info-line)}
+#root .ecoMethodPathResult span{display:grid;gap:1px}.ecoMethodPathResult small{font-size:7.5px!important;font-weight:900;letter-spacing:.08em}.ecoMethodPathResult strong{font-size:10.5px;color:var(--cedars-ink)}
+#root .ecoMethodConverge{width:min(520px,100%);margin:0 auto;display:flex;align-items:center;gap:10px;padding:13px 15px;border:1.5px solid var(--cedars-forest);border-radius:13px;background:var(--cedars-sage-soft)}
+#root .ecoMethodConverge>svg{color:var(--cedars-forest)}#root .ecoMethodConverge>div{display:grid;gap:2px}.ecoMethodConverge strong{font-size:15px;color:var(--cedars-ink)}#root .ecoMethodConverge small{font-size:9px!important;line-height:1.35;color:var(--cedars-muted)!important}
+#root .ecoMethodPathDetailGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#root .ecoMethodPathDetail{min-width:0;padding:16px;border:1px solid var(--cedars-border);border-radius:14px;background:var(--cedars-surface)}
+#root .ecoMethodPathDetail.department{border-left:4px solid var(--cedars-forest)}#root .ecoMethodPathDetail.ai{border-left:4px solid var(--cedars-info)}
+#root .ecoMethodKeyNote{margin:10px 0 0!important;padding:9px 10px;border-radius:8px;background:var(--cedars-control);font-size:9.5px!important;line-height:1.45!important;color:var(--cedars-muted)!important}.ecoMethodKeyNote strong{color:var(--cedars-ink)}
+#root .ecoMethodAiSummary{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);gap:7px;align-items:center;margin-top:9px}
+#root .ecoMethodAiSummary>div{display:grid;gap:3px;padding:10px;border:1px solid var(--cedars-border);border-radius:9px;background:var(--cedars-panel)}#root .ecoMethodAiSummary>div>span{font-size:7.5px;font-weight:900;letter-spacing:.07em;color:var(--cedars-info)}#root .ecoMethodAiSummary>div>strong{font-size:9.5px;line-height:1.35;color:var(--cedars-ink)}#root .ecoMethodAiSummary>b{color:var(--cedars-muted)}
+#root .ecoMethodRatingGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ecoMethodRatingGrid>div{display:grid;gap:5px}.ecoMethodRatingGrid h3{margin:0 0 3px;font-size:12px;color:var(--cedars-ink)}
+#root .ecoMethodBandRow{display:grid;grid-template-columns:64px 70px minmax(0,1fr);gap:8px;align-items:center;padding:7px 9px;border-radius:8px;background:var(--cedars-panel);font-size:9.5px}.ecoMethodBandRow>b{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--cedars-muted)}.ecoMethodBandRow>span{color:var(--cedars-muted)}.ecoMethodBandRow>strong{color:var(--cedars-ink)}
+#root .ecoMethodCompactPrinciples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#root .ecoMethodCompactPrinciples article{display:grid;grid-template-columns:22px minmax(0,1fr);gap:4px 8px;padding:12px;border:1px solid var(--cedars-border);border-radius:12px;background:var(--cedars-panel)}#root .ecoMethodCompactPrinciples article>svg{grid-row:1/3;color:var(--cedars-forest)}#root .ecoMethodCompactPrinciples strong{font-size:10.5px;color:var(--cedars-ink)}#root .ecoMethodCompactPrinciples p{margin:0;font-size:8.8px;line-height:1.4;color:var(--cedars-muted)}
+#root .ecoMethodTechnicalMaster{margin-top:0}.ecoMethodTechnicalMaster>summary{font-size:11px!important}.ecoMethodTechnicalColumns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-top:10px!important}.ecoMethodTechnicalColumns>section{padding:11px;border:1px solid var(--cedars-border);border-radius:9px;background:var(--cedars-panel);box-shadow:none}.ecoMethodTechnicalColumns h3{margin:0 0 5px;font-size:11px;color:var(--cedars-ink)}.ecoMethodTechnicalColumns p{margin:4px 0;font-size:9px!important;line-height:1.5!important;color:var(--cedars-muted)}
+#root .ecoMethodFutureCompact{margin-top:0}
+#root.dark .ecoMethodPath,#root.dark .ecoMethodFlowStart,#root.dark .ecoMethodPathDetail,#root.dark .ecoMethodRatingGrid>div,#root.dark .ecoMethodCompactPrinciples article,#root.dark .ecoMethodTechnicalColumns>section,html.dark #root .ecoMethodPath,html.dark #root .ecoMethodFlowStart,html.dark #root .ecoMethodPathDetail,html.dark #root .ecoMethodCompactPrinciples article,html.dark #root .ecoMethodTechnicalColumns>section{background:var(--cedars-panel)!important;border-color:var(--cedars-border)!important}
+@media(max-width:820px){#root .ecoMethodPathGrid,#root .ecoMethodPathDetailGrid,#root .ecoMethodRatingGrid,#root .ecoMethodTechnicalColumns{grid-template-columns:1fr!important}#root .ecoMethodAiSummary{grid-template-columns:1fr!important}#root .ecoMethodAiSummary>b{display:none!important}#root .ecoMethodCompactPrinciples{grid-template-columns:1fr!important}}
+@media(max-width:560px){#root .ecoMethodBandRow{grid-template-columns:58px 62px minmax(0,1fr)}}
+
+/* CEDARS_CHUNK_9R32F_ECOLABEL_METHOD_SIMPLIFICATION
+   EcoLabel Method: one continuous infographic, path-specific plain language,
+   a single technical-methods accordion, and dark-safe actions. */
+#root .ecoMethodInfographicPage>section:not(.ecoMethodHero){background:transparent!important;box-shadow:none!important}
+#root .ecoMethodHeroActions{align-items:stretch!important}
+#root .ecoMethodSecondaryAction{background:transparent!important;border:1px solid var(--cedars-border)!important;color:var(--cedars-ink)!important;box-shadow:none!important;font-weight:750!important}
+#root .ecoMethodSecondaryAction:hover{background:var(--cedars-control)!important;border-color:var(--cedars-forest)!important;color:var(--cedars-ink)!important}
+#root .ecoMethodReadyCta{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;gap:2px 8px!important;align-items:center!important;text-align:left!important;padding:8px 11px!important;border-radius:8px!important}
+#root .ecoMethodReadyCta>span:first-child{grid-column:1/3!important;font-size:7.5px!important;line-height:1!important;font-weight:900!important;letter-spacing:.08em!important}
+#root .ecoMethodReadyCta>strong{font-size:10.5px!important;line-height:1.2!important}
+#root .ecoMethodReadyCta>svg{grid-column:3!important;grid-row:1/3!important}
+#root .ecoMethodPath{display:flex!important;flex-direction:column!important}
+#root .ecoMethodPathResult{margin-top:auto!important}
+#root .ecoMethodPathMini{display:grid;align-items:stretch;gap:5px;margin-top:7px}
+#root .ecoMethodPathMini.department{grid-template-columns:repeat(3,minmax(0,1fr))}
+#root .ecoMethodPathMini.department>div{display:grid;gap:2px;padding:7px 8px;border:1px solid var(--cedars-border);border-radius:7px;background:var(--cedars-surface);text-align:center}
+#root .ecoMethodPathMini.department>div.reference{border-color:var(--cedars-forest);background:var(--cedars-sage-soft)}
+#root .ecoMethodPathMini.department span{font-size:7.5px;color:var(--cedars-muted)}
+#root .ecoMethodPathMini.department strong{font-size:11px;color:var(--cedars-ink)}
+#root .ecoMethodPathMini.ai{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr)}
+#root .ecoMethodPathMini.ai>div{display:grid;place-items:center;padding:7px 8px;border:1px solid var(--cedars-border);border-radius:7px;background:var(--cedars-surface);text-align:center}
+#root .ecoMethodPathMini.ai>div:last-child{border-color:var(--cedars-info);background:var(--cedars-info-soft)}
+#root .ecoMethodPathMini.ai span,#root .ecoMethodPathMini.ai strong{font-size:8px;line-height:1.3;color:var(--cedars-ink)}
+#root .ecoMethodPathMini.ai>b{align-self:center;color:var(--cedars-muted)}
+#root .ecoMethodPathFootnote{margin:7px 0 0!important;padding:8px 9px;border-radius:7px;background:var(--cedars-control);font-size:8.5px!important;line-height:1.4!important;color:var(--cedars-muted)!important}
+#root .ecoMethodPathFootnote strong{color:var(--cedars-ink)!important}
+#root .ecoMethodRatingCompare{padding:0!important;border:0!important}
+#root .ecoMethodRatingGrid>div{padding:13px;border:1px solid var(--cedars-border);border-radius:12px;background:var(--cedars-panel)!important}
+#root .ecoMethodRatingGrid>div.department{border-top:3px solid var(--cedars-forest)}
+#root .ecoMethodRatingGrid>div.ai{border-top:3px solid var(--cedars-info)}
+#root .ecoMethodTechnicalMaster{border:1px solid var(--cedars-border)!important;border-radius:11px!important;background:transparent!important;overflow:hidden!important}
+#root .ecoMethodTechnicalMaster>summary{padding:11px 13px!important;background:var(--cedars-panel)!important;color:var(--cedars-ink)!important;font-size:10.5px!important;font-weight:800!important}
+#root .ecoMethodTechnicalBody{padding:12px!important;border-top:1px solid var(--cedars-border)!important}
+#root .ecoMethodTechnicalIntro{margin:0 0 10px!important;font-size:9px!important;line-height:1.45!important;color:var(--cedars-muted)!important}
+#root .ecoMethodTechnicalColumns{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#root .ecoMethodTechnicalColumns>section:last-child{grid-column:1/-1}
+#root .ecoMethodTechnicalActions{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid var(--cedars-border)}
+#root .ecoMethodMethodsLink{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 8px;align-items:center;min-width:210px;padding:8px 11px;border:1px solid var(--cedars-border);border-radius:8px;background:var(--cedars-panel);color:var(--cedars-ink);text-decoration:none}
+#root .ecoMethodMethodsLink>span:first-child{font-size:7px;font-weight:900;letter-spacing:.08em;color:var(--cedars-muted)}
+#root .ecoMethodMethodsLink>strong{font-size:10px;line-height:1.2;color:var(--cedars-ink)}
+#root .ecoMethodMethodsLink>span:last-child{grid-column:2;grid-row:1/3;color:var(--cedars-forest);font-weight:900}
+#root .ecoMethodMethodsLink:hover{background:var(--cedars-control);border-color:var(--cedars-forest)}
+#root.dark .ecoMethodSecondaryAction,html.dark #root .ecoMethodSecondaryAction{background:#111C1A!important;border-color:#50685B!important;color:#EAF2ED!important}
+#root.dark .ecoMethodSecondaryAction:hover,html.dark #root .ecoMethodSecondaryAction:hover{background:#173126!important;border-color:#79A58C!important;color:#FFFFFF!important}
+#root.dark .ecoMethodMethodsLink,html.dark #root .ecoMethodMethodsLink{background:#111C1A!important;border-color:#50685B!important;color:#EAF2ED!important}
+#root.dark .ecoMethodMethodsLink strong,html.dark #root .ecoMethodMethodsLink strong{color:#F1F6F3!important}
+#root.dark .ecoMethodMethodsLink>span:first-child,html.dark #root .ecoMethodMethodsLink>span:first-child{color:#AFC1B8!important}
+#root.dark .ecoMethodMethodsLink:hover,html.dark #root .ecoMethodMethodsLink:hover{background:#173126!important;border-color:#79A58C!important}
+#root.dark .ecoMethodReadyCta,html.dark #root .ecoMethodReadyCta{background:#2F7658!important;border-color:#82AF96!important;color:#FFFFFF!important}
+#root.dark .ecoMethodReadyCta:hover,html.dark #root .ecoMethodReadyCta:hover{background:#3A8766!important;border-color:#A0C8B0!important;color:#FFFFFF!important}
+#root.dark .ecoMethodReadyCta :is(span,strong),html.dark #root .ecoMethodReadyCta :is(span,strong){color:#FFFFFF!important}
+#root.dark .ecoMethodPathMini.department>div,#root.dark .ecoMethodPathMini.ai>div,html.dark #root .ecoMethodPathMini.department>div,html.dark #root .ecoMethodPathMini.ai>div{background:#111C1A!important;border-color:#40584C!important}
+#root.dark .ecoMethodPathMini.department>div.reference,html.dark #root .ecoMethodPathMini.department>div.reference{background:#173126!important;border-color:#6B947C!important}
+#root.dark .ecoMethodPathMini.ai>div:last-child,html.dark #root .ecoMethodPathMini.ai>div:last-child{background:#14263B!important;border-color:#5A7E98!important}
+#root.dark .ecoMethodPathFootnote,html.dark #root .ecoMethodPathFootnote{background:#101917!important;color:#B8C9C1!important}
+#root.dark .ecoMethodTechnicalMaster>summary,html.dark #root .ecoMethodTechnicalMaster>summary{background:#111C1A!important;color:#F1F6F3!important}
+#root.dark .ecoMethodTechnicalBody,html.dark #root .ecoMethodTechnicalBody{background:transparent!important}
+@media(max-width:820px){#root .ecoMethodTechnicalColumns{grid-template-columns:1fr!important}#root .ecoMethodTechnicalColumns>section:last-child{grid-column:auto}#root .ecoMethodPathMini.ai{grid-template-columns:1fr!important}#root .ecoMethodPathMini.ai>b{display:none!important}}
+@media(max-width:560px){#root .ecoMethodHeroActions{display:grid!important;grid-template-columns:1fr!important}#root .ecoMethodReadyCta,#root .ecoMethodSecondaryAction{width:100%!important}#root .ecoMethodPathMini.department{grid-template-columns:1fr!important}}
+
+
+/* CEDARS_CHUNK_9R32G_ECOLABEL_METHOD_LAYPERSON_POLISH */
+#root .ecoMethodPathResult{justify-content:center!important;text-align:center!important;padding:10px 12px!important}
+#root .ecoMethodPathResult>span{align-items:center!important;text-align:center!important}
+#root .ecoMethodEquationRow{justify-content:center!important;align-items:stretch!important;margin-left:auto!important;margin-right:auto!important;width:100%!important}
+#root .ecoMethodPathMini.department.ecoMethodEquationRow{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr)!important;gap:6px!important}
+#root .ecoMethodEquationBox{display:grid!important;place-items:center!important;align-content:center!important;gap:3px!important;min-height:50px!important;padding:8px 9px!important;border:1px solid var(--cedars-border)!important;border-radius:8px!important;background:var(--cedars-sage-soft)!important;text-align:center!important}
+#root .ecoMethodPath.ai .ecoMethodEquationBox{background:var(--cedars-info-soft)!important;border-color:var(--cedars-info-line)!important}
+#root .ecoMethodPath.ai .ecoMethodEquationBox.result{background:var(--cedars-info)!important;border-color:var(--cedars-info)!important}
+#root .ecoMethodPath.ai .ecoMethodEquationBox.result strong{color:#FFFFFF!important}
+#root .ecoMethodEquationBox span{font-size:8px!important;line-height:1.3!important;color:var(--cedars-muted)!important}
+#root .ecoMethodEquationBox strong{font-size:10px!important;line-height:1.2!important;color:var(--cedars-ink)!important}
+#root .ecoMethodEquationArrow,#root .ecoMethodEquationOperator{align-self:center!important;justify-self:center!important;color:var(--cedars-muted)!important;flex-shrink:0!important}
+#root .ecoMethodEquationOperator{font-size:13px!important;font-weight:900!important}
+#root .ecoMethodEquationCaption{display:block!important;margin:5px 0 0!important;text-align:center!important;font-size:7.8px!important;line-height:1.35!important;color:var(--cedars-muted)!important}
+#root .ecoMethodRatingGrid>div.department>h3 sup{font-size:7px!important;color:var(--cedars-muted)!important}
+#root .ecoMethodReferenceFootnote{margin:8px 0 0!important;padding-top:7px!important;border-top:1px solid var(--cedars-border)!important;font-size:7.8px!important;line-height:1.4!important;color:var(--cedars-muted)!important}
+#root .ecoMethodReferenceFootnote strong{color:var(--cedars-ink)!important}
+#root .ecoMethodTechnicalActionsSingle{justify-content:flex-start!important}
+#root .ecoMethodTechnicalActionsSingle .ecoMethodMethodsLink{min-width:min(100%,260px)!important}
+#root.dark .ecoMethodEquationBox,html.dark #root .ecoMethodEquationBox{background:#173126!important;border-color:#50685B!important}
+#root.dark .ecoMethodPath.ai .ecoMethodEquationBox,html.dark #root .ecoMethodPath.ai .ecoMethodEquationBox{background:#14263B!important;border-color:#4A6C86!important}
+#root.dark .ecoMethodPath.ai .ecoMethodEquationBox.result,html.dark #root .ecoMethodPath.ai .ecoMethodEquationBox.result{background:#315F7A!important;border-color:#6F9FC0!important}
+#root.dark .ecoMethodEquationBox span,html.dark #root .ecoMethodEquationBox span{color:#B8C9C1!important}
+#root.dark .ecoMethodEquationBox strong,html.dark #root .ecoMethodEquationBox strong{color:#F1F6F3!important}
+#root.dark .ecoMethodReferenceFootnote,html.dark #root .ecoMethodReferenceFootnote{color:#B8C9C1!important;border-top-color:#40584C!important}
+#root.dark .ecoMethodReferenceFootnote strong,html.dark #root .ecoMethodReferenceFootnote strong{color:#F1F6F3!important}
+@media(max-width:820px){
+  #root .ecoMethodPathMini.department.ecoMethodEquationRow{grid-template-columns:1fr!important}
+  #root .ecoMethodPathMini.department .ecoMethodEquationArrow{transform:rotate(90deg)!important}
+}
+
+
+/* CEDARS_CHUNK_9R32H_PRACTICE_CONTEXT_RENDER_REPAIR
+   Practice/service inputs are nested inside the known-visible Department Context section.
+   Editable/self-entered controls remain blue; derived practice-size context remains neutral/green. */
+#root .departmentPracticeServiceContext{display:block!important;visibility:visible!important;opacity:1!important;position:relative!important;margin:8px 0 16px!important;padding:14px!important;border:1px solid var(--cedars-role-structure-line)!important;border-radius:9px!important;background:var(--cedars-role-structure-raised)!important;min-width:0!important;scroll-margin-top:18px!important}
+#root .departmentPracticeServiceHead{display:grid!important;gap:3px!important;margin-bottom:11px!important}
+#root .departmentPracticeServiceHead>span,#root .departmentLocalContextHeading>span{font-size:7.5px!important;font-weight:900!important;letter-spacing:.085em!important;color:var(--cedars-forest)!important}
+#root .departmentPracticeServiceHead h3{margin:0!important;font-size:15px!important;line-height:1.25!important;color:var(--cedars-ink)!important}
+#root .departmentPracticeServiceHead p{margin:0!important;max-width:850px!important;font-size:9px!important;line-height:1.45!important;color:var(--cedars-muted)!important}
+#root .departmentPracticeServiceGrid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;align-items:start!important}
+#root .departmentPracticeServiceGrid .departmentContextEditable,#root .departmentReferenceVolumeGrid .departmentContextEditable{display:grid!important;gap:5px!important;min-width:0!important;padding:9px 10px!important;border:1px solid var(--cedars-role-action-line)!important;border-radius:8px!important;background:var(--cedars-role-action-soft)!important;color:var(--cedars-ink)!important;font-size:9px!important;font-weight:800!important}
+#root .departmentPracticeServiceGrid .departmentContextEditable :is(input,select),#root .departmentReferenceVolumeGrid .departmentContextEditable input{width:100%!important;min-width:0!important;box-sizing:border-box!important}
+#root .departmentPracticeServiceGrid .fieldHelp{font-size:7.7px!important;line-height:1.35!important;font-weight:500!important;color:var(--cedars-muted)!important}
+#root .departmentPracticeServiceGrid .fieldOptional{font-size:7px!important;font-weight:650!important;color:var(--cedars-muted)!important}
+#root .departmentPracticeServiceGrid .departmentContextDerived{display:grid!important;gap:3px!important;align-content:center!important;min-width:0!important;min-height:100%!important;padding:9px 10px!important;border:1px solid var(--cedars-role-structure-line)!important;border-radius:8px!important;background:var(--cedars-role-structure)!important}
+#root .departmentContextDerived>span{font-size:7px!important;font-weight:900!important;letter-spacing:.08em!important;color:var(--cedars-forest)!important}
+#root .departmentContextDerived>strong{font-size:11px!important;line-height:1.25!important;color:var(--cedars-ink)!important}
+#root .departmentContextDerived>small{font-size:7.7px!important;line-height:1.35!important;color:var(--cedars-muted)!important}
+#root .departmentPracticeServiceNote{margin:10px 0 0!important;padding-top:8px!important;border-top:1px solid var(--cedars-role-structure-line)!important;font-size:8.3px!important;line-height:1.45!important;color:var(--cedars-muted)!important}
+#root .departmentLocalContextHeading{display:grid!important;gap:2px!important;margin:4px 0 8px!important;padding-top:2px!important}
+#root .departmentLocalContextHeading>strong{font-size:12px!important;color:var(--cedars-ink)!important}
+#root .departmentLocalContextHeading>small{font-size:8px!important;line-height:1.4!important;color:var(--cedars-muted)!important}
+#root.dark .departmentPracticeServiceContext,html.dark #root .departmentPracticeServiceContext{background:#122019!important;border-color:#40584C!important}
+#root.dark .departmentPracticeServiceGrid .departmentContextEditable,html.dark #root .departmentPracticeServiceGrid .departmentContextEditable,#root.dark .departmentReferenceVolumeGrid .departmentContextEditable,html.dark #root .departmentReferenceVolumeGrid .departmentContextEditable{background:var(--cedars-role-action-soft)!important;border-color:var(--cedars-role-action-line)!important;color:#EEF5F8!important}
+#root.dark .departmentPracticeServiceGrid .departmentContextDerived,html.dark #root .departmentPracticeServiceGrid .departmentContextDerived{background:#162820!important;border-color:#425A4E!important}
+@media(max-width:980px){#root .departmentPracticeServiceGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:650px){#root .departmentPracticeServiceGrid{grid-template-columns:1fr!important}#root .departmentPracticeServiceContext{padding:11px!important}}
+
+/* CEDARS_CHUNK_9R32I_CONTEXT_ORDER_REFERENCE_COPY
+   Local energy first; quick-start then practice/service context; optional workload is visibly optional. */
+#root .departmentContextQuickStart{margin:12px 0!important}
+#root .departmentReferenceVolumeOptional{margin-top:10px!important;border:1px dashed var(--cedars-role-structure-line)!important;border-radius:8px!important;background:transparent!important;overflow:hidden!important}
+#root .departmentReferenceVolumeOptional>summary{padding:9px 10px!important;color:var(--cedars-ink)!important;background:transparent!important;font-size:9px!important;font-weight:800!important;cursor:pointer!important}
+#root .departmentReferenceVolumeOptional[open]>summary{border-bottom:1px dashed var(--cedars-role-structure-line)!important}
+#root .departmentReferenceVolumeOptional .departmentReferenceVolumeBody{padding:10px!important}
+#root .departmentReferenceVolumeOptional .departmentReferenceVolumeHead>span{color:var(--cedars-ink)!important;font-weight:850!important}
+#root .departmentReferenceVolumeOptional .departmentReferenceVolumeHead>p{color:var(--cedars-muted)!important}
+#root.dark .departmentReferenceVolumeOptional,html.dark #root .departmentReferenceVolumeOptional{border-color:#587064!important}
+#root.dark .departmentReferenceVolumeOptional>summary,html.dark #root .departmentReferenceVolumeOptional>summary{color:#EAF3EE!important}
+#root.dark .departmentReferenceVolumeOptional[open]>summary,html.dark #root .departmentReferenceVolumeOptional[open]>summary{border-bottom-color:#587064!important}
+#root.dark .departmentReferenceVolumeOptional .departmentReferenceVolumeHead>span,html.dark #root .departmentReferenceVolumeOptional .departmentReferenceVolumeHead>span{color:#F1F6F3!important}
+#root.dark .departmentReferenceVolumeOptional .departmentReferenceVolumeHead>p,html.dark #root .departmentReferenceVolumeOptional .departmentReferenceVolumeHead>p{color:#B8C9C1!important}
+
+/* CEDARS_CHUNK_9R32J_AI_PER_USE_CONTEXT_GATE
+   Make Department Context sequencing obvious and define AI "per use" in plain language. */
+#root .departmentContextQuickStart.contextLocked,
+#root .departmentPracticeServiceContext.contextLocked{
+  opacity:.42!important;filter:saturate(.45)!important;pointer-events:none!important;user-select:none!important
+}
+#root .departmentContextQuickStart.contextLocked button{cursor:not-allowed!important}
+#root .departmentPracticeFieldset{border:0!important;padding:0!important;margin:0!important;min-width:0!important}
+#root .departmentPracticeFieldset:disabled{color:inherit!important}
+#root .departmentContextSequenceGate{display:flex!important;align-items:flex-start!important;gap:8px!important;margin:10px 0!important;padding:9px 10px!important;border:1px solid var(--cedars-role-action-line)!important;border-left:3px solid var(--cedars-role-action)!important;border-radius:7px!important;background:var(--cedars-role-action-soft)!important;color:var(--cedars-ink)!important}
+#root .departmentContextSequenceGate>svg{flex:0 0 auto!important;margin-top:1px!important;color:var(--cedars-role-action-strong)!important}
+#root .departmentContextSequenceGate span{font-size:9px!important;line-height:1.4!important;color:var(--cedars-muted)!important}
+#root .departmentContextSequenceGate strong{color:var(--cedars-ink)!important}
+#root.dark .departmentContextSequenceGate{background:#14263B!important;border-color:#415F76!important;border-left-color:#6F9FC0!important}
+#root.dark .departmentContextSequenceGate span{color:#C0D0D9!important}
+#root.dark .departmentContextSequenceGate strong{color:#F1F7FA!important}
+#root .ecoMethodAiUseFootnote{margin-top:8px!important}
+#root .ecoMethodInlineSources{display:block!important;margin-top:4px!important;font-size:.95em!important}
+#root .ecoMethodInlineSources a{color:var(--cedars-info-deep)!important;text-decoration:underline!important;text-underline-offset:2px!important}
+#root.dark .ecoMethodInlineSources a{color:#A9CEE3!important}

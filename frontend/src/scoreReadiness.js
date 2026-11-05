@@ -1,3 +1,5 @@
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
+// CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL
 // CEDARS_CHUNK_9R17_REQUIRED_CONTEXT_STEPPER_COLOR_AUDIT
 const positive = value => {
   const n = Number(value);
@@ -9,12 +11,21 @@ export function getDepartmentScoreReadiness({
   annualStudies = 0,
   gridReady = true,
   clinicalAiCount = 0,
+  interpretationOnly = false,
+  volumeMismatch = 0,
+  volumeWithoutEquipment = [],
 } = {}) {
   const hasEnergy = positive(annualKwh);
   const hasVolume = positive(annualStudies);
   const issues = [];
 
-  if (!hasEnergy && !hasVolume) {
+  if (interpretationOnly) {
+    if (!hasEnergy) issues.push({
+      key:'equipment',
+      title:'Add the informatics / workstation energy baseline',
+      detail:'Interpretation-only services do not receive a scanner-operations rating, but CEDARS still needs an energy baseline to report the informatics footprint.',
+    });
+  } else if (!hasEnergy && !hasVolume) {
     issues.push({
       key: 'equipment',
       title: 'Add a Department equipment / energy baseline',
@@ -31,14 +42,25 @@ export function getDepartmentScoreReadiness({
     if (!hasVolume) issues.push({
       key: 'volume',
       title: 'Add imaging workload',
-      detail: 'Enter annual imaging volume so CEDARS can express the Department footprint per study. A configured fleet can also provide the default workload estimate.',
+      detail: 'Enter annual imaging volume so CEDARS can build the matched service reference. A configured fleet can also provide the initial workload estimate.',
     });
   }
+
+  if (!interpretationOnly && Number(volumeMismatch)>0) issues.push({
+    key:'volume',
+    title:'Reconcile the Department workload totals',
+    detail:'The modality-specific studies exceed the entered total annual physical imaging volume. Correct one of those inputs before CEDARS assigns the scanner-operations rating.',
+  });
+  if (!interpretationOnly && Array.isArray(volumeWithoutEquipment) && volumeWithoutEquipment.length>0) issues.push({
+    key:'volume',
+    title:'Match modality workload to the represented acquisition fleet',
+    detail:'One or more modality study volumes were entered without corresponding acquisition equipment in this assessment. Add the equipment or remove those externally interpreted studies from the physical-service workload.',
+  });
 
   if (!gridReady) issues.push({
     key: 'context',
     title: 'Complete the Department grid context',
-    detail: 'Choose a country / grid region. If you select “Editable custom,” also enter its kgCO₂e/kWh value before CEDARS calculates a carbon score.',
+    detail: 'Choose a country / grid region. If you select “Editable custom,” also enter its kgCO₂e/kWh value before CEDARS reports carbon.',
   });
 
   return {ready: issues.length === 0, issues};

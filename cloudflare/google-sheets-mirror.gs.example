@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
 // Optional Google Sheets mirror for CEDARS contributions.
 // D1 remains the authoritative database. This web app receives a compact summary from the
 // Cloudflare Worker and appends one row to a restricted Google Sheet.
@@ -38,6 +39,15 @@ const HEADERS = [
 
   // Future-proof copies of the exact Report (& Share) disclosure objects
   'department_disclosure_json', 'ai_disclosure_json',
+
+  // 9R32C reference-adjusted Department calibration fields. Appended so all prior columns remain stable.
+  'dept_imaging_operation_model', 'dept_facility_setting', 'dept_location_type',
+  'dept_practice_size_band', 'dept_radiologist_count', 'dept_service_hours', 'dept_imaging_sites',
+  'dept_modality_volumes_json', 'dept_workload_source',
+  'dept_reference_annual_kwh', 'dept_observed_reference_annual_kwh',
+  'dept_observed_to_reference_ratio', 'dept_potential_observed_to_reference_ratio',
+  'dept_score_method', 'dept_score_data_basis', 'dept_score_boundary_label',
+  'dept_graded', 'dept_interpretation_only',
 ];
 
 function jsonResponse(value) {
@@ -119,6 +129,14 @@ function doPost(e) {
       payload.aiDisclosureScore, payload.aiDisclosureRatingLeaves, payload.aiDisclosureRatingLabel,
 
       payload.departmentDisclosureJson, payload.aiDisclosureJson,
+
+      payload.deptImagingOperationModel, payload.deptFacilitySetting, payload.deptLocationType,
+      payload.deptPracticeSizeBand, payload.deptRadiologistCount, payload.deptServiceHours, payload.deptImagingSites,
+      payload.deptModalityVolumesJson, payload.deptWorkloadSource,
+      payload.deptReferenceAnnualKwh, payload.deptObservedReferenceAnnualKwh,
+      payload.deptObservedToReferenceRatio, payload.deptPotentialObservedToReferenceRatio,
+      payload.deptScoreMethod, payload.deptScoreDataBasis, payload.deptScoreBoundaryLabel,
+      !!payload.deptGraded, !!payload.deptInterpretationOnly,
     ];
     sheet.appendRow(row);
     return jsonResponse({ok:true});

@@ -1,3 +1,5 @@
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
+// CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL
 // CEDARS model layer — the department calculation engine (buildFleet / computeDashboard /
 // computeInterventions) plus the pure, icon-free data tables they read. Extracted verbatim from
 // main.jsx so the calculation logic is a single source of truth that runs headlessly and is
@@ -394,6 +396,182 @@ function computeDicomTransfer({equipment=DEFAULT_EQUIPMENT,timePeriod='Monthly',
 function computeClinicalScannerSavings({imagingScans=0,scannerActiveKwh=0,avoidedFrac=0,scanTimeFrac=0}={}){const scans=Number.isFinite(Number(imagingScans))?Math.max(0,Number(imagingScans)):0;const activeKwh=Number.isFinite(Number(scannerActiveKwh))?Math.max(0,Number(scannerActiveKwh)):0;const avoid=boundedFraction(avoidedFrac),scan=boundedFraction(scanTimeFrac);const avoidedEnergyKwh=activeKwh*avoid;const remainingActiveKwh=Math.max(0,activeKwh-avoidedEnergyKwh);const scanTimeEnergyKwh=remainingActiveKwh*scan;const savedKwh=Math.min(activeKwh,avoidedEnergyKwh+scanTimeEnergyKwh);return{avoidedFrac:avoid,scanTimeFrac:scan,scansAvoided:Math.round(scans*avoid),remainingScans:scans*(1-avoid),avoidedEnergyKwh:rnd(avoidedEnergyKwh,2),scanTimeEnergyKwh:rnd(scanTimeEnergyKwh,2),savedKwh:rnd(savedKwh,2)};}
 function computeUtilizationAdjustedEnergy({annualKwh=0,annualActiveKwh=0,capacityYr=0,studiesYr=0}={}){const total=Math.max(0,Number(annualKwh)||0),active=Math.min(total,Math.max(0,Number(annualActiveKwh)||0)),cap=Math.max(0,Number(capacityYr)||0),studies=Math.max(0,Number(studiesYr)||0);if(!(cap>0)||!(studies>0))return{util:0,modeledAnnualKwh:total,energyPerStudy:studies>0?total/studies:0,nonProductivePct:total>0?rnd((total-active)/total*100,1):0};const util=studies/cap;const fixed=Math.max(0,total-active);const scaledActive=active*util;const modeled=fixed+scaledActive;return{util,modeledAnnualKwh:rnd(modeled,2),energyPerStudy:rnd(modeled/studies,4),nonProductivePct:modeled>0?rnd(fixed/modeled*100,1):0};}
 
+// Department v1.1 service-reference model. These groups are deliberately based on physical
+// imaging workload, not radiologist headcount or billing ownership.
+const DEPARTMENT_VOLUME_GROUPS = [
+  {key:'mri',         label:'MRI',              settingField:'annualMriStudies',         equipmentKeys:['mri_035t','mri_15t','mri_3t','mri_7t']},
+  {key:'ct',          label:'CT',               settingField:'annualCtStudies',          equipmentKeys:['ct']},
+  {key:'petct',       label:'PET/CT',           settingField:'annualPetCtStudies',       equipmentKeys:['petct']},
+  {key:'xray',        label:'Radiography',      settingField:'annualXrayStudies',        equipmentKeys:['xray']},
+  {key:'mammography', label:'Mammography',      settingField:'annualMammographyStudies', equipmentKeys:['mammography']},
+  {key:'ultrasound',  label:'Ultrasound',       settingField:'annualUltrasoundStudies',  equipmentKeys:['ultrasound']},
+  {key:'angio',       label:'Angiography / IR', settingField:'annualAngioStudies',       equipmentKeys:['angio']},
+  {key:'fluoro',      label:'Fluoroscopy',      settingField:'annualFluoroStudies',      equipmentKeys:['fluoro']},
+];
+
+const annualRowEnergy = row => (
+  Math.max(0,Number(row.active_kw)||0) * Math.max(0,Number(row.active_h)||0) +
+  Math.max(0,Number(row.idle_kw)||0) * Math.max(0,Number(row.idle_h)||0) +
+  Math.max(0,Number(row.standby_kw)||0) * Math.max(0,Number(row.standby_h)||0) +
+  Math.max(0,Number(row.off_kw)||0) * Math.max(0,Number(row.off_h)||0)
+) * 12;
+const annualRowActiveEnergy = row => Math.max(0,Number(row.active_kw)||0) * Math.max(0,Number(row.active_h)||0) * 12;
+const finiteNonNegativeOrNull = value => {
+  if (value == null || String(value).trim() === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+};
+
+function resolveDepartmentServiceVolumes({equipment=DEFAULT_EQUIPMENT,annualStudies='',modalityVolumes={},overrides={}}={}) {
+  const capacityByGroup = {};
+  DEPARTMENT_VOLUME_GROUPS.forEach(group => {
+    capacityByGroup[group.key] = group.equipmentKeys.reduce((sum,key) => {
+      const count = Math.max(0,Number(equipment?.[key])||0);
+      const unit = EQUIPMENT_UNITS[key];
+      const localScans = finiteNonNegativeOrNull(overrides?.[key]?.scans);
+      const scansMonth = localScans == null ? Math.max(0,Number(unit?.scans)||0) : localScans;
+      return sum + count * scansMonth * 12;
+    },0);
+  });
+  const capacityYr = Object.values(capacityByGroup).reduce((a,b)=>a+b,0);
+  const enteredTotal = finiteNonNegativeOrNull(annualStudies);
+  const explicit = {};
+  DEPARTMENT_VOLUME_GROUPS.forEach(group => {
+    const v = finiteNonNegativeOrNull(modalityVolumes?.[group.key] ?? modalityVolumes?.[group.settingField]);
+    if (v != null) explicit[group.key] = v;
+  });
+  const explicitSum = Object.values(explicit).reduce((a,b)=>a+b,0);
+  const volumeWithoutEquipment = Object.entries(explicit).filter(([key,v])=>v>0 && !(capacityByGroup[key]>0)).map(([key])=>key);
+  const resolvedVolumes = {};
+  let unassignedAnnualStudies = 0;
+
+  if (enteredTotal != null && enteredTotal > 0) {
+    const unspecified = DEPARTMENT_VOLUME_GROUPS.filter(group => explicit[group.key] == null && capacityByGroup[group.key] > 0);
+    const remaining = Math.max(0, enteredTotal - explicitSum);
+    const remainingCapacity = unspecified.reduce((sum,group)=>sum+capacityByGroup[group.key],0);
+    DEPARTMENT_VOLUME_GROUPS.forEach(group => {
+      if (explicit[group.key] != null) resolvedVolumes[group.key] = explicit[group.key];
+      else if (remainingCapacity > 0 && capacityByGroup[group.key] > 0) resolvedVolumes[group.key] = remaining * capacityByGroup[group.key] / remainingCapacity;
+      else resolvedVolumes[group.key] = 0;
+    });
+    if (remaining > 0 && remainingCapacity <= 0) unassignedAnnualStudies = remaining;
+  } else {
+    DEPARTMENT_VOLUME_GROUPS.forEach(group => {
+      resolvedVolumes[group.key] = explicit[group.key] != null ? explicit[group.key] : capacityByGroup[group.key];
+    });
+  }
+
+  const resolvedSum = Object.values(resolvedVolumes).reduce((a,b)=>a+b,0);
+  const effectiveAnnualStudies = enteredTotal != null && enteredTotal > 0
+    ? Math.max(resolvedSum, enteredTotal - unassignedAnnualStudies)
+    : resolvedSum;
+  const totalMismatch = enteredTotal != null && enteredTotal > 0 && explicitSum > enteredTotal
+    ? explicitSum - enteredTotal : 0;
+  const explicitCount = Object.keys(explicit).length;
+  const volumeCoveragePct = enteredTotal && enteredTotal > 0
+    ? Math.min(100, rnd(explicitSum / enteredTotal * 100, 0))
+    : explicitCount ? 100 : 0;
+  const workloadSource = explicitCount === DEPARTMENT_VOLUME_GROUPS.length ? 'modality volumes entered'
+    : explicitCount > 0 ? 'partial modality volumes + fleet allocation'
+      : enteredTotal && enteredTotal > 0 ? 'total volume allocated by fleet mix'
+        : 'fleet typical-throughput estimate';
+
+  return {
+    capacityByGroup,
+    capacityYr:rnd(capacityYr,0),
+    resolvedVolumes:Object.fromEntries(Object.entries(resolvedVolumes).map(([k,v])=>[k,rnd(v,0)])),
+    effectiveAnnualStudies:rnd(effectiveAnnualStudies,0),
+    explicitSum:rnd(explicitSum,0),
+    volumeCoveragePct,
+    workloadSource,
+    totalMismatch:rnd(totalMismatch,0),
+    volumeWithoutEquipment,
+    unassignedAnnualStudies:rnd(unassignedAnnualStudies,0),
+  };
+}
+
+function currentPowerManagementAnnualSaving(fleet, powerManagement={}) {
+  const pm = powerManagement || {};
+  const num = key => { const n=Number(pm[key]); return Number.isFinite(n)?n:0; };
+  const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+  const daysPerMonth=AVERAGE_MONTH_HOURS/24;
+  const savingFor=({modality,targetMode,countKey,hoursKey})=>{
+    const rows=fleet.filter(row=>row.modality===modality);
+    const totalCount=rows.reduce((sum,row)=>sum+(Number(row.count)||0),0);
+    if(!(totalCount>0)) return 0;
+    const currentCount=clamp(num(countKey),0,totalCount);
+    if(!(currentCount>0)) return 0;
+    const coverage=currentCount/totalCount;
+    return rows.reduce((sum,row)=>{
+      const targetKw=targetMode==='lowest'?Math.min(row.standby_kw,row.off_kw):row.off_kw;
+      const potential=Math.max(0,row.idle_kw-targetKw)*Math.max(0,row.avoidable_idle_h)*12;
+      const raw=String(pm[hoursKey]??'').trim();
+      const hourFraction=raw===''?1:clamp((clamp(Number(raw)||0,0,24)*daysPerMonth)/Math.max(1,row.avoidable_idle_h),0,1);
+      return sum+potential*coverage*hourFraction;
+    },0);
+  };
+  return rnd(
+    savingFor({modality:'CT',targetMode:'off',countKey:'ctCurrentCount',hoursKey:'ctCurrentHours'})+
+    savingFor({modality:'MRI',targetMode:'lowest',countKey:'mriCurrentCount',hoursKey:'mriCurrentHours'})+
+    savingFor({modality:'Workstation',targetMode:'off',countKey:'workstationCurrentCount',hoursKey:'workstationCurrentHours'}),
+    2
+  );
+}
+
+function computeDepartmentReferenceEnergy({equipment=DEFAULT_EQUIPMENT,annualStudies='',modalityVolumes={},overrides={},powerManagement={}}={}) {
+  const volumes = resolveDepartmentServiceVolumes({equipment,annualStudies,modalityVolumes,overrides});
+  if (!(volumes.capacityYr > 0) || !(volumes.effectiveAnnualStudies > 0)) {
+    return {...volumes, referenceAnnualKwh:0, modeledCurrentAnnualKwh:0, observedToReferenceRatio:null, currentPowerManagementSavingAnnual:0};
+  }
+
+  const currentFleet=buildFleet(equipment,overrides);
+  const defaultFleet=buildFleet(equipment,{});
+  let referenceAnnualKwh=0, modeledCurrentAnnualKwh=0;
+
+  DEPARTMENT_VOLUME_GROUPS.forEach(group=>{
+    const volume=Math.max(0,Number(volumes.resolvedVolumes[group.key])||0);
+    if(!(volume>0)) return;
+    const currentRows=currentFleet.filter(row=>group.equipmentKeys.includes(row.key));
+    const defaultRows=defaultFleet.filter(row=>group.equipmentKeys.includes(row.key));
+    const referenceCapacity=group.equipmentKeys.reduce((sum,key)=>{
+      const count=Math.max(0,Number(equipment?.[key])||0);
+      return sum+count*Math.max(0,Number(EQUIPMENT_UNITS[key]?.scans)||0)*12;
+    },0);
+    const currentCapacity=group.equipmentKeys.reduce((sum,key)=>{
+      const count=Math.max(0,Number(equipment?.[key])||0);
+      const local=finiteNonNegativeOrNull(overrides?.[key]?.scans);
+      return sum+count*(local==null?Math.max(0,Number(EQUIPMENT_UNITS[key]?.scans)||0):local)*12;
+    },0);
+    const referenceFull=defaultRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
+    if(referenceCapacity>0) referenceAnnualKwh += referenceFull/referenceCapacity*volume;
+    const currentFull=currentRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
+    const currentActive=currentRows.reduce((sum,row)=>sum+annualRowActiveEnergy(row),0);
+    const currentFixed=Math.max(0,currentFull-currentActive);
+    modeledCurrentAnnualKwh += currentFixed + (currentCapacity>0?currentActive*(volume/currentCapacity):0);
+  });
+
+  // PACS/RIS and reporting workstations are support infrastructure. Their reference burden scales
+  // with overall imaging workload; the current burden remains the entered fleet's modeled draw.
+  const overallUtil=volumes.capacityYr>0?volumes.effectiveAnnualStudies/volumes.capacityYr:0;
+  ['PACS/RIS','Workstation'].forEach(modality=>{
+    const defaultRows=defaultFleet.filter(row=>row.modality===modality);
+    const currentRows=currentFleet.filter(row=>row.modality===modality);
+    referenceAnnualKwh += defaultRows.reduce((sum,row)=>sum+annualRowEnergy(row),0)*overallUtil;
+    modeledCurrentAnnualKwh += currentRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
+  });
+
+  const currentPowerManagementSavingAnnual=currentPowerManagementAnnualSaving(currentFleet,powerManagement);
+  modeledCurrentAnnualKwh=Math.max(0,modeledCurrentAnnualKwh-currentPowerManagementSavingAnnual);
+  const ratio=referenceAnnualKwh>0?modeledCurrentAnnualKwh/referenceAnnualKwh:null;
+  return {
+    ...volumes,
+    referenceAnnualKwh:rnd(referenceAnnualKwh,1),
+    modeledCurrentAnnualKwh:rnd(modeledCurrentAnnualKwh,1),
+    observedToReferenceRatio:ratio==null?null:rnd(ratio,3),
+    currentPowerManagementSavingAnnual,
+  };
+}
+
 function computeDashboard(region, timePeriod, equipment = DEFAULT_EQUIPMENT, customCi, clinicalAdj = {}, storage = {}, overrides = {}, inputProvenance = {}) {
   const ci       = getCI(region, customCi);
   const mult     = safeTimeMult(timePeriod);
@@ -774,6 +952,9 @@ export {
   computeDicomTransfer,
   computeClinicalScannerSavings,
   computeUtilizationAdjustedEnergy,
+  DEPARTMENT_VOLUME_GROUPS,
+  resolveDepartmentServiceVolumes,
+  computeDepartmentReferenceEnergy,
   computeDashboard,
   SCANNER_STATE_INTERVENTIONS,
   CLOUD_INTERVENTIONS,

@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL
 // CEDARS numeric core — pure, dependency-free calculation helpers shared by the app (main.jsx)
 // and its reference tests (calc.test.js). Kept in one module so there is a single source of
 // truth and results cannot diverge by execution path. See sources.md for every factor below.
@@ -53,9 +54,30 @@ export function cedarsRating(score) {
   return CEDARS_RATINGS.find(r => score >= r.min) ?? CEDARS_RATINGS[CEDARS_RATINGS.length - 1];
 }
 
+// Department v1.1 uses a service-reference ratio rather than the absolute-carbon anchor scale.
+// Score 50 = the CEDARS reference expectation for the entered service mix; it is NOT a percentile.
+// Halving reference-adjusted energy maps to 100 and doubling it maps to 0.
+export const CEDARS_REFERENCE_RATINGS = [
+  {leaves:5, min:80, label:'Much lower energy than reference', color:'#1b5e20', bg:'#e6f4ed', desc:'Operational energy is substantially below the CEDARS matched-service reference.'},
+  {leaves:4, min:60, label:'Lower energy than reference',      color:'#2b6e2c', bg:'#eaf3d8', desc:'Operational energy is below the CEDARS matched-service reference.'},
+  {leaves:3, min:40, label:'Near reference',                   color:'#7a6a00', bg:'#fbf6d6', desc:'Operational energy is near the CEDARS matched-service reference.'},
+  {leaves:2, min:20, label:'Higher energy than reference',     color:'#8a4a00', bg:'#fdeccc', desc:'Operational energy is above the CEDARS matched-service reference.'},
+  {leaves:1, min:0,  label:'Much higher energy than reference',color:'#9b1515', bg:'#fbe0e0', desc:'Operational energy is substantially above the CEDARS matched-service reference.'},
+];
+export function cedarsReferenceRating(score) {
+  return CEDARS_REFERENCE_RATINGS.find(r => score >= r.min) ?? CEDARS_REFERENCE_RATINGS[CEDARS_REFERENCE_RATINGS.length - 1];
+}
+export function cedarsReferenceAdjustedScore(observedAnnualKwh, referenceAnnualKwh) {
+  const observed = Number(observedAnnualKwh), reference = Number(referenceAnnualKwh);
+  if (!Number.isFinite(observed) || observed < 0 || !Number.isFinite(reference) || !(reference > 0)) return null;
+  if (observed === 0) return 100;
+  const raw = Math.round(50 - 50 * Math.log2(observed / reference));
+  return Math.max(0, Math.min(100, raw));
+}
+
 // Footprint intensity → 0–100 CEDARS Footprint Score on a log scale: lo → 100 (greenest), hi → 0 (worst).
 export function cedarsScore(value, lo, hi) {
   const raw=Number(value); if(!Number.isFinite(raw)||raw<0)return 0; const x=Math.max(raw,1e-6); if(x<=lo)return 100; if(x>=hi)return 0; return Math.round(100*(Math.log10(hi)-Math.log10(x))/(Math.log10(hi)-Math.log10(lo)));
 }
-export const CEDARS_DEPT_LO = 0.1, CEDARS_DEPT_HI = 20;   // kgCO₂e per imaging study
+export const CEDARS_DEPT_LO = 0.1, CEDARS_DEPT_HI = 20;   // legacy Department v1 anchors; retained for backward compatibility, not used by v1.1
 export const CEDARS_AIUSE_LO = 0.2, CEDARS_AIUSE_HI = 40; // gCO₂e per study (amortised)

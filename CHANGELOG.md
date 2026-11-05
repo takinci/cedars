@@ -4,6 +4,22 @@ This changelog is organized by **product/scientific area**, not by internal patc
 
 ## EcoLabel & reporting
 
+- **2026-11-04 — Final Context gating and AI per-use explanation.** Department Context now makes the required sequence explicit: users choose the local country/grid context first, while Quick-start, Practice & service context, and Equipment remain visible but muted/disabled until that selection is made. EcoLabel Method now defines AI "per use" beside the AI leaf scale, explaining training amortization, recurring inference, deployment-scale dependence, and changing hardware/software efficiency with Masanet et al. (Joule 2024) and Patterson et al. (Computer 2022) cited in Methods & Sources.
+
+- **2026-11-04 — Department Context order and service-reference copy refined.** Local energy/reporting now appears first, followed by optional illustrative quick-start templates and then Practice & service context. Quick-start archetypes prefill editable service/workload/fleet context, including an illustrative practice-size range; optional modality workload is shown with a dashed optional treatment and improved dark-mode contrast. Public copy now explains that practice/service details travel with the service reference for like-for-like interpretation, while the current numerical energy reference remains driven by represented equipment and physical workload rather than unvalidated practice-type bonus points. Walkthrough, EcoLabel Method, README, llms.txt, METHODS.md, and sources.md were synchronized.
+- **2026-11-04 — Department practice/service context render repair.** Practice size, radiologist count, represented sites, service setting, hours, and scanner-operating/mixed/teleradiology status are now nested inside the visible Department Context card so they cannot disappear during surrounding layout rewrites. This patch also bundles the planned layperson EcoLabel Method polish when 9R32G has not yet been applied.
+
+<!-- CEDARS_CHUNK_9R32H_PRACTICE_CONTEXT_RENDER_REPAIR -->
+<!-- CEDARS_CHUNK_9R32G_ECOLABEL_METHOD_LAYPERSON_POLISH bundled in 9R32H -->
+
+- **2026-11-04 — EcoLabel Method simplified into one continuous two-path infographic.** Department and AI calculation summaries now live directly inside their respective paths; technical assumptions, calibration notes, evidence navigation, and full Methods & Sources are consolidated into one accordion. Public labels avoid technical shorthand such as ‘reference-adjusted’ and ‘lifecycle carbon intensity,’ and the assessment CTA matches the Evidence page.
+
+<!-- CEDARS_CHUNK_9R32F_ECOLABEL_METHOD_SIMPLIFICATION -->
+
+- **2026-11-04 — Two-path EcoLabel method and practice-context UI.** Reframed the public method page around one EcoLabel family with two assessment paths (Radiology Department and AI Model & Informatics), converted the page to an infographic-first layout with technical details collapsed, renamed the shared umbrella metric to **EcoLabel Score**, made Department and AI leaf interpretations pathway-specific, and clarified that their scores share a reporting scale but not a physical metric. Department Context now presents a plain-language **Practice & service context** card with editable blue inputs for operation model/teleradiology, radiologist count, sites, setting/location, service hours, and physical workload; radiologist count derives the published practice-size context without awarding score points.
+- **2026-11-04 — Department EcoLabel moved to reference-adjusted service normalization.** The Department rating now compares modeled operational energy with a CEDARS reference matched to the represented fleet and modality workload, with Score 50 marking the matched reference rather than a peer percentile. Absolute kWh, kgCO₂e/study, and annual carbon remain separate disclosures. Facility/location/service-hours context and the published six-bin radiologist practice-size taxonomy are preserved for future validation but do not directly award score points; interpretation-only/teleradiology services are disclosure-only for the scanner-operations rating.
+- **2026-11-04 — Service-context and responsive hardening.** Department Context now surfaces the physical service boundary before grid/carbon assumptions, including operation relationship (with interpretation-only/teleradiology), exact radiologist count with derived published practice-size band, represented imaging sites, facility/location, and service hours. Added workload/fleet consistency guardrails, removed the inherited white band on EcoLabel Method, repaired dark-mode walkthrough bullet contrast, and made the header, workflow rail, Decision Workspace, and Report & Share reflow earlier under browser zoom/narrow effective widths.
+
 - **2026-11-04 — Footprint Score framing and public EcoLabel Method added.** The existing numerical Score is now named the **CEDARS Footprint Score**; leaf labels describe footprint magnitude rather than implying peer rank or mitigation effort. The v1 Department and AI anchors are explicitly provisional research anchors, and a public EcoLabel Method page explains the equation, boundaries, Improvement Potential, service context, and future calibration.
 
 - **2026-11-04 — One CEDARS EcoLabel family.** Department and AI Research EcoLabels now use the same shell, palette, leaf-scale grammar, coverage hierarchy, key-result structure, assessment-context rows, and provenance footer. Result (EcoLabel) and Report & Share render the same reporting object rather than parallel visual products.
@@ -63,3 +79,13 @@ This file intentionally records **user-facing and scientific decision points**, 
 <!-- CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY -->
 
 <!-- CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD -->
+
+<!-- CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL -->
+
+<!-- CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING -->
+
+<!-- CEDARS_CHUNK_9R32E_ECOLABEL_PATHS_PRACTICE_CONTEXT -->
+
+<!-- CEDARS_CHUNK_9R32I_CONTEXT_ORDER_REFERENCE_COPY -->
+
+<!-- CEDARS_CHUNK_9R32J_AI_PER_USE_CONTEXT_GATE -->

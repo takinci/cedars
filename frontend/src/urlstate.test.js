@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
 // Reference tests for shareable-URL state (urlstate.js). The core guarantee: a link reproduces the
 // exact configuration that was shared — so the round-trip encode → decode must recover every
 // non-default field (department settings, equipment inventory, storage, AI scenario, interventions).
@@ -25,6 +26,9 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
       staffCount:'85', staffCommuteKm: '22', patientTravelKm:'18',
       waterLitresAnnual:'120000', paperKgAnnual:'500', hazardousKgAnnual:'900',
       electricityPrice: '0.31',
+      imagingOperationModel:'operates', facilitySetting:'Academic hospital', locationType:'Metropolitan',
+      practiceSizeBand:'25–49', radiologistCount:'42', serviceHours:'24/7', imagingSites:'3',
+      annualMriStudies:'12000', annualCtStudies:'18000', annualXrayStudies:'40000',
       storageRetentionYears: '7', storageCloud: true, storageReformats: 'axial',
       equipment: { ct: 2, mri_15t: 1, xray: 3 },
     };
@@ -48,6 +52,13 @@ describe('round-trip — a shared link restores exactly what was shared', () => 
     expect({ ...SCEN_DEFAULTS, ...decoded.scen }).toEqual(scen);
     expect(decoded.activeInterventions).toEqual(activeInterventions);
     expect(decoded.currentPractices).toEqual(currentPractices);
+  });
+
+  it('Department reference context and modality volumes survive encode → decode', () => {
+    const settings = {...SETTINGS_DEFAULTS, imagingOperationModel:'mixed', facilitySetting:'Freestanding imaging center', locationType:'Suburban',
+      practiceSizeBand:'10–24', radiologistCount:'18', serviceHours:'Extended hours', imagingSites:'2', annualCtStudies:'15000', annualMriStudies:'8000'};
+    const decoded = decodeConfig('#' + encodeConfig({settings}));
+    expect({...SETTINGS_DEFAULTS, ...decoded.settings}).toEqual(settings);
   });
 
   it('equipment: only non-zero devices are carried, and counts are preserved', () => {

@@ -188,44 +188,66 @@ Clinical, safety, legal, privacy, reliability, and operational requirements cons
 
 ---
 
-## 10. CEDARS Footprint Score, Rating, improvement potential, and EcoLabel
+## 10. CEDARS EcoLabel Score, Rating, improvement potential, and EcoLabel
 
-The **CEDARS Footprint Score** summarizes a defined environmental-intensity result **within a stated boundary**. It does not represent the total sustainability of a department or AI system, and it is not a behavior/compliance score.
+CEDARS uses **one EcoLabel family with two assessment paths**. The Department and AI pathways share the same reporting grammar—0–100 EcoLabel Score, 1–5 leaves, absolute-impact disclosure, assessment context, and provenance—but use different physical quantities appropriate to the system being assessed.
 
-Current implementation principles include:
+A Department EcoLabel Score and an AI EcoLabel Score therefore share a visual/reporting scale; they are **not the same physical metric and should not be interpreted as directly comparable footprints**.
 
-- a scored context uses a defined carbon-intensity quantity rather than a tunable weighted composite of unrelated environmental domains;
-- the Department and AI pathways use domain-specific intensity units and v1 anchor ranges;
-- categories outside the scored boundary remain separately disclosed;
-- missing lifecycle phases or categories are not treated as zero to obtain a score;
-- the 1–5 leaf **Footprint Rating** is a categorical display of the same 0–100 Footprint Score, not a second calculation; and
-- v1 anchors and Rating bands are explicitly **provisional research anchors**, not empirically calibrated peer percentiles.
+### Radiology Department path: reference-adjusted operational energy
 
-The current equations, boundaries, reference ranges, and their limitations are documented in [`sources.md`](./sources.md). A Score of 75, for example, must not be interpreted as “better than 75% of peers” unless a future validated percentile-based method is explicitly introduced.
+The Department EcoLabel asks how operational energy compares with the CEDARS reference for the physical imaging service represented by the assessment.
+
+1. **Describe the service.** Enter the equipment and studies physically performed by the represented service. Practice/service context can include operation relationship (scanner-operating, mixed, or interpretation-only/teleradiology), exact radiologist count, derived practice-size group, represented sites, facility setting, location type, and service hours.
+2. **Build the matched reference.** CEDARS constructs an operational-energy reference from the represented fleet, modality workload, and versioned literature/default assumptions documented in [`sources.md`](./sources.md).
+3. **Compare current operation.** Current modeled imaging/PACS/reporting energy is compared with the matched reference:
+
+```text
+ratio = observed modeled operational kWh / matched reference kWh
+EcoLabel Score = clamp(round(50 - 50 * log2(ratio)), 0, 100)
+```
+
+Thus `0.50×` reference maps to 100, `1.00×` to 50, and `2.00×` to 0. **Score 50 means “at the CEDARS matched reference,” not “50th percentile.”** Department leaf labels describe much lower / lower / near / higher / much higher energy than reference.
+
+Absolute electricity and location-based carbon remain separately visible. Changing only the grid carbon factor changes absolute carbon but does not directly improve the Department EcoLabel Score. Qualitative sustainability-practice documentation does not create bonus points; a practice changes the score only when its physical effect is represented in the operational-energy model.
+
+### Practice & service context
+
+In the Department Context UI, **Local energy & reporting** appears first, followed by optional **Quick-start templates · illustrative data**, then **Practice & service context**. A quick-start template may prefill illustrative service context, workload, equipment, and current workflow values; every value remains editable and should be verified or replaced before reporting.
+
+For an equipment-operating service, the preferred workload is the number of studies physically performed on the equipment represented by the assessment. Mixed practices should exclude externally acquired interpretation-only studies from the scanner-operations denominator.
+
+An interpretation-only/teleradiology service can still report workstation, PACS, storage, cloud, and related environmental impacts, but does not receive the scanner-operations rating because the acquisition equipment is outside the represented physical system.
+
+When available, CEDARS records the exact number of radiologists and maps it to the six published practice-size groups (**1–2, 3–9, 10–24, 25–49, 50–99, ≥100 radiologists**). Practice size, sites, facility setting, location, service hours, and operating model are carried with the Department service reference so the result can be interpreted in the appropriate practice context. The current numerical energy reference is calculated from represented equipment and physical workload; practice type itself does not create bonus points or an unvalidated numerical adjustment.
+
+### AI Model & Informatics path: lifecycle carbon intensity
+
+The AI Research EcoLabel retains the lifecycle carbon-intensity approach. When the required lifecycle basis is available, the EcoLabel Score uses amortized training (`training CO₂ ÷ lifetime studies/uses`) plus recurring inference carbon per study/use on the documented v1 log-scale anchors. Missing lifecycle phases are not treated as zero.
+
+Clinical/performance suitability remains a gate rather than a compensatory score component: a lower environmental burden does not make an unsuitable AI system clinically acceptable.
+
+### Shared leaf display and reporting
+
+Both paths use a 0–100 EcoLabel Score and 1–5-leaf visual grammar. The text attached to the leaves is pathway-specific:
+- **Department:** distance from the matched operational-energy reference.
+- **AI:** lifecycle carbon-intensity band on the current provisional research scale.
 
 ### Improvement Potential
 
-**Improvement Potential** is kept separate from the current Footprint Score. In Decision Workspace, a user-selected prospective scenario can show modeled changes in energy, operational carbon, electricity cost, and the potential Footprint Score. Where changes affect overlapping energy/resource pools, the combined scenario calculation prevents double-counting.
+Decision Workspace remains prospective and separate from the current EcoLabel. It applies candidate changes without overwriting the current Profile. Overlapping savings are counted once by the combined scenario calculation.
 
-CEDARS v1 does **not** assign a second 0–100 improvement score or claim to know what fraction of every locally feasible sustainability opportunity has already been captured. Such a construct would require a validated opportunity denominator and local feasibility model.
+### Future empirical calibration
 
-Current-profile workflow observations (for example, a local estimate of potentially avoidable imaging) may inform the relevant Decision Workspace lever, but they are not automatically converted into projected savings. A prospective target must be tested explicitly and remain clinically appropriate.
+The Department v1.1 method is a transparent engineering/literature reference model. Future peer-adjusted or percentile language should be introduced only after real-world data are sufficient to estimate and externally validate which service covariates materially explain operational-energy variation. AI anchors likewise remain research anchors pending stronger deployment datasets.
 
-### Service and peer context
+<!-- CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD -->
+<!-- CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL -->
+<!-- CEDARS_CHUNK_9R32E_ECOLABEL_PATHS_PRACTICE_CONTEXT -->
 
-Entered fleet and workload data may be used to display **descriptive service context**. External datasets such as the 2022–2023 Canadian Medical Imaging Inventory can provide reference values for units/site and examinations/site or unit. These are contextual benchmarks only.
+### AI score per use
 
-CEDARS does **not** infer academic/community/hybrid practice status from scanner count alone, and external service-size references do not alter the v1 Footprint Score. Practice type, organizational structure, case mix, teaching role, and service complexity overlap and cannot be reconstructed reliably from fleet size.
-
-Future peer normalization should be introduced only after validation against sufficiently large real-world Department and AI datasets, with transparent handling of modality mix, service scale, geography/grid context, and AI task family.
-
-### EcoLabel
-
-The EcoLabel is a structured CEDARS-generated assessment summary derived from the assessment record; interpretation depends on its stated coverage, assumptions, and provenance.
-
-The **Department EcoLabel** and **AI Research EcoLabel** use the same reporting grammar—Footprint Score and Rating, what the assessment covers, key results, assessment context, and provenance—while retaining domain-specific metrics. They are generated from the same assessment record used for Methods and reproducibility reporting.
-
----
+For the AI Research EcoLabel, **per use** means the allocated training impact per expected lifetime use plus the recurring deployment/inference impact for that use. Training can be energy-intensive up front, but its per-use contribution falls as it is amortized over more expected uses; at sufficiently high deployment volume, cumulative inference can exceed the amortized training share. CEDARS therefore keeps training and deployment inputs separate rather than assuming a fixed split. Hardware generation, software/model architecture, data-center efficiency, compute location, and electricity mix can all change these quantities over time, so the reported result should retain its measurement/estimation context and provenance. See `Masanet-Joule-2024-AIData` and `Patterson-Computer-2022` in `sources.md`.
 
 ## 11. Reproducibility and reporting
 
@@ -261,3 +283,9 @@ When changing a calculation, default, boundary, Score interpretation, or evidenc
 The method should evolve through explicit revisions rather than accumulating undocumented exceptions in the interface or calculation code.
 
 <!-- CEDARS_CHUNK_9R30_FINAL_WORKFLOW_COST_LINKAGE -->
+
+<!-- CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING -->
+
+<!-- CEDARS_CHUNK_9R32I_CONTEXT_ORDER_REFERENCE_COPY -->
+
+<!-- CEDARS_CHUNK_9R32J_AI_PER_USE_CONTEXT_GATE -->

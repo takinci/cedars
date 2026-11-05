@@ -1,3 +1,9 @@
+// CEDARS_CHUNK_9R32E_ECOLABEL_PATHS_PRACTICE_CONTEXT
+// CEDARS_CHUNK_9R32H_PRACTICE_CONTEXT_RENDER_REPAIR
+// CEDARS_CHUNK_9R32I_CONTEXT_ORDER_REFERENCE_COPY
+// CEDARS_CHUNK_9R32J_AI_PER_USE_CONTEXT_GATE
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
+// CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL
 // CEDARS_CHUNK_9I3_REPORT_DEPT_AI_CLEANUP
 // CEDARS_CHUNK_9J_AI_RESULT_CONSOLIDATION
 // CEDARS_CHUNK_9K_NAV_AI_DARKMODE_CLEANUP
@@ -38,7 +44,7 @@ import './styles/theme.css';
 // CEDARS_CHUNK_9R30_FINAL_WORKFLOW_COST_LINKAGE
 // CEDARS_CHUNK_9R31A_FINAL_WALKTHROUGH_REPORT_COPY
 // CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD
-import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, cedarsRating, cedarsScore, CEDARS_DEPT_LO, CEDARS_DEPT_HI, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
+import { CARBON_INTENSITY, ELECTRICITY_PRICE, getCI, getPrice, currencySym, CEDARS_RATINGS, CEDARS_REFERENCE_RATINGS, cedarsRating, cedarsReferenceAdjustedScore, cedarsReferenceRating, cedarsScore, CEDARS_AIUSE_LO, CEDARS_AIUSE_HI } from './calc.js';
 import { encodeConfig, decodeConfig, SETTINGS_DEFAULTS, SCEN_DEFAULTS } from './urlstate.js';
 import { ExternalLinkProvider, ExternalLink, Ref, ReferenceList } from './Refs.jsx';
 import { REFS, refUrl } from './refs.js';
@@ -290,15 +296,33 @@ function boundedManagedHours(value) {
   return Math.max(0,Math.min(24,n));
 }
 
-function DepartmentServiceContext({equipment={},annualStudies=0,onMethod}) {
-  const counts=departmentPowerCounts(equipment), advanced=counts.ct+counts.mri;
-  if(advanced<=0)return null;
-  return <section className="ecoResultContextCard serviceContextCard"><span>SERVICE CONTEXT · REFERENCE ONLY</span><strong>{advanced===1?'Single-unit CT/MRI service':'Multi-unit CT/MRI service'}</strong><div className="serviceContextMetrics"><b>CT {counts.ct}</b><b>MRI {counts.mri}</b>{Number(annualStudies)>0&&<b>{Number(annualStudies).toLocaleString()} total studies/year</b>}</div><small>CMII 2022–2023 reported academic-site averages of 2.14 CT and 2.00 MRI units/site, versus 1.21 CT and 1.23 MRI units/site in community settings. CEDARS does not infer practice type from fleet size, and this context does not change the v1 Footprint Score.</small>{onMethod&&<button type="button" className="inlineTextButton" onClick={onMethod}>Why this is context, not scoring →</button>}</section>;
+function practiceSizeBandFromCount(value) {
+  const raw=String(value??'').trim();
+  if(raw==='') return '';
+  const n=Math.max(0,Math.floor(Number(raw)));
+  if(!Number.isFinite(n)||n<=0) return '';
+  if(n<=2) return '1–2';
+  if(n<=9) return '3–9';
+  if(n<=24) return '10–24';
+  if(n<=49) return '25–49';
+  if(n<=99) return '50–99';
+  return '≥100';
+}
+
+function DepartmentServiceContext({equipment={},annualStudies=0,settings={},referenceData={},onMethod}) {
+  const counts=departmentPowerCounts(equipment);
+  const radiologistContext=referenceData.radiologistCount?`${Number(referenceData.radiologistCount).toLocaleString()} radiologists${referenceData.practiceSizeBand?` (${referenceData.practiceSizeBand} band)`:''}`:referenceData.practiceSizeBand?`${referenceData.practiceSizeBand} radiologists`:null;
+  if(referenceData.interpretationOnly){
+    return <section className="ecoResultContextCard serviceContextCard"><span>SERVICE CONTEXT</span><strong>Interpretation-only / teleradiology</strong><small>CEDARS reports the entered informatics/workstation footprint, but does not assign the scanner-operations rating because this assessment does not represent the equipment that acquired those studies.{radiologistContext?` · ${radiologistContext}`:''}</small>{onMethod&&<button type="button" className="inlineTextButton" onClick={onMethod}>How the Department rating works →</button>}</section>;
+  }
+  const ratio=referenceData.referenceRatio==null?null:Number(referenceData.referenceRatio);
+  const context=[settings.facilitySetting,settings.locationType,radiologistContext,settings.imagingSites?`${settings.imagingSites} site${Number(settings.imagingSites)===1?'':'s'}`:null].filter(Boolean).join(' · ');
+  return <section className="ecoResultContextCard serviceContextCard"><span>MATCHED SERVICE REFERENCE</span><strong>{Number.isFinite(ratio)?`${ratio.toFixed(2)}× CEDARS reference energy`:'Add workload to build the reference'}</strong><div className="serviceContextMetrics"><b>CT {counts.ct}</b><b>MRI {counts.mri}</b>{Number(annualStudies)>0&&<b>{Number(annualStudies).toLocaleString()} studies/year</b>}</div><small>{context || 'Facility/practice context not entered'}{referenceData.referenceAnnualKwh>0?` · matched reference ${Math.round(referenceData.referenceAnnualKwh).toLocaleString()} kWh/year`:''}. Practice size, sites, and setting are retained for interpretation/future validation; they do not directly add or subtract score points.</small>{onMethod&&<button type="button" className="inlineTextButton" onClick={onMethod}>How the matched reference works →</button>}</section>;
 }
 
 function ImprovementPotentialSummary({kind='department',scenarioCount=0,reductionPct=null,currentScore=null,potentialScore=null,onOpen}) {
   const pct=Number(reductionPct), modeled=kind==='department'&&scenarioCount>0&&Number.isFinite(pct), scoreReady=Number.isFinite(Number(currentScore))&&Number.isFinite(Number(potentialScore));
-  return <section className="ecoResultContextCard improvementPotentialCard"><span>IMPROVEMENT POTENTIAL · SEPARATE FROM THE SCORE</span><strong>{modeled?`${pct}% lower operational carbon in the selected scenario`:'Not yet expressed as a second rating'}</strong><small>{modeled?`${scoreReady?`Footprint Score ${currentScore} → ${potentialScore}. `:''}This is a prospective modeled change, not the current EcoLabel result.`:kind==='department'?'Use Decision Workspace to test feasible changes against the current Profile. CEDARS v1 does not invent a percent-of-all-opportunity denominator.':'AI lifecycle changes are explored in Decision Workspace. CEDARS v1 keeps improvement opportunity separate from the current AI Footprint Score.'}</small>{onOpen&&<button type="button" className="inlineTextButton" onClick={onOpen}>Open Decision Workspace →</button>}</section>;
+  return <section className="ecoResultContextCard improvementPotentialCard"><span>IMPROVEMENT POTENTIAL · SEPARATE FROM THE SCORE</span><strong>{modeled?`${pct}% lower operational carbon in the selected scenario`:'Not yet expressed as a second rating'}</strong><small>{modeled?`${scoreReady?`EcoLabel Score ${currentScore} → ${potentialScore} · reference-adjusted energy. `:''}This is a prospective modeled change, not the current EcoLabel result.`:kind==='department'?'Use Decision Workspace to test feasible changes against the current Profile. CEDARS v1 does not invent a percent-of-all-opportunity denominator.':'AI lifecycle changes are explored in Decision Workspace. CEDARS v1 keeps improvement opportunity separate from the current AI Footprint Score.'}</small>{onOpen&&<button type="button" className="inlineTextButton" onClick={onOpen}>Open Decision Workspace →</button>}</section>;
 }
 const AI_IMPROVE_LIFECYCLE = {
   develop:[
@@ -351,7 +375,7 @@ const AI_IMPROVE_PROCURE = [
 ];
 
 import {
-  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, EQUIVALENCY_FACTORS, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeEquivalencies, computeDicomTransfer, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
+  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, EQUIVALENCY_FACTORS, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeEquivalencies, computeDicomTransfer, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, DEPARTMENT_VOLUME_GROUPS, computeDepartmentReferenceEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
 } from './model.js';
 
 
@@ -360,11 +384,24 @@ import {
 // Realistic department archetypes — a quick-start starting fleet; every count stays editable.
 // Illustrative sizes, not authoritative. Only non-zero devices listed; the rest reset to 0 on apply.
 const DEPARTMENT_PRESETS = [
-  {key:'community',  label:'Community hospital',  desc:'Small general hospital',            equipment:{mri_15t:1, ct:1, xray:2, ultrasound:2, mammography:1, pacs:1, workstations:6}, practices:['Apply an imaging data-retention policy']},
-  {key:'regional',   label:'Regional hospital',   desc:'Mid-size hospital with IR',         equipment:{mri_15t:1, mri_3t:1, ct:2, fluoro:1, angio:1, xray:3, ultrasound:3, mammography:1, pacs:1, workstations:12}, practices:['Optimize scheduling','Apply an imaging data-retention policy']},
-  {key:'academic',   label:'Academic center',     desc:'Large academic medical center',     equipment:{mri_15t:2, mri_3t:2, mri_7t:1, ct:4, petct:1, angio:2, fluoro:2, xray:5, ultrasound:6, mammography:2, pacs:2, workstations:30}, practices:['Optimize scheduling','Consolidate servers','Apply an imaging data-retention policy']},
-  {key:'outpatient', label:'Outpatient imaging',  desc:'Outpatient / ambulatory centre',    equipment:{mri_15t:1, ct:1, xray:2, ultrasound:3, mammography:1, pacs:1, workstations:6}, practices:['Optimize scheduling','Reduce repeat scans']},
-  {key:'telerad',    label:'Teleradiology hub',   desc:'Reading / informatics — no scanners', equipment:{pacs:2, workstations:15}, practices:['Consolidate servers','Apply an imaging data-retention policy']},
+  {key:'community', label:'Community hospital', desc:'Small general hospital', operation:'operates', setting:'Community hospital', locationType:'Suburban', serviceHours:'Daytime / scheduled', sites:'1', practiceSizeBand:'3–9',
+    equipment:{mri_15t:1,ct:1,xray:2,ultrasound:2,mammography:1,pacs:1,workstations:6},
+    volumes:{annualMriStudies:'9000',annualCtStudies:'16000',annualXrayStudies:'35000',annualMammographyStudies:'6000',annualUltrasoundStudies:'30000'}, totalStudies:'96000',
+    practices:['Apply an imaging data-retention policy']},
+  {key:'regional', label:'Regional hospital', desc:'Mid-size hospital with IR', operation:'operates', setting:'Community hospital', locationType:'Metropolitan', serviceHours:'Extended hours', sites:'1', practiceSizeBand:'10–24',
+    equipment:{mri_15t:1,mri_3t:1,ct:2,fluoro:1,angio:1,xray:3,ultrasound:3,mammography:1,pacs:1,workstations:12},
+    volumes:{annualMriStudies:'18000',annualCtStudies:'35000',annualXrayStudies:'70000',annualMammographyStudies:'8000',annualUltrasoundStudies:'55000',annualAngioStudies:'700',annualFluoroStudies:'1000'}, totalStudies:'187700',
+    practices:['Optimize scheduling','Apply an imaging data-retention policy']},
+  {key:'academic', label:'Academic center', desc:'Large academic medical center', operation:'operates', setting:'Academic hospital', locationType:'Metropolitan', serviceHours:'24/7', sites:'1', practiceSizeBand:'50–99',
+    equipment:{mri_15t:2,mri_3t:2,mri_7t:1,ct:4,petct:1,angio:2,fluoro:2,xray:5,ultrasound:6,mammography:2,pacs:2,workstations:30},
+    volumes:{annualMriStudies:'40000',annualCtStudies:'75000',annualPetCtStudies:'4000',annualXrayStudies:'130000',annualMammographyStudies:'14000',annualUltrasoundStudies:'120000',annualAngioStudies:'1800',annualFluoroStudies:'3500'}, totalStudies:'388300',
+    practices:['Optimize scheduling','Consolidate servers','Apply an imaging data-retention policy']},
+  {key:'outpatient', label:'Outpatient imaging', desc:'Outpatient / ambulatory centre', operation:'operates', setting:'Freestanding imaging center', locationType:'Suburban', serviceHours:'Daytime / scheduled', sites:'1', practiceSizeBand:'3–9',
+    equipment:{mri_15t:1,ct:1,xray:2,ultrasound:3,mammography:1,pacs:1,workstations:6},
+    volumes:{annualMriStudies:'7000',annualCtStudies:'12000',annualXrayStudies:'28000',annualUltrasoundStudies:'35000',annualMammographyStudies:'5000'}, totalStudies:'87000',
+    practices:['Optimize scheduling','Reduce repeat scans']},
+  {key:'telerad', label:'Teleradiology hub', desc:'Reading / informatics — no scanners', operation:'interpretation-only', setting:'Other / mixed', locationType:'Other / mixed', serviceHours:'24/7', sites:'0', practiceSizeBand:'10–24',
+    equipment:{pacs:2,workstations:15}, volumes:{}, totalStudies:'', practices:['Consolidate servers','Apply an imaging data-retention policy']},
 ];
 
 // MRI cards rendered as a separate grouped section; other cards below.
@@ -1330,15 +1367,22 @@ function downloadCloudCSV(result, tracker) {
 // live in ./calc.js (imported above) and are covered by reference tests in calc.test.js.
 
 function generateDeptText(d) {
-  if (!d.annualStudies) return '';
+  if (!(d.annualKwh>0)) return '';
+  const serviceContext=[d.facilitySetting,d.locationType,d.radiologistCount?`${Number(d.radiologistCount).toLocaleString()} radiologists`:d.practiceSizeBand?`${d.practiceSizeBand} radiologists`:null].filter(Boolean).join(', ');
+  const scoreText=d.graded
+    ? ` The reference-adjusted operational-energy ratio was ${d.referenceRatio.toFixed(2)}× (${d.referenceObservedAnnualKwh.toLocaleString()} modeled current kWh versus ${d.referenceAnnualKwh.toLocaleString()} reference kWh/year), corresponding to a CEDARS EcoLabel Score of ${d.score}/100 (${d.leaves}/5 leaves — ${d.ratingLabel}).`
+    : d.interpretationOnly
+      ? ` A scanner-operations Score was not assigned because the assessment is interpretation-only/teleradiology and does not represent the acquisition equipment.`
+      : ` A reference-adjusted Score was not assigned because the physical imaging workload/reference was incomplete.`;
   return (
-    `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e using the location-based grid factor (${d.ci} kgCO₂e/kWh; grid region: ${d.region}). Reported renewable electricity share was ${d.renewablePct}% and was not used to reduce the location-based result. ` +
-    (d.clinicalToolCount > 0 ? ` This figure reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''}, whose net compute and clinical savings are included in the department energy above.` : '') +
-    ` Across ${d.annualStudies.toLocaleString()} imaging studies, the carbon intensity per study — a measure of how efficiently energy is converted into delivered care — was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study${d.utilPct != null ? `; ${d.utilPct}% fleet utilisation` : ''}), corresponding to a CEDARS Score of ${d.score}/100 (CEDARS Rating: ${d.leaves}/5 leaves — ${d.ratingLabel}).` +
-    ` The CEDARS Footprint Score boundary is operational energy-related carbon per imaging study; extended Scope 1/3 and resource estimates are disclosed separately and do not change the Score.` +
+    `Environmental footprint. ${d.deptName}${d.hospitalName ? ` (${d.hospitalName})` : ''} consumed an estimated ${d.annualKwh.toLocaleString()} kWh of electricity in the reporting period, generating approximately ${d.totalAnnualCo2.toLocaleString()} kgCO₂e using the location-based grid factor (${d.ci} kgCO₂e/kWh; grid region: ${d.region}). Reported renewable electricity share was ${d.renewablePct}% and was not used to reduce the location-based result.` +
+    (d.annualStudies>0?` Across ${d.annualStudies.toLocaleString()} studies physically represented by the assessment, absolute operational carbon intensity was ${d.co2PerStudy} kgCO₂e/study (${d.kwhPerStudy} kWh/study).`:'') +
+    scoreText +
+    (serviceContext?` Service context: ${serviceContext}.`:'') +
+    (d.clinicalToolCount > 0 ? ` The absolute footprint reflects ${d.clinicalToolCount} deployed clinical AI tool${d.clinicalToolCount > 1 ? 's' : ''} included in the Department accounting.` : '') +
+    ` The Department EcoLabel Score uses reference-adjusted operational energy for imaging equipment plus modeled PACS/reporting support relative to a service-matched reference; grid carbon intensity and extended Scope 1/3/resource categories are reported separately and do not directly change that operational-efficiency score.` +
     (d.extendedCategories?.length ? ` Extended estimates reported separately: ${d.extendedCategories.join(', ')}.` : '') +
     (d.notAssessedCategories?.length ? ` Not assessed: ${d.notAssessedCategories.join(', ')}.` : '') +
-    (d.interventionCount > 0 ? ` The department reports ${d.interventionCount} sustainability practice${d.interventionCount > 1 ? 's' : ''} as currently implemented.` : '') +
     ` Sustainability metrics were estimated using CEDARS (${d.date}); assumptions, methodology, and literature sources are documented at https://github.com/takinci/cedars/blob/main/sources.md.`
   );
 }
@@ -1423,6 +1467,8 @@ function drawLabelCard({
   keyResults = [],
   contextRows = [],
   footerText,
+  scoreSectionLabel='ECOLABEL SCORE & RATING',
+  scoreName='ECOLABEL SCORE',
 }) {
   const W = 510;
   const ROW_H = labelRowH(contextRows.length);
@@ -1458,13 +1504,13 @@ function drawLabelCard({
   ctx.fillStyle = ratingBg;
   ctx.fillRect(2, scoreY, W-4, SCORE_H);
   ctx.fillStyle = '#66716D'; ctx.font = 'bold 8px sans-serif';
-  ctx.fillText('FOOTPRINT SCORE & RATING', 14, scoreY + 15);
+  ctx.fillText(scoreSectionLabel, 14, scoreY + 15);
 
   ctx.textAlign = 'center';
   ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = ratingColor;
   ctx.fillText(scoreDisplay, 50, scoreY + 60);
   ctx.font = 'bold 9px sans-serif';
-  ctx.fillText('FOOTPRINT SCORE', 50, scoreY + 76);
+  ctx.fillText(scoreName, 50, scoreY + 76);
   ctx.textAlign = 'left';
   for (let i = 0; i < 5; i++) drawLeaf(ctx, 108 + i*18, scoreY + 28, 16, i < leaves, i < leaves ? ratingColor : '#D8DEDA');
   ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = ratingColor;
@@ -1544,6 +1590,8 @@ function CedarsEcoLabelPreview({
   rows=[],
   date='',
   onMethod=null,
+  scoreSectionLabel='ECOLABEL SCORE & RATING',
+  scoreName='ECOLABEL SCORE',
 }) {
   const legacyClass = kind === 'department' ? 'departmentEcoLabelPreview' : 'aiEcoLabelPreview';
   return (
@@ -1562,10 +1610,10 @@ function CedarsEcoLabelPreview({
       </div>
 
       <div className="cedarsEcoLabelScoreBand">
-        <div className="cedarsEcoLabelSectionLabel">FOOTPRINT SCORE &amp; RATING</div>
+        <div className="cedarsEcoLabelSectionLabel">{scoreSectionLabel}</div>
         <div className="cedarsEcoLabelScore">
           <strong>{scoreDisplay}</strong>
-          <span>FOOTPRINT SCORE</span>
+          <span>{scoreName}</span>
         </div>
         <div className="cedarsEcoLabelRating">
           <LeafRating leaves={scored ? leaves : 0} size={20} color="#2F6B57"/>
@@ -1626,30 +1674,34 @@ function downloadCanvasPNG(canvas, filename) {
 }
 
 function downloadDeptPNG(d) {
+  const ratio=Number(d.referenceRatio);
   const canvas = drawLabelCard({
-    productTag: 'DEPARTMENT',
-    name: d.deptName || 'Radiology Department',
-    contextLine: `${d.hospitalName ? d.hospitalName + ' · ' : ''}${d.date}`,
-    scoreDisplay: d.hasData ? String(d.score) : '—',
-    leaves: d.hasData ? d.leaves : 0,
-    ratingColor: '#2F6B57',
-    ratingBg: '#EAF3D3',
-    ratingLabel: d.hasData ? d.ratingLabel : 'Not yet calculated',
-    subtext: d.hasData ? `${d.co2PerStudy} kgCO₂e/study · ${d.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate',
-    coverageValue: 'Operational energy & carbon',
-    coverageDetail: 'Score covers operational energy/carbon; additional assessed categories are disclosed separately.',
-    keyResults: [
-      ['Annual footprint', d.totalAnnualCo2>0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—'],
-      ['Per imaging study', d.hasData ? `${d.co2PerStudy} kgCO₂e · ${d.kwhPerStudy} kWh` : '—'],
+    productTag:'DEPARTMENT',
+    name:d.deptName || 'Radiology Department',
+    contextLine:`${d.hospitalName ? d.hospitalName + ' · ' : ''}${d.date}`,
+    scoreDisplay:d.graded ? String(d.score) : '—',
+    leaves:d.graded ? d.leaves : 0,
+    ratingColor:'#2F6B57',
+    ratingBg:'#EAF3D3',
+    ratingLabel:d.graded ? d.ratingLabel : d.interpretationOnly ? 'Scanner rating not applicable' : 'Reference incomplete',
+    subtext:d.graded ? `${ratio.toFixed(2)}× reference energy · ${d.co2PerStudy} kgCO₂e/study` : d.interpretationOnly ? 'Interpretation-only service · absolute footprint reported' : 'Complete service workload to calculate',
+    scoreSectionLabel:'REFERENCE-ADJUSTED SCORE & RATING',
+    scoreName:'REFERENCE-ADJUSTED SCORE',
+    coverageValue:'Matched operational energy + absolute carbon disclosure',
+    coverageDetail:'Rating compares imaging/PACS/reporting energy with a service-matched reference; absolute carbon is reported separately.',
+    keyResults:[
+      ['Annual footprint',d.totalAnnualCo2>0?`${d.totalAnnualCo2.toLocaleString()} kgCO₂e`:'—'],
+      ['Per imaging study',d.annualStudies>0?`${d.co2PerStudy} kgCO₂e · ${d.kwhPerStudy} kWh`:'—'],
     ],
-    contextRows: [
-      ['Workload', d.annualStudies>0 ? `${d.annualStudies.toLocaleString()} studies/year` : '—'],
-      ['Location', d.region || '—'],
-      ['Technical context', `${d.ci} kgCO₂e/kWh grid carbon intensity`],
-      ['Resource disclosure', `${d.renewablePct}% renewable electricity · disclosure only`],
-      ['Clinical / operational context', `${d.interventionCount || 0} current practices · ${d.clinicalToolCount || 0} Clinical AI uses`],
+    contextRows:[
+      ['Workload',d.annualStudies>0?`${d.annualStudies.toLocaleString()} studies/year`:'Interpretation-only / not entered'],
+      ['Service reference',d.graded?`${ratio.toFixed(2)}× · ${Math.round(d.referenceAnnualKwh).toLocaleString()} reference kWh/year`:'—'],
+      ['Service context',[d.facilitySetting,d.locationType,d.radiologistCount?`${Number(d.radiologistCount).toLocaleString()} radiologists`:d.practiceSizeBand?`${d.practiceSizeBand} radiologists`:null].filter(Boolean).join(' · ') || '—'],
+      ['Data basis',d.scoreDataBasis || 'CEDARS service reference'],
+      ['Location',d.region || '—'],
+      ['Technical context',`${d.ci} kgCO₂e/kWh grid carbon intensity · carbon disclosure only`],
     ],
-    footerText: `${d.date} · CC BY 4.0`,
+    footerText:`${d.date} · CC BY 4.0`,
   });
   downloadCanvasPNG(canvas, `cedars_department_ecolabel_${(d.deptName||'department').replace(/\W+/g,'_')}.png`);
 }
@@ -2400,6 +2452,24 @@ function App() {
         annualCo2Kg: deptLabelData.totalAnnualCo2,
         kwhPerStudy: deptLabelData.kwhPerStudy,
         co2KgPerStudy: deptLabelData.co2PerStudy,
+        imagingOperationModel: deptLabelData.operationModel,
+        facilitySetting: deptLabelData.facilitySetting,
+        locationType: deptLabelData.locationType,
+        radiologistCount: deptLabelData.radiologistCount,
+        practiceSizeBand: deptLabelData.practiceSizeBand,
+        serviceHours: deptLabelData.serviceHours,
+        imagingSites: deptLabelData.imagingSites,
+        modalityVolumes: {...deptLabelData.resolvedVolumes},
+        workloadSource: deptLabelData.workloadSource,
+        referenceAnnualKwh: deptLabelData.referenceAnnualKwh,
+        observedReferenceAnnualKwh: deptLabelData.referenceObservedAnnualKwh,
+        observedToReferenceRatio: deptLabelData.referenceRatio,
+        potentialObservedToReferenceRatio: deptLabelData.potentialReferenceRatio,
+        scoreMethod: deptLabelData.scoreMethod,
+        scoreDataBasis: deptLabelData.scoreDataBasis,
+        scoreBoundaryLabel: deptLabelData.scoreBoundaryLabel,
+        graded: deptLabelData.graded,
+        interpretationOnly: deptLabelData.interpretationOnly,
         fleetUtilizationPct: deptLabelData.utilPct,
         clinicalAiToolCount: deptLabelData.clinicalToolCount,
         currentPracticeCount: deptLabelData.interventionCount,
@@ -2484,16 +2554,24 @@ function App() {
     if (!preset) return;
     setSettings(s => ({
       ...s,
-      // The walkthrough must satisfy the same Context gate as a real assessment.
-      // Use an explicitly illustrative geography rather than bypassing readiness.
-      region: 'United States',
-      timePeriod: s.timePeriod || 'Monthly',
-      actualStudiesYear: '',
-      equipment: Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k => [k, preset.equipment[k] || 0])),
+      region:'United States',
+      timePeriod:s.timePeriod || 'Monthly',
+      imagingOperationModel:preset.operation,
+      facilitySetting:preset.setting,
+      locationType:preset.locationType,
+      practiceSizeBand:'10–24',
+      serviceHours:preset.serviceHours,
+      imagingSites:preset.sites,
+      actualStudiesYear:preset.totalStudies,
+      annualMriStudies:'',annualCtStudies:'',annualPetCtStudies:'',annualXrayStudies:'',
+      annualMammographyStudies:'',annualUltrasoundStudies:'',annualAngioStudies:'',annualFluoroStudies:'',
+      ...(preset.volumes||{}),
+      equipment:Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k,preset.equipment[k]||0])),
     }));
     setDeptLabel(d => ({
       ...d,
-      activeInterventions: [...(preset.practices || [])],
+      activeInterventions:[...(preset.practices||[])],
+      workflowMetrics:{...(d.workflowMetrics||{}),ctPowerManagedCount:'1',ctPowerManagedHours:'10',mriPowerManagedCount:'1',mriPowerManagedHours:'10',workstationPowerManagedCount:'8',workstationPowerManagedHours:'12'},
     }));
     setScenarioInterventions(list => list.filter(name => !(preset.practices || []).includes(name)));
     setScenarioPowerManagement({});
@@ -3059,17 +3137,38 @@ const startGuidedDemo = kind => {
   // Fixed fleet energy (idle/standby/cooling dominates) amortised over ACTUAL annual
   // studies: underused fleets → high per-study footprint; busy fleets → low, even at
   // high absolute CO₂. Utilisation = actual studies ÷ fleet's typical throughput.
+  const departmentModalityVolumes = useMemo(() => Object.fromEntries(DEPARTMENT_VOLUME_GROUPS.map(group=>[group.key,settings[group.settingField] ?? ''])), [
+    settings.annualMriStudies,settings.annualCtStudies,settings.annualPetCtStudies,settings.annualXrayStudies,
+    settings.annualMammographyStudies,settings.annualUltrasoundStudies,settings.annualAngioStudies,settings.annualFluoroStudies,
+  ]);
   const efficiency = useMemo(() => {
-    const mult = TIME_MULT[settings.timePeriod] ?? 1;
-    const capacityYr = Object.entries(settings.equipment).reduce((s,[key,n])=>{const u=EQUIPMENT_UNITS[key];if(!u||!IMAGING_MODALITIES.has(u.modality))return s;const scansPerMo=settings.equipmentOverrides?.[key]?.scans??u.scans;return s+Math.max(0,n||0)*scansPerMo*12;},0);
+    const mult=TIME_MULT[settings.timePeriod] ?? 1;
+    const reference=computeDepartmentReferenceEnergy({
+      equipment:settings.equipment,
+      annualStudies:settings.actualStudiesYear,
+      modalityVolumes:departmentModalityVolumes,
+      overrides:settings.equipmentOverrides,
+      powerManagement:departmentPowerManagement,
+    });
+    const capacityYr=reference.capacityYr;
     const entered=parseFloat(settings.actualStudiesYear)>0?parseFloat(settings.actualStudiesYear):null;
-    const studiesYr=entered??capacityYr;
-    const annualKwh=rnd(dash.totals.kwh/mult*12,2), annualActiveKwh=rnd(Math.max(0,dash.totals.activeKwh-(dash.clinicalMeta?.aiTrainingKwh||0))/mult*12,2);
+    const studiesYr=reference.effectiveAnnualStudies || entered || capacityYr;
+    const annualKwh=rnd(dash.totals.kwh/mult*12,2);
+    const annualActiveKwh=rnd(Math.max(0,dash.totals.activeKwh-(dash.clinicalMeta?.aiTrainingKwh||0))/mult*12,2);
     const adjusted=computeUtilizationAdjustedEnergy({annualKwh,annualActiveKwh,capacityYr,studiesYr});
-    const util=adjusted.util;
+    const util=capacityYr>0&&studiesYr>0?studiesYr/capacityYr:0;
     const band=util>=0.85?{label:'High utilisation',color:'#2E7D32',bg:'#e8f5e9'}:util>=0.40?{label:'Typical utilisation',color:'#F57F17',bg:'#fff8e1'}:{label:'Under-used fleet',color:'#c62828',bg:'#ffebee'};
-    return{capacityYr:Math.round(capacityYr),studiesYr:Math.round(studiesYr),isEstimate:!entered,utilPct:rnd(util*100,0),util,energyPerStudy:adjusted.energyPerStudy,co2PerStudy:rnd(adjusted.energyPerStudy*dash.ci,3),designedCo2PerStudy:rnd(dash.totals.energyPerScan*dash.ci,3),nonProductivePct:adjusted.nonProductivePct,modeledAnnualKwh:adjusted.modeledAnnualKwh,band};
-  }, [settings.equipment,settings.equipmentOverrides,settings.actualStudiesYear,settings.timePeriod,dash.totals.kwh,dash.totals.activeKwh,dash.totals.energyPerScan,dash.ci]);
+    return{
+      capacityYr:Math.round(capacityYr),studiesYr:Math.round(studiesYr),isEstimate:!entered,
+      utilPct:rnd(util*100,0),util,energyPerStudy:studiesYr>0?rnd(adjusted.modeledAnnualKwh/studiesYr,4):0,
+      co2PerStudy:studiesYr>0?rnd(adjusted.modeledAnnualKwh/studiesYr*dash.ci,3):0,
+      designedCo2PerStudy:rnd(dash.totals.energyPerScan*dash.ci,3),
+      nonProductivePct:adjusted.nonProductivePct,
+      modeledAnnualKwh:adjusted.modeledAnnualKwh,
+      band,
+      ...reference,
+    };
+  }, [settings.equipment,settings.equipmentOverrides,settings.actualStudiesYear,settings.timePeriod,dash.totals.kwh,dash.totals.activeKwh,dash.totals.energyPerScan,dash.ci,departmentModalityVolumes,departmentPowerManagement]);
 
   const equivData = useMemo(() => {
     const coreOperationalCo2 = dash.totals.co2Kg;
@@ -3148,103 +3247,101 @@ const startGuidedDemo = kind => {
 
 
   const deptLabelData = useMemo(() => {
-    // Live-by-default: derive from the Radiology Department state; the EcoLabel form
-    // fields are optional OVERRIDES (headline numbers + region) when non-empty.
-    const mult = TIME_MULT[settings.timePeriod] ?? 1;
-    const region = deptLabel.region || settings.region;
-    const hasGridFactor = Boolean(region) && (region !== 'Editable custom' || String(settings.customCi ?? '').trim() !== '');
-    const ci = getCI(region, settings.customCi);
-    const renewablePct = Math.min(100, Math.max(0, parseFloat(deptLabel.renewablePct) || 0));
-    // Keep Scope 2 location-based. Renewable share is disclosed separately and is not converted
-    // into a lower factor without a qualifying market-based emissions factor.
-    const effectiveCi = ci;
-    const liveAnnualKwh     = rnd(efficiency.modeledAnnualKwh || (dash.totals.kwh / mult * 12), 0);
-    const liveAnnualStudies = efficiency.studiesYr;
-    const annualKwh     = parseFloat(deptLabel.annualKwh)     > 0 ? parseFloat(deptLabel.annualKwh)     : liveAnnualKwh;
-    const annualStudies = parseFloat(deptLabel.annualStudies) > 0 ? parseFloat(deptLabel.annualStudies) : liveAnnualStudies;
-    const isLive = !(parseFloat(deptLabel.annualKwh) > 0) && !(parseFloat(deptLabel.annualStudies) > 0);
-    const localPoolKwh = Math.max(0, dash.carbonPools?.localKwh || dash.totals.kwh);
-    const cloudStorageKwh = Math.max(0, dash.carbonPools?.cloudStorageKwh || 0);
-    const cloudAiKwh = Math.max(0, dash.carbonPools?.cloudAiKwh || 0), cloudAiCo2 = Math.max(0, dash.carbonPools?.cloudAiCo2 || 0);
-    const weightedOperationalCi = (localPoolKwh + cloudStorageKwh + cloudAiKwh) > 0 ? (localPoolKwh * effectiveCi + cloudStorageKwh * (dash.storage.ci || ci) + cloudAiCo2) / (localPoolKwh + cloudStorageKwh + cloudAiKwh) : effectiveCi;
-    const facilityCo2 = rnd(annualKwh * weightedOperationalCi, 1);
-    const kwhPerStudy = annualStudies > 0 ? rnd(annualKwh / annualStudies, 2) : 0;
-    // Efficiency of converting energy into delivered care: per-study CO₂ already drives
-    // the Score; utilisation (studies vs the configured fleet's typical throughput) is
-    // the explanatory diagnostic for the "large fleet, low volume" case.
-    const fleetCapacityYr = efficiency.capacityYr;
-    const utilPct = (fleetCapacityYr > 0 && annualStudies > 0) ? rnd(annualStudies / fleetCapacityYr * 100, 0) : null;
-    // A per-study Department score needs both a denominator (studies) and a real energy baseline.
-    // Requiring annual kWh also prevents a manually entered study volume with zero equipment from
-    // appearing as a perfect zero-carbon score. Custom-grid mode additionally needs an entered factor.
-    const hasData = annualStudies > 0 && annualKwh > 0 && hasGridFactor;
-    // Clinical AI now flow through the live department energy (dash), so their net
-    // effect (compute − clinical savings) is already in facilityCo2 — no separate fold here
-    // (that would double-count).
-    const totalAnnualCo2 = facilityCo2;
-    const co2PerStudy = annualStudies > 0 ? rnd(totalAnnualCo2 / annualStudies, 3) : 0;
-    const score = hasData ? cedarsScore(co2PerStudy, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
-    const rating = hasData ? cedarsRating(score) : null;
-    // Prospective saving potential comes only from the Interventions scenario. Current
-    // sustainability practices documented on the EcoLabel are a separate reporting field and
-    // do not automatically subtract savings from the modeled baseline (avoids double-counting).
-    const monthlyKwhSaving = scenario.monthlyKwhSaved;
-    const annualKwhSaving = rnd(monthlyKwhSaving * 12, 0);
-    const scenarioReduction = Math.max(-1, Math.min(1, (scenario.savings.pctCo2 || 0) / 100));
-    const potentialFacilityCo2 = Math.max(0, facilityCo2 * (1 - scenarioReduction));
-    const co2Saving = rnd(facilityCo2 - potentialFacilityCo2, 1);
-    const potentialCo2PerStudy = annualStudies > 0
-      ? rnd(Math.max(0, potentialFacilityCo2) / annualStudies, 3) : 0;
-    const potentialScore = hasData ? cedarsScore(potentialCo2PerStudy, CEDARS_DEPT_LO, CEDARS_DEPT_HI) : null;
-    const potentialRating = potentialScore != null ? cedarsRating(potentialScore) : rating;
-    const extendedCategories = [
-      ...(dash.scopes.scope1Assessed ? ['direct emissions (Scope 1)'] : []),
-      'embodied hardware',
-      ...(dash.scopes.scope3TravelAssessed ? ['patient travel'] : []),
-      'contrast supply chain', 'DICOM transfer',
-      ...(staffCommuteAssessed ? ['staff commute'] : []),
-      ...(dash.resources.waterAssessed ? ['water use'] : []),
-      ...(dash.resources.paperAssessed ? ['paper use'] : []),
-      ...(dash.resources.hazardousAssessed ? ['hazardous waste'] : []),
+    const mult=TIME_MULT[settings.timePeriod] ?? 1;
+    const region=deptLabel.region || settings.region;
+    const hasGridFactor=Boolean(region) && (region!=='Editable custom' || String(settings.customCi ?? '').trim()!=='');
+    const ci=getCI(region,settings.customCi);
+    const renewablePct=Math.min(100,Math.max(0,parseFloat(deptLabel.renewablePct)||0));
+    const effectiveCi=ci;
+    const liveAnnualKwh=rnd(efficiency.modeledAnnualKwh || (dash.totals.kwh/mult*12),0);
+    const liveAnnualStudies=efficiency.studiesYr;
+    const annualKwh=parseFloat(deptLabel.annualKwh)>0?parseFloat(deptLabel.annualKwh):liveAnnualKwh;
+    const annualStudies=parseFloat(deptLabel.annualStudies)>0?parseFloat(deptLabel.annualStudies):liveAnnualStudies;
+    const isLive=!(parseFloat(deptLabel.annualKwh)>0) && !(parseFloat(deptLabel.annualStudies)>0);
+    const localPoolKwh=Math.max(0,dash.carbonPools?.localKwh||dash.totals.kwh);
+    const cloudStorageKwh=Math.max(0,dash.carbonPools?.cloudStorageKwh||0);
+    const cloudAiKwh=Math.max(0,dash.carbonPools?.cloudAiKwh||0),cloudAiCo2=Math.max(0,dash.carbonPools?.cloudAiCo2||0);
+    const weightedOperationalCi=(localPoolKwh+cloudStorageKwh+cloudAiKwh)>0?(localPoolKwh*effectiveCi+cloudStorageKwh*(dash.storage.ci||ci)+cloudAiCo2)/(localPoolKwh+cloudStorageKwh+cloudAiKwh):effectiveCi;
+    const facilityCo2=rnd(annualKwh*weightedOperationalCi,1);
+    const kwhPerStudy=annualStudies>0?rnd(annualKwh/annualStudies,2):0;
+    const totalAnnualCo2=facilityCo2;
+    const co2PerStudy=annualStudies>0?rnd(totalAnnualCo2/annualStudies,3):0;
+
+    const practiceSizeBand=practiceSizeBandFromCount(settings.radiologistCount)||settings.practiceSizeBand||'';
+    const operationModel=settings.imagingOperationModel || (efficiency.capacityYr>0?'operates':'');
+    const interpretationOnly=operationModel==='interpretation-only';
+    const referenceAnnualKwh=Math.max(0,Number(efficiency.referenceAnnualKwh)||0);
+    const referenceObservedAnnualKwh=Math.max(0,Number(efficiency.modeledCurrentAnnualKwh)||0);
+    const referenceRatio=referenceAnnualKwh>0?referenceObservedAnnualKwh/referenceAnnualKwh:null;
+    const referenceInputConsistent=!(Number(efficiency.totalMismatch)>0) && !(efficiency.volumeWithoutEquipment?.length>0);
+    const graded=!interpretationOnly && referenceInputConsistent && annualStudies>0 && referenceAnnualKwh>0 && referenceObservedAnnualKwh>=0;
+    const score=graded?cedarsReferenceAdjustedScore(referenceObservedAnnualKwh,referenceAnnualKwh):null;
+    const rating=score!=null?cedarsReferenceRating(score):null;
+
+    const physicalScenarioSavingPeriod=['scannerActiveSaving','powerdownSaving','schedulingSaving','serverSaving']
+      .reduce((sum,key)=>sum+Math.max(0,Number(scenario.assumptions?.[key])||0),0);
+    const physicalScenarioSavingAnnual=physicalScenarioSavingPeriod/mult*12;
+    const potentialReferenceObservedAnnualKwh=Math.max(0,referenceObservedAnnualKwh-physicalScenarioSavingAnnual);
+    const potentialReferenceRatio=graded&&referenceAnnualKwh>0?potentialReferenceObservedAnnualKwh/referenceAnnualKwh:null;
+    const potentialScore=graded?cedarsReferenceAdjustedScore(potentialReferenceObservedAnnualKwh,referenceAnnualKwh):null;
+    const potentialRating=potentialScore!=null?cedarsReferenceRating(potentialScore):rating;
+
+    const scenarioReduction=Math.max(-1,Math.min(1,(scenario.savings.pctCo2||0)/100));
+    const potentialFacilityCo2=Math.max(0,facilityCo2*(1-scenarioReduction));
+    const co2Saving=rnd(facilityCo2-potentialFacilityCo2,1);
+    const potentialCo2PerStudy=annualStudies>0?rnd(potentialFacilityCo2/annualStudies,3):0;
+    const monthlyKwhSaving=scenario.monthlyKwhSaved;
+    const annualKwhSaving=rnd(monthlyKwhSaving*12,0);
+    const fleetCapacityYr=efficiency.capacityYr;
+    const utilPct=fleetCapacityYr>0&&annualStudies>0?rnd(annualStudies/fleetCapacityYr*100,0):null;
+
+    const extendedCategories=[
+      ...(dash.scopes.scope1Assessed?['direct emissions (Scope 1)']:[]),'embodied hardware',
+      ...(dash.scopes.scope3TravelAssessed?['patient travel']:[]),'contrast supply chain','DICOM transfer',
+      ...(staffCommuteAssessed?['staff commute']:[]),
+      ...(dash.resources.waterAssessed?['water use']:[]),...(dash.resources.paperAssessed?['paper use']:[]),...(dash.resources.hazardousAssessed?['hazardous waste']:[]),
     ];
-    const notAssessedCarbonCategories = [
-      ...(!dash.scopes.scope1Assessed ? ['direct emissions (Scope 1)'] : []),
-      ...(!dash.scopes.scope3TravelAssessed ? ['patient travel'] : []),
-      ...(!staffCommuteAssessed ? ['staff commute'] : []),
+    const notAssessedCarbonCategories=[
+      ...(!dash.scopes.scope1Assessed?['direct emissions (Scope 1)']:[]),
+      ...(!dash.scopes.scope3TravelAssessed?['patient travel']:[]),
+      ...(!staffCommuteAssessed?['staff commute']:[]),
     ];
-    const notAssessedCategories = [
-      ...notAssessedCarbonCategories,
-      ...(!dash.resources.waterAssessed ? ['water use'] : []),
-      ...(!dash.resources.paperAssessed ? ['paper use'] : []),
-      ...(!dash.resources.hazardousAssessed ? ['hazardous waste'] : []),
-    ];
+    const notAssessedCategories=[...notAssessedCarbonCategories,...(!dash.resources.waterAssessed?['water use']:[]),...(!dash.resources.paperAssessed?['paper use']:[]),...(!dash.resources.hazardousAssessed?['hazardous waste']:[])];
+
+    const modalityVolumeSummary=DEPARTMENT_VOLUME_GROUPS
+      .map(group=>[group.label,Number(efficiency.resolvedVolumes?.[group.key])||0])
+      .filter(([,v])=>v>0).map(([label,v])=>`${label} ${Math.round(v).toLocaleString()}`).join(' · ');
+    const anyOverrides=Object.values(settings.equipmentOverrides||{}).some(fields=>fields&&Object.keys(fields).length);
+    const scoreDataBasis=anyOverrides?'Local equipment inputs + CEDARS service reference':efficiency.volumeCoveragePct>0?'Entered workload + CEDARS literature reference':'Fleet-estimated workload + CEDARS literature reference';
+
     return {
-      deptName: deptLabel.deptName || 'Unnamed Department',
-      hospitalName: deptLabel.hospitalName || '',
-      region, isLive, hasGridFactor,
-      ci, effectiveCi, renewablePct,
-      annualKwh, annualStudies, totalAnnualCo2, co2PerStudy, kwhPerStudy,
-      fleetCapacityYr, utilPct,
-      hasData, score,
-      leaves: rating?.leaves ?? 0, ratingLabel: rating?.label ?? 'Enter data above',
-      ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
-      monthlyKwhSaving, annualKwhSaving, co2Saving,
-      potentialCo2PerStudy, potentialScore, potentialLeaves: potentialRating?.leaves ?? 0, potentialRatingLabel: potentialRating?.label ?? '',
-      interventionCount: deptLabel.activeInterventions.length,
-      modeledInterventionCount: scenario.count,
-      facilityCo2, clinicalToolCount: clinicalAdj.count,
-      scoreBoundaryLabel:'Operational energy-related carbon per imaging study',
-      extendedCategories, notAssessedCategories, notAssessedCarbonCategories,
-      date: new Date().toISOString().slice(0, 7),
+      deptName:deptLabel.deptName||'Unnamed Department',hospitalName:deptLabel.hospitalName||'',
+      region,isLive,hasGridFactor,ci,effectiveCi,renewablePct,annualKwh,annualStudies,totalAnnualCo2,co2PerStudy,kwhPerStudy,
+      fleetCapacityYr,utilPct,hasData:graded,hasFootprint:annualKwh>0&&hasGridFactor,graded,interpretationOnly,operationModel,
+      score,leaves:rating?.leaves??0,ratingLabel:rating?.label??(interpretationOnly?'Scanner rating not applicable':'Reference incomplete'),
+      ratingColor:rating?.color??'#90a4ae',ratingBg:rating?.bg??'#f5f5f5',ratingDesc:rating?.desc??'',
+      monthlyKwhSaving,annualKwhSaving,co2Saving,potentialCo2PerStudy,potentialScore,potentialLeaves:potentialRating?.leaves??0,potentialRatingLabel:potentialRating?.label??'',
+      potentialReferenceRatio,referenceAnnualKwh:rnd(referenceAnnualKwh,0),referenceObservedAnnualKwh:rnd(referenceObservedAnnualKwh,0),
+      referenceRatio:referenceRatio==null?null:rnd(referenceRatio,3),scoreMethod:'department-reference-adjusted-v1.1',scoreDataBasis,
+      workloadSource:efficiency.workloadSource,volumeCoveragePct:efficiency.volumeCoveragePct,resolvedVolumes:efficiency.resolvedVolumes||{},modalityVolumeSummary,
+      referenceInputConsistent,totalMismatch:Math.max(0,Number(efficiency.totalMismatch)||0),volumeWithoutEquipment:efficiency.volumeWithoutEquipment||[],
+      facilitySetting:settings.facilitySetting||'',locationType:settings.locationType||'',radiologistCount:settings.radiologistCount||'',practiceSizeBand,
+      serviceHours:settings.serviceHours||'',imagingSites:settings.imagingSites||'',
+      interventionCount:deptLabel.activeInterventions.length,modeledInterventionCount:scenario.count,facilityCo2,clinicalToolCount:clinicalAdj.count,
+      scoreBoundaryLabel:'Reference-adjusted operational energy for imaging equipment and PACS/reporting support; absolute carbon and extended categories are reported separately',
+      extendedCategories,notAssessedCategories,notAssessedCarbonCategories,date:new Date().toISOString().slice(0,7),
     };
-  }, [deptLabel, settings.customCi, settings.region, settings.timePeriod, dash, efficiency.capacityYr, efficiency.studiesYr, clinicalAdj.count, staffCommuteAssessed, networkTransferCo2, scenario.monthlyKwhSaved, scenario.savings.pctCo2]);
+  }, [deptLabel,settings.customCi,settings.region,settings.timePeriod,settings.imagingOperationModel,settings.facilitySetting,settings.locationType,settings.radiologistCount,settings.practiceSizeBand,settings.serviceHours,settings.imagingSites,settings.equipmentOverrides,dash,efficiency,clinicalAdj.count,staffCommuteAssessed,networkTransferCo2,scenario]);
 
   const departmentScoreReadiness = useMemo(() => getDepartmentScoreReadiness({
     annualKwh: deptLabelData.annualKwh,
     annualStudies: deptLabelData.annualStudies,
     gridReady: deptLabelData.hasGridFactor,
     clinicalAiCount: deptLabelData.clinicalToolCount,
-  }), [deptLabelData.annualKwh, deptLabelData.annualStudies, deptLabelData.hasGridFactor, deptLabelData.clinicalToolCount]);
+    interpretationOnly: deptLabelData.interpretationOnly,
+    volumeMismatch: deptLabelData.totalMismatch,
+    volumeWithoutEquipment: deptLabelData.volumeWithoutEquipment,
+  }), [deptLabelData.annualKwh, deptLabelData.annualStudies, deptLabelData.hasGridFactor, deptLabelData.clinicalToolCount, deptLabelData.interpretationOnly, deptLabelData.totalMismatch, deptLabelData.volumeWithoutEquipment]);
   // Stage gating is stateful as well as visual: a restored later stage cannot survive
   // after its required Department baseline becomes incomplete.
   useEffect(()=>{
@@ -3280,9 +3377,8 @@ const startGuidedDemo = kind => {
     }
     setEcoLabelMode('department');
     setDeptSetupOpen(true);
-    if (key === 'volume') setDashOpen(o => ({...o, efficiency:true}));
     setPage('dashboard');
-    const target = key === 'context' ? 'department-context-input' : key === 'volume' ? 'dash-efficiency' : 'department-equipment';
+    const target = key === 'context' ? 'department-context-input' : key === 'volume' ? 'department-reference-context' : 'department-equipment';
     window.setTimeout(() => document.getElementById(target)?.scrollIntoView({behavior:'smooth', block:'center'}), 120);
   };
   const goToScore = mode => {
@@ -3706,7 +3802,7 @@ const startGuidedDemo = kind => {
                   <Leaf size={17} fill={bHas?b.ratingColor:'none'} color={scoreColor}/>
                   <span style={{fontSize:18,fontWeight:900,color:scoreColor,lineHeight:1}}>{bHas?b.score:'—'}</span>
                   <span style={{display:'flex',flexDirection:'column',lineHeight:1.1,textAlign:'left'}}>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:scoreColor}}>{aiProduct?'AI FOOTPRINT':'FOOTPRINT SCORE'}</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:'0.05em',color:scoreColor}}>{'ECOLABEL SCORE'}</span>
                     <span className="ambientScoreStatus" style={{fontSize:10,color:bHas?'#37474f':'#78867F'}}>{bHas?`${b.leaves}/5 leaves`:(aiProduct?'not assigned':'not scored yet')}</span>
                   </span>
                 </button>
@@ -3877,17 +3973,22 @@ const startGuidedDemo = kind => {
               <span style={{display:'flex',flexDirection:'column',gap:3,flex:1}}>
                 <strong>Department setup</strong>
                 <span className="departmentSetupMeta">{Object.values(settings.equipment).reduce((sum,n)=>sum+(Number(n)||0),0)} devices · {settings.region} · {settings.timePeriod}</span>
-                <span className={`departmentSetupScoreState ${departmentScoreReadiness.ready?'ready':'needs'}`}>{departmentScoreReadiness.ready?'Ready for Score':`Score needs ${departmentScoreReadiness.issues.length} input${departmentScoreReadiness.issues.length===1?'':'s'}`}</span>
+                <span className={`departmentSetupScoreState ${departmentScoreReadiness.ready?'ready':'needs'}`}>{departmentScoreReadiness.ready?'Ready for Result':`Result needs ${departmentScoreReadiness.issues.length} input${departmentScoreReadiness.issues.length===1?'':'s'}`}</span>
               </span>
               <span style={{fontSize:12,color:'#607d66',fontWeight:700}}>{deptSetupOpen ? 'Hide setup ▴' : 'Edit setup ▾'}</span>
             </button>
             {['context','equipment'].includes(deptProfileStage) && (
               <div className="departmentSetupBody">
-                <section id="department-context-input" className={`departmentContextBlock ${!settings.region?'contextPending':'contextReady'} ${scoreAttention==='context'?'scoreInputAttention':''}`} aria-labelledby="department-context-title">
+<section id="department-context-input" className={`departmentContextBlock ${!settings.region?'contextPending':'contextReady'} ${scoreAttention==='context'?'scoreInputAttention':''}`} aria-labelledby="department-context-title">
                   <div className="departmentContextHeader">
                     <div>
-                      <h2 id="department-context-title">Shared assessment context</h2>
+                      <h2 id="department-context-title">Department context</h2>
                     </div>
+                  </div>
+<div className="departmentLocalContextHeading">
+                    <span>LOCAL ENERGY &amp; REPORTING</span>
+                    <strong>Grid and reporting assumptions</strong>
+                    <small>These settings affect absolute carbon and cost. They do not directly improve the Department service-comparison score.</small>
                   </div>
                   <div className="assessmentContextGrid">
                     <Sel label="Country / grid region" value={settings.region} options={META.regions} placeholder="Choose grid region…" onChange={v=>set('region',v)}/>
@@ -3908,30 +4009,61 @@ const startGuidedDemo = kind => {
                       </label>
                     )}
                   </div>
+                  {!settings.region&&<div className="departmentContextSequenceGate" role="status"><AlertTriangle size={14}/><span><strong>Start above with Country / grid region.</strong> Quick-start, practice/service details, and equipment unlock after the local energy context is set.</span></div>}
+                  {/* Illustrative templates can prefill the editable Department context and fleet. */}
+                  <div className={`quickStartNotice departmentQuickStartGuide departmentContextQuickStart ${!settings.region?'contextLocked':''}`} aria-disabled={!settings.region||undefined}>
+                    <AlertTriangle size={17}/>
+                    <div>
+                      <strong>Quick-start templates · illustrative data</strong>
+                      <p>Use a template to prefill an illustrative practice/service context, workload, equipment, and current workflow practices. Everything remains editable—verify or replace the example before using the result.</p>
+                      <div className="quickStartChoices">
+                        {DEPARTMENT_PRESETS.map(p=>(
+                          <button key={p.key} title={p.desc} disabled={!settings.region} data-demo-target={p.key==='regional'?'leader-regional-preset':undefined}
+                            onClick={()=>{setSettings(s=>({...s,imagingOperationModel:p.operation||'',facilitySetting:p.setting||'',locationType:p.locationType||'',radiologistCount:'',practiceSizeBand:p.practiceSizeBand||'',serviceHours:p.serviceHours||'',imagingSites:p.sites||'',actualStudiesYear:p.totalStudies||'',annualMriStudies:'',annualCtStudies:'',annualPetCtStudies:'',annualXrayStudies:'',annualMammographyStudies:'',annualUltrasoundStudies:'',annualAngioStudies:'',annualFluoroStudies:'',...(p.volumes||{}),equipment:Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k,p.equipment[k]||0]))}));setDept('activeInterventions',[...(p.practices||[])]);}}>
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div id="department-reference-context" className={`departmentPracticeServiceContext ${!settings.region?'contextLocked':''}`} aria-disabled={!settings.region||undefined} data-demo-target="department-practice-service-context">
+                    <div className="departmentPracticeServiceHead">
+                      <span>PRACTICE &amp; SERVICE CONTEXT</span>
+                      <h3>Tell us about the radiology practice.</h3>
+                      <p>These details describe the service CEDARS is comparing and are carried with the service reference shown in the result. They stay in your browser unless you choose to share or contribute the assessment. Enter what you know; a particular practice size or setting does not automatically earn a better score.</p>
+                    </div>
+                    <fieldset className="departmentPracticeFieldset" disabled={!settings.region}>
+                    <div className="departmentPracticeServiceGrid">
+                      <label className="departmentContextEditable">How does this practice work?<select value={settings.imagingOperationModel} onChange={e=>set('imagingOperationModel',e.target.value)}><option value="">Choose…</option><option value="operates">Operates imaging equipment</option><option value="mixed">Mixed: operates equipment + interprets outside imaging</option><option value="interpretation-only">Interpretation-only / teleradiology</option></select><span className="fieldHelp">Choose the option that best matches the service represented in this assessment.</span></label>
+                      <label className="departmentContextEditable">Radiologists in the practice <span className="fieldOptional">recommended</span><input type="number" min="0" max="9999" step="1" value={settings.radiologistCount??''} onChange={e=>set('radiologistCount',e.target.value)} placeholder="e.g. 18"/><span className="fieldHelp">Use the number of radiologists, not total staff. If unknown, choose a range instead.</span></label>
+                      <div className="departmentContextDerived"><span>PRACTICE SIZE CONTEXT</span><strong>{practiceSizeBandFromCount(settings.radiologistCount)||settings.practiceSizeBand?`${practiceSizeBandFromCount(settings.radiologistCount)||settings.practiceSizeBand} radiologists`:'Not entered'}</strong><small>This describes the comparison group carried with the service reference; larger or smaller practices do not automatically score better.</small></div>
+                      {!String(settings.radiologistCount??'').trim()&&<label className="departmentContextEditable">If exact count is unknown<select value={settings.practiceSizeBand} onChange={e=>set('practiceSizeBand',e.target.value)}><option value="">Choose a range</option>{['1–2','3–9','10–24','25–49','50–99','≥100'].map(v=><option key={v} value={v}>{v} radiologists</option>)}</select></label>}
+                      <label className="departmentContextEditable">Sites represented <span className="fieldOptional">recommended</span><input type="number" min="0" max="999" step="1" value={settings.imagingSites} onChange={e=>set('imagingSites',e.target.value)} placeholder="e.g. 2"/><span className="fieldHelp">For scanner-operating services, count acquisition sites. For teleradiology, enter reading/service sites when useful.</span></label>
+                      <label className="departmentContextEditable">Practice setting<select value={settings.facilitySetting} onChange={e=>set('facilitySetting',e.target.value)}><option value="">Choose…</option>{['Academic hospital','Community hospital','Freestanding imaging center','Multispecialty clinic','Other / mixed'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                      <label className="departmentContextEditable">Location<select value={settings.locationType} onChange={e=>set('locationType',e.target.value)}><option value="">Choose…</option>{['Metropolitan','Suburban','Rural','Other / mixed'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                      <label className="departmentContextEditable">Typical service hours<select value={settings.serviceHours} onChange={e=>set('serviceHours',e.target.value)}><option value="">Choose…</option>{['24/7','Extended hours','Daytime / scheduled','Mixed / other'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+                      {settings.imagingOperationModel!=='interpretation-only'&&<label className="departmentContextEditable">Studies/year<input type="number" min="0" step="1" value={settings.actualStudiesYear??''} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder="e.g. 85000"/><span className="fieldHelp">Count studies physically performed on the equipment represented here.</span></label>}
+                    </div>
+                    {settings.imagingOperationModel!=='interpretation-only'&&<details className="departmentReferenceVolumeDetails departmentReferenceVolumeOptional" open={guidedDemo?.kind==='leader'&&guidedDemo.step===1}>
+                      <summary>Optional: break annual workload down by modality</summary>
+                      <div className="departmentReferenceVolumeBody">
+                        <div className="departmentReferenceVolumeHead"><span>Studies/year</span><p>Modality totals make the service comparison more specific. Do not include studies acquired elsewhere and only interpreted by this practice.</p></div>
+                        <div className="departmentReferenceVolumeGrid">
+                          {DEPARTMENT_VOLUME_GROUPS.map(group=><label className="departmentContextEditable" key={group.key}>{group.label}<input type="number" min="0" value={settings[group.settingField]??''} onChange={e=>set(group.settingField,e.target.value)} placeholder="studies/year"/></label>)}
+                        </div>
+                      </div>
+                    </details>}
+                    {deptLabelData.totalMismatch>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload totals conflict.</strong> Modality entries exceed the entered total physical imaging volume by {deptLabelData.totalMismatch.toLocaleString()} studies/year. Reconcile these values before using the Department EcoLabel Score.</span></div>}
+                    {deptLabelData.volumeWithoutEquipment?.length>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload does not match the represented equipment.</strong> {deptLabelData.volumeWithoutEquipment.map(key=>DEPARTMENT_VOLUME_GROUPS.find(group=>group.key===key)?.label||key).join(', ')} volume is entered without corresponding acquisition equipment. Add the equipment or exclude externally interpreted studies.</span></div>}
+                    </fieldset>
+                    <p className="departmentPracticeServiceNote">{settings.imagingOperationModel==='interpretation-only'?'Interpretation-only / teleradiology services can still report workstation, PACS, cloud, and storage impacts, but a scanner-operation EcoLabel Score is not applicable.':'The current energy reference is calculated from the represented equipment and physical workload. Practice size, setting, location, sites, and service hours are carried with that reference so the result can be interpreted in the right service context; they are not bonus points.'}</p>
+                  </div>
                 </section>
-                <p className="note" style={{fontSize:12,margin:'14px 0 12px'}}>These inputs define the Department profile and its current footprint.</p>
             {/* Equipment card grid */}
             <div id="department-equipment" className={`${scoreAttention==='equipment'?'scoreInputAttention':''} ${settings.region?'':'departmentEquipmentPending'}`} aria-disabled={!settings.region||undefined} style={{marginBottom:16,scrollMarginTop:90}}>
               {!settings.region&&<div className="departmentEquipmentGate" role="status"><span>CONTEXT NEEDED</span><strong>Choose a grid region above to unlock Equipment</strong><small>CEDARS needs the local electricity context before you build the Department baseline.</small></div>}
               <div style={{fontWeight:700,color:'#2E7D32',fontSize:13,marginBottom:8,letterSpacing:'0.03em',textTransform:'uppercase'}}>Equipment</div>
               {departmentScoreReadiness.issues.some(i=>i.key==='equipment')&&<div className="scoreRequiredInputHint"><AlertTriangle size={15}/><div><strong>Department score needs a fleet / energy baseline.</strong><span>Choose an illustrative quick-start fleet below or enter your own device counts. Clinical AI examples are additive; they do not replace the underlying Department equipment and energy inputs.</span></div></div>}
-
-              {/* Quick-start templates are illustrative defaults, not measured local data. */}
-              <div className="quickStartNotice departmentQuickStartGuide">
-                <AlertTriangle size={17}/>
-                <div>
-                  <strong>Quick-start templates · illustrative data</strong>
-                  <p>Use a template to load an editable example fleet and illustrative workflow practices. Verify or replace both before using the result, or enter your own department from scratch.</p>
-                  <div className="quickStartChoices">
-                    {DEPARTMENT_PRESETS.map(p=>(
-                      <button key={p.key} title={p.desc} data-demo-target={p.key==='regional'?'leader-regional-preset':undefined}
-                        onClick={()=>{set('equipment', Object.fromEntries(Object.keys(DEFAULT_EQUIPMENT).map(k=>[k, p.equipment[k]||0])));setDept('activeInterventions',[...(p.practices||[])]);}}>
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
 
               {/* MRI section */}
               {[{cards:MRI_CARDS,label:'MRI scanners'},{cards:OTHER_CARDS,label:'Other equipment'}].map(({cards,label})=>(
@@ -4197,17 +4329,19 @@ const startGuidedDemo = kind => {
                 <CedarsEcoLabelPreview
                   kind="department"
                   productTag="DEPARTMENT"
+                  scoreSectionLabel="ECOLABEL SCORE & RATING"
+                  scoreName="REFERENCE-ADJUSTED ENERGY"
                   identity={deptLabelData.deptName || 'Radiology Department'}
                   contextLine={`${deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}${deptLabelData.date}`}
-                  scoreDisplay={deptLabelData.hasData ? String(deptLabelData.score) : '—'}
-                  scored={deptLabelData.hasData}
+                  scoreDisplay={deptLabelData.graded ? String(deptLabelData.score) : '—'}
+                  scored={deptLabelData.graded}
                   leaves={deptLabelData.leaves}
                   ratingColor={deptLabelData.ratingColor}
                   ratingBg={deptLabelData.ratingBg}
-                  ratingLabel={deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}
-                  intensityText={deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e/study · ${deptLabelData.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate'}
-                  coverageValue="Operational energy & carbon"
-                  coverageDetail="The Footprint Score reflects the operational energy-and-carbon boundary. Additional assessed categories are reported separately."
+                  ratingLabel={deptLabelData.graded ? deptLabelData.ratingLabel : deptLabelData.interpretationOnly ? 'Scanner rating not applicable' : 'Reference incomplete'}
+                  intensityText={deptLabelData.graded ? `${deptLabelData.referenceRatio.toFixed(2)}× reference energy · ${deptLabelData.co2PerStudy} kgCO₂e/study` : deptLabelData.interpretationOnly ? 'Interpretation-only service · absolute footprint reported' : 'Complete service workload to build the reference'}
+                  coverageValue="Matched operational energy + absolute carbon"
+                  coverageDetail="The rating compares imaging/PACS/reporting energy with the CEDARS service-mix reference. Absolute carbon and additional assessed categories are reported separately."
                   coverageGroups={[
                     {label:`${deptLabelData.extendedCategories?.length || 0} assessed beyond Score`,items:deptLabelData.extendedCategories || []},
                     {label:`${deptLabelData.notAssessedCategories?.length || 0} not assessed`,items:deptLabelData.notAssessedCategories || []},
@@ -4225,10 +4359,11 @@ const startGuidedDemo = kind => {
                     },
                   ]}
                   rows={[
-                    ['Workload',deptLabelData.annualStudies>0?`${deptLabelData.annualStudies.toLocaleString()} studies/year`:'—'],
-                    ['Location',deptLabelData.region || '—'],
-                    ['Technical context',`${deptLabelData.effectiveCi} kgCO₂e/kWh grid carbon intensity`],
-                    ['Resource disclosure',`${deptLabelData.renewablePct}% renewable electricity · disclosure only`],
+                    ['Workload',deptLabelData.annualStudies>0?`${deptLabelData.annualStudies.toLocaleString()} studies/year · ${deptLabelData.workloadSource}`:'Interpretation-only / not entered'],
+                    ['Matched reference',deptLabelData.graded?`${deptLabelData.referenceRatio.toFixed(2)}× · ${deptLabelData.referenceAnnualKwh.toLocaleString()} reference kWh/year`:'—'],
+                    ['Service context',[deptLabelData.facilitySetting,deptLabelData.locationType,deptLabelData.radiologistCount?`${Number(deptLabelData.radiologistCount).toLocaleString()} radiologists`:deptLabelData.practiceSizeBand?`${deptLabelData.practiceSizeBand} radiologists`:null].filter(Boolean).join(' · ') || '—'],
+                    ['Data basis',deptLabelData.scoreDataBasis],
+                    ['Grid / carbon',`${deptLabelData.effectiveCi} kgCO₂e/kWh · absolute footprint disclosure`],
                     ['Clinical / operational context',`${deptLabelData.interventionCount || 0} current practice${deptLabelData.interventionCount===1?'':'s'} · ${deptLabelData.clinicalToolCount || 0} Clinical AI use${deptLabelData.clinicalToolCount===1?'':'s'}`],
                   ]}
                   date={deptLabelData.date}
@@ -4236,7 +4371,7 @@ const startGuidedDemo = kind => {
                 />
                 <div className="profileEcoLabelSupport">
                   <SystemEffectsCallout kind="department" onReview={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
-                  <DepartmentServiceContext equipment={settings.equipment} annualStudies={deptLabelData.annualStudies} onMethod={()=>setPage('ecolabel-method')}/>
+                  <DepartmentServiceContext equipment={settings.equipment} annualStudies={deptLabelData.annualStudies} settings={settings} referenceData={deptLabelData} onMethod={()=>setPage('ecolabel-method')}/>
                   <ImprovementPotentialSummary kind="department" scenarioCount={scenario.count} reductionPct={scenario.savings.pctCo2} currentScore={deptLabelData.hasData?deptLabelData.score:null} potentialScore={deptLabelData.hasData?deptLabelData.potentialScore:null} onOpen={()=>{setEcoLabelMode('department');setPage('scenario');window.setTimeout(()=>window.scrollTo({top:0,behavior:'auto'}),0);}}/>
                 </div>
               </div>
@@ -4413,12 +4548,12 @@ const startGuidedDemo = kind => {
 
             <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',background:'#f1f8f1',borderRadius:12,padding:'10px 16px',marginBottom:16}}>
               <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,fontWeight:700,color:'#2E7D32'}}>
-                Actual imaging studies / year
+                Studies physically performed / year
                 <input type="number" min="0" value={settings.actualStudiesYear} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder={`fleet est: ${efficiency.capacityYr.toLocaleString()}`} style={{width:150,padding:'6px 10px',border:'1px solid #c8e6c9',borderRadius:8,fontSize:13,background:'white'}}/>
               </label>
               <span style={{fontSize:12,color:'#607d66'}}>
                 {efficiency.isEstimate
-                  ? `Blank — assuming fleet runs at typical throughput (~${efficiency.capacityYr.toLocaleString()}/yr). Enter your real annual volume to reveal utilisation.`
+                  ? `Blank — using the fleet/service reference throughput (~${efficiency.capacityYr.toLocaleString()}/yr). Enter your real annual volume to reveal utilisation.`
                   : `Fleet typical capacity: ~${efficiency.capacityYr.toLocaleString()}/yr.`}
               </span>
             </div>
@@ -5860,9 +5995,9 @@ const startGuidedDemo = kind => {
           {ecoLabelMode==='department' && <section className="decisionCompareHero department" data-demo-target="department-decision-compare" aria-label="Current Department result and prospective scenario">
             <div className="decisionCompareHeroHeading"><div><span>BASELINE → PROSPECTIVE</span><h2>Compare the current profile with a scenario</h2></div><div className="decisionCompareHeroActions"><button type="button" className="download" onClick={()=>{setPage('dashboard');setDeptSetupOpen(true);setDeptProfileStage('equipment');}}>Edit current profile</button><button type="button" onClick={()=>{setReportStudioTab('label');setPage('report');}}>Report &amp; Share →</button></div></div>
             <div className="decisionComparePanels">
-              <article className="decisionCompareCard baseline"><span>CURRENT PROFILE</span><strong>{deptLabelData.hasData?`Score ${deptLabelData.score}`:'Result incomplete'}</strong><small>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e/study · current assessed state`:'Complete the Department baseline before interpreting a score.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.baseline.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.baseline.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{deptLabelData.annualStudies>0?deptLabelData.annualStudies.toLocaleString():'—'}</b><em>studies/year</em></div><div><b>{fmtMoney(scenario.baseline.kwh*getPrice(settings.region,settings.electricityPrice),currencySym(settings.region))}</b><em>est. electricity cost</em></div></div></article>
+              <article className="decisionCompareCard baseline"><span>CURRENT PROFILE</span><strong>{deptLabelData.hasData?`EcoLabel Score ${deptLabelData.score}`:'Result incomplete'}</strong><small>{deptLabelData.hasData?`${deptLabelData.co2PerStudy} kgCO₂e/study · current assessed state`:'Complete the Department baseline before interpreting a score.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.baseline.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.baseline.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{deptLabelData.annualStudies>0?deptLabelData.annualStudies.toLocaleString():'—'}</b><em>studies/year</em></div><div><b>{fmtMoney(scenario.baseline.kwh*getPrice(settings.region,settings.electricityPrice),currencySym(settings.region))}</b><em>est. electricity cost</em></div></div></article>
               <div className="decisionCompareArrow" aria-hidden="true"><span>→</span><small>{scenario.count?`${scenario.count} selected`:'test changes'}</small></div>
-              <article className={`decisionCompareCard prospective ${scenario.count?'active':''}`}><span>PROSPECTIVE SCENARIO</span><strong>{deptLabelData.hasData&&deptLabelData.potentialScore!=null?`Score ${deptLabelData.potentialScore}`:scenario.count?'Modeled scenario':'No changes selected'}</strong><small>{scenario.count?`${deptLabelData.potentialCo2PerStudy} kgCO₂e/study · modeled, not current state`:'Choose changes below to update this side without rewriting the baseline.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.projected.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.projected.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{scenario.count?`−${scenario.savings.pctEnergy}%`:'—'}</b><em>energy change</em></div><div><b>{fmtMoney(scenario.projected.kwh*getPrice(settings.region,settings.electricityPrice),currencySym(settings.region))}</b><em>projected electricity cost</em></div></div></article>
+              <article className={`decisionCompareCard prospective ${scenario.count?'active':''}`}><span>PROSPECTIVE SCENARIO</span><strong>{deptLabelData.hasData&&deptLabelData.potentialScore!=null?`EcoLabel Score ${deptLabelData.potentialScore}`:scenario.count?'Modeled scenario':'No changes selected'}</strong><small>{scenario.count?`${deptLabelData.potentialCo2PerStudy} kgCO₂e/study · modeled, not current state`:'Choose changes below to update this side without rewriting the baseline.'}</small><div className="decisionCompareMetrics"><div><b>{scenario.projected.kwh.toLocaleString()} kWh</b><em>{settings.timePeriod.toLowerCase()} energy</em></div><div><b>{scenario.projected.co2.toLocaleString()} kgCO₂e</b><em>operational carbon</em></div><div><b>{scenario.count?`−${scenario.savings.pctEnergy}%`:'—'}</b><em>energy change</em></div><div><b>{fmtMoney(scenario.projected.kwh*getPrice(settings.region,settings.electricityPrice),currencySym(settings.region))}</b><em>projected electricity cost</em></div></div></article>
             </div>
           </section>}
 
@@ -6107,17 +6242,19 @@ const startGuidedDemo = kind => {
               <CedarsEcoLabelPreview
                 kind="department"
                 productTag="DEPARTMENT"
+                scoreSectionLabel="ECOLABEL SCORE & RATING"
+                scoreName="REFERENCE-ADJUSTED ENERGY"
                 identity={deptLabelData.deptName || 'Radiology Department'}
                 contextLine={`${deptLabelData.hospitalName ? `${deptLabelData.hospitalName} · ` : ''}${deptLabelData.date}`}
-                scoreDisplay={deptLabelData.hasData ? String(deptLabelData.score) : '—'}
-                scored={deptLabelData.hasData}
+                scoreDisplay={deptLabelData.graded ? String(deptLabelData.score) : '—'}
+                scored={deptLabelData.graded}
                 leaves={deptLabelData.leaves}
                 ratingColor={deptLabelData.ratingColor}
                 ratingBg={deptLabelData.ratingBg}
-                ratingLabel={deptLabelData.hasData ? deptLabelData.ratingLabel : 'Not yet calculated'}
-                intensityText={deptLabelData.hasData ? `${deptLabelData.co2PerStudy} kgCO₂e/study · ${deptLabelData.kwhPerStudy} kWh/study` : 'Complete Department Context to calculate'}
-                coverageValue="Operational energy & carbon"
-                coverageDetail="The Footprint Score reflects the operational energy-and-carbon boundary. Additional assessed categories are reported separately."
+                ratingLabel={deptLabelData.graded ? deptLabelData.ratingLabel : deptLabelData.interpretationOnly ? 'Scanner rating not applicable' : 'Reference incomplete'}
+                intensityText={deptLabelData.graded ? `${deptLabelData.referenceRatio.toFixed(2)}× reference energy · ${deptLabelData.co2PerStudy} kgCO₂e/study` : deptLabelData.interpretationOnly ? 'Interpretation-only service · absolute footprint reported' : 'Complete service workload to build the reference'}
+                coverageValue="Matched operational energy + absolute carbon"
+                coverageDetail="The rating compares imaging/PACS/reporting energy with the CEDARS service-mix reference. Absolute carbon and additional assessed categories are reported separately."
                   coverageGroups={[
                     {label:`${deptLabelData.extendedCategories?.length || 0} assessed beyond Score`,items:deptLabelData.extendedCategories || []},
                     {label:`${deptLabelData.notAssessedCategories?.length || 0} not assessed`,items:deptLabelData.notAssessedCategories || []},
@@ -6135,10 +6272,11 @@ const startGuidedDemo = kind => {
                   },
                 ]}
                 rows={[
-                  ['Workload',deptLabelData.annualStudies>0?`${deptLabelData.annualStudies.toLocaleString()} studies/year`:'—'],
-                  ['Location',deptLabelData.region || '—'],
-                  ['Technical context',`${deptLabelData.effectiveCi} kgCO₂e/kWh grid carbon intensity`],
-                  ['Resource disclosure',`${deptLabelData.renewablePct}% renewable electricity · disclosure only`],
+                  ['Workload',deptLabelData.annualStudies>0?`${deptLabelData.annualStudies.toLocaleString()} studies/year · ${deptLabelData.workloadSource}`:'Interpretation-only / not entered'],
+                  ['Matched reference',deptLabelData.graded?`${deptLabelData.referenceRatio.toFixed(2)}× · ${deptLabelData.referenceAnnualKwh.toLocaleString()} reference kWh/year`:'—'],
+                  ['Service context',[deptLabelData.facilitySetting,deptLabelData.locationType,deptLabelData.radiologistCount?`${Number(deptLabelData.radiologistCount).toLocaleString()} radiologists`:deptLabelData.practiceSizeBand?`${deptLabelData.practiceSizeBand} radiologists`:null].filter(Boolean).join(' · ') || '—'],
+                  ['Data basis',deptLabelData.scoreDataBasis],
+                  ['Grid / carbon',`${deptLabelData.effectiveCi} kgCO₂e/kWh · absolute footprint disclosure`],
                   ['Clinical / operational context',`${deptLabelData.interventionCount || 0} current practice${deptLabelData.interventionCount===1?'':'s'} · ${deptLabelData.clinicalToolCount || 0} Clinical AI use${deptLabelData.clinicalToolCount===1?'':'s'}`],
                 ]}
                 date={deptLabelData.date}
@@ -6147,7 +6285,7 @@ const startGuidedDemo = kind => {
 
               <div style={{display:'flex',flexDirection:'column',gap:12,paddingTop:8}}>
             <details className="reportStageCard reportReviewCompact reportLabelReadiness">
-              <summary>{deptLabelData.hasData?'Ready to report · Review/edit Department inputs':'Department inputs need review'}</summary>
+              <summary>{departmentScoreReadiness.ready?'Ready to report · Review/edit Department inputs':'Department inputs need review'}</summary>
               <div className="reportReviewCompactBody">
               <div className="reportStageHeading">
                 <div>
@@ -6159,11 +6297,11 @@ const startGuidedDemo = kind => {
               </div>
               {(()=>{
                 const checks = [
-                  ['annual imaging volume', deptLabelData.annualStudies>0],
+                  ['annual imaging volume / interpretation-only context', deptLabelData.interpretationOnly || deptLabelData.annualStudies>0],
                   ['annual electricity', deptLabelData.annualKwh>0],
                   ['grid region', !!deptLabelData.region],
                   ['annual carbon footprint', deptLabelData.totalAnnualCo2>0],
-                  ['CEDARS Footprint Score & Rating', deptLabelData.hasData],
+                  ['CEDARS reference-adjusted Score & Rating / N/A for interpretation-only', deptLabelData.graded || deptLabelData.interpretationOnly],
                 ];
                 const missing = checks.filter(([,ok])=>!ok).map(([name])=>name);
                 return missing.length===0
@@ -6188,11 +6326,11 @@ const startGuidedDemo = kind => {
               </p>
               <div className="grid reportValuesGrid">
                 <label>Grid region<select value={deptLabel.region} onChange={e=>setDept('region',e.target.value)}><option value="">— use current ({settings.region}) —</option>{META.regions.map(r=><option key={r} value={r}>{r}</option>)}</select></label>
-                <label>Annual electricity (kWh)<input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
+                <label>Annual electricity (kWh) <span className="reportOptional">absolute-footprint override</span><input type="number" min="0" value={deptLabel.annualKwh} onChange={e=>setDept('annualKwh',e.target.value)} placeholder={`live: ${deptLabelData.annualKwh.toLocaleString()}`}/></label>
                 <label>Total imaging studies / year<input type="number" min="0" value={deptLabel.annualStudies} onChange={e=>setDept('annualStudies',e.target.value)} placeholder={`live: ${deptLabelData.annualStudies.toLocaleString()}`}/></label>
                 <label>Reported renewable electricity share (%)<input type="number" min="0" max="100" value={deptLabel.renewablePct} onChange={e=>setDept('renewablePct',e.target.value)} placeholder="0–100"/></label>
               </div>
-              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the Efficiency tab (actual volume, else fleet estimate). Renewable share is disclosed separately and does not reduce the location-based Scope 2 factor. Override kWh / RIS counts with local data for publication-quality figures.</p>
+              <p className="note" style={{marginTop:8}}>Live kWh comes from the Radiology Department energy model; live studies from the entered service workload (or fleet reference when not entered). Renewable share is disclosed separately and does not reduce location-based Scope 2. A headline annual-kWh override changes the absolute footprint disclosure; the reference-adjusted rating is changed by the physical fleet/workload and local equipment/operating inputs used in its matched-energy model.</p>
 
               {/* Clinical AI now live on the Radiology Department tab */}
               <p className="note" style={{margin:'14px 0 0',padding:'10px 14px',background:'#f1f8f1',borderRadius:12}}>
@@ -6237,15 +6375,15 @@ const startGuidedDemo = kind => {
 
                 <p className="note reportLabelUseNote" style={{maxWidth:220,fontSize:12,margin:0}}>Use the PNG EcoLabel in sustainability reports, posters, presentations, or other communication materials. Methods text is kept in the Methods &amp; evidence output.</p>
                 <div style={{marginTop:8}}>
-                  <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Footprint Score band:</p>
-                  {CEDARS_RATINGS.map(r=>(
+                  <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>Department EcoLabel — reference-adjusted energy:</p>
+                  {CEDARS_REFERENCE_RATINGS.map(r=>(
                     <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:deptLabelData.leaves===r.leaves?700:400,color:deptLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
                       <LeafRating leaves={r.leaves} size={12} color={r.color}/>
                       <span>{r.label}</span>
-                      <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'< 20'})[r.leaves]}</span>
+                      <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'0–19'})[r.leaves]}</span>
                     </div>
                   ))}
-                  <p className="note" style={{fontSize:10,marginTop:6}}>Continuous Score (0–100) from the per-study footprint, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
+                  <p className="note" style={{fontSize:10,marginTop:6}}>EcoLabel Score 50 means the modeled service is at the matched CEDARS reference. These bands are not peer percentiles.</p>
                 </div>
               </div>
             </div>
@@ -6270,17 +6408,18 @@ const startGuidedDemo = kind => {
               {(()=>{
                 const d = deptLabelData;
                 const items = [
-                  ['1', 'Imaging operation (studies / year)', d.hasData ? `${d.annualStudies.toLocaleString()} studies/yr` : '—', d.hasData, 'Department'],
-                  ['2', 'Total energy (kWh / year)', d.annualKwh > 0 ? `${d.annualKwh.toLocaleString()} kWh` : '—', d.annualKwh > 0, 'Department'],
-                  ['3', 'Grid carbon intensity, location, source', `${d.effectiveCi} kgCO₂e/kWh · ${d.region} · ${d.renewablePct}% renewable`, !!d.region, 'Grid'],
-                  ['4', 'Annual carbon footprint (facility + AI)', d.totalAnnualCo2 > 0 ? `${d.totalAnnualCo2.toLocaleString()} kgCO₂e` : '—', d.totalAnnualCo2 > 0, 'Department'],
-                  ['5', 'Clinical AI deployed', d.clinicalToolCount > 0 ? `${d.clinicalToolCount} (net effect in dept energy)` : 'none deployed', d.clinicalToolCount > 0, 'Clinical AI'],
-                  ['6', 'Current sustainability practices', d.interventionCount > 0 ? `${d.interventionCount} documented as implemented` : 'none reported', d.interventionCount > 0, 'Current state'],
-                  ['7', 'Efficiency — CO₂ per study delivered', d.hasData ? `${d.co2PerStudy} kgCO₂e/study${d.utilPct != null ? ` · ${d.utilPct}% fleet utilisation` : ''}` : '—', d.hasData, 'Efficiency'],
-                  ['8', 'CEDARS Score + Rating', d.hasData ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : '—', d.hasData, 'Score / Rating'],
-                  ['9', 'CEDARS Footprint Score boundary', d.scoreBoundaryLabel, true, 'Boundary'],
-                  ['10', 'Extended estimates reported separately', d.extendedCategories.length ? d.extendedCategories.join(' · ') : 'none', true, 'Boundary'],
-                  ['11', 'Not assessed', d.notAssessedCategories.length ? d.notAssessedCategories.join(' · ') : 'none', d.notAssessedCategories.length===0, 'Boundary'],
+                  ['1', 'Imaging operation represented', d.interpretationOnly ? 'Interpretation-only / teleradiology' : d.annualStudies>0 ? `${d.annualStudies.toLocaleString()} studies physically performed/yr` : '—', d.interpretationOnly || d.annualStudies>0, 'Service'],
+                  ['2', 'Modality workload used for reference', d.modalityVolumeSummary || (d.interpretationOnly?'not applicable':'—'), d.interpretationOnly || !!d.modalityVolumeSummary, 'Service'],
+                  ['3', 'Total operational energy (kWh / year)', d.annualKwh > 0 ? `${d.annualKwh.toLocaleString()} kWh` : '—', d.annualKwh > 0, 'Footprint'],
+                  ['4', 'Matched reference energy', d.graded ? `${d.referenceAnnualKwh.toLocaleString()} kWh/year` : '—', d.graded || d.interpretationOnly, 'Reference'],
+                  ['5', 'Observed / reference energy ratio', d.graded ? `${d.referenceRatio.toFixed(2)}×` : d.interpretationOnly?'not applicable':'—', d.graded || d.interpretationOnly, 'Reference'],
+                  ['6', 'Reference-adjusted Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : d.interpretationOnly?'not assigned — interpretation-only':'—', d.graded || d.interpretationOnly, 'Score'],
+                  ['7', 'Score data basis', d.scoreDataBasis, true, 'Provenance'],
+                  ['8', 'Facility / peer context', [d.facilitySetting,d.locationType,d.radiologistCount?`${Number(d.radiologistCount).toLocaleString()} radiologists`:d.practiceSizeBand?`${d.practiceSizeBand} radiologists`:null,d.serviceHours].filter(Boolean).join(' · ') || 'not entered', true, 'Context'],
+                  ['9', 'Grid carbon intensity / absolute carbon', `${d.effectiveCi} kgCO₂e/kWh · ${d.region} · ${d.totalAnnualCo2.toLocaleString()} kgCO₂e/year`, !!d.region, 'Carbon'],
+                  ['10', 'CEDARS score boundary', d.scoreBoundaryLabel, true, 'Boundary'],
+                  ['11', 'Extended estimates reported separately', d.extendedCategories.length ? d.extendedCategories.join(' · ') : 'none', true, 'Boundary'],
+                  ['12', 'Not assessed', d.notAssessedCategories.length ? d.notAssessedCategories.join(' · ') : 'none', d.notAssessedCategories.length===0, 'Boundary'],
                 ];
                 return (
                   <div className="reportChecklist departmentReportChecklist">
@@ -6407,7 +6546,7 @@ const startGuidedDemo = kind => {
               </button>
               <p className="note reportVisualSummaryNote">Use this optional visual summary in presentations, posters, model documentation, or exploratory reporting.</p>
               <div style={{marginTop:8}}>
-                <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>CEDARS Rating — Footprint Score band:</p>
+                <p className="note" style={{fontSize:11,marginBottom:6,fontWeight:700}}>AI Research EcoLabel — lifecycle carbon-intensity band:</p>
                 {CEDARS_RATINGS.map(r=>(
                   <div key={r.leaves} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,marginBottom:3,fontWeight:ecoLabelData.leaves===r.leaves?700:400,color:ecoLabelData.leaves===r.leaves?'#263238':'#607d66'}}>
                     <LeafRating leaves={r.leaves} size={12} color={r.color}/>
@@ -6415,7 +6554,7 @@ const startGuidedDemo = kind => {
                     <span style={{marginLeft:'auto',fontFamily:'monospace',fontSize:10}}>{({5:'80–100',4:'60–79',3:'40–59',2:'20–39',1:'< 20'})[r.leaves]}</span>
                   </div>
                 ))}
-                <p className="note" style={{fontSize:10,marginTop:6}}>Continuous Score (0–100) from the estimated footprint, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
+                <p className="note" style={{fontSize:10,marginTop:6}}>EcoLabel Score (0–100) from the estimated lifecycle carbon intensity, paired with a 1–5 leaf Rating — after Energy Star / EU Energy Label (Reg. EU 2021/341).</p>
               </div>
             </div>
           </div>
@@ -6439,7 +6578,7 @@ const startGuidedDemo = kind => {
                     ['4', 'Inference result', d.perInferCo2g>0 ? `${d.perInferCo2g} gCO₂e/study` : 'not reported', d.perInferCo2g>0, 'Inference'],
                     ['5', 'Lifecycle coverage', d.lifecycleCoverage, true, 'Coverage'],
                     ['6', 'Water footprint', d.waterProv==='not-assessed' ? 'not assessed · reported separately; not scored' : d.waterLitres > 0 ? `${d.waterLitres.toLocaleString()} L${d.waterProv==='screening' ? ' · screening estimate' : ''}` : 'not reported', d.waterProv !== 'screening', 'Water use'],
-                    ['7', 'CEDARS Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'not assigned · partial lifecycle coverage', d.graded || d.scoreStatus==='training-unavailable', 'Score / Rating'],
+                    ['7', 'CEDARS EcoLabel Score + Rating', d.graded ? `Score ${d.score} · ${d.leaves}/5 leaves (${d.ratingLabel})` : 'not assigned · partial lifecycle coverage', d.graded || d.scoreStatus==='training-unavailable', 'Score / Rating'],
                   ];
                   return <div className="reportChecklist">
                     {items.map(([num,item,val,ok,mod],i)=><div key={num} className={i%2===0?'alt':''}>

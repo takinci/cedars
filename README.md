@@ -46,9 +46,11 @@ Within **Profile**, the Department and AI pathways use parallel four-stage struc
 | **Context** — region, equipment, workload, energy baseline | **Context** — clinical purpose, model/task context, comparison or assessment setup |
 | **Workflow** — how imaging care is delivered today | **Training** — development/training inputs and compute context |
 | **Clinical AI** — optional local informatics/Clinical AI use | **Deployment** — inference workload, compute location, and deployment assumptions |
-| **Result (EcoLabel)** — current footprint, Footprint Score, and EcoLabel | **Result (EcoLabel)** — current lifecycle result, coverage, and EcoLabel |
+| **Result (EcoLabel)** — current footprint, EcoLabel Score, and EcoLabel | **Result (EcoLabel)** — current lifecycle result, coverage, and EcoLabel |
 
-The **CEDARS Footprint Score is interpreted with Result (EcoLabel)**. The Department EcoLabel and AI Research EcoLabel preview the current assessed result in Profile and are carried forward as the same reporting product in **Report & Share**.
+Department Context is presented in the same order users make the assessment: **Local energy & reporting → Quick-start templates (optional) → Practice & service context → Equipment**. Quick-start templates prefill editable illustrative context/workload/fleet values; users should verify or replace them before reporting.
+
+The **CEDARS EcoLabel Score is interpreted with Result (EcoLabel)**. The Department EcoLabel and AI Research EcoLabel preview the current assessed result in Profile and are carried forward as the same reporting product in **Report & Share**.
 
 No account or installation is required for the public site. An optional Google sign-in lets a user save a private copy of their assessment and continue it on another device — see [Saving, sharing, and privacy](#saving-sharing-and-privacy).
 
@@ -93,7 +95,7 @@ Outputs include research labels, reporting text, structured methods/reproducibil
 
 CEDARS is **literature-informed**, but not every model parameter has equally strong evidence. Some values are published measurements; others are transparent estimates, proxies, or illustrative defaults where direct evidence is limited. The repository separates methodological decisions from the evidence used to support them:
 
-- **[`METHODS.md`](./METHODS.md)** — scientific and methodological framework: assessment objects, boundaries, lifecycle logic, evidence treatment, comparison rules, prospective scenarios, Footprint Score/EcoLabel interpretation, and reporting principles.
+- **[`METHODS.md`](./METHODS.md)** — scientific and methodological framework: assessment objects, boundaries, lifecycle logic, evidence treatment, comparison rules, prospective scenarios, EcoLabel Score/EcoLabel interpretation, and reporting principles.
 - **[`sources.md`](./sources.md)** — authoritative evidence and assumption registry: source roles, parameter provenance, default-setting rationale, benchmark limitations, verification notes, and bibliography.
 - **[`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md)** — interface and interaction system used to present the methods consistently without changing their scientific meaning.
 
@@ -213,3 +215,11 @@ Radiology sustainability · Clinical AI · Transparent environmental reporting
 </div>
 
 <!-- CEDARS_CHUNK_9R32_WALKTHROUGH_ECOLABEL_METHOD -->
+
+<!-- CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL -->
+
+<!-- CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING -->
+
+<!-- CEDARS_CHUNK_9R32E_ECOLABEL_PATHS_PRACTICE_CONTEXT -->
+
+<!-- CEDARS_CHUNK_9R32I_CONTEXT_ORDER_REFERENCE_COPY -->

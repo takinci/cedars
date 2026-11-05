@@ -13,11 +13,13 @@ Source code: https://github.com/takinci/cedars
 
 ## EcoLabel method
 
-- CEDARS uses a domain-specific **Footprint Score** plus 1–5 leaf Footprint Rating.
-- Current Department and AI anchor ranges are **v1 provisional research anchors**, not empirical peer percentiles.
-- Service/fleet references are contextual and do not currently alter the Score.
-- The public **EcoLabel Method** page explains scoring, boundaries, Improvement Potential, and future calibration.
-
+- CEDARS uses one **EcoLabel family with two assessment paths** and a shared 0–100 / 1–5-leaf reporting format.
+- **Radiology Department:** the EcoLabel Score is reference-adjusted operational energy. Modeled current imaging/PACS/reporting energy is compared with a CEDARS service reference matched to the represented fleet and physical imaging workload. Score 50 means at the matched reference, not the 50th percentile.
+- **AI Research EcoLabel:** the EcoLabel Score remains lifecycle carbon intensity when the required basis is available: amortized training plus recurring inference carbon per study/use on the documented v1 research anchors.
+- Absolute environmental impact remains separately reported. The Department operational-energy score does not improve merely because the local electricity grid is lower carbon.
+- Department Context is ordered as local energy/reporting → optional illustrative quick-start → Practice & service context. Practice size, sites, setting, location, service hours, and scanner-operating/mixed/teleradiology status are carried with the service reference for like-for-like interpretation. The current numerical energy reference is driven by the represented equipment and physical workload; practice type itself does not create bonus points.
+- Decision Workspace is prospective and remains separate from the current EcoLabel.
+- The public **EcoLabel Method** page presents the two paths visually; technical formulas, assumptions, and future calibration are collapsed below the infographic.
 ## Key topics
 
 Radiology sustainability; medical imaging environmental footprint; medical AI energy and carbon footprint; healthcare decarbonization; radiology energy use; AI inference and training energy; cloud compute; water use; clinical AI; sustainability interventions; environmental reporting; EcoLabel; planetary health; cost; clinical care.
@@ -25,3 +27,5 @@ Radiology sustainability; medical imaging environmental footprint; medical AI en
 ## Important notes
 
 CEDARS is a research and estimation tool. Literature defaults are editable and local or measured values should be used when available. Normal calculator use remains browser-local; research contribution is an explicit optional action.
+
+<!-- CEDARS_CHUNK_9R32I_CONTEXT_ORDER_REFERENCE_COPY -->

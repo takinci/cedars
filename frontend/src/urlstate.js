@@ -1,3 +1,6 @@
+// CEDARS_CHUNK_9R32E_ECOLABEL_PATHS_PRACTICE_CONTEXT
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
+// CEDARS_CHUNK_9R32C_REFERENCE_ADJUSTED_ECOLABEL
 // CEDARS_CHUNK_9R17_REQUIRED_CONTEXT_STEPPER_COLOR_AUDIT
 // Shareable-URL state — serialises the full calculator configuration into the location hash so a
 // copied link reproduces the whole setup: department settings + equipment inventory + storage +
@@ -32,6 +35,10 @@ export const SETTINGS_DEFAULTS = {
   electricityPrice: '', storageRetentionYears: '10', storageCloud: false, storageReformats: 'all',
   storageIntensityCustom: '', storageProvider: 'AWS', storageRegion: '', storageCloudCi: '',
   scope1AnnualKg: '',
+  imagingOperationModel: '', facilitySetting: '', locationType: '', practiceSizeBand: '', radiologistCount: '',
+  serviceHours: '', imagingSites: '',
+  annualMriStudies: '', annualCtStudies: '', annualPetCtStudies: '', annualXrayStudies: '',
+  annualMammographyStudies: '', annualUltrasoundStudies: '', annualAngioStudies: '', annualFluoroStudies: '',
 };
 export const SCEN_DEFAULTS = {
   intervention: "Turn MRI/CT scanners off overnight", cloudProvider: "Local compute",
@@ -78,6 +85,10 @@ const SETTINGS_KEYS = {
   wl: 'waterLitresAnnual', pk: 'paperKgAnnual', hw: 'hazardousKgAnnual',
   sy: 'storageRetentionYears', sf: 'storageReformats', sti: 'storageIntensityCustom',
   sp: 'storageProvider', sci: 'storageCloudCi', s1: 'scope1AnnualKg',
+  dop:'imagingOperationModel', dfs:'facilitySetting', dlt:'locationType', dps:'practiceSizeBand', drc:'radiologistCount',
+  dsh:'serviceHours', dns:'imagingSites',
+  vmri:'annualMriStudies', vct:'annualCtStudies', vpet:'annualPetCtStudies', vxr:'annualXrayStudies',
+  vmam:'annualMammographyStudies', vus:'annualUltrasoundStudies', vang:'annualAngioStudies', vflu:'annualFluoroStudies',
 }; // storageCloud (boolean) + equipment + equipmentOverrides handled specially below. storageRegion stays in the full CEDARS file, not the compact URL.
 const SCEN_KEYS = {
   si: 'intervention', cp: 'cloudProvider', cr: 'cloudRegion', ss: 'scannerState', mk: 'modelKey',
@@ -97,7 +108,7 @@ const SCEN_KEYS = {
 const own = (obj,key) => Object.prototype.hasOwnProperty.call(obj,key);
 const finiteIn = (v,min=-Infinity,max=Infinity,integer=false) => { if(v==null||String(v).trim()==='')return false; const n=Number(v); return Number.isFinite(n)&&n>=min&&n<=max&&(!integer||Number.isInteger(n)); };
 const oneOf = values => v => values.includes(v);
-const SETTINGS_VALIDATORS={intendedUse:oneOf(['Estimate annual footprint','Compare modalities','Track monthly sustainability KPIs','Evaluate AI tool impact','Estimate savings from an intervention']),region:v=>own(CARBON_INTENSITY,v),metricType:oneOf(['Energy','Carbon','Water','AI net impact']),timePeriod:v=>own(TIME_MULT,v),customCi:v=>finiteIn(v,0),actualStudiesYear:v=>finiteIn(v,0),staffCount:v=>finiteIn(v,0),staffCommuteKm:v=>finiteIn(v,0),patientTravelKm:v=>finiteIn(v,0),waterLitresAnnual:v=>finiteIn(v,0),paperKgAnnual:v=>finiteIn(v,0),hazardousKgAnnual:v=>finiteIn(v,0),electricityPrice:v=>finiteIn(v,0),storageRetentionYears:v=>finiteIn(v,0,100),storageReformats:oneOf(['all','axial']),storageIntensityCustom:v=>finiteIn(v,0.000001),storageProvider:v=>own(CLOUD,v),storageCloudCi:v=>finiteIn(v,0),scope1AnnualKg:v=>finiteIn(v,0)};
+const SETTINGS_VALIDATORS={intendedUse:oneOf(['Estimate annual footprint','Compare modalities','Track monthly sustainability KPIs','Evaluate AI tool impact','Estimate savings from an intervention']),region:v=>own(CARBON_INTENSITY,v),metricType:oneOf(['Energy','Carbon','Water','AI net impact']),timePeriod:v=>own(TIME_MULT,v),customCi:v=>finiteIn(v,0),actualStudiesYear:v=>finiteIn(v,0),staffCount:v=>finiteIn(v,0),staffCommuteKm:v=>finiteIn(v,0),patientTravelKm:v=>finiteIn(v,0),waterLitresAnnual:v=>finiteIn(v,0),paperKgAnnual:v=>finiteIn(v,0),hazardousKgAnnual:v=>finiteIn(v,0),electricityPrice:v=>finiteIn(v,0),storageRetentionYears:v=>finiteIn(v,0,100),storageReformats:oneOf(['all','axial']),storageIntensityCustom:v=>finiteIn(v,0.000001),storageProvider:v=>own(CLOUD,v),storageCloudCi:v=>finiteIn(v,0),scope1AnnualKg:v=>finiteIn(v,0),imagingOperationModel:oneOf(['','operates','mixed','interpretation-only']),facilitySetting:oneOf(['','Academic hospital','Community hospital','Freestanding imaging center','Multispecialty clinic','Other / mixed']),locationType:oneOf(['','Metropolitan','Suburban','Rural','Other / mixed']),practiceSizeBand:oneOf(['','1–2','3–9','10–24','25–49','50–99','≥100']),radiologistCount:v=>v===''||finiteIn(v,0,9999,true),serviceHours:oneOf(['','24/7','Extended hours','Daytime / scheduled','Mixed / other']),imagingSites:v=>v===''||finiteIn(v,0,999,true),annualMriStudies:v=>v===''||finiteIn(v,0),annualCtStudies:v=>v===''||finiteIn(v,0),annualPetCtStudies:v=>v===''||finiteIn(v,0),annualXrayStudies:v=>v===''||finiteIn(v,0),annualMammographyStudies:v=>v===''||finiteIn(v,0),annualUltrasoundStudies:v=>v===''||finiteIn(v,0),annualAngioStudies:v=>v===''||finiteIn(v,0),annualFluoroStudies:v=>v===''||finiteIn(v,0)};
 const SCEN_VALIDATORS={cloudProvider:v=>own(CLOUD,v),scannerState:oneOf(['Active','Idle','Standby','Off']),paramsM:v=>finiteIn(v,0),resolution:v=>finiteIn(v,1),slices:v=>finiteIn(v,1),inferSec:v=>finiteIn(v,0),inferKwh:v=>finiteIn(v,0),whPer1kTokens:v=>finiteIn(v,0),callsPerTask:v=>finiteIn(v,1,Infinity,true),tokensPerCall:v=>finiteIn(v,0),accuracyPct:v=>finiteIn(v,0),scanTimeReductPct:v=>finiteIn(v,0,100),lowValueReductPct:v=>finiteIn(v,0,100),clinicalEffectBasis:oneOf(['none','observed-local','validated-local','published','scenario']),workflowEffectsNote:v=>String(v).length<=1000,trainNumGpus:v=>finiteIn(v,1,Infinity,true),trainHours:v=>finiteIn(v,0),testStudies:v=>finiteIn(v,0),deployMonths:v=>finiteIn(v,1),datasetSize:v=>finiteIn(v,0),epochs:v=>finiteIn(v,0),customPue:v=>finiteIn(v,1),trainCustomTdpW:v=>finiteIn(v,0),numRuns:v=>finiteIn(v,1,Infinity,true),inferStudiesMonth:v=>finiteIn(v,0),renewablePct:v=>finiteIn(v,0,100),trainKwhMeasured:v=>finiteIn(v,0),wueOnsite:v=>finiteIn(v,0),wueOffsite:v=>finiteIn(v,0),aiRoute:oneOf(['','compare','own']),ownMode:oneOf(['measured','measure','spec']),aiSystemType:oneOf(['','imaging','foundation']),compareVolumeSource:oneOf(['small','large','department','custom']),compareBasis:oneOf(['lifecycle','inference']),compareCandidateKeys:v=>v===''||/^v1:[a-z0-9_-]+(?:,[a-z0-9_-]+){1,5}$/.test(v),comparePreset:v=>v===''||/^[a-z0-9_-]+-v\d+$/.test(v),clinicalWorkflowStage:oneOf(['','order','schedule','acquire','process','store','cross']),performanceDirection:oneOf(['higher','lower']),trainingProvider:v=>v===''||own(CLOUD,v),trainingPue:v=>v===''||finiteIn(v,1),trainingRenewablePct:v=>v===''||finiteIn(v,0,100),inferenceProvider:v=>v===''||own(CLOUD,v),inferencePue:v=>v===''||finiteIn(v,1),inferenceRenewablePct:v=>v===''||finiteIn(v,0,100),trainingBoundary:oneOf(['upstream','allocated-local']),trainDisclosed:oneOf(['yes','no']),waterMode:oneOf(['screening','notassessed'])};
 const validScalar=(validators,field,value)=>!validators[field]||validators[field](value);
 

@@ -1,3 +1,4 @@
+// CEDARS_CHUNK_9R32D_SERVICE_CONTEXT_RESPONSIVE_HARDENING
 import {describe, expect, it} from 'vitest';
 import {getDepartmentScoreReadiness, getAiScoreReadiness} from './scoreReadiness.js';
 
@@ -23,6 +24,29 @@ describe('score readiness', () => {
     const result = getDepartmentScoreReadiness({annualKwh:120000, annualStudies:45000, gridReady:false});
     expect(result.ready).toBe(false);
     expect(result.issues.map(x=>x.key)).toEqual(['context']);
+  });
+
+  it('lets interpretation-only services report an informatics footprint without a scanner denominator', () => {
+    const result = getDepartmentScoreReadiness({annualKwh:18000, annualStudies:0, gridReady:true, interpretationOnly:true});
+    expect(result.ready).toBe(true);
+  });
+
+  it('still requires an energy baseline for interpretation-only services', () => {
+    const result = getDepartmentScoreReadiness({annualKwh:0, annualStudies:0, gridReady:true, interpretationOnly:true});
+    expect(result.ready).toBe(false);
+    expect(result.issues[0].key).toBe('equipment');
+  });
+
+  it('blocks a Department rating when modality totals exceed the entered physical total', () => {
+    const result = getDepartmentScoreReadiness({annualKwh:30000,annualStudies:10000,gridReady:true,volumeMismatch:3000});
+    expect(result.ready).toBe(false);
+    expect(result.issues.some(x=>x.key==='volume')).toBe(true);
+  });
+
+  it('blocks a Department rating when studies are assigned to a modality with no represented acquisition equipment', () => {
+    const result = getDepartmentScoreReadiness({annualKwh:30000,annualStudies:10000,gridReady:true,volumeWithoutEquipment:['mri']});
+    expect(result.ready).toBe(false);
+    expect(result.issues.some(x=>x.key==='volume')).toBe(true);
   });
 
   it('distinguishes an unchosen AI pathway from missing AI energy data', () => {
