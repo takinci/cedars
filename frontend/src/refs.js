@@ -175,6 +175,12 @@ export const REFS = {
     venue: 'Computer', year: 2022, cite: '2022;55(7):18–28',
     doi: '10.1109/MC.2022.3148714', verified: '2026-10-07',
   },
+  'masanet-joule-2024-ai-data': {
+    authors: 'Masanet E, Lei N, Koomey J',
+    title: "To better understand AI's growing energy use, analysts need a data revolution",
+    venue: 'Joule', year: 2024, cite: '2024;8(9):2427–2436',
+    doi: '10.1016/j.joule.2024.07.018', verified: '2026-11-04',
+  },
   'hanafy-war-efficiencies-2023': {
     authors: 'Hanafy WA, Bostandoost R, Bashir N, Irwin D, Hajiesmaili M, Shenoy P',
     title: 'The War of the Efficiencies: Understanding the Tension between Carbon and Energy Optimization',
