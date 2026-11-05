@@ -655,6 +655,10 @@ footer>div:last-child a{font-size:11.5px!important}
   .homeStartChoice+ .homeStartChoice{border-left:0!important;border-top:1px solid var(--cedars-border)!important}
   .sectionStageDeck{margin-top:9px}
   .walkthroughDock{left:10px;right:10px;bottom:10px;width:auto}
+  /* The dock above is full-width and fixed to the viewport bottom at this width, so it never
+     scrolls away — without this, it permanently covers the footer's links once scrolled into
+     view. Reserve clearance instead of letting the two fight for the same space. */
+  .siteFooter{padding-bottom:90px!important}
   .firstVisitWalkthrough{padding:20px 16px}.firstVisitWalkthrough h2{font-size:24px}
 }
 
