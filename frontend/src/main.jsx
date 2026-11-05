@@ -4030,7 +4030,7 @@ const startGuidedDemo = kind => {
                     <div className="departmentPracticeServiceHead">
                       <span>PRACTICE &amp; SERVICE CONTEXT</span>
                       <h3>Tell us about the radiology practice.</h3>
-                      <p>These details describe the service CEDARS is comparing and are carried with the service reference shown in the result. They stay in your browser unless you choose to share or contribute the assessment. Enter what you know; a particular practice size or setting does not automatically earn a better score.</p>
+                      <p>These details describe the service CEDARS is comparing and are carried with the service reference shown in the result. They stay in your browser unless you choose to share or contribute the assessment. Enter what you know; a particular practice size or setting does not automatically earn a better score. A detailed modality breakdown is derived automatically from the Advanced equipment parameters below.</p>
                     </div>
                     <fieldset className="departmentPracticeFieldset" disabled={!settings.region}>
                     <div className="departmentPracticeServiceGrid">
@@ -4042,19 +4042,8 @@ const startGuidedDemo = kind => {
                       <label className="departmentContextEditable">Practice setting<select value={settings.facilitySetting} onChange={e=>set('facilitySetting',e.target.value)}><option value="">Choose…</option>{['Academic hospital','Community hospital','Freestanding imaging center','Multispecialty clinic','Other / mixed'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                       <label className="departmentContextEditable">Location<select value={settings.locationType} onChange={e=>set('locationType',e.target.value)}><option value="">Choose…</option>{['Metropolitan','Suburban','Rural','Other / mixed'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
                       <label className="departmentContextEditable">Typical service hours<select value={settings.serviceHours} onChange={e=>set('serviceHours',e.target.value)}><option value="">Choose…</option>{['24/7','Extended hours','Daytime / scheduled','Mixed / other'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
-                      {settings.imagingOperationModel!=='interpretation-only'&&<label className="departmentContextEditable">Studies/year<input type="number" min="0" step="1" value={settings.actualStudiesYear??''} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder="e.g. 85000"/><span className="fieldHelp">Count studies physically performed on the equipment represented here.</span></label>}
+                      {settings.imagingOperationModel!=='interpretation-only'&&<label className="departmentContextEditable">Studies/year<input type="number" min="0" step="1" value={settings.actualStudiesYear??''} onChange={e=>set('actualStudiesYear',e.target.value)} placeholder={efficiency.capacityYr>0?`fleet est: ${efficiency.capacityYr.toLocaleString()}/yr`:'e.g. 85000'}/><span className="fieldHelp">{efficiency.capacityYr>0?`Derived from your equipment: ~${efficiency.capacityYr.toLocaleString()}/yr. Enter a number only if your real annual volume differs.`:'Count studies physically performed on the equipment represented here.'}</span></label>}
                     </div>
-                    {settings.imagingOperationModel!=='interpretation-only'&&<details className="departmentReferenceVolumeDetails departmentReferenceVolumeOptional" open={guidedDemo?.kind==='leader'&&guidedDemo.step===1}>
-                      <summary>Optional: break annual workload down by modality</summary>
-                      <div className="departmentReferenceVolumeBody">
-                        <div className="departmentReferenceVolumeHead"><span>Studies/year</span><p>Modality totals make the service comparison more specific. Do not include studies acquired elsewhere and only interpreted by this practice.</p></div>
-                        <div className="departmentReferenceVolumeGrid">
-                          {DEPARTMENT_VOLUME_GROUPS.map(group=><label className="departmentContextEditable" key={group.key}>{group.label}<input type="number" min="0" value={settings[group.settingField]??''} onChange={e=>set(group.settingField,e.target.value)} placeholder="studies/year"/></label>)}
-                        </div>
-                      </div>
-                    </details>}
-                    {deptLabelData.totalMismatch>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload totals conflict.</strong> Modality entries exceed the entered total physical imaging volume by {deptLabelData.totalMismatch.toLocaleString()} studies/year. Reconcile these values before using the Department EcoLabel Score.</span></div>}
-                    {deptLabelData.volumeWithoutEquipment?.length>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload does not match the represented equipment.</strong> {deptLabelData.volumeWithoutEquipment.map(key=>DEPARTMENT_VOLUME_GROUPS.find(group=>group.key===key)?.label||key).join(', ')} volume is entered without corresponding acquisition equipment. Add the equipment or exclude externally interpreted studies.</span></div>}
                     </fieldset>
                     <p className="departmentPracticeServiceNote">{settings.imagingOperationModel==='interpretation-only'?'Interpretation-only / teleradiology services can still report workstation, PACS, cloud, and storage impacts, but a scanner-operation EcoLabel Score is not applicable.':'The current energy reference is calculated from the represented equipment and physical workload. Practice size, setting, location, sites, and service hours are carried with that reference so the result can be interpreted in the right service context; they are not bonus points.'}</p>
                   </div>
@@ -4135,7 +4124,7 @@ const startGuidedDemo = kind => {
                     <p className="note" style={{fontSize:11,margin:0}}>Add equipment above first — overrides apply per device type you've added.</p>
                   ) : (
                     <>
-                    <p className="note" style={{fontSize:11,marginTop:0,marginBottom:8}}>Blank = <strong>Literature default</strong> (shown as placeholder). If you override a value, identify its source as <strong>Measured locally</strong>, <strong>Estimated locally</strong>, or <strong>Assumed / other</strong>. Provenance is stored with local/portable saves and research contributions without changing the calculation itself.</p>
+                    <p className="note" style={{fontSize:11,marginTop:0,marginBottom:8}}>Blank = <strong>Literature default</strong> (shown as placeholder). If you override a value, identify its source as <strong>Measured locally</strong>, <strong>Estimated locally</strong>, or <strong>Assumed / other</strong>. Provenance is stored with local/portable saves and research contributions without changing the calculation itself. Scans/mo also sets the modality workload CEDARS uses for the service reference unless you override it directly below.</p>
                     <div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
                         <thead>
@@ -4189,6 +4178,26 @@ const startGuidedDemo = kind => {
                 </div>
               )}
             </div>
+
+            {settings.imagingOperationModel!=='interpretation-only'&&<details className="departmentReferenceVolumeDetails departmentReferenceVolumeOptional" open={(guidedDemo?.kind==='leader'&&guidedDemo.step===1)||Object.values(efficiency.capacityByGroup||{}).some(v=>v>0)}>
+              <summary>Modality workload breakdown — derived from your equipment, optional to override</summary>
+              <div className="departmentReferenceVolumeBody">
+                <div className="departmentReferenceVolumeHead"><span>Studies/year</span><p>These are derived from the Scans/mo you entered in Advanced equipment parameters. Override only where your real annual modality volume differs — don't duplicate what the equipment panel already implies. Do not include studies acquired elsewhere and only interpreted by this practice.</p></div>
+                <div className="departmentReferenceVolumeGrid">
+                  {DEPARTMENT_VOLUME_GROUPS.map(group=>{
+                    const derived=efficiency.capacityByGroup?.[group.key];
+                    return (
+                      <label className="departmentContextEditable" key={group.key}>{group.label}
+                        <input type="number" min="0" value={settings[group.settingField]??''} onChange={e=>set(group.settingField,e.target.value)} placeholder={derived>0?`derived: ${Math.round(derived).toLocaleString()}`:'studies/year'}/>
+                        {derived>0&&<span className="fieldHelp">From equipment · edit only if different</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </details>}
+            {deptLabelData.totalMismatch>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload totals conflict.</strong> Modality entries exceed the entered total physical imaging volume by {deptLabelData.totalMismatch.toLocaleString()} studies/year. Reconcile these values before using the Department EcoLabel Score.</span></div>}
+            {deptLabelData.volumeWithoutEquipment?.length>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload does not match the represented equipment.</strong> {deptLabelData.volumeWithoutEquipment.map(key=>DEPARTMENT_VOLUME_GROUPS.find(group=>group.key===key)?.label||key).join(', ')} volume is entered without corresponding acquisition equipment. Add the equipment or exclude externally interpreted studies.</span></div>}
 
             {deptProfileStage==='context'&&<div className={`profileStepProgression departmentContextProgression ${departmentScoreReadiness.ready?'ready':'blocked'}`}><div><span>{departmentScoreReadiness.ready?'NEXT':'REQUIRED FIRST'}</span><strong>{departmentScoreReadiness.ready?'Continue to Workflow':'Complete the Department baseline'}</strong><small>{departmentScoreReadiness.ready?'Document how imaging care is delivered today before adding optional Clinical AI.':(departmentScoreReadiness.issues[0]?.detail||'Complete the required Context inputs before moving forward.')}</small></div><button type="button" disabled={!departmentScoreReadiness.ready} onClick={()=>{setDeptProfileStage('equipment');window.setTimeout(()=>document.getElementById('department-workflow-profile')?.scrollIntoView({behavior:'smooth',block:'start'}),50);}}>{departmentScoreReadiness.ready?'Next: Workflow →':'Complete Context to continue'}</button></div>}
 
