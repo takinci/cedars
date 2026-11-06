@@ -4150,7 +4150,6 @@ const startGuidedDemo = kind => {
               ))}
             </div>
 
-            <div style={{background:'red',color:'white',fontSize:20,fontWeight:900,padding:10}}>DEBUG MARKER A — before Advanced equipment parameters</div>
             {/* Collapsible advanced equipment parameters — override literature defaults with
                 measured data (scanner logs, utility bills, a published benchmark). Only shown
                 per device type the user has actually added; blank field = literature default. */}
@@ -4223,7 +4222,6 @@ const startGuidedDemo = kind => {
               )}
             </div>
 
-            <div style={{background:'orange',color:'black',fontSize:20,fontWeight:900,padding:10}}>DEBUG MARKER B — after Advanced equipment parameters, before modality breakdown (imagingOperationModel={JSON.stringify(settings.imagingOperationModel)})</div>
             {settings.imagingOperationModel!=='interpretation-only'&&<details className="departmentReferenceVolumeDetails departmentReferenceVolumeOptional" open>
               <summary><BarChart3 size={15}/> Modality workload breakdown — derived from your equipment, optional to override</summary>
               <div className="departmentReferenceVolumeBody">
@@ -4243,8 +4241,6 @@ const startGuidedDemo = kind => {
             </details>}
             {deptLabelData.totalMismatch>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload totals conflict.</strong> Modality entries exceed the entered total physical imaging volume by {deptLabelData.totalMismatch.toLocaleString()} studies/year. Reconcile these values before using the Department EcoLabel Score.</span></div>}
             {deptLabelData.volumeWithoutEquipment?.length>0&&<div className="departmentReferenceWarning" role="alert"><AlertTriangle size={15}/><span><strong>Workload does not match the represented equipment.</strong> {deptLabelData.volumeWithoutEquipment.map(key=>DEPARTMENT_VOLUME_GROUPS.find(group=>group.key===key)?.label||key).join(', ')} volume is entered without corresponding acquisition equipment. Add the equipment or exclude externally interpreted studies.</span></div>}
-            <div style={{background:'lime',color:'black',fontSize:20,fontWeight:900,padding:10}}>DEBUG MARKER C — after modality breakdown block, before "Next: Workflow" progression</div>
-
             {deptProfileStage==='context'&&<div className={`profileStepProgression departmentContextProgression ${departmentScoreReadiness.ready?'ready':'blocked'}`}><div><span>{departmentScoreReadiness.ready?'NEXT':'REQUIRED FIRST'}</span><strong>{departmentScoreReadiness.ready?'Continue to Workflow':'Complete the Department baseline'}</strong><small>{departmentScoreReadiness.ready?'Document how imaging care is delivered today before adding optional Clinical AI.':(departmentScoreReadiness.issues[0]?.detail||'Complete the required Context inputs before moving forward.')}</small></div><button type="button" disabled={!departmentScoreReadiness.ready} onClick={()=>{setDeptProfileStage('equipment');window.setTimeout(()=>document.getElementById('department-workflow-profile')?.scrollIntoView({behavior:'smooth',block:'start'}),50);}}>{departmentScoreReadiness.ready?'Next: Workflow →':'Complete Context to continue'}</button></div>}
 
 

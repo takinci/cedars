@@ -716,10 +716,16 @@ footer>div:last-child a{font-size:11.5px!important}
 .departmentPage>.departmentSetup>.departmentSetupSummary{display:none!important}
 .departmentPage[data-dept-stage="context"] .departmentSetupBody>*{display:none!important}
 .departmentPage[data-dept-stage="context"] .departmentSetupBody>#department-context-input,
-.departmentPage[data-dept-stage="context"] .departmentSetupBody>#department-equipment{display:block!important}
+.departmentPage[data-dept-stage="context"] .departmentSetupBody>#department-equipment,
+.departmentPage[data-dept-stage="context"] .departmentSetupBody>.departmentAdvancedEquipment,
+.departmentPage[data-dept-stage="context"] .departmentSetupBody>.departmentReferenceVolumeDetails,
+.departmentPage[data-dept-stage="context"] .departmentSetupBody>.departmentReferenceWarning{display:block!important}
 .departmentPage[data-dept-stage="context"] .departmentSetupBody>.departmentContextProgression{display:flex!important}
 .departmentPage[data-dept-stage="equipment"] .departmentSetupBody>*{display:none!important}
-.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>#department-equipment{display:block!important}
+.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>#department-equipment,
+.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>.departmentAdvancedEquipment,
+.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>.departmentReferenceVolumeDetails,
+.departmentPage[data-dept-stage="equipment"] .departmentSetupBody>.departmentReferenceWarning{display:block!important}
 .departmentPage[data-dept-stage="clinical-ai"]>.departmentSetup,
 .departmentPage[data-dept-stage="review"]>.departmentSetup{display:none!important}
 .departmentPage:not([data-dept-stage="clinical-ai"])>#department-clinical-ai-input{display:none!important}
