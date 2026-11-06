@@ -4225,7 +4225,7 @@ const startGuidedDemo = kind => {
               )}
             </div>
 
-            {settings.imagingOperationModel!=='interpretation-only'&&<details className="departmentReferenceVolumeDetails departmentReferenceVolumeOptional" open>
+            {settings.imagingOperationModel!=='interpretation-only'&&<details className="departmentReferenceVolumeDetails departmentReferenceVolumeOptional">
               <summary><BarChart3 size={15}/> Modality workload breakdown — derived from your equipment, optional to override</summary>
               <div className="departmentReferenceVolumeBody">
                 <div className="departmentReferenceVolumeHead"><span>Studies/year</span><p>These are derived from the Scans/mo you entered in Advanced equipment parameters. Override only where your real annual modality volume differs — don't duplicate what the equipment panel already implies. Do not include studies acquired elsewhere and only interpreted by this practice.</p></div>
