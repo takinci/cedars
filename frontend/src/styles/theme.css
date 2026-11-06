@@ -2394,8 +2394,12 @@ html.dark #root .departmentClinicalAiUseCard{
      positioning put this above the sticky header's own z-index, so it rendered on top of the
      button that opens it. Once opened via a tap (which leaves :focus-within set, since there's no
      mouse-leave to clear it on touch), it then blocked every further tap on that button. Only
-     widen/constrain it here so it still fits a narrow viewport without overflowing. */
-  #root .themeToggleTooltip{right:0;width:min(280px,calc(100vw - 20px));max-width:none;box-sizing:border-box;max-height:calc(100vh - 90px);overflow:auto}
+     widen/constrain it here so it still fits a narrow viewport without overflowing.
+     The base rule anchors with right:0 (grows leftward), which only fits when the toggle sits
+     near the right edge, as it does on desktop. On mobile the header reflows and the toggle moves
+     to the left edge, so right:0 pushed almost the entire box off-screen to the left. Anchor from
+     left:0 (grows rightward) instead — safe here since there's open space to the toggle's right. */
+  #root .themeToggleTooltip{left:0;right:auto;width:min(280px,calc(100vw - 20px));max-width:none;box-sizing:border-box;max-height:calc(100vh - 90px);overflow:auto}
   #root .walkthroughDockCoach.themeCoach{top:calc(env(safe-area-inset-top,0px) + 76px)!important;left:10px!important;right:10px!important;width:auto!important;max-width:none!important}
   #root .walkthroughDockCoach.themeCoach i{right:28px!important}
   #root .guidedDemoCloseStep{min-height:34px!important}
