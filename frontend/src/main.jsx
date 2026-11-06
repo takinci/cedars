@@ -1913,8 +1913,9 @@ function WorkflowRail({page, setupActive, activeProduct, onInput, onDepartment, 
 // ── App ───────────────────────────────────────────────────────────────────────
 /* CEDARS_CHUNK_9G_PROFILE_RESULT_CONSOLIDATION */
 /* CEDARS_CHUNK_9H1_RESULT_IMPROVE_SIMPLIFICATION */
-// Pages with no assessment-product chrome (header "Clear"/Score pill, WorkflowRail, first-visit
-// walkthrough prompt) — standalone informational pages plus the Home/landing page itself.
+// Pages with no assessment-product chrome (header "Clear"/Score pill, WorkflowRail) —
+// standalone informational pages plus the Home/landing page itself. The first-visit walkthrough
+// prompt uses this same list with one exception (landing), since that's where it needs to show.
 const CHROME_HIDDEN_PAGES = ['landing','why','evidence','ecolabel-method','about'];
 // Every valid top-level `page` value, shared by the initial-load reader and the browser
 // Back/Forward (`popstate`) handler so both resolve an untrusted/stale `?page=` value identically.
@@ -3879,7 +3880,9 @@ const startGuidedDemo = kind => {
       )}
 
       {!guidedDemo && <>
-        {!CHROME_HIDDEN_PAGES.includes(page) && <FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/>}
+        {/* The prompt belongs on the Home/landing page itself — that's where every first-time
+            visitor actually lands — so it's the one exception to CHROME_HIDDEN_PAGES below. */}
+        {(page==='landing'||!CHROME_HIDDEN_PAGES.includes(page)) && <FirstVisitWalkthroughPrompt onStart={startGuidedDemo} onSkip={()=>setWalkthroughHint(true)}/>}
         <WalkthroughDock onStart={startGuidedDemo} showHint={walkthroughHint} onDismissHint={()=>setWalkthroughHint(false)} openSignal={walkthroughDockOpenSignal}/>
       </>}
 
