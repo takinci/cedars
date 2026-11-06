@@ -640,11 +640,12 @@ footer>div:last-child a{font-size:11.5px!important}
 .walkthroughDockIcon{flex:0 0 auto;color:#F0C66A}
 .walkthroughDockToggle>span,.walkthroughDockToggle>strong,.walkthroughDockToggle>b{display:none}
 .walkthroughDock:hover .walkthroughDockToggle,.walkthroughDock.open .walkthroughDockToggle,.walkthroughDockToggle:focus-visible{
-  width:230px;display:grid;grid-template-columns:18px minmax(0,1fr) 18px;align-items:center;gap:8px;border-radius:9px!important;padding:9px 11px!important;
+  width:230px;height:auto;min-height:46px;overflow:visible;display:grid;grid-template-columns:18px minmax(0,1fr) 18px;grid-template-rows:auto auto;align-items:center;gap:1px 8px;border-radius:9px!important;padding:9px 11px!important;
 }
-.walkthroughDock:hover .walkthroughDockToggle>span,.walkthroughDock.open .walkthroughDockToggle>span,.walkthroughDockToggle:focus-visible>span{display:block;grid-column:2;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#F0C66A}
-.walkthroughDock:hover .walkthroughDockToggle>strong,.walkthroughDock.open .walkthroughDockToggle>strong,.walkthroughDockToggle:focus-visible>strong{display:block;grid-column:2;font-size:12.5px;color:#fff}
-.walkthroughDock:hover .walkthroughDockToggle>b,.walkthroughDock.open .walkthroughDockToggle>b,.walkthroughDockToggle:focus-visible>b{display:block;grid-column:3;color:#F0C66A;font-size:16px}
+.walkthroughDock:hover .walkthroughDockToggle>span,.walkthroughDock.open .walkthroughDockToggle>span,.walkthroughDockToggle:focus-visible>span{display:block;grid-row:1;grid-column:2;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#F0C66A}
+.walkthroughDock:hover .walkthroughDockToggle>strong,.walkthroughDock.open .walkthroughDockToggle>strong,.walkthroughDockToggle:focus-visible>strong{display:block;grid-row:2;grid-column:2;font-size:12.5px;color:#fff}
+.walkthroughDock:hover .walkthroughDockToggle>b,.walkthroughDock.open .walkthroughDockToggle>b,.walkthroughDockToggle:focus-visible>b{display:block;grid-row:1/3;grid-column:3;align-self:center;color:#F0C66A;font-size:16px}
+.walkthroughDock:hover .walkthroughDockToggle>.walkthroughDockIcon,.walkthroughDock.open .walkthroughDockToggle>.walkthroughDockIcon,.walkthroughDockToggle:focus-visible>.walkthroughDockIcon{grid-row:1/3;align-self:center}
 .walkthroughDockPanel{width:230px;margin-top:6px;padding:9px;background:#173F34;border:2px solid #9FE0BD;border-radius:9px;box-shadow:0 16px 34px rgba(18,45,37,.22)}
 .walkthroughDockPanel>p{margin:0 0 7px;color:#D7E9DF;font-size:10px}
 .walkthroughJourneyList.compact{grid-template-columns:1fr;gap:5px}
