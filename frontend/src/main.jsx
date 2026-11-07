@@ -1402,7 +1402,7 @@ function generateAiMethodsText(d) {
     ? ` Inference was estimated at ${d.perInferCo2g} gCO₂e per study (${d.inferenceProvider}, ${d.inferenceRegion || 'provider average'}, ${d.inferenceEffectiveCi} kgCO₂e/kWh; PUE ${d.pue}).`
     : '';
   const amortised = d.graded
-    ? ` Across ${d.lifetimeInferences.toLocaleString()} studies over ${d.deployMonths} months, the amortised training-plus-inference footprint was ${d.effectivePerStudyG} gCO₂e per study.`
+    ? ` Across ${d.lifetimeInferences.toLocaleString()} studies over ${d.deployMonths} months, the amortised training-plus-inference footprint was ${d.effectivePerStudyG} gCO₂e per study.${d.workloadAssumed ? ` Deployment scale was not entered; CEDARS used a literature-default workload (${d.workloadLiteratureDefault.toLocaleString()} studies/month, Doo et al. JACR 2024) rather than the model's actual deployment.` : ''}`
     : '';
   const water = d.waterProv==='not-assessed'
     ? ' Water use was not assessed and was reported separately from the carbon-and-energy score.'
@@ -1411,9 +1411,7 @@ function generateAiMethodsText(d) {
     ? ` The resulting CEDARS modeled operational-intensity score was ${d.score}/100 (${d.leaves}/5 leaves; ${d.ratingLabel}), based on amortised training plus inference.`
     : d.scoreStatus === 'training-unavailable'
       ? ` An overall CEDARS Score was not assigned because the training or pretraining footprint was unavailable; the inference result is reported separately.`
-      : d.scoreStatus === 'deployment-workload-missing'
-        ? ` An overall CEDARS Score was not assigned because deployment workload was not available to combine the one-time training footprint with recurring inference.`
-        : '';
+      : '';
   return `Environmental impact. ${training}${inference}${amortised}${water}${score} Sustainability metrics were assessed with CEDARS (${d.date}) based on the documented model, compute, workload, and deployment assumptions; measured and estimated values were distinguished where applicable.`;
 }
 
@@ -1763,11 +1761,11 @@ function ecoReportRows(d) {
     ...(d.tokenMode && d.tokensPerStudy > 0 ? [['Inference tokens / study', `${d.tokensPerStudy.toLocaleString()} tokens · ${d.inferKwhPerStudy} kWh`]] : []),
     ...(d.perInferCo2g > 0 ? [['Inference CO₂e / study (marginal)', `${d.perInferCo2g} gCO₂e`]] : []),
     ...(d.hasInference ? [
-      ['Deployment',                  `${d.inferStudies.toLocaleString()} studies/mo · ${d.deployMonths} mo (${d.lifetimeInferences.toLocaleString()} studies)`],
+      ['Deployment',                  `${d.inferStudies.toLocaleString()} studies/mo${d.workloadAssumed ? ' (literature default — not entered)' : ''} · ${d.deployMonths} mo (${d.lifetimeInferences.toLocaleString()} studies)`],
       ...(d.graded ? [['Effective CO₂e / study', `${d.effectivePerStudyG} gCO₂e (training amortised + inference)`]] : []),
       ...(d.breakEvenStudies != null ? [['Break-even (training = inference)', `~${d.breakEvenStudies.toLocaleString()} studies`]] : []),
     ] : []),
-    ['**CEDARS Footprint Score**',         d.graded ? `**${d.score} / 100** (modeled operational intensity · training + inference)` : d.scoreStatus === 'training-unavailable' ? '**Not assigned** — training/pretraining footprint unavailable' : d.scoreStatus === 'deployment-workload-missing' ? '**Not assigned** — add deployment workload' : '—'],
+    ['**CEDARS Footprint Score**',         d.graded ? `**${d.score} / 100** (modeled operational intensity · training + inference)${d.workloadAssumed ? ' · deployment workload assumed' : ''}` : d.scoreStatus === 'training-unavailable' ? '**Not assigned** — training/pretraining footprint unavailable' : '—'],
     ['**CEDARS Rating**',        d.graded ? `**${d.leaves} / 5 leaves — ${d.ratingLabel}**` : 'Not assigned'],
     ['Estimated with',           `CEDARS · ${d.date}`],
   ];
@@ -1781,7 +1779,7 @@ function generateEcoMarkdown(d) {
     ...rows.map(([k, v]) => `| ${k} | ${v} |`),
     '',
     ...(d.scoreStatus === 'training-unavailable' ? ['> Overall CEDARS Footprint Score not assigned: the training/pretraining footprint is unavailable. The inference result is reported separately; unknown is not treated as zero.', ''] : []),
-    ...(d.scoreStatus === 'deployment-workload-missing' ? ['> Overall CEDARS Footprint Score not assigned: add deployment workload to combine one-time training with recurring inference.', ''] : []),
+    ...(d.workloadAssumed ? [`> Deployment workload was not entered: this Score amortises training across a literature-default scale (${d.workloadLiteratureDefault.toLocaleString()} studies/month, Doo et al. JACR 2024), not the model's actual deployment. Enter a real volume to refine it.`, ''] : []),
     '> CEDARS AI Research EcoLabel generated with [CEDARS](https://cedarsleaf.com).',
     '> Reporting framework: Doo FX et al. *J Am Coll Radiol* 2024 · DOI 10.1016/j.jacr.2023.11.019; Doo FX et al. *Radiology* 2024 · DOI 10.1148/radiol.232030. Full sources: cedarsleaf.com → sources.md.',
   ].join('\n');
@@ -1793,11 +1791,9 @@ function downloadEcoPNG(d) {
     ? 'Training + inference'
     : d.scoreStatus === 'training-unavailable'
       ? 'Inference assessed; training not available'
-      : d.scoreStatus === 'deployment-workload-missing'
-        ? 'Training assessed; expected deployment not complete'
-        : 'Partial AI lifecycle data';
+      : 'Partial AI lifecycle data';
   const coverageDetail = d.graded
-    ? 'One-time training is combined with recurring inference across the expected deployment.'
+    ? `One-time training is combined with recurring inference across the expected deployment.${d.workloadAssumed ? ` Deployment scale assumed at the literature default (${d.workloadLiteratureDefault.toLocaleString()} studies/mo) — not entered.` : ''}`
     : d.scoreStatus === 'training-unavailable'
       ? 'Inference is reported separately; an overall Score is not assigned while required training data are unavailable.'
       : 'Complete the missing lifecycle inputs before interpreting an overall Score.';
@@ -5923,13 +5919,11 @@ const startGuidedDemo = kind => {
                             ? 'Training + inference'
                             : ecoLabelData.scoreStatus==='training-unavailable'
                               ? 'Inference assessed; training not available'
-                              : ecoLabelData.scoreStatus==='deployment-workload-missing'
-                                ? 'Training assessed; expected deployment not complete'
-                                : 'Partial AI lifecycle data'
+                              : 'Partial AI lifecycle data'
                         }
                         coverageDetail={
                           ecoLabelData.graded
-                            ? `Footprint Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
+                            ? `Footprint Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.${ecoLabelData.workloadAssumed ? ` Deployment scale assumed at the literature default (${ecoLabelData.workloadLiteratureDefault.toLocaleString()} studies/mo) — not entered.` : ''}`
                             : ecoLabelData.scoreStatus==='training-unavailable'
                               ? 'Inference is reported separately; an overall Score is not assigned while required training data are unavailable.'
                               : 'Complete the missing lifecycle inputs before interpreting an overall Score.'
@@ -5943,11 +5937,11 @@ const startGuidedDemo = kind => {
                           {
                             label:'INFERENCE · PER STUDY',
                             value:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study`:'—',
-                            detail:ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month · ${ecoLabelData.inferMonthlyKwh} kWh/month`:'Add representative deployment workload.',
+                            detail:ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month${ecoLabelData.workloadAssumed?' (assumed)':''} · ${ecoLabelData.inferMonthlyKwh} kWh/month`:'Add representative deployment workload.',
                           },
                         ]}
                         rows={[
-                          ['Workload',ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month · ${ecoLabelData.deployMonths} months`:'Not entered'],
+                          ['Workload',ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month${ecoLabelData.workloadAssumed?' (assumed)':''} · ${ecoLabelData.deployMonths} months`:'Not entered'],
                           ['Location',ecoLabelData.trainingAvailable?`Training: ${ecoLabelData.trainingProvider || '—'} · ${ecoLabelData.trainingRegion || 'provider average'} · Inference: ${ecoLabelData.inferenceProvider || '—'} · ${ecoLabelData.inferenceRegion || 'provider average'}`:`Inference: ${ecoLabelData.inferenceProvider || '—'} · ${ecoLabelData.inferenceRegion || 'provider average'} · Training unavailable`],
                           ['Technical context',[ecoLabelData.architecture,ecoLabelData.paramsMillion].filter(Boolean).join(' · ') || '—'],
                           ['Resource disclosure',ecoLabelData.waterProv==='not-assessed'?'Water not assessed · not scored':`${ecoLabelData.waterLitres.toLocaleString()} L water${ecoLabelData.waterProv==='screening'?' · screening estimate':''}`],
@@ -6005,7 +5999,7 @@ const startGuidedDemo = kind => {
                     </section>
 
                                   {ecoLabelData.scoreStatus==='training-unavailable'&&<div className="aiInferenceScoreNotice"><div><span>PARTIAL LIFECYCLE COVERAGE</span><strong>{ecoLabelData.trainingStatusLabel}</strong><p>CEDARS reports the inference result but does not assign an overall Score or leaf Rating. An unknown training footprint is not treated as zero.</p></div></div>}
-                                  {ecoLabelData.scoreStatus==='deployment-workload-missing'&&<div className="aiInferenceScoreNotice"><div><span>DEPLOYMENT WORKLOAD NEEDED</span><strong>Training and inference are available, but they cannot yet be combined per study.</strong><p>Add expected deployment workload to amortise the one-time training footprint across use.</p></div><button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Add deployment workload →</button></div>}
+                                  {ecoLabelData.workloadAssumed&&<div className="aiInferenceScoreNotice"><div><span>ASSUMED DEPLOYMENT WORKLOAD</span><strong>Score is based on a literature-default scale, not this model's actual deployment.</strong><p>Deployment volume was not entered, so CEDARS amortised training across {ecoLabelData.workloadLiteratureDefault.toLocaleString()} studies/month ({'Doo et al. JACR 2024'}) instead of blocking the Score. Enter your real (or best-guess) deployment volume to replace this assumption.</p></div><button type="button" onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(true);window.setTimeout(()=>document.querySelector('.aiWorkloadExplorer')?.scrollIntoView({behavior:'smooth',block:'center'}),80);}}>Refine deployment workload →</button></div>}
                                   <div className="aiScoreBasisBar"><div><span>INTERPRET THE RESULT</span><strong>Intensity and total impact answer different questions</strong><small>{ecoLabelData.graded?'Training is spread across expected use before recurring inference is added per study. Use the workload explorer to see how scale changes intensity and total emissions.':ecoLabelData.scoreStatus==='training-unavailable'?'Inference is reportable on its own; unavailable training remains explicit rather than being treated as zero.':'Complete the missing lifecycle inputs before interpreting an overall Score.'}</small></div><button type="button" className={showAiWorkloadExplore?'inlineTextButton':'download'} onClick={()=>{setAiWorkloadPreview(String(ecoLabelData.inferStudies||scen.inferStudiesMonth||''));setShowAiWorkloadExplore(v=>!v);}}>{showAiWorkloadExplore?'Hide explorer ↑':ecoLabelData.hasInference?'Explore workload & total impact →':'Add / explore deployment workload →'}</button></div>
                                   {showAiWorkloadExplore&&<div className="aiWorkloadExplorer">
                                     <div className="aiWorkloadExplorerHead">
@@ -6017,9 +6011,9 @@ const startGuidedDemo = kind => {
                                     </div>
                                     <div className="aiWorkloadPreviewControl">
                                       <label>
-                                        <span>Preview workload</span>
-                                        <div><input type="number" min="0" value={aiWorkloadPreview} placeholder="e.g. 5,100" onChange={e=>setAiWorkloadPreview(e.target.value)}/><strong>studies / month</strong></div>
-                                        <small>{ecoLabelData.inferStudies>0?`Current saved workload: ${ecoLabelData.inferStudies.toLocaleString()} studies/month`:'Current saved workload: not entered'}</small>
+                                        <span>{ecoLabelData.workloadProv==='entered'?'Preview workload':'Deployment workload'}</span>
+                                        <div><input type="number" min="0" value={aiWorkloadPreview} placeholder="e.g. 5,100" onChange={e=>{const v=e.target.value;setAiWorkloadPreview(v);if(ecoLabelData.workloadProv!=='entered')setS('inferStudiesMonth',v);}}/><strong>studies / month</strong></div>
+                                        <small>{ecoLabelData.workloadProv==='entered'?`Current saved workload: ${ecoLabelData.inferStudies.toLocaleString()} studies/month — this box previews a different scale without changing it.`:ecoLabelData.workloadAssumed?`Nothing entered yet — CEDARS is assuming the literature default (${ecoLabelData.inferStudies.toLocaleString()} studies/month). Typing here replaces that assumption with your real figure.`:'Nothing is saved yet, so this box sets the real deployment workload used for scoring.'}</small>
                                       </label>
                                     </div>
                                     <div className="aiWorkloadMetrics"><div><span>Modeled carbon intensity</span><strong>{aiWorkloadScenario.intensityG!=null?`${aiWorkloadScenario.intensityG} gCO₂e/study`:'—'}</strong></div><div><span>Inference / month</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.inferenceMonthKg} kgCO₂e`:'—'}</strong></div><div><span>Training share</span><strong>{aiWorkloadScenario.trainingShareG!=null?`${aiWorkloadScenario.trainingShareG} gCO₂e/study`:'—'}</strong></div><div><span>Training + inference over deployment</span><strong>{aiWorkloadScenario.studies>0?`${aiWorkloadScenario.deploymentKg} kgCO₂e`:'—'}</strong><small>Operational model only; embodied hardware remains a separate disclosure.</small></div></div>
@@ -6033,7 +6027,7 @@ const startGuidedDemo = kind => {
                                   <div className="aiCalculationGrid">
                                     <div><span>Training</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Not set'}</small></div>
                                     <div><span>Inference</span><strong>{ecoLabelData.inferKwhPerStudy>0 ? `${ecoLabelData.inferKwhPerStudy} kWh/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
-                                    <div><span>Deployment</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Workload not entered'}</strong><small>{ecoLabelData.deployMonths || '—'} month deployment</small></div>
+                                    <div><span>Deployment</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Workload not entered'}</strong><small>{ecoLabelData.workloadAssumed ? 'Literature default — not entered' : `${ecoLabelData.deployMonths || '—'} month deployment`}</small></div>
                                     <div><span>Water</span><strong>{ecoLabelData.waterProv==='not-assessed' ? 'Not assessed' : ecoLabelData.waterLitres>0 ? `${ecoLabelData.waterLitres.toLocaleString()} L training` : 'Not quantified'}</strong><small>Reported separately from the carbon-and-energy Score</small></div>
                                   </div>
                                 </details>
@@ -6554,11 +6548,11 @@ const startGuidedDemo = kind => {
               <div><span>Lifecycle coverage</span><strong>{ecoLabelData.lifecycleCoverage}</strong><small>{ecoLabelData.graded ? 'Overall Score available' : 'Partial assessment; no overall Score assigned'}</small></div>
               <div><span>Training</span><strong>{ecoLabelData.trainingAvailable ? `${ecoLabelData.totalEnergyKwh} kWh` : ecoLabelData.trainingStatusLabel}</strong><small>{ecoLabelData.trainProv ? (PROVENANCE[ecoLabelData.trainProv]?.label || ecoLabelData.trainProv) : 'Provenance not set'}</small></div>
               <div><span>Inference</span><strong>{ecoLabelData.perInferCo2g>0 ? `${ecoLabelData.perInferCo2g} gCO₂e/study` : 'Not quantified'}</strong><small>{ecoLabelData.inferenceProvider || 'Provider not set'} · {ecoLabelData.inferenceRegion || 'region not set'}</small></div>
-              <div><span>Deployment volume</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month` : 'Not entered'}</strong><small>{ecoLabelData.hasInference ? `${ecoLabelData.deployMonths} month deployment` : 'Needed to combine one-time training with recurring inference'}</small></div>
+              <div><span>Deployment volume</span><strong>{ecoLabelData.hasInference ? `${ecoLabelData.inferStudies.toLocaleString()} studies/month${ecoLabelData.workloadAssumed ? ' (assumed)' : ''}` : 'Not entered'}</strong><small>{ecoLabelData.workloadAssumed ? 'Literature default — not entered' : ecoLabelData.hasInference ? `${ecoLabelData.deployMonths} month deployment` : 'Needed to combine one-time training with recurring inference'}</small></div>
             </div>
             {aiChecklistDone < aiChecklist.length && <div className="reportReviewItems"><div className="reportReviewItemsHead"><strong>Complete these items</strong><small>Each item opens the source field rather than creating a second copy here.</small></div>{aiChecklist.filter(([,ok])=>!ok).map(([name,,section])=><button type="button" key={name} onClick={()=>openAiChecklistItem(section)}><span>{name}</span><strong>Edit →</strong></button>)}</div>}
             <div className="reportSummaryActions">
-              {!ecoLabelData.hasInference && <button type="button" className="download" onClick={()=>openAiChecklistItem('inference')}>Set deployment workload →</button>}{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Review Department Clinical AI use →</button>}
+              {(!ecoLabelData.hasInference||ecoLabelData.workloadAssumed) && <button type="button" className="download" onClick={()=>openAiChecklistItem('inference')}>{ecoLabelData.workloadAssumed?'Replace assumed workload →':'Set deployment workload →'}</button>}{(deptLabel.aiTools||[]).some(t=>t.modelId===scen.modelId)&&<button type="button" className="download" onClick={()=>{setPage('dashboard');setDashOpen(o=>({...o,clinicalai:true}));window.setTimeout(()=>document.getElementById('department-clinical-ai-input')?.scrollIntoView({behavior:'smooth',block:'start'}),60);}}>Review Department Clinical AI use →</button>}
               <button type="button" onClick={()=>setPage('ai')}>Edit full model details →</button>
             </div>
           </div>
@@ -6597,13 +6591,11 @@ const startGuidedDemo = kind => {
                   ? 'Training + inference'
                   : ecoLabelData.scoreStatus==='training-unavailable'
                     ? 'Inference assessed; training not available'
-                    : ecoLabelData.scoreStatus==='deployment-workload-missing'
-                      ? 'Training assessed; expected deployment not complete'
-                      : 'Partial AI lifecycle data'
+                    : 'Partial AI lifecycle data'
               }
               coverageDetail={
                 ecoLabelData.graded
-                  ? `Footprint Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.`
+                  ? `Footprint Score combines amortised training with recurring inference across ${ecoLabelData.lifetimeInferences.toLocaleString()} expected studies.${ecoLabelData.workloadAssumed ? ` Deployment scale assumed at the literature default (${ecoLabelData.workloadLiteratureDefault.toLocaleString()} studies/mo) — not entered.` : ''}`
                   : ecoLabelData.scoreStatus==='training-unavailable'
                     ? 'Inference is reported separately; an overall Score is not assigned while required training data are unavailable.'
                     : 'Complete the missing lifecycle inputs before interpreting an overall Score.'
@@ -6617,11 +6609,11 @@ const startGuidedDemo = kind => {
                 {
                   label:'INFERENCE · PER STUDY',
                   value:ecoLabelData.perInferCo2g>0?`${ecoLabelData.perInferCo2g} gCO₂e/study`:'—',
-                  detail:ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month · ${ecoLabelData.inferMonthlyKwh} kWh/month`:'Add representative deployment workload.',
+                  detail:ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month${ecoLabelData.workloadAssumed?' (assumed)':''} · ${ecoLabelData.inferMonthlyKwh} kWh/month`:'Add representative deployment workload.',
                 },
               ]}
               rows={[
-                ['Workload',ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month · ${ecoLabelData.deployMonths} months`:'Not entered'],
+                ['Workload',ecoLabelData.hasInference?`${ecoLabelData.inferStudies.toLocaleString()} studies/month${ecoLabelData.workloadAssumed?' (assumed)':''} · ${ecoLabelData.deployMonths} months`:'Not entered'],
                 ['Location',ecoLabelData.trainingAvailable?`Training: ${ecoLabelData.trainingProvider || '—'} · ${ecoLabelData.trainingRegion || 'provider average'} · Inference: ${ecoLabelData.inferenceProvider || '—'} · ${ecoLabelData.inferenceRegion || 'provider average'}`:`Inference: ${ecoLabelData.inferenceProvider || '—'} · ${ecoLabelData.inferenceRegion || 'provider average'} · Training unavailable`],
                 ['Technical context',[ecoLabelData.architecture,ecoLabelData.paramsMillion].filter(Boolean).join(' · ') || '—'],
                 ['Resource disclosure',ecoLabelData.waterProv==='not-assessed'?'Water not assessed · not scored':`${ecoLabelData.waterLitres.toLocaleString()} L water${ecoLabelData.waterProv==='screening'?' · screening estimate':''}`],

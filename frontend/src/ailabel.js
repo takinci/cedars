@@ -8,8 +8,19 @@
 //
 // Every numeric line carries a provenance: 'measured' | 'estimated' | 'literature' | 'not-disclosed'.
 
+import { VOLUME_ESTIMATES } from './aiExamples.js';
+
 const rnd = (v, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
 const num = (v, fallback = 0) => { const n = parseFloat(v); return Number.isFinite(n) ? n : fallback; };
+// Deployment scale is routinely unknown while evaluating a candidate model, before any real
+// deployment exists. Unlike a genuinely unknown training/inference *footprint* (never treated as
+// zero), this one number already has a documented literature anchor that CEDARS uses elsewhere as
+// the default comparison workload (Doo et al. JACR 2024 — see VOLUME_ESTIMATES). So, matching
+// training's own literature fallback, an unentered scale falls back to that disclosed default
+// rather than blocking the Score outright — callers read `workloadProv` to disclose which one was
+// used. It only kicks in once a per-study inference figure exists; leaving both blank still means
+// "training only" and is unaffected.
+const WORKLOAD_LITERATURE_DEFAULT = VOLUME_ESTIMATES[0].studiesPerMonth;
 
 export const PROVENANCE = {
   measured:        {label: 'Measured',      short: 'MEASURED',  desc: 'read from hardware sensors or a utility meter'},
@@ -133,7 +144,10 @@ export function computeAiLabel(scen, ai, opts) {
   const tokenMode = ai.unit === 'tokens';
   const tokensPerStudy = tokenMode ? Math.round(ai.tokensPerStudy || 0) : 0;
   const inferKwhPerStudy = num(ai.inference?.kwhPerStudy);
-  const inferStudies = num(scen.inferStudiesMonth);
+  const inferStudiesEntered = num(scen.inferStudiesMonth);
+  const workloadEntered = inferStudiesEntered > 0;
+  const inferStudies = workloadEntered ? inferStudiesEntered : (inferKwhPerStudy > 0 ? WORKLOAD_LITERATURE_DEFAULT : 0);
+  const workloadProv = workloadEntered ? 'entered' : (inferKwhPerStudy > 0 ? 'literature' : 'not-entered');
   const inferMonthlyKwh = rnd(inferStudies * inferKwhPerStudy, 4);
   const inferCo2Month = rnd(inferMonthlyKwh * inferenceEffectiveCi, 4);
 
@@ -159,10 +173,11 @@ export function computeAiLabel(scen, ai, opts) {
   const trainFlights = rnd(trainCo2 / 255, 2);
   const hasData = trainingAvailable || inferKwhPerStudy > 0;
   const gradeBasis = hasInferenceData && trainingAvailable ? 'amortised' : 'none';
+  // 'deployment-workload-missing' no longer occurs: an unentered scale now falls back to the
+  // literature default above (see workloadProv) instead of blocking the grade.
   const scoreStatus = gradeBasis === 'amortised' ? 'complete'
     : (!trainingAvailable && inferKwhPerStudy > 0 ? 'training-unavailable'
-      : (trainingAvailable && inferKwhPerStudy > 0 && !hasInferenceData ? 'deployment-workload-missing'
-        : (inferKwhPerStudy <= 0 ? 'inference-missing' : 'not-ready')));
+      : (inferKwhPerStudy <= 0 ? 'inference-missing' : 'not-ready'));
   const gradeValueG = gradeBasis === 'none' ? null : effectivePerStudyG;
   const graded = gradeValueG != null;
   const {score = null, rating = null} = graded ? scoreFn(gradeValueG) : {};
@@ -171,8 +186,7 @@ export function computeAiLabel(scen, ai, opts) {
       : trainingAvailable ? 'Available' : 'Not available';
   const lifecycleCoverage = graded ? 'Training + inference'
     : scoreStatus === 'training-unavailable' ? `Inference assessed · training ${trainingStatusLabel.toLowerCase()}`
-      : scoreStatus === 'deployment-workload-missing' ? 'Training + inference quantified · deployment workload missing'
-        : 'Assessment incomplete';
+      : 'Assessment incomplete';
   const tokenWorkload = scen.architecture === 'LLM / Agent (transformer)' || ['Report generation','Agentic workflow'].includes(scen.taskType);
 
   return {
@@ -198,6 +212,7 @@ export function computeAiLabel(scen, ai, opts) {
     trainingRegion: trainingAvailable ? (scen.trainingRegion || scen.cloudRegion) : '', inferenceRegion: scen.inferenceRegion || scen.cloudRegion,
     waterLitres, waterPerStudyMl, pue,
     hasInference: hasInferenceData,
+    workloadProv, workloadAssumed: workloadProv === 'literature', workloadLiteratureDefault: WORKLOAD_LITERATURE_DEFAULT,
     inferMonthlyKwh, inferCo2Month, inferStudies: Math.round(inferStudies),
     energyMeasured: trainProv === 'measured',
     energyLive: true,
@@ -207,7 +222,7 @@ export function computeAiLabel(scen, ai, opts) {
     tokenMode, tokensPerStudy, inferKwhPerStudy: rnd(inferKwhPerStudy, 6),
     hasData, graded, gradeBasis, score, scoreStatus, lifecycleCoverage,
     leaves: rating?.leaves ?? 0,
-    ratingLabel: rating?.label ?? (scoreStatus === 'training-unavailable' ? 'Overall score not assigned' : scoreStatus === 'deployment-workload-missing' ? 'Add deployment workload to grade' : hasData ? 'Complete the assessment to grade' : 'Select or describe a model to grade'),
+    ratingLabel: rating?.label ?? (scoreStatus === 'training-unavailable' ? 'Overall score not assigned' : hasData ? 'Complete the assessment to grade' : 'Select or describe a model to grade'),
     ratingColor: rating?.color ?? '#90a4ae', ratingBg: rating?.bg ?? '#f5f5f5', ratingDesc: rating?.desc ?? '',
     date: new Date().toISOString().slice(0, 7),
   };

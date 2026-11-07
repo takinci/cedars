@@ -62,21 +62,32 @@ describe('labelFromScen — the label is a view of the record', () => {
 });
 
 describe('computeAiLabel — pinned grades', () => {
-  it('reports inference without assigning an overall score until deployment workload is present', () => {
+  it('grades on a literature-default workload (5,100 studies/mo) when deployment scale is not entered', () => {
+    // Deployment scale is routinely unknown before a model is actually deployed. Unlike an
+    // unknown footprint, this one number has a documented literature anchor (VOLUME_ESTIMATES),
+    // so — same as training's own literature fallback — CEDARS still grades, disclosing the
+    // assumption via workloadProv rather than blocking the Score.
     const d = computeAiLabel(SCEN_DEFAULTS, aiVision, opts);
-    expect(d.gradeBasis).toBe('none');
-    expect(d.scoreStatus).toBe('deployment-workload-missing');
+    expect(d.gradeBasis).toBe('amortised');
+    expect(d.scoreStatus).toBe('complete');
+    expect(d.workloadProv).toBe('literature');
+    expect(d.workloadAssumed).toBe(true);
+    expect(d.inferStudies).toBe(5100);
     expect(d.perInferCo2g).toBe(0.042);                 // 0.00042 kWh × 0.10 kg/kWh × 1000
-    expect(d.score).toBeNull();
     expect(d.totalEnergyKwh).toBe(41.6);
     expect(d.trainCo2).toBe(4.16);
     expect(d.trainProv).toBe('literature');
     expect(d.waterProv).toBe('screening');
     expect(d.waterLitres).toBe(75);                      // 41.6 kWh × 1.8 L/kWh, rounded
+    expect(d.trainPerStudyG).toBe(0.023);               // 4.16 kg → 4,160 g / (5,100 × 36 months)
+    expect(d.effectivePerStudyG).toBe(0.065);           // 0.023 + 0.042
+    expect(d.score).toBe(score(0.065).score);
   });
-  it('amortised basis once studies/month is set; runs multiply training', () => {
+  it('a user-entered studies/month overrides the literature default', () => {
     const d = computeAiLabel({...SCEN_DEFAULTS, inferStudiesMonth: '2500', numRuns: '4', deployMonths: '36'}, aiVision, opts);
     expect(d.gradeBasis).toBe('amortised');
+    expect(d.workloadProv).toBe('entered');
+    expect(d.workloadAssumed).toBe(false);
     expect(d.totalEnergyKwh).toBe(166.4);
     expect(d.trainCo2).toBe(16.64);
     expect(d.lifetimeInferences).toBe(90000);
@@ -84,6 +95,15 @@ describe('computeAiLabel — pinned grades', () => {
     expect(d.effectivePerStudyG).toBe(0.227);           // 0.185 + 0.042
     expect(d.score).toBe(score(0.227).score);
     expect(d.breakEvenStudies).toBe(Math.round(16.64 / (0.00042 * 0.10)));
+  });
+  it('leaving inference energy itself unset (training-only) is unaffected by the workload fallback', () => {
+    const trainingOnly = {...aiVision, inference: {kwhPerStudy: 0}};
+    const d = computeAiLabel(SCEN_DEFAULTS, trainingOnly, opts);
+    expect(d.workloadProv).toBe('not-entered');
+    expect(d.inferStudies).toBe(0);
+    expect(d.gradeBasis).toBe('none');
+    expect(d.scoreStatus).toBe('inference-missing');
+    expect(d.score).toBeNull();
   });
   it('renewable % is disclosure-only and does not lower the location-based carbon intensity', () => {
     const d = computeAiLabel({...SCEN_DEFAULTS, renewablePct: '50'}, aiVision, opts);

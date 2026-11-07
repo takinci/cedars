@@ -223,7 +223,7 @@ When available, CEDARS records the exact number of radiologists and maps it to t
 
 ### AI Model & Informatics path: lifecycle carbon intensity
 
-The AI Research EcoLabel retains the lifecycle carbon-intensity approach. When the required lifecycle basis is available, the EcoLabel Score uses amortized training (`training CO₂ ÷ lifetime studies/uses`) plus recurring inference carbon per study/use on the documented v1 log-scale anchors. Missing lifecycle phases are not treated as zero.
+The AI Research EcoLabel retains the lifecycle carbon-intensity approach. When the required lifecycle basis is available, the EcoLabel Score uses amortized training (`training CO₂ ÷ lifetime studies/uses`) plus recurring inference carbon per study/use on the documented v1 log-scale anchors. Missing lifecycle phases are not treated as zero: an unentered training or per-study inference *footprint* still withholds the Score. Deployment *scale* (studies/month) is treated differently, because — unlike a footprint — it already has a documented literature anchor CEDARS uses elsewhere as a default comparison workload (5,100 studies/month for a small US practice; Doo et al. JACR 2024). When scale is not entered but a per-study inference figure exists, CEDARS grades against that literature default rather than withholding the Score, and discloses the assumption (EcoLabel, exports, Report page) so it is never mistaken for the model's actual deployment.
 
 Clinical/performance suitability remains a gate rather than a compensatory score component: a lower environmental burden does not make an unsuitable AI system clinically acceptable.
 
