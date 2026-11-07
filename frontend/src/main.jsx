@@ -76,6 +76,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElemen
 
 const CONTRIBUTION_ENDPOINT = import.meta.env.VITE_CEDARS_CONTRIBUTE_URL || '';
 const TURNSTILE_SITEKEY = import.meta.env.VITE_CEDARS_TURNSTILE_SITEKEY || '';
+// Keep in sync with CITATION.cff's `version:` field.
+const CEDARS_APP_VERSION = '1.2.0';
 
 // ── Reference tables ──────────────────────────────────────────────────────────
 
@@ -1453,6 +1455,29 @@ function drawLeaf(ctx, x, y, size, filled, color) {
 // 16px vs 15px, row-value column 200 vs 210, footer text "CEDARS Footprint Score & Rating..." vs "CEDARS
 // ..."). Routing both through one function makes that kind of drift structurally impossible —
 // the two cards can now only differ in the data passed in (title, rows, colours), never in layout.
+// contextRows values are free-text sentences (grid intensity notes, training/inference provider
+// pairs, etc.) that can run well past the fixed value column width. A single ctx.fillText call
+// never wraps, so an overlong value used to silently run off the right edge of the canvas instead
+// of reflowing — cut off mid-word with no visual indication anything was missing. Wrapping each
+// row's value to the available column width (and growing just that row's height to fit) fixes
+// that without touching rows that already fit on one line.
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 function drawLabelCard({
   productTag,
   name,
@@ -1472,9 +1497,17 @@ function drawLabelCard({
   scoreName='ECOLABEL SCORE',
 }) {
   const W = 510;
-  const ROW_H = labelRowH(contextRows.length);
+  const VALUE_X = 210, VALUE_MAX_W = W - VALUE_X - 16, ROW_LINE_H = 13;
+  const baseRowH = labelRowH(contextRows.length);
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  measureCtx.font = 'bold 11px sans-serif';
+  const wrappedRows = contextRows.map(([k, v]) => {
+    const lines = wrapCanvasText(measureCtx, v, VALUE_MAX_W);
+    return [k, lines, Math.max(baseRowH, lines.length * ROW_LINE_H + 10)];
+  });
+  const contextRowsH = wrappedRows.reduce((sum, [, , h]) => sum + h, 0);
   const HEADER_H = 84, SCORE_H = 96, COVERAGE_H = 58, SECTION_H = 22, KEY_ROW_H = 30, FOOTER_H = 32;
-  const H = HEADER_H + SCORE_H + COVERAGE_H + SECTION_H + keyResults.length * KEY_ROW_H + SECTION_H + contextRows.length * ROW_H + FOOTER_H + 8;
+  const H = HEADER_H + SCORE_H + COVERAGE_H + SECTION_H + keyResults.length * KEY_ROW_H + SECTION_H + contextRowsH + FOOTER_H + 8;
 
   const canvas = document.createElement('canvas');
   canvas.width = W * 2;
@@ -1552,15 +1585,15 @@ function drawLabelCard({
   ctx.fillText('ASSESSMENT CONTEXT', 14, y + 15);
   y += SECTION_H;
 
-  const rowTextY = ROW_H / 2 + 4;
-  contextRows.forEach(([k, v], i) => {
+  wrappedRows.forEach(([k, lines, rowH], i) => {
     ctx.fillStyle = i%2===0 ? '#F7F5EF' : '#ffffff';
-    ctx.fillRect(2, y, W-4, ROW_H);
+    ctx.fillRect(2, y, W-4, rowH);
+    const firstLineY = lines.length > 1 ? y + 15 : y + rowH / 2 + 4;
     ctx.fillStyle = '#66716D'; ctx.font = '11px sans-serif';
-    ctx.fillText(k, 14, y + rowTextY);
+    ctx.fillText(k, 14, firstLineY);
     ctx.fillStyle = '#25302D'; ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(String(v), 210, y + rowTextY);
-    y += ROW_H;
+    lines.forEach((line, li) => ctx.fillText(line, VALUE_X, firstLineY + li * ROW_LINE_H));
+    y += rowH;
   });
 
   ctx.fillStyle = '#EEF4F0';
@@ -1657,7 +1690,7 @@ function CedarsEcoLabelPreview({
 
       <div className="cedarsEcoLabelFooter">
         <span>CEDARS-GENERATED ASSESSMENT SUMMARY</span>
-        <small>Estimated with CEDARS · {date} · CC BY 4.0</small>
+        <small>Estimated with CEDARS v{CEDARS_APP_VERSION} · {date} · CC BY 4.0</small>
       </div>
     </div>
   );
@@ -1702,7 +1735,7 @@ function downloadDeptPNG(d) {
       ['Location',d.region || '—'],
       ['Technical context',`${d.ci} kgCO₂e/kWh grid carbon intensity · carbon disclosure only`],
     ],
-    footerText:`${d.date} · CC BY 4.0`,
+    footerText:`CEDARS v${CEDARS_APP_VERSION} · ${d.date} · CC BY 4.0`,
   });
   downloadCanvasPNG(canvas, `cedars_department_ecolabel_${(d.deptName||'department').replace(/\W+/g,'_')}.png`);
 }
@@ -1795,7 +1828,7 @@ function downloadEcoPNG(d) {
       ['Resource disclosure', d.waterProv === 'not-assessed' ? 'Water not assessed · not scored' : `${d.waterLitres.toLocaleString()} L water${d.waterProv === 'screening' ? ' · screening estimate' : ''}`],
       ['Clinical / operational context', d.taskType || '—'],
     ],
-    footerText: `${d.date} · CC BY 4.0`,
+    footerText: `CEDARS v${CEDARS_APP_VERSION} · ${d.date} · CC BY 4.0`,
   });
   downloadCanvasPNG(canvas, `cedars_ai_research_ecolabel_${(d.projectName || 'untitled').replace(/\W+/g, '_')}.png`);
 }
