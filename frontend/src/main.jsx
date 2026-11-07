@@ -1541,7 +1541,16 @@ function drawLabelCard({
   ctx.textAlign = 'center';
   ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = ratingColor;
   ctx.fillText(scoreDisplay, 50, scoreY + 60);
-  ctx.font = 'bold 9px sans-serif';
+  // scoreName ("REFERENCE-ADJUSTED SCORE" etc.) is centered in a ~96px column that a long label
+  // can overflow on both sides — into the big digit above it and the leaf/rating column beside it.
+  // Shrink to fit on one line instead of hardcoding a size that only works for short labels.
+  const SCORE_NAME_MAX_W = 92;
+  let scoreNameSize = 9;
+  ctx.font = `bold ${scoreNameSize}px sans-serif`;
+  while (scoreNameSize > 5.5 && ctx.measureText(scoreName).width > SCORE_NAME_MAX_W) {
+    scoreNameSize -= 0.5;
+    ctx.font = `bold ${scoreNameSize}px sans-serif`;
+  }
   ctx.fillText(scoreName, 50, scoreY + 76);
   ctx.textAlign = 'left';
   for (let i = 0; i < 5; i++) drawLeaf(ctx, 108 + i*18, scoreY + 28, 16, i < leaves, i < leaves ? ratingColor : '#D8DEDA');
