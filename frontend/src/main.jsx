@@ -4078,6 +4078,10 @@ const startGuidedDemo = kind => {
                       <h3>Tell us about the radiology practice.</h3>
                       <p>These details describe the service CEDARS is comparing and are carried with the service reference shown in the result. They stay in your browser unless you choose to share or contribute the assessment. Enter what you know; a particular practice size or setting does not automatically earn a better score. A detailed modality breakdown is derived automatically from the Advanced equipment parameters below.</p>
                     </div>
+                    <div className="departmentPracticeServiceGrid" style={{marginBottom:10}}>
+                      <label className="departmentContextEditable">Department name <span className="fieldOptional">optional · shown on EcoLabel</span><input type="text" value={deptLabel.deptName} onChange={e=>setDept('deptName',e.target.value)} placeholder="e.g. Radiology — MRI Unit"/></label>
+                      <label className="departmentContextEditable">Hospital / institution <span className="fieldOptional">optional · shown on EcoLabel</span><input type="text" value={deptLabel.hospitalName} onChange={e=>setDept('hospitalName',e.target.value)} placeholder="e.g. University Hospital Basel"/></label>
+                    </div>
                     <fieldset className="departmentPracticeFieldset" disabled={!settings.region}>
                     <div className="departmentPracticeServiceGrid">
                       <label className="departmentContextEditable">How does this practice work?<select value={settings.imagingOperationModel} onChange={e=>set('imagingOperationModel',e.target.value)}><option value="">Choose…</option><option value="operates">Operates imaging equipment</option><option value="mixed">Mixed: operates equipment + interprets outside imaging</option><option value="interpretation-only">Interpretation-only / teleradiology</option></select><span className="fieldHelp">Choose the option that best matches the service represented in this assessment.</span></label>
