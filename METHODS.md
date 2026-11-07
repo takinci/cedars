@@ -200,7 +200,7 @@ The Department EcoLabel asks how operational energy compares with the CEDARS ref
 
 1. **Describe the service.** Enter the equipment and studies physically performed by the represented service. Practice/service context can include operation relationship (scanner-operating, mixed, or interpretation-only/teleradiology), exact radiologist count, derived practice-size group, represented sites, facility setting, location type, and service hours.
 2. **Build the matched reference.** CEDARS constructs an operational-energy reference from the represented fleet, modality workload, and versioned literature/default assumptions documented in [`sources.md`](./sources.md).
-3. **Compare current operation.** Current modeled imaging/PACS/reporting energy is compared with the matched reference:
+3. **Compare current operation.** Current modeled imaging/PACS/reporting energy is compared with the matched reference. A utilisation correction scales each modality's active-mode energy toward the entered modality volume, relative to the literature-default scans/unit throughput the active-hours assumption is itself calibrated against — not any locally entered scans/unit value. A locally entered scans/unit value can still shape the *derived* modality-volume estimate CEDARS suggests when no modality volume is entered directly, but it does not itself move the Score once a modality volume is entered:
 
 ```text
 ratio = observed modeled operational kWh / matched reference kWh

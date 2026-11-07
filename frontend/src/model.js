@@ -526,33 +526,37 @@ function computeDepartmentReferenceEnergy({equipment=DEFAULT_EQUIPMENT,annualStu
 
   const currentFleet=buildFleet(equipment,overrides);
   const defaultFleet=buildFleet(equipment,{});
-  let referenceAnnualKwh=0, modeledCurrentAnnualKwh=0;
+  let referenceAnnualKwh=0, modeledCurrentAnnualKwh=0, referenceCapacityYr=0;
 
+  // Utilisation (volume ÷ capacity) corrects the literature active_h assumption toward real
+  // demand. That active_h was calibrated against the literature-default scans/unit, so the
+  // capacity denominator must stay pinned to that same default on both sides of the ratio —
+  // reference AND current. A local scans/unit override still reshapes the *derived* volume
+  // suggestion (resolveDepartmentServiceVolumes) when no modality volume is entered directly,
+  // but once it isn't also the utilisation denominator, entering a real modality volume and
+  // then also entering/adjusting scans/unit no longer moves the Score on its own.
   DEPARTMENT_VOLUME_GROUPS.forEach(group=>{
     const volume=Math.max(0,Number(volumes.resolvedVolumes[group.key])||0);
-    if(!(volume>0)) return;
-    const currentRows=currentFleet.filter(row=>group.equipmentKeys.includes(row.key));
-    const defaultRows=defaultFleet.filter(row=>group.equipmentKeys.includes(row.key));
     const referenceCapacity=group.equipmentKeys.reduce((sum,key)=>{
       const count=Math.max(0,Number(equipment?.[key])||0);
       return sum+count*Math.max(0,Number(EQUIPMENT_UNITS[key]?.scans)||0)*12;
     },0);
-    const currentCapacity=group.equipmentKeys.reduce((sum,key)=>{
-      const count=Math.max(0,Number(equipment?.[key])||0);
-      const local=finiteNonNegativeOrNull(overrides?.[key]?.scans);
-      return sum+count*(local==null?Math.max(0,Number(EQUIPMENT_UNITS[key]?.scans)||0):local)*12;
-    },0);
+    referenceCapacityYr += referenceCapacity;
+    if(!(volume>0)) return;
+    const currentRows=currentFleet.filter(row=>group.equipmentKeys.includes(row.key));
+    const defaultRows=defaultFleet.filter(row=>group.equipmentKeys.includes(row.key));
     const referenceFull=defaultRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
     if(referenceCapacity>0) referenceAnnualKwh += referenceFull/referenceCapacity*volume;
     const currentFull=currentRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
     const currentActive=currentRows.reduce((sum,row)=>sum+annualRowActiveEnergy(row),0);
     const currentFixed=Math.max(0,currentFull-currentActive);
-    modeledCurrentAnnualKwh += currentFixed + (currentCapacity>0?currentActive*(volume/currentCapacity):0);
+    modeledCurrentAnnualKwh += currentFixed + (referenceCapacity>0?currentActive*(volume/referenceCapacity):0);
   });
 
   // PACS/RIS and reporting workstations are support infrastructure. Their reference burden scales
-  // with overall imaging workload; the current burden remains the entered fleet's modeled draw.
-  const overallUtil=volumes.capacityYr>0?volumes.effectiveAnnualStudies/volumes.capacityYr:0;
+  // with overall imaging workload against the same literature-pinned capacity; the current burden
+  // remains the entered fleet's modeled draw.
+  const overallUtil=referenceCapacityYr>0?volumes.effectiveAnnualStudies/referenceCapacityYr:0;
   ['PACS/RIS','Workstation'].forEach(modality=>{
     const defaultRows=defaultFleet.filter(row=>row.modality===modality);
     const currentRows=currentFleet.filter(row=>row.modality===modality);

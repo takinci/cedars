@@ -234,6 +234,13 @@ describe('Department reference-adjusted service model',()=>{
     expect(r.modeledCurrentAnnualKwh).toBeCloseTo(r.referenceAnnualKwh,1);
     expect(r.observedToReferenceRatio).toBeCloseTo(1,3);
   });
+  it('does not move the Score when a scans/unit override is entered alongside an unchanged explicit modality volume',()=>{
+    const withoutOverride=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:21600,modalityVolumes:{ct:21600}});
+    const withOverride=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:21600,modalityVolumes:{ct:21600},overrides:{ct:{scans:1500}}});
+    expect(withOverride.referenceAnnualKwh).toBeCloseTo(withoutOverride.referenceAnnualKwh,1);
+    expect(withOverride.modeledCurrentAnnualKwh).toBeCloseTo(withoutOverride.modeledCurrentAnnualKwh,1);
+    expect(withOverride.observedToReferenceRatio).toBeCloseTo(withoutOverride.observedToReferenceRatio,3);
+  });
   it('penalizes low utilization because fixed/nonproductive energy remains',()=>{
     const low=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:5000});
     const reference=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:21600});
