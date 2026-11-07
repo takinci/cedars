@@ -211,6 +211,8 @@ Thus `0.50×` reference maps to 100, `1.00×` to 50, and `2.00×` to 0. **Score 
 
 Absolute electricity and location-based carbon remain separately visible. Changing only the grid carbon factor changes absolute carbon but does not directly improve the Department EcoLabel Score. Qualitative sustainability-practice documentation does not create bonus points; a practice changes the score only when its physical effect is represented in the operational-energy model.
 
+The EcoLabel's "Annual footprint" headline reports exactly the modeled current energy the Score's ratio is computed from — one figure, not an independently rounded estimate — so the absolute footprint shown on the card and the ratio shown a few rows below it on the same card describe the same energy. The Energy section elsewhere in the app reports a deliberately different quantity: the represented fleet's energy *as configured*, independent of the entered workload. That figure is not utilisation-adjusted and will differ from the EcoLabel footprint whenever utilisation is below 100%; both figures are correct answers to different questions and are captioned accordingly.
+
 ### Practice & service context
 
 In the Department Context UI, **Local energy & reporting** appears first, followed by optional **Quick-start templates · illustrative data**, then **Practice & service context**. A quick-start template may prefill illustrative service context, workload, equipment, and current workflow values; every value remains editable and should be verified or replaced before reporting.

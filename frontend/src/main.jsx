@@ -378,7 +378,7 @@ const AI_IMPROVE_PROCURE = [
 ];
 
 import {
-  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, EQUIVALENCY_FACTORS, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeEquivalencies, computeDicomTransfer, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, DEPARTMENT_VOLUME_GROUPS, computeDepartmentReferenceEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
+  MODALITY_MB, STORAGE_KWH_PER_TB_ONPREM, STORAGE_KWH_PER_TB_CLOUD, TIME_MULT, TIME_LABEL, EQUIPMENT_UNITS, DEFAULT_EQUIPMENT, buildFleet, INTERVENTIONS, CLOUD, WATER_PER_KWH, EMBODIED_KG_MO, PATIENT_KM_RT, EQUIVALENCY_FACTORS, CAR_CO2_KG_KM, PAPER_G_PER_ENC, HAZ_WASTE_G_SCAN, CONTRAST, ICM_MODALITIES, IMAGING_MODALITIES, rnd, computeEquivalencies, computeDicomTransfer, computeClinicalScannerSavings, DEPARTMENT_VOLUME_GROUPS, computeDepartmentReferenceEnergy, computeDashboard, SCANNER_STATE_INTERVENTIONS, CLOUD_INTERVENTIONS, STORAGE_AXIAL_LEVER, STORAGE_CLOUD_LEVER, STORAGE_RETENTION_LEVER, STORAGE_INTERVENTIONS, computeInterventions,
 } from './model.js';
 
 
@@ -3223,7 +3223,6 @@ const startGuidedDemo = kind => {
     settings.annualMammographyStudies,settings.annualUltrasoundStudies,settings.annualAngioStudies,settings.annualFluoroStudies,
   ]);
   const efficiency = useMemo(() => {
-    const mult=TIME_MULT[settings.timePeriod] ?? 1;
     const reference=computeDepartmentReferenceEnergy({
       equipment:settings.equipment,
       annualStudies:settings.actualStudiesYear,
@@ -3234,22 +3233,23 @@ const startGuidedDemo = kind => {
     const capacityYr=reference.capacityYr;
     const entered=parseFloat(settings.actualStudiesYear)>0?parseFloat(settings.actualStudiesYear):null;
     const studiesYr=reference.effectiveAnnualStudies || entered || capacityYr;
-    const annualKwh=rnd(dash.totals.kwh/mult*12,2);
-    const annualActiveKwh=rnd(Math.max(0,dash.totals.activeKwh-(dash.clinicalMeta?.aiTrainingKwh||0))/mult*12,2);
-    const adjusted=computeUtilizationAdjustedEnergy({annualKwh,annualActiveKwh,capacityYr,studiesYr});
+    // Same workload-adjusted current energy the Score and the EcoLabel use (computeDepartmentReferenceEnergy),
+    // not a separately-computed figure — otherwise this card, the Label, and the Score would each show a
+    // different "current annual energy" for the same department.
+    const modeledAnnualKwh=Math.max(0,Number(reference.modeledCurrentAnnualKwh)||0);
     const util=capacityYr>0&&studiesYr>0?studiesYr/capacityYr:0;
     const band=util>=0.85?{label:'High utilisation',color:'#2E7D32',bg:'#e8f5e9'}:util>=0.40?{label:'Typical utilisation',color:'#F57F17',bg:'#fff8e1'}:{label:'Under-used fleet',color:'#c62828',bg:'#ffebee'};
     return{
       capacityYr:Math.round(capacityYr),studiesYr:Math.round(studiesYr),isEstimate:!entered,
-      utilPct:rnd(util*100,0),util,energyPerStudy:studiesYr>0?rnd(adjusted.modeledAnnualKwh/studiesYr,4):0,
-      co2PerStudy:studiesYr>0?rnd(adjusted.modeledAnnualKwh/studiesYr*dash.ci,3):0,
+      utilPct:rnd(util*100,0),util,energyPerStudy:studiesYr>0?rnd(modeledAnnualKwh/studiesYr,4):0,
+      co2PerStudy:studiesYr>0?rnd(modeledAnnualKwh/studiesYr*dash.ci,3):0,
       designedCo2PerStudy:rnd(dash.totals.energyPerScan*dash.ci,3),
-      nonProductivePct:adjusted.nonProductivePct,
-      modeledAnnualKwh:adjusted.modeledAnnualKwh,
+      nonProductivePct:modeledAnnualKwh>0?rnd(Math.max(0,Number(reference.currentFixedAnnualKwh)||0)/modeledAnnualKwh*100,1):0,
+      modeledAnnualKwh,
       band,
       ...reference,
     };
-  }, [settings.equipment,settings.equipmentOverrides,settings.actualStudiesYear,settings.timePeriod,dash.totals.kwh,dash.totals.activeKwh,dash.totals.energyPerScan,dash.ci,departmentModalityVolumes,departmentPowerManagement]);
+  }, [settings.equipment,settings.equipmentOverrides,settings.actualStudiesYear,dash.totals.energyPerScan,dash.ci,departmentModalityVolumes,departmentPowerManagement]);
 
   const equivData = useMemo(() => {
     const coreOperationalCo2 = dash.totals.co2Kg;
@@ -4447,7 +4447,7 @@ const startGuidedDemo = kind => {
                     {
                       label:'ANNUAL FOOTPRINT',
                       value:deptLabelData.totalAnnualCo2>0?`${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e`:'—',
-                      detail:deptLabelData.annualKwh>0?`${deptLabelData.annualKwh.toLocaleString()} kWh/year`:'Annual electricity not available',
+                      detail:deptLabelData.annualKwh>0?`${deptLabelData.annualKwh.toLocaleString()} kWh/year${deptLabelData.isLive?' · workload-adjusted, matches the Score':' · entered override'}`:'Annual electricity not available',
                     },
                     {
                       label:'PER IMAGING STUDY',
@@ -4685,7 +4685,7 @@ const startGuidedDemo = kind => {
           <section id="dash-energy" className="aiSection" style={{background:'none',boxShadow:'none',padding:0,marginTop:28}}>
             <h2 style={{marginBottom:12}}>1. Energy consumption</h2>
             <div className="cards">
-              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh)}  sub={`Scanners, PACS, workstations${dash.storage.kwh>0?', data storage':''}${dash.clinicalMeta.active?', and deployed Clinical AI':''}.`} style={{gridColumn:'span 4'}}/>
+              <Card icon={<Gauge/>}        title={`Total electricity ${dash.totals.label}`}  value={fmtKwh(dash.totals.kwh)}  sub={`Scanners, PACS, workstations${dash.storage.kwh>0?', data storage':''}${dash.clinicalMeta.active?', and deployed Clinical AI':''}, as configured — not scaled to your entered workload. The Department EcoLabel reports that workload-adjusted figure separately.`} style={{gridColumn:'span 4'}}/>
               <Card icon={<Activity/>}     title={`Active scanning ${dash.totals.label}`}    value={fmtKwh(dash.totals.activeKwh)}            sub={`${dash.totals.activePct}% of total — energy during actual scan acquisition.`}/>
               <Card icon={<TrendingDown/>} title={`Idle + standby ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleKwh)}              sub={`${dash.totals.idlePct}% of total — between scans and overnight. Primary optimisation target.`}/>
               <Card icon={<TrendingDown/>} title={`Avoidable idle ${dash.totals.label}`}     value={fmtKwh(dash.totals.idleWasteKwh)}         sub="Recoverable by standby / power-off policies."/>
@@ -4716,7 +4716,7 @@ const startGuidedDemo = kind => {
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}><label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:'#2E7D32'}}>Direct emissions / Scope 1 (kgCO₂e/year) <input type="number" min="0" step="1" value={settings.scope1AnnualKg} onChange={e=>set('scope1AnnualKg',e.target.value)} placeholder="leave blank if not assessed" style={{width:150,padding:'5px 8px',border:'1px solid #c8e6c9',borderRadius:8}}/></label><span className="note" style={{fontSize:10}}>Optional. Enter fuel/generator/medical-gas emissions when known; blank is reported as not assessed.</span></div>
             <div className="cards">
               <Card icon={<Factory/>}    title="Scope 1 — Direct"          value={dash.scopes.scope1Assessed?fmtCo2(dash.scopes.scope1Kg):'Not assessed'}       sub={dash.scopes.scope1Assessed?'User-entered annual direct emissions, scaled to this reporting period.':'No automatic percentage proxy is applied.'}/>
-              <Card icon={<Zap/>}        title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}). Local Clinical AI compute is included here; outsourced cloud AI is reported in Scope 3.`}/>
+              <Card icon={<Zap/>}        title="Scope 2 — Electricity"     value={fmtCo2(dash.scopes.scope2Kg)}  sub={`Grid at ${dash.ci} kgCO₂e/kWh (${settings.region}), from the fleet total above (as configured, not workload-adjusted). Local Clinical AI compute is included here; outsourced cloud AI is reported in Scope 3.`}/>
               <Card icon={<Cpu/>}        title="Scope 3 — Embodied carbon" value={fmtCo2(dash.scopes.scope3EmbKg)}    sub="Hardware manufacturing amortised over lifespan. Extend lifetime to reduce."/>
               <Card icon={<Car/>}        title="Scope 3 — Patient travel"  value={dash.scopes.scope3TravelAssessed?fmtCo2(dash.scopes.scope3TravelKg):'Not assessed'} sub={dash.scopes.scope3TravelAssessed?`${dash.scopes.imagingScans.toLocaleString()} scans × ${settings.patientTravelKm} km local avg round trip · passenger-car factor · Extended estimate.`:`Enter a local average round-trip distance to assess. A ${PATIENT_KM_RT} km screening reference (${fmtCo2(dash.scopes.scope3TravelScreeningKg)}) is not included in the reported subtotal.`}/>
               <Card icon={<Droplets/>}   title="Scope 3 — Contrast supply chain" value={fmtCo2(dash.scopes.scope3ContrastKg)} sub="Iodinated contrast: extraction, processing, packaging, and administration. (Nghiem 2026)"/>
@@ -6358,7 +6358,7 @@ const startGuidedDemo = kind => {
                   {
                     label:'ANNUAL FOOTPRINT',
                     value:deptLabelData.totalAnnualCo2>0?`${deptLabelData.totalAnnualCo2.toLocaleString()} kgCO₂e`:'—',
-                    detail:deptLabelData.annualKwh>0?`${deptLabelData.annualKwh.toLocaleString()} kWh/year`:'Annual electricity not available',
+                    detail:deptLabelData.annualKwh>0?`${deptLabelData.annualKwh.toLocaleString()} kWh/year${deptLabelData.isLive?' · workload-adjusted, matches the Score':' · entered override'}`:'Annual electricity not available',
                   },
                   {
                     label:'PER IMAGING STUDY',

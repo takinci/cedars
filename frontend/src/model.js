@@ -394,7 +394,6 @@ function computeDicomTransfer({equipment=DEFAULT_EQUIPMENT,timePeriod='Monthly',
   return {gb:rnd(gb,2),kwh:rnd(kwh,4),co2Kg:rnd(kwh*Math.max(0,Number(ci)||0),2)};
 }
 function computeClinicalScannerSavings({imagingScans=0,scannerActiveKwh=0,avoidedFrac=0,scanTimeFrac=0}={}){const scans=Number.isFinite(Number(imagingScans))?Math.max(0,Number(imagingScans)):0;const activeKwh=Number.isFinite(Number(scannerActiveKwh))?Math.max(0,Number(scannerActiveKwh)):0;const avoid=boundedFraction(avoidedFrac),scan=boundedFraction(scanTimeFrac);const avoidedEnergyKwh=activeKwh*avoid;const remainingActiveKwh=Math.max(0,activeKwh-avoidedEnergyKwh);const scanTimeEnergyKwh=remainingActiveKwh*scan;const savedKwh=Math.min(activeKwh,avoidedEnergyKwh+scanTimeEnergyKwh);return{avoidedFrac:avoid,scanTimeFrac:scan,scansAvoided:Math.round(scans*avoid),remainingScans:scans*(1-avoid),avoidedEnergyKwh:rnd(avoidedEnergyKwh,2),scanTimeEnergyKwh:rnd(scanTimeEnergyKwh,2),savedKwh:rnd(savedKwh,2)};}
-function computeUtilizationAdjustedEnergy({annualKwh=0,annualActiveKwh=0,capacityYr=0,studiesYr=0}={}){const total=Math.max(0,Number(annualKwh)||0),active=Math.min(total,Math.max(0,Number(annualActiveKwh)||0)),cap=Math.max(0,Number(capacityYr)||0),studies=Math.max(0,Number(studiesYr)||0);if(!(cap>0)||!(studies>0))return{util:0,modeledAnnualKwh:total,energyPerStudy:studies>0?total/studies:0,nonProductivePct:total>0?rnd((total-active)/total*100,1):0};const util=studies/cap;const fixed=Math.max(0,total-active);const scaledActive=active*util;const modeled=fixed+scaledActive;return{util,modeledAnnualKwh:rnd(modeled,2),energyPerStudy:rnd(modeled/studies,4),nonProductivePct:modeled>0?rnd(fixed/modeled*100,1):0};}
 
 // Department v1.1 service-reference model. These groups are deliberately based on physical
 // imaging workload, not radiologist headcount or billing ownership.
@@ -521,12 +520,12 @@ function currentPowerManagementAnnualSaving(fleet, powerManagement={}) {
 function computeDepartmentReferenceEnergy({equipment=DEFAULT_EQUIPMENT,annualStudies='',modalityVolumes={},overrides={},powerManagement={}}={}) {
   const volumes = resolveDepartmentServiceVolumes({equipment,annualStudies,modalityVolumes,overrides});
   if (!(volumes.capacityYr > 0) || !(volumes.effectiveAnnualStudies > 0)) {
-    return {...volumes, referenceAnnualKwh:0, modeledCurrentAnnualKwh:0, observedToReferenceRatio:null, currentPowerManagementSavingAnnual:0};
+    return {...volumes, referenceAnnualKwh:0, modeledCurrentAnnualKwh:0, currentFixedAnnualKwh:0, observedToReferenceRatio:null, currentPowerManagementSavingAnnual:0};
   }
 
   const currentFleet=buildFleet(equipment,overrides);
   const defaultFleet=buildFleet(equipment,{});
-  let referenceAnnualKwh=0, modeledCurrentAnnualKwh=0, referenceCapacityYr=0;
+  let referenceAnnualKwh=0, modeledCurrentAnnualKwh=0, referenceCapacityYr=0, currentFixedAnnualKwh=0;
 
   // Utilisation (volume ÷ capacity) corrects the literature active_h assumption toward real
   // demand. That active_h was calibrated against the literature-default scans/unit, so the
@@ -550,26 +549,34 @@ function computeDepartmentReferenceEnergy({equipment=DEFAULT_EQUIPMENT,annualStu
     const currentFull=currentRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
     const currentActive=currentRows.reduce((sum,row)=>sum+annualRowActiveEnergy(row),0);
     const currentFixed=Math.max(0,currentFull-currentActive);
+    currentFixedAnnualKwh += currentFixed;
     modeledCurrentAnnualKwh += currentFixed + (referenceCapacity>0?currentActive*(volume/referenceCapacity):0);
   });
 
   // PACS/RIS and reporting workstations are support infrastructure. Their reference burden scales
   // with overall imaging workload against the same literature-pinned capacity; the current burden
-  // remains the entered fleet's modeled draw.
+  // remains the entered fleet's modeled draw (treated as fixed — it is not scaled by volume above).
   const overallUtil=referenceCapacityYr>0?volumes.effectiveAnnualStudies/referenceCapacityYr:0;
   ['PACS/RIS','Workstation'].forEach(modality=>{
     const defaultRows=defaultFleet.filter(row=>row.modality===modality);
     const currentRows=currentFleet.filter(row=>row.modality===modality);
+    const currentSupportKwh=currentRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
     referenceAnnualKwh += defaultRows.reduce((sum,row)=>sum+annualRowEnergy(row),0)*overallUtil;
-    modeledCurrentAnnualKwh += currentRows.reduce((sum,row)=>sum+annualRowEnergy(row),0);
+    modeledCurrentAnnualKwh += currentSupportKwh;
+    currentFixedAnnualKwh += currentSupportKwh;
   });
 
   const currentPowerManagementSavingAnnual=currentPowerManagementAnnualSaving(currentFleet,powerManagement);
   modeledCurrentAnnualKwh=Math.max(0,modeledCurrentAnnualKwh-currentPowerManagementSavingAnnual);
+  // Power management chiefly cuts idle/standby draw, i.e. the fixed share, so the saving comes
+  // off that share here too — keeping currentFixedAnnualKwh consistent with modeledCurrentAnnualKwh
+  // for the nonProductivePct ("share of energy not converted into active scanning") calculation.
+  currentFixedAnnualKwh=Math.max(0,currentFixedAnnualKwh-currentPowerManagementSavingAnnual);
   const ratio=referenceAnnualKwh>0?modeledCurrentAnnualKwh/referenceAnnualKwh:null;
   return {
     ...volumes,
     referenceAnnualKwh:rnd(referenceAnnualKwh,1),
+    currentFixedAnnualKwh:rnd(currentFixedAnnualKwh,1),
     modeledCurrentAnnualKwh:rnd(modeledCurrentAnnualKwh,1),
     observedToReferenceRatio:ratio==null?null:rnd(ratio,3),
     currentPowerManagementSavingAnnual,
@@ -955,7 +962,6 @@ export {
   computeEquivalencies,
   computeDicomTransfer,
   computeClinicalScannerSavings,
-  computeUtilizationAdjustedEnergy,
   DEPARTMENT_VOLUME_GROUPS,
   resolveDepartmentServiceVolumes,
   computeDepartmentReferenceEnergy,

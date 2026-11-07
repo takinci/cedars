@@ -5,7 +5,7 @@
 // hand. Weak-proxy travel/resource categories stay unassessed until local values are entered.
 // Run: `npm test`.
 import { describe, it, expect } from 'vitest';
-import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, computeUtilizationAdjustedEnergy, computeDepartmentReferenceEnergy, resolveDepartmentServiceVolumes, computeDicomTransfer, sanitizeRetentionYears } from './model.js';
+import { buildFleet, computeDashboard, computeInterventions, computeClinicalScannerSavings, computeDepartmentReferenceEnergy, resolveDepartmentServiceVolumes, computeDicomTransfer, sanitizeRetentionYears } from './model.js';
 
 // One reference department: 2 CT, 1 MRI 1.5T, 3 Radiography, 2 Ultrasound, 1 PACS, 5 workstations.
 const FLEET = { ct: 2, mri_15t: 1, xray: 3, ultrasound: 2, pacs: 1, workstations: 5 };
@@ -222,7 +222,6 @@ describe('final accounting and intervention integrity',()=>{
   it('uses a separate cloud-storage CI and classifies it outside Scope 2',()=>{const d=computeDashboard('Switzerland','Monthly',{ct:1},undefined,{}, {retentionYears:'10',cloud:true,reformats:'all',provider:'AWS',cloudCi:'0.5'}, {});expect(d.storage.ci).toBe(0.5);expect(d.scopes.scope3CloudStorageKg).toBeGreaterThan(0);expect(d.storage.co2).toBeCloseTo(d.storage.kwh*0.5,1);});
   it('keeps remote Clinical AI compute out of hospital Scope 2 and uses its own carbon factor',()=>{const base=computeDashboard('Switzerland','Monthly',{ct:1});const d=computeDashboard('Switzerland','Monthly',{ct:1},undefined,{inferKwhPerStudy:0.01,aiLocalInferKwhPerStudy:0,aiCloudInferKwhPerStudy:0.01,aiCloudInferCo2PerStudy:0.005});expect(d.scopes.scope2Kg).toBeCloseTo(base.scopes.scope2Kg,1);expect(d.scopes.scope3CloudAiKg).toBeGreaterThan(0);expect(d.clinicalMeta.aiCloudKwh).toBeGreaterThan(0);});
   it('leaves Scope 1 unassessed unless a value is entered',()=>{const a=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {}, {});expect(a.scopes.scope1Assessed).toBe(false);expect(a.scopes.scope1Kg).toBe(0);const b=computeDashboard('Germany','Monthly',{ct:1},undefined,{}, {scope1AnnualKg:'1200'}, {});expect(b.scopes.scope1Assessed).toBe(true);expect(b.scopes.scope1Kg).toBeCloseTo(100,1);});
-  it('models utilization with fixed plus volume-dependent energy rather than dividing the whole footprint by utilization',()=>{const r=computeUtilizationAdjustedEnergy({annualKwh:1000,annualActiveKwh:400,capacityYr:1000,studiesYr:500});expect(r.modeledAnnualKwh).toBe(800);expect(r.energyPerStudy).toBe(1.6);expect(r.nonProductivePct).toBe(75);});
   it('does not turn a reported renewable percentage into a location-based Scope 2 credit',()=>{const zero=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},0);const full=computeInterventions(['Use renewable electricity'],'Germany','Monthly',{ct:1},undefined,'AWS','Standby',{}, {}, {},100);expect(zero.savings.co2).toBeCloseTo(0,1);expect(full.savings.co2).toBeCloseTo(0,1);expect(full.baseline.co2).toBeCloseTo(zero.baseline.co2,1);});
   it('fleet-scaled interventions do not erase a tiny department footprint via fixed kWh constants',()=>{const x=computeInterventions(['Reduce low-value imaging','Shorten protocols','Optimize scheduling'],'Germany','Monthly',{ultrasound:1},undefined,'AWS','Standby');expect(x.savings.pctEnergy).toBeLessThan(60);expect(x.projected.kwh).toBeGreaterThan(0);});
 });
@@ -233,6 +232,13 @@ describe('Department reference-adjusted service model',()=>{
     expect(r.referenceAnnualKwh).toBeGreaterThan(0);
     expect(r.modeledCurrentAnnualKwh).toBeCloseTo(r.referenceAnnualKwh,1);
     expect(r.observedToReferenceRatio).toBeCloseTo(1,3);
+  });
+  it('exposes the fixed-energy share so UI-side utilisation metrics can derive from the same modeled current energy as the Score',()=>{
+    const reference=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:21600});
+    const low=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:5000});
+    expect(reference.currentFixedAnnualKwh).toBeGreaterThan(0);
+    expect(reference.currentFixedAnnualKwh).toBeLessThanOrEqual(reference.modeledCurrentAnnualKwh);
+    expect(low.currentFixedAnnualKwh/low.modeledCurrentAnnualKwh).toBeGreaterThan(reference.currentFixedAnnualKwh/reference.modeledCurrentAnnualKwh);
   });
   it('does not move the Score when a scans/unit override is entered alongside an unchanged explicit modality volume',()=>{
     const withoutOverride=computeDepartmentReferenceEnergy({equipment:{ct:1},annualStudies:21600,modalityVolumes:{ct:21600}});
