@@ -3300,6 +3300,7 @@ const startGuidedDemo = kind => {
     const selectedCo2 = aiEquivScope==='per-study' ? perStudyCo2Kg : deploymentCo2Kg;
     const selectedKwh = aiEquivScope==='per-study' ? perStudyKwh : deploymentKwh;
     const eq = computeEquivalencies(selectedCo2, selectedKwh);
+    const price = getPrice(settings.region, settings.electricityPrice);
     return {
       ...eq,
       selectedCo2, selectedKwh,
@@ -3310,8 +3311,9 @@ const startGuidedDemo = kind => {
       laptopMinutes: selectedKwh>0 ? selectedKwh / f.laptopKwhPerDay * 24 * 60 : 0,
       streamMinutes: selectedKwh>0 ? selectedKwh / f.streamKwhPerHour * 60 : 0,
       metresDriven: selectedCo2>0 ? selectedCo2 / f.carKgCo2PerKm * 1000 : 0,
+      cost: selectedKwh * price, pricePerKwh: price, sym: currencySym(settings.region),
     };
-  }, [aiEquivScope, ecoLabelData.inferKwhPerStudy, ecoLabelData.perInferCo2g, ecoLabelData.lifetimeInferences, ecoLabelData.trainingAvailable, ecoLabelData.totalEnergyKwh, ecoLabelData.trainCo2, ecoLabelData.graded, ecoLabelData.effectivePerStudyG, ecoLabelData.inferMonthlyKwh, ecoLabelData.inferCo2Month, ecoLabelData.deployMonths, ecoLabelData.hasInference]);
+  }, [aiEquivScope, ecoLabelData.inferKwhPerStudy, ecoLabelData.perInferCo2g, ecoLabelData.lifetimeInferences, ecoLabelData.trainingAvailable, ecoLabelData.totalEnergyKwh, ecoLabelData.trainCo2, ecoLabelData.graded, ecoLabelData.effectivePerStudyG, ecoLabelData.inferMonthlyKwh, ecoLabelData.inferCo2Month, ecoLabelData.deployMonths, ecoLabelData.hasInference, settings.region, settings.electricityPrice]);
 
   const aiWorkloadScenario = useMemo(() => {
     const studies = Math.max(0, parseFloat(aiWorkloadPreview) || 0);
@@ -6002,6 +6004,7 @@ const startGuidedDemo = kind => {
                       ) : <div className="scoreEverydayEmpty">Add representative deployment workload to show deployment-period comparisons.</div>}
 
                       <div className="scoreEverydayFoot" style={{marginTop:12}}>
+                        {aiEquivScope==='deployment' && aiEveryday.selectedKwh>0 && <span><strong>Estimated electricity cost:</strong> {fmtMoney(aiEveryday.cost, aiEveryday.sym)} for this {ecoLabelData.deployMonths || 36}-month deployment at {aiEveryday.sym}{aiEveryday.pricePerKwh}/kWh · {settings.region}. That's about {fmtBig(aiEveryday.homes)} average household electricity-years.</span>}
                         <span>Equivalencies are interpretive aids; detailed factors and methodology remain in the source documentation.</span>
                         <button type="button" className="inlineTextButton" onClick={()=>openAiChecklistItem('inference')}>Edit deployment inputs →</button>
                       </div>
