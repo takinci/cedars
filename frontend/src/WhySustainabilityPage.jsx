@@ -141,8 +141,10 @@ function SustainabilityStory() {
               <ellipse className="whyStoryTargetHalo" cx={target.cx} cy={target.cy} rx={target.rx} ry={target.ry}/>
               {activeStep.key==='resolve' && <g className="whyStoryPlanet">
                 <circle cx="842" cy="465" r="270"/>
-                <ellipse cx="842" cy="465" rx="112" ry="270"/>
-                <ellipse cx="842" cy="465" rx="270" ry="108"/>
+                <ellipse className="whyStoryPlanetLong" cx="842" cy="465" rx="112" ry="270"/>
+                <ellipse className="whyStoryPlanetLat" cx="842" cy="465" rx="270" ry="108"/>
+                <ellipse className="whyStoryPlanetOrbit" cx="842" cy="465" rx="340" ry="156"/>
+                <circle className="whyStoryPlanetSat" cx="1182" cy="465" r="6"/>
               </g>}
               <path className="whyStoryLeader" d={`M ${target.cx+target.rx} ${target.lineY} C ${Math.min(target.cx+target.rx+120,1540)} ${target.lineY}, 1560 ${target.lineY}, 1644 ${target.lineY}`}/>
               <circle className="whyStoryLeaderDot" cx="1644" cy={target.lineY} r="6"/>
